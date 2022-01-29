@@ -1,18 +1,20 @@
 [package]
 name = "tardis"
-version = "0.0.1"
+version = "0.1.0-alpha1"
 authors = ["gudaoxuri"]
 description = "Elegant, clean Rust development framework"
-keywords = ["tardis", "http", "db", "web", "redis", "mq", "framework", "async"]
+keywords = ["tardis", "http", "database","mysql", "postgres", "web", "redis", "mq", "framework", "async"]
 categories = [
     "network-programming",
     "asynchronous",
     "web-programming::http-server",
-    "web-programming::websocket"
+    "web-programming::websocket",
+    "database",
 ]
 homepage = "https://tardis.idealworld.group"
+documentation = "https://tardis.idealworld.group"
 repository = "https://github.com/ideal-world/tardis"
-license = "Apache-2.0"
+license = "MIT"
 edition = "2021"
 readme = "README.adoc"
 

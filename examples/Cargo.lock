@@ -2873,13 +2873,13 @@ dependencies = [
 
 [[package]]
 name = "tardis"
-version = "0.0.1"
+version = "0.1.0-alpha1"
 dependencies = [
  "amq-protocol-types",
  "async-global-executor",
  "async-stream",
  "async-trait",
- "base64 0.13.0",
+ "base64 0.11.0",
  "config",
  "derive_more",
  "env_logger",

@@ -1,10 +1,10 @@
-*Preview version, will not guarantee the stability of the API!*
+*Preview version, will not guarantee the stability of the API! Do NOT use in production environment!*
 
 ====
 Elegant, clean Rust development framework
 ====
 
-== Core Features
+== Core Functions
 
 * Relational database client for MySQL, PostgresSQL
 * Web service and web client for OpenAPI v3.x
@@ -74,9 +74,17 @@ async fn main() -> TardisResult<()> {
 }
 ----
 
-=== Relational Database Example
+=== More examples
 
-TBD
+----
+|-- examples
+  |-- reldb         Relational database usage example
+  |-- web-basic     Web service Usage Example
+  |-- web-client    Web client Usage Example
+  |-- cache         Cache Usage Example
+  |-- mq            Message Queue Usage Example
+  |-- todo          A complete project usage example
+----
 
 
 
