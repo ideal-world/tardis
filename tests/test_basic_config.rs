@@ -1,0 +1,68 @@
+// https://github.com/mehcode/config-rs
+
+use std::env;
+
+use serde::{Deserialize, Serialize};
+
+use tardis::basic::config::NoneConfig;
+use tardis::basic::result::TardisResult;
+use tardis::TardisFuns;
+
+#[tokio::test]
+async fn test_basic_config() -> TardisResult<()> {
+    TardisFuns::init::<NoneConfig>("").await?;
+    assert_eq!(TardisFuns::fw_config().db.url, "");
+    assert_eq!(TardisFuns::fw_config().db.enabled, true);
+    assert_eq!(TardisFuns::fw_config().app.name, "Tardis Application");
+
+    TardisFuns::init::<TestConfig>("tests/config").await?;
+    assert_eq!(TardisFuns::ws_config::<TestConfig>().project_name, "测试");
+    assert_eq!(TardisFuns::fw_config().db.url, "postgres://postgres@test");
+    assert_eq!(TardisFuns::ws_config::<TestConfig>().db_proj.url, "postgres://postgres@test.proj");
+    assert_eq!(TardisFuns::fw_config().app.name, "APP1");
+
+    env::set_var("PROFILE", "prod");
+
+    TardisFuns::init::<TestConfig>("tests/config").await?;
+    assert_eq!(TardisFuns::fw_config().db.url, "postgres://postgres@prod");
+    assert_eq!(TardisFuns::ws_config::<TestConfig>().db_proj.url, "postgres://postgres@prod.proj");
+    assert_eq!(TardisFuns::fw_config().app.name, "Tardis Application");
+
+    // cli example: env Tardis_DB.URL=test Tardis_app.name=xx ./xxx
+    env::set_var("Tardis_DB.URL", "test");
+    TardisFuns::init::<TestConfig>("tests/config").await?;
+    assert_eq!(TardisFuns::fw_config().db.url, "test");
+    assert_eq!(TardisFuns::fw_config().app.name, "Tardis Application");
+
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(default)]
+struct TestConfig {
+    project_name: String,
+    level_num: u8,
+    db_proj: DatabaseConfig,
+}
+
+impl Default for TestConfig {
+    fn default() -> Self {
+        TestConfig {
+            project_name: "".to_string(),
+            level_num: 0,
+            db_proj: DatabaseConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(default)]
+struct DatabaseConfig {
+    url: String,
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        DatabaseConfig { url: "".to_string() }
+    }
+}

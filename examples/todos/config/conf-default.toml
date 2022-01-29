@@ -1,0 +1,15 @@
+[app]
+id = "todo"
+name = "Todo示例"
+desc = "Todo示例"
+version = "1.0.0"
+
+[web_server]
+port = 8089
+[[web_server.modules]]
+code = ""
+title = "Todo示例"
+doc_urls = [["test env", "http://localhost:8089/"]]
+
+[db]
+url = "mysql://root:123456@localhost:3306/test"

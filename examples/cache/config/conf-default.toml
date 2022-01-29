@@ -1,0 +1,8 @@
+[app]
+id = "cache"
+name = "分布式缓存基础示例"
+desc = "分布式缓存基础示例"
+version = "1.0.0"
+
+[cache]
+url = "redis://127.0.0.1:6379"

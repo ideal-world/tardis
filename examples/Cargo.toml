@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+"reldb",
+"web-basic",
+"web-client",
+"cache",
+"mq",
+"todos",
+]

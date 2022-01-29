@@ -1,0 +1,17 @@
+== Versions
+
+=== 0.0.1
+
+Initial release
+
+.Features
+
+* Relational database client for MySQL, PostgresSQL
+* Web service and web client for OpenAPI v3.x
+* Distributed cache client for Redis protocol
+* RabbitMQ client for AMQP protocol
+* Containerized unit testing of mainstream middleware
+* Multi-environment configuration
+* Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
+
+

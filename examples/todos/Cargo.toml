@@ -1,0 +1,20 @@
+[package]
+name = "tardis-example-todos"
+version = "0.1.0"
+authors = ["gudaoxuri"]
+edition = "2021"
+
+[dependencies]
+# Basic
+serde = { version = "^1", features = ["derive"] }
+log = { version = "^0" }
+tokio = { version = "1.15.0", features = ["macros"] }
+# Tardis Functions
+tardis = { path = "../..", features = ["web-server", "reldb", "test"] }
+# Web server dependencies
+poem-openapi = { version = "1.2.47" }
+# Reldb dependencies
+sea-orm = { version = "0.5.0", features = ["macros"] }
+# Example only
+testcontainers = { version = "^0" }
+

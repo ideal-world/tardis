@@ -1,0 +1,4 @@
+*.sh          eol=lf
+Dockerfile    eol=lf
+* text=auto   eol=lf
+*.rs text     eol=lf whitespace=tab-in-indent,trailing-space,tabwidth=4

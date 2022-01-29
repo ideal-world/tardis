@@ -1,0 +1,22 @@
+# CI
+/.github/deploy_key
+out
+
+# Executables
+*.exe
+
+# Cargo
+*Cargo.lock
+/target
+
+# gh pages docs
+util/gh-pages/lints.json
+**/metadata_collection.json
+
+# rustfmt backups
+*.rs.bk
+
+# IDE
+*.iml
+.vscode
+.idea

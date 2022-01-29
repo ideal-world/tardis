@@ -1,0 +1,82 @@
+*Preview version, will not guarantee the stability of the API!*
+
+====
+Elegant, clean Rust development framework
+====
+
+== Core Features
+
+* Relational database client for MySQL, PostgresSQL
+* Web service and web client for OpenAPI v3.x
+* Distributed cache client for Redis protocol
+* RabbitMQ client for AMQP protocol
+* Containerized unit testing of mainstream middleware
+* Multi-environment configuration
+* Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
+
+== Feature Description
+
+* ``trace`` tracing operation
+* ``future`` asynchronous operations
+* ``reldb`` relational database operations
+* ``web-server`` web service operations
+* ``web-client`` web client operations
+* ``cache`` cache operations
+* ``mq`` message queue operations
+* ``test`` unit test operations
+
+== Quick start
+
+The core operations of the framework all use ``TardisFuns`` as an entry point. E.g.
+
+ TardisFuns::init(relative_path)      // Initialize the configuration
+ TardisFuns::field.x                  // Some field operations
+ TardisFuns::reldb().x                // Some relational database operations
+ TardisFuns::web_server().x           // Some web service operations
+
+=== Web Service Example
+
+[source,toml]
+.Dependency Configuration
+----
+[dependencies]
+tokio = { version = "1.15.0", features = ["macros"] }
+tardis = { version = "0", features = ["web-server"] }
+poem-openapi = { version = "1.2.39"}
+----
+
+[source,rust]
+.Processor Configuration
+----
+pub struct Api;
+
+#[OpenApi]
+impl Api {
+    #[oai(path = "/hello", method = "get")]
+    async fn index(&self, name: Query<Option<String>>) -> TardisResp<String> {
+        match name.0 {
+            Some(name) => TardisResp::ok(format!("hello, {}!", name)),
+            None => TardisResp::err(TardisError::NotFound("name does not exist".to_string())),
+        }
+    }
+}
+----
+
+[source,rust]
+.Startup class configuration
+----
+#[tokio::main]
+async fn main() -> TardisResult<()> {
+    // Initial configuration
+    TardisFuns::init::<NoneConfig>("config").await?;
+    // Register the processor and start the web service
+    TardisFuns::web_server().add_module("", Api).start().await
+}
+----
+
+=== Relational Database Example
+
+TBD
+
+
+
