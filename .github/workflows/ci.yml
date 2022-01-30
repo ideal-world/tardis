@@ -2,11 +2,34 @@ on: [ push ]
 
 name: CI
 
+env:
+  TARDIS_TEST_DISABLED_DOCKER: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+    services:
+      mysql:
+        image: mysql
+        ports:
+          - 3306:3306
+        options: -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=test
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
+      rabbit:
+        image: rabbitmq:management
+        ports:
+          - 15672:15672
+          - 25672:25672
+          - 5671:5671
+          - 5672:5672
+          - 4369:4369
+        options: -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
