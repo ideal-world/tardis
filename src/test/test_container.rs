@@ -16,10 +16,14 @@ impl TardisTestContainer {
         F: Fn(String) -> T + Send + Sync + 'static,
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
-        let docker = clients::Cli::default();
-        let node = TardisTestContainer::redis_custom(&docker);
-        let port = node.get_host_port(6379).expect("Test port acquisition error");
-        fun(format!("redis://127.0.0.1:{}/0", port)).await
+        if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
+            fun("redis://127.0.0.1:6379/0".to_string()).await
+        } else {
+            let docker = clients::Cli::default();
+            let node = TardisTestContainer::redis_custom(&docker);
+            let port = node.get_host_port(6379).expect("Test port acquisition error");
+            fun(format!("redis://127.0.0.1:{}/0", port)).await
+        }
     }
 
     pub fn redis_custom(docker: &Cli) -> Container<Cli, Redis> {
@@ -31,10 +35,14 @@ impl TardisTestContainer {
         F: Fn(String) -> T + Send + Sync + 'static,
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
-        let docker = clients::Cli::default();
-        let node = TardisTestContainer::rabbit_custom(&docker);
-        let port = node.get_host_port(5672).expect("Test port acquisition error");
-        fun(format!("amqp://guest:guest@127.0.0.1:{}/%2f", port)).await
+        if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
+            fun("amqp://guest:guest@127.0.0.1:5672/%2f".to_string()).await
+        } else {
+            let docker = clients::Cli::default();
+            let node = TardisTestContainer::rabbit_custom(&docker);
+            let port = node.get_host_port(5672).expect("Test port acquisition error");
+            fun(format!("amqp://guest:guest@127.0.0.1:{}/%2f", port)).await
+        }
     }
 
     pub fn rabbit_custom(docker: &Cli) -> Container<Cli, GenericImage> {
@@ -46,10 +54,14 @@ impl TardisTestContainer {
         F: Fn(String) -> T + Send + Sync + 'static,
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
-        let docker = clients::Cli::default();
-        let node = TardisTestContainer::mysql_custom(init_script_path, &docker);
-        let port = node.get_host_port(3306).expect("Test port acquisition error");
-        fun(format!("mysql://root:123456@localhost:{}/test", port)).await
+        if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
+            fun("mysql://root:123456@localhost:3306/test".to_string()).await
+        } else {
+            let docker = clients::Cli::default();
+            let node = TardisTestContainer::mysql_custom(init_script_path, &docker);
+            let port = node.get_host_port(3306).expect("Test port acquisition error");
+            fun(format!("mysql://root:123456@localhost:{}/test", port)).await
+        }
     }
 
     pub fn mysql_custom<'a>(init_script_path: Option<&str>, docker: &'a Cli) -> Container<'a, Cli, GenericImage> {
@@ -77,10 +89,14 @@ impl TardisTestContainer {
         F: Fn(String) -> T + Send + Sync + 'static,
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
-        let docker = clients::Cli::default();
-        let node = TardisTestContainer::postgres_custom(init_script_path, &docker);
-        let port = node.get_host_port(5432).expect("Test port acquisition error");
-        fun(format!("postgres://postgres:123456@localhost:{}/test", port)).await
+        if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
+            fun("postgres://postgres:123456@localhost:5432/test".to_string()).await
+        } else {
+            let docker = clients::Cli::default();
+            let node = TardisTestContainer::postgres_custom(init_script_path, &docker);
+            let port = node.get_host_port(5432).expect("Test port acquisition error");
+            fun(format!("postgres://postgres:123456@localhost:{}/test", port)).await
+        }
     }
 
     pub fn postgres_custom<'a>(init_script_path: Option<&str>, docker: &'a Cli) -> Container<'a, Cli, GenericImage> {
