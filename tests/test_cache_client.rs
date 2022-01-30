@@ -3,7 +3,7 @@
 use redis::AsyncCommands;
 use tokio::time::{sleep, Duration};
 
-use tardis::basic::config::{TardisConfig, CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::cache::cache_client::TardisCacheClient;
 use tardis::test::test_container::TardisTestContainer;

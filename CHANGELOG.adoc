@@ -13,6 +13,7 @@ There are several version types of ``Tardis``, so please choose carefully when u
 . ``snapshot`` snapshot version, similar to Nightly version, frequent updates, no quality assurance, do *not* use for production environment!
 
 ====
+
 TIP: The version number follows the https://semver.org/[``semver``] specification.
 
 === Release Notes
@@ -22,7 +23,6 @@ TIP: The version number follows the https://semver.org/[``semver``] specificatio
 Initial release
 
 .Features
-
 * Relational database client for MySQL, PostgresSQL
 * Web service and web client for OpenAPI v3.x
 * Distributed cache client for Redis protocol

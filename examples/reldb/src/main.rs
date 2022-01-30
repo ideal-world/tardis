@@ -1,9 +1,9 @@
 use std::env;
 
-use tardis::basic::config::NoneConfig;
 use log::info;
 use sea_orm::entity::*;
 use sea_orm::Set;
+use tardis::basic::config::NoneConfig;
 use testcontainers::clients;
 
 use tardis::basic::result::TardisResult;

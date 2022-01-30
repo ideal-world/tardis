@@ -37,7 +37,7 @@ impl TardisWebServer {
         info!("[Tardis.WebServer] Add module {}", module.code);
         let mut api_serv = OpenApiService::new(apis, &module.title, &module.version);
         for (env, url) in &module.doc_urls {
-            let url = if !url.ends_with("/") {
+            let url = if !url.ends_with('/') {
                 format!("{}/{}", url, module.code)
             } else {
                 format!("{}{}", url, module.code)

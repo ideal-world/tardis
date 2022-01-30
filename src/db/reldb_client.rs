@@ -15,7 +15,7 @@ use url::Url;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
-use crate::{TardisFuns, FrameworkConfig};
+use crate::{FrameworkConfig, TardisFuns};
 
 pub struct TardisRelDBClient {
     con: DatabaseConnection,
@@ -33,7 +33,13 @@ impl TardisRelDBClient {
         .await
     }
 
-    pub async fn init(str_url: &str, max_connections: u32, min_connections: u32, connect_timeout_sec: Option<u64>, idle_timeout_sec: Option<u64>) -> TardisResult<TardisRelDBClient> {
+    pub async fn init(
+        str_url: &str,
+        max_connections: u32,
+        min_connections: u32,
+        connect_timeout_sec: Option<u64>,
+        idle_timeout_sec: Option<u64>,
+    ) -> TardisResult<TardisRelDBClient> {
         let url = Url::parse(str_url)?;
         info!(
             "[Tardis.RelDBClient] Initializing, host:{}, port:{}, max_connections:{}",
@@ -153,7 +159,7 @@ where
 
         let rows = self.into_json().all(db).await?;
         for row in rows {
-            let id = row[custom_pk_field.clone()].clone();
+            let id = row[custom_pk_field].clone();
             let json = TardisFuns::json.obj_to_string(&row).unwrap();
             if id.is_string() {
                 ids.push(id.as_str().as_ref().unwrap().to_string().into());
@@ -163,7 +169,7 @@ where
             tardis_db_del_record::ActiveModel {
                 entity_name: Set(table_name.to_string()),
                 record_id: Set(id.to_string()),
-                content: Set(json.into()),
+                content: Set(json),
                 creator: Set(create_user.to_string()),
                 ..Default::default()
             }

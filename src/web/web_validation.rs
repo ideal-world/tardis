@@ -1,8 +1,11 @@
-use crate::TardisFuns;
-use poem_openapi::Validator;
 use std::fmt::{Display, Formatter};
 
+use poem_openapi::Validator;
+
+use crate::TardisFuns;
+
 pub struct Phone;
+
 pub struct Mail;
 
 impl Display for Phone {

@@ -53,8 +53,8 @@ impl TardisTestContainer {
     }
 
     pub fn mysql_custom<'a>(init_script_path: Option<&str>, docker: &'a Cli) -> Container<'a, Cli, GenericImage> {
-        if init_script_path.is_some() {
-            let path = env::current_dir().unwrap().join(std::path::Path::new(init_script_path.unwrap())).to_str().unwrap().to_string();
+        if let Some(init_script_path) = init_script_path {
+            let path = env::current_dir().unwrap().join(std::path::Path::new(init_script_path)).to_str().unwrap().to_string();
             docker.run(
                 images::generic::GenericImage::new("mysql")
                     .with_env_var("MYSQL_ROOT_PASSWORD", "123456")
@@ -84,8 +84,8 @@ impl TardisTestContainer {
     }
 
     pub fn postgres_custom<'a>(init_script_path: Option<&str>, docker: &'a Cli) -> Container<'a, Cli, GenericImage> {
-        if init_script_path.is_some() {
-            let path = env::current_dir().unwrap().join(std::path::Path::new(init_script_path.unwrap())).to_str().unwrap().to_string();
+        if let Some(init_script_path) = init_script_path {
+            let path = env::current_dir().unwrap().join(std::path::Path::new(init_script_path)).to_str().unwrap().to_string();
             docker.run(
                 images::generic::GenericImage::new("postgres:alpine")
                     .with_env_var("POSTGRES_PASSWORD", "123456")

@@ -1,0 +1,40 @@
+on: [ push ]
+
+name: CI
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Check format
+          run: cargo fmt --all -- --check
+      - name: Cache Rust
+          uses: Swatinem/rust-cache@v1
+      - name: Check with clippy
+        run: cargo clippy --all-features
+      - name: Run tests
+        run: cargo test --all-features
+
+  check-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+            components: rustfmt, clippy
+      - name: Check format
+        run: cargo fmt --all -- --check
+        working-directory: examples
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v1
+      - name: Check with clippy
+        run: cargo clippy
+        working-directory: examples

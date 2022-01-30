@@ -12,12 +12,13 @@ use crate::basic::result::TardisResult;
 use crate::TardisFuns;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct TardisConfig<T> {
     pub ws: T,
     pub fw: FrameworkConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct FrameworkConfig {
     pub app: AppConfig,
@@ -27,20 +28,6 @@ pub struct FrameworkConfig {
     pub cache: CacheConfig,
     pub mq: MQConfig,
     pub adv: AdvConfig,
-}
-
-impl Default for FrameworkConfig {
-    fn default() -> Self {
-        FrameworkConfig {
-            app: AppConfig::default(),
-            web_server: WebServerConfig::default(),
-            web_client: WebClientConfig::default(),
-            cache: CacheConfig::default(),
-            db: DBConfig::default(),
-            mq: MQConfig::default(),
-            adv: AdvConfig::default(),
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -138,7 +125,7 @@ impl Default for WebServerConfig {
             lang_flag: "Accept-Language".to_string(),
             tls_key: None,
             tls_cert: None,
-            modules: [WebServerModuleConfig::default()].iter().cloned().collect(),
+            modules: [WebServerModuleConfig::default()].to_vec(),
         }
     }
 }
@@ -149,8 +136,8 @@ impl Default for WebServerModuleConfig {
             code: "".to_string(),
             title: "Tardis-based application".to_string(),
             version: "1.0.0".to_string(),
-            doc_urls: [("test env".to_string(), "http://localhost:8080/".to_string())].iter().cloned().collect(),
-            authors: [("gudaoxuri".to_string(), "i@sunisle.org".to_string())].iter().cloned().collect(),
+            doc_urls: [("test env".to_string(), "http://localhost:8080/".to_string())].to_vec(),
+            authors: [("gudaoxuri".to_string(), "i@sunisle.org".to_string())].to_vec(),
             ui_path: Some("ui".to_string()),
             spec_path: Some("spec".to_string()),
         }
@@ -198,19 +185,14 @@ impl Default for MQConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct AdvConfig {
     pub backtrace: bool,
 }
 
-impl Default for AdvConfig {
-    fn default() -> Self {
-        AdvConfig { backtrace: false }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct NoneConfig {}
 
 impl<'a, T> TardisConfig<T>
@@ -228,7 +210,7 @@ where
             parent_path, relative_path, profile
         );
         let mut conf = Config::default();
-        if relative_path != "" {
+        if !relative_path.is_empty() {
             conf.merge(File::from(path.join("conf-default")).required(true))?;
             conf.merge(File::from(Path::new(relative_path).join(&format!("conf-{}", profile))).required(true))?;
         }

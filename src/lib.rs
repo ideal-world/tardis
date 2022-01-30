@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use basic::result::TardisResult;
 
-use crate::basic::config::{TardisConfig, FrameworkConfig};
+use crate::basic::config::{FrameworkConfig, TardisConfig};
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;
 use crate::basic::logger::TardisLogger;
@@ -78,7 +78,7 @@ impl TardisFuns {
         #[cfg(feature = "reldb")]
         {
             if TardisFuns::fw_config().db.enabled {
-                let reldb_client = TardisRelDBClient::init_by_conf(&TardisFuns::fw_config()).await?;
+                let reldb_client = TardisRelDBClient::init_by_conf(TardisFuns::fw_config()).await?;
                 unsafe {
                     replace(&mut TARDIS_INST.reldb, Some(reldb_client));
                 };
@@ -87,7 +87,7 @@ impl TardisFuns {
         #[cfg(feature = "web-server")]
         {
             if TardisFuns::fw_config().web_server.enabled {
-                let web_server = TardisWebServer::init_by_conf(&TardisFuns::fw_config()).await?;
+                let web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config()).await?;
                 unsafe {
                     replace(&mut TARDIS_INST.web_server, Some(web_server));
                 };
@@ -95,7 +95,7 @@ impl TardisFuns {
         }
         #[cfg(feature = "web-client")]
         {
-            let web_client = TardisWebClient::init_by_conf(&TardisFuns::fw_config())?;
+            let web_client = TardisWebClient::init_by_conf(TardisFuns::fw_config())?;
             unsafe {
                 replace(&mut TARDIS_INST.web_client, Some(web_client));
             };
@@ -103,7 +103,7 @@ impl TardisFuns {
         #[cfg(feature = "cache")]
         {
             if TardisFuns::fw_config().cache.enabled {
-                let cache_client = TardisCacheClient::init_by_conf(&TardisFuns::fw_config()).await?;
+                let cache_client = TardisCacheClient::init_by_conf(TardisFuns::fw_config()).await?;
                 unsafe {
                     replace(&mut TARDIS_INST.cache, Some(cache_client));
                 };
@@ -112,7 +112,7 @@ impl TardisFuns {
         #[cfg(feature = "mq")]
         {
             if TardisFuns::fw_config().mq.enabled {
-                let mq_client = TardisMQClient::init_by_conf(&TardisFuns::fw_config()).await?;
+                let mq_client = TardisMQClient::init_by_conf(TardisFuns::fw_config()).await?;
                 unsafe {
                     replace(&mut TARDIS_INST.mq, Some(mq_client));
                 };

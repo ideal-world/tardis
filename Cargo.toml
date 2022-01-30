@@ -3,7 +3,7 @@ name = "tardis"
 version = "0.1.0-alpha1"
 authors = ["gudaoxuri"]
 description = "Elegant, clean Rust development framework"
-keywords = ["tardis", "http", "database","mysql", "postgres", "web", "redis", "mq", "framework", "async"]
+keywords = ["tardis", "http", "database", "mysql", "postgres", "web", "redis", "mq", "framework", "async"]
 categories = [
     "network-programming",
     "asynchronous",

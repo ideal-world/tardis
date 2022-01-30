@@ -1,8 +1,11 @@
-*Preview version, will not guarantee the stability of the API! Do NOT use in production environment!*
+*Preview version, will not guarantee the stability of the API!
+Do NOT use in production environment!*
 
 ====
 Elegant, clean Rust development framework🛸
 ====
+
+TIP: TARDIS([tɑːrdɪs] "Time And Relative Dimension In Space") From "Doctor Who".
 
 == 💖 Core functions
 
@@ -27,7 +30,8 @@ Elegant, clean Rust development framework🛸
 
 == 🚀 Quick start
 
-The core operations of the framework all use ``TardisFuns`` as an entry point. E.g.
+The core operations of the framework all use ``TardisFuns`` as an entry point.
+E.g.
 
  TardisFuns::init(relative_path)      // Initialize the configuration
  TardisFuns::field.x                  // Some field operations

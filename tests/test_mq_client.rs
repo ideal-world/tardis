@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use tokio::time::sleep;
 
-use tardis::basic::config::{TardisConfig, CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;

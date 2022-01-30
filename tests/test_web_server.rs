@@ -8,9 +8,9 @@ use poem_openapi::{param::Path, payload::Json, Object, OpenApi, Tags};
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
-use tardis::basic::config::{TardisConfig, CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, WebServerConfig, WebServerModuleConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};
 use tardis::basic::error::TardisError;
-use tardis::basic::result::{TardisResult, StatusCodeKind};
+use tardis::basic::result::{StatusCodeKind, TardisResult};
 use tardis::web::web_resp::TardisResp;
 use tardis::TardisFuns;
 
@@ -425,7 +425,7 @@ struct TodosApi;
 #[OpenApi(tag = "FunTags::Todo1")]
 impl TodosApi {
     #[oai(path = "/todos", method = "post")]
-    async fn create(&self, todo_add_req: Json<TodoAddReq>) -> TardisResp<String> {
+    async fn create(&self, _todo_add_req: Json<TodoAddReq>) -> TardisResp<String> {
         TardisResp::ok("0".into())
     }
 

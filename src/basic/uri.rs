@@ -7,9 +7,9 @@ impl TardisUri {
     pub fn format_with_item(&self, host: &str, path_and_query: &str) -> TardisResult<String> {
         if path_and_query.is_empty() {
             self.format(host)
-        } else if path_and_query.starts_with("/") && !host.ends_with("/") || !path_and_query.starts_with("/") && host.ends_with("/") {
+        } else if path_and_query.starts_with('/') && !host.ends_with('/') || !path_and_query.starts_with('/') && host.ends_with('/') {
             self.format(format!("{}{}", host, path_and_query).as_str())
-        } else if path_and_query.starts_with("/") && host.ends_with("/") {
+        } else if path_and_query.starts_with('/') && host.ends_with('/') {
             self.format(format!("{}/{}", host, path_and_query).as_str())
         } else {
             self.format(format!("{}/{}", host, &path_and_query[1..]).as_str())
@@ -29,7 +29,7 @@ impl TardisUri {
         let query = self.sort_query(uri.query());
         let path = if uri.path().is_empty() {
             ""
-        } else if uri.path().ends_with("/") {
+        } else if uri.path().ends_with('/') {
             &uri.path()[..uri.path().len() - 1]
         } else {
             uri.path()
@@ -48,7 +48,7 @@ impl TardisUri {
         let uri = uri_result.unwrap();
         let path = if uri.path().is_empty() {
             ""
-        } else if uri.path().ends_with("/") {
+        } else if uri.path().ends_with('/') {
             &uri.path()[..uri.path().len() - 1]
         } else {
             uri.path()
@@ -64,8 +64,8 @@ impl TardisUri {
         if query.is_none() {
             return "".to_string();
         }
-        let mut query = query.unwrap().split("&").collect::<Vec<&str>>();
-        query.sort_by(|a, b| Ord::cmp(a.split("=").next().unwrap(), b.split("=").next().unwrap()));
+        let mut query = query.unwrap().split('&').collect::<Vec<&str>>();
+        query.sort_by(|a, b| Ord::cmp(a.split('=').next().unwrap(), b.split('=').next().unwrap()));
         query.join("&")
     }
 }

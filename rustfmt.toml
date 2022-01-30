@@ -1,4 +1,2 @@
-report_fixme = 'Always'
-report_todo = 'Always'
 max_width = 180
 chain_width = 170

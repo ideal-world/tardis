@@ -46,7 +46,7 @@ impl TardisWebClient {
         Ok(TardisHttpResponse { code, headers, body: None })
     }
 
-    pub async fn post_str_to_str(&self, url: &str, body: &String, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
+    pub async fn post_str_to_str(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
         let (code, headers, response) = self.request::<()>(Method::POST, url, headers, None, Some(body)).await?;
         self.to_text(code, headers, response).await
     }
@@ -56,7 +56,7 @@ impl TardisWebClient {
         self.to_text(code, headers, response).await
     }
 
-    pub async fn post_to_obj<T: DeserializeOwned>(&self, url: &str, body: &String, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
+    pub async fn post_to_obj<T: DeserializeOwned>(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
         let (code, headers, response) = self.request::<()>(Method::POST, url, headers, None, Some(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
@@ -66,7 +66,7 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn put_str_to_str(&self, url: &str, body: &String, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
+    pub async fn put_str_to_str(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
         let (code, headers, response) = self.request::<()>(Method::PUT, url, headers, None, Some(body)).await?;
         self.to_text(code, headers, response).await
     }
@@ -76,7 +76,7 @@ impl TardisWebClient {
         self.to_text(code, headers, response).await
     }
 
-    pub async fn put_to_obj<T: DeserializeOwned>(&self, url: &str, body: &String, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
+    pub async fn put_to_obj<T: DeserializeOwned>(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
         let (code, headers, response) = self.request::<()>(Method::PUT, url, headers, None, Some(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
@@ -86,7 +86,7 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn patch_str_to_str(&self, url: &str, body: &String, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
+    pub async fn patch_str_to_str(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
         let (code, headers, response) = self.request::<()>(Method::PATCH, url, headers, None, Some(body)).await?;
         self.to_text(code, headers, response).await
     }
@@ -96,7 +96,7 @@ impl TardisWebClient {
         self.to_text(code, headers, response).await
     }
 
-    pub async fn patch_to_obj<T: DeserializeOwned>(&self, url: &str, body: &String, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
+    pub async fn patch_to_obj<T: DeserializeOwned>(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
         let (code, headers, response) = self.request::<()>(Method::PATCH, url, headers, None, Some(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
@@ -112,7 +112,7 @@ impl TardisWebClient {
         url: &str,
         headers: Option<Vec<(String, String)>>,
         body: Option<&B>,
-        str_body: Option<&String>,
+        str_body: Option<&str>,
     ) -> TardisResult<(u16, HashMap<String, String>, Response)> {
         let mut result = self.client.request(method, url);
         if let Some(headers) = headers {

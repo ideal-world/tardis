@@ -12,7 +12,7 @@ lazy_static! {
 static BASE62: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 static BASE36: &str = "abcdefghijklmnopqrstuvwxyz0123456789";
 
-pub static GENERAL_SPLIT: &'static str = "##";
+pub static GENERAL_SPLIT: &str = "##";
 
 pub struct TardisField;
 

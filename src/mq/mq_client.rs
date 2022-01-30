@@ -24,17 +24,9 @@ impl TardisMQClient {
 
     pub async fn init(str_url: &str) -> TardisResult<TardisMQClient> {
         let url = Url::parse(str_url)?;
-        info!(
-            "[Tardis.MQClient] Initializing, host:{}, port:{}",
-            url.host_str().unwrap_or(""),
-            url.port().unwrap_or(0)
-        );
+        info!("[Tardis.MQClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
         let con = Connection::connect(str_url, ConnectionProperties::default().with_connection_name("tardis".into())).await?;
-        info!(
-            "[Tardis.MQClient] Initialized, host:{}, port:{}",
-            url.host_str().unwrap_or(""),
-            url.port().unwrap_or(0)
-        );
+        info!("[Tardis.MQClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
         Ok(TardisMQClient { con })
     }
 
