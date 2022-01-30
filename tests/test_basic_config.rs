@@ -4,19 +4,14 @@ use std::env;
 
 use serde::{Deserialize, Serialize};
 
-use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_basic_config() -> TardisResult<()> {
-    TardisFuns::init::<NoneConfig>("").await?;
-    assert_eq!(TardisFuns::fw_config().db.url, "");
-    assert_eq!(TardisFuns::fw_config().db.enabled, true);
-    assert_eq!(TardisFuns::fw_config().app.name, "Tardis Application");
-
     TardisFuns::init::<TestConfig>("tests/config").await?;
     assert_eq!(TardisFuns::ws_config::<TestConfig>().project_name, "测试");
+    assert!(!TardisFuns::fw_config().db.enabled);
     assert_eq!(TardisFuns::fw_config().db.url, "postgres://postgres@test");
     assert_eq!(TardisFuns::ws_config::<TestConfig>().db_proj.url, "postgres://postgres@test.proj");
     assert_eq!(TardisFuns::fw_config().app.name, "APP1");

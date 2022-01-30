@@ -1,5 +1,15 @@
 project_name = "测试"
 level_num = 2
 
-[web]
+[db]
+enabled = false
 port = 8089
+
+[web_server]
+enabled = false
+
+[cache]
+enabled = false
+
+[mq]
+enabled = false

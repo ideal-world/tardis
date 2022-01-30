@@ -12,7 +12,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_mq_client() -> TardisResult<()> {
-    TardisFuns::init_log().unwrap();
+    TardisFuns::init_log()?;
     TardisTestContainer::rabbit(|url| async move {
         // Default test
         TardisFuns::init_conf(TardisConfig {

@@ -9,7 +9,6 @@ use sea_orm::sea_query::Expr;
 use sea_orm::ActiveValue::Set;
 pub use sea_orm::FromQueryResult;
 use sea_orm::{QueryFilter, QueryOrder};
-use testcontainers::clients;
 use tokio::time::sleep;
 
 use tardis::basic::result::TardisResult;
@@ -22,20 +21,16 @@ use tardis::TardisFuns;
 #[tokio::test]
 async fn test_reldb_client() -> TardisResult<()> {
     TardisFuns::init_log()?;
+    TardisTestContainer::mysql(None, |url| async move {
+        let client = TardisRelDBClient::init(&url, 10, 5, None, None).await?;
 
-    let docker = clients::Cli::default();
-    let mysql_container = TardisTestContainer::mysql_custom(None, &docker);
-    let port = mysql_container.get_host_port(3306).expect("Test port acquisition error");
-    let url = format!("mysql://root:123456@localhost:{}/test", port);
-
-    let client = TardisRelDBClient::init(&url, 10, 5, None, None).await?;
-
-    test_basic(&client).await?;
-    test_rel(&client).await?;
-    test_transaction(&client).await?;
-    test_advanced_query(&client).await?;
-
-    Ok(())
+        test_basic(&client).await?;
+        test_rel(&client).await?;
+        test_transaction(&client).await?;
+        test_advanced_query(&client).await?;
+        Ok(())
+    })
+    .await
 }
 
 async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {

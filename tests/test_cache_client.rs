@@ -11,7 +11,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_cache_client() -> TardisResult<()> {
-    TardisFuns::init_log().unwrap();
+    TardisFuns::init_log()?;
     TardisTestContainer::redis(|url| async move {
         let mut client = TardisCacheClient::init(&url).await?;
         // basic operations
@@ -24,11 +24,11 @@ async fn test_cache_client() -> TardisResult<()> {
         assert_eq!(str_value, "测试");
 
         let mut set_result = client.set_nx("test_key", "测试2").await?;
-        assert_eq!(set_result, false);
+        assert!(!set_result);
         client.get("test_key").await?;
         assert_eq!(str_value, "测试");
         set_result = client.set_nx("test_key_nx", "测试2").await?;
-        assert_eq!(set_result, true);
+        assert!(set_result);
         str_value = client.get("test_key_nx").await?.unwrap();
         assert_eq!(str_value, "测试2");
 
@@ -37,14 +37,14 @@ async fn test_cache_client() -> TardisResult<()> {
         str_value = client.get("test_key_ex").await?.unwrap();
         assert_eq!(str_value, "测试3");
         let mut bool_value = client.exists("test_key_ex").await?;
-        assert_eq!(bool_value, true);
+        assert!(bool_value);
         sleep(Duration::from_millis(1200)).await;
         opt_value = client.get("test_key_ex").await?;
         assert_eq!(opt_value, None);
         bool_value = client.exists("test_key_ex").await?;
-        assert_eq!(bool_value, false);
+        assert!(!bool_value);
         bool_value = client.exists("test_key_nx").await?;
-        assert_eq!(bool_value, false);
+        assert!(!bool_value);
 
         opt_value = client.getset("test_key_none", "孤岛旭日").await?;
         assert_eq!(opt_value, None);
@@ -54,7 +54,7 @@ async fn test_cache_client() -> TardisResult<()> {
         client.del("test_key_none1").await?;
         client.del("test_key_none").await?;
         bool_value = client.exists("test_key_none").await?;
-        assert_eq!(bool_value, false);
+        assert!(!bool_value);
 
         let mut num_value = client.incr("incr", 1).await?;
         assert_eq!(num_value, 1);
@@ -75,12 +75,12 @@ async fn test_cache_client() -> TardisResult<()> {
         assert_eq!(client.hget("h", "f0").await?, None);
         assert_eq!(client.hget("h", "f1").await?.unwrap(), "v1");
 
-        assert_eq!(client.hexists("h", "f1").await?, true);
+        assert!(client.hexists("h", "f1").await?);
         client.hdel("h", "f1").await?;
-        assert_eq!(client.hexists("h", "f1").await?, false);
+        assert!(!client.hexists("h", "f1").await?);
 
-        assert_eq!(client.hset_nx("h", "f0", "v0").await?, true);
-        assert_eq!(client.hset_nx("h", "f0", "v0").await?, false);
+        assert!(client.hset_nx("h", "f0", "v0").await?);
+        assert!(!client.hset_nx("h", "f0", "v0").await?);
 
         assert_eq!(client.hincr("h", "f3", 1).await?, 1);
         assert_eq!(client.hincr("h", "f3", 1).await?, 2);
