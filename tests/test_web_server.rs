@@ -16,9 +16,8 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_web_server() -> TardisResult<()> {
-    let url = "https://127.0.0.1:8080";
+    let url = "https://localhost:8080";
 
-    // start_serv(url).await?;
     tokio::spawn(async { start_serv(url).await });
     sleep(Duration::from_millis(500)).await;
 
