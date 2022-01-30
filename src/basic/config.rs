@@ -214,7 +214,7 @@ where
             conf.merge(File::from(path.join("conf-default")).required(true))?;
             conf.merge(File::from(Path::new(relative_path).join(&format!("conf-{}", profile))).required(true))?;
         }
-        conf.merge(Environment::with_prefix("Tardis"))?;
+        conf.merge(Environment::with_prefix("TARDIS"))?;
         let workspace_config = conf.clone().try_into::<T>()?;
         let framework_config = conf.try_into::<FrameworkConfig>()?;
 

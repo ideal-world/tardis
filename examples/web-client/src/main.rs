@@ -1,7 +1,7 @@
-use tardis::basic::config::NoneConfig;
-use tardis::basic::result::TardisResult;
 use serde::{Deserialize, Serialize};
 
+use tardis::basic::config::NoneConfig;
+use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
 #[tokio::main]
