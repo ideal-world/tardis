@@ -5,10 +5,10 @@ authors = ["gudaoxuri"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
 categories = [
-    "network-programming",
     "asynchronous",
-    "web-programming::http-server",
+    "web-programming",
     "database",
+    "caching",
 ]
 homepage = "https://tardis.idealworld.group"
 documentation = "https://tardis.idealworld.group"
