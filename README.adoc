@@ -5,6 +5,10 @@ Do NOT use in production environment!*
 Elegant, clean Rust development framework🛸
 ====
 
+image::https://github.com/ideal-world/tardis/actions/workflows/ci.yml/badge.svg["build status",link="https://github.com/ideal-world/tardis/actions/workflows/ci.yml"]
+image::https://codecov.io/gh/ideal-world/tardis/branch/main/graph/badge.svg?token=L1LQ8DLUS2["test coverage",link="https://codecov.io/gh/ideal-world/tardis"]
+image:https://img.shields.io/github/license/ideal-world/tardis["license",link="https://github.com/ideal-world/tardis/blob/main/LICENSE"]
+
 TIP: TARDIS([tɑːrdɪs] "Time And Relative Dimension In Space") From "Doctor Who".
 
 == 💖 Core functions
