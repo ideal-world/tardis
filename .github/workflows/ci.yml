@@ -46,6 +46,8 @@ jobs:
         run: cargo test --all-features
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
+        with:
+          args: '-- --all-features'
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
