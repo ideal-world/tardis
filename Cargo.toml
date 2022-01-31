@@ -1,6 +1,6 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha1"
+version = "0.1.0-alpha2"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -15,7 +15,7 @@ documentation = "https://tardis.idealworld.group"
 repository = "https://github.com/ideal-world/tardis"
 license = "MIT"
 edition = "2021"
-readme = "README.adoc"
+readme = "README.md"
 
 [profile.release]
 lto = true
