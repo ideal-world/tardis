@@ -84,5 +84,7 @@ async fn main() -> TardisResult<()> {
 
     sleep(Duration::from_millis(1000)).await;
 
+    TardisFuns::shutdown().await?;
+
     Ok(())
 }

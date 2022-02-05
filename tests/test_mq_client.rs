@@ -47,7 +47,7 @@ async fn test_mq_client() -> TardisResult<()> {
         let latch_cp = latch_req.clone();*/
         client
             .response("test-addr", |(header, msg)| async move {
-                println!("response1");
+                println!("response1 {}", msg);
                 assert_eq!(header.get("k1").unwrap(), "v1");
                 assert_eq!(msg, "测试!");
                 // move occurs because ..., which does not implement the `Copy` trait
@@ -58,7 +58,7 @@ async fn test_mq_client() -> TardisResult<()> {
 
         client
             .response("test-addr", |(header, msg)| async move {
-                println!("response2");
+                println!("response2 {}", msg);
                 assert_eq!(header.get("k1").unwrap(), "v1");
                 assert_eq!(msg, "测试!");
                 Ok(())
@@ -72,7 +72,7 @@ async fn test_mq_client() -> TardisResult<()> {
 
         client
             .subscribe("test-topic", |(header, msg)| async move {
-                println!("subscribe1");
+                println!("subscribe1 {}", msg);
                 assert_eq!(header.get("k1").unwrap(), "v1");
                 assert_eq!(msg, "测试!");
                 Ok(())
@@ -81,7 +81,7 @@ async fn test_mq_client() -> TardisResult<()> {
 
         client
             .subscribe("test-topic", |(header, msg)| async move {
-                println!("subscribe2");
+                println!("subscribe2 {}", msg);
                 assert_eq!(header.get("k1").unwrap(), "v1");
                 assert_eq!(msg, "测试!");
                 Ok(())
@@ -95,6 +95,7 @@ async fn test_mq_client() -> TardisResult<()> {
 
         sleep(Duration::from_millis(1000)).await;
 
+        TardisFuns::shutdown().await?;
         Ok(())
     })
     .await

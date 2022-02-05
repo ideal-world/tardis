@@ -11,10 +11,10 @@ use crate::basic::config::FrameworkConfig;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 
-// TODO Elegant closure
-
 pub struct TardisMQClient {
     con: Connection,
+    channels: Vec<Channel>,
+    shutdown_flag: bool,
 }
 
 impl TardisMQClient {
@@ -27,7 +27,21 @@ impl TardisMQClient {
         info!("[Tardis.MQClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
         let con = Connection::connect(str_url, ConnectionProperties::default().with_connection_name("tardis".into())).await?;
         info!("[Tardis.MQClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
-        Ok(TardisMQClient { con })
+        Ok(TardisMQClient {
+            con,
+            channels: Vec::new(),
+            shutdown_flag: false,
+        })
+    }
+
+    pub async fn close(&mut self) -> TardisResult<()> {
+        info!("[Tardis.MQClient] Shutdown...");
+        self.shutdown_flag = true;
+        for channel in self.channels.iter() {
+            channel.close(0u16, "Shutdown AMQP Channel").await?;
+        }
+        self.con.close(0u16, "Shutdown AMQP Connection").await?;
+        Ok(())
     }
 
     pub async fn request(&mut self, address: &str, message: String, header: &HashMap<String, String>) -> TardisResult<()> {
@@ -49,6 +63,7 @@ impl TardisMQClient {
             .await?
             .await?;
         if confirm.is_ack() {
+            channel.close(200u16, "").await?;
             Ok(())
         } else {
             Err(TardisError::InternalError("MQ request confirmation error".to_string()))
@@ -89,6 +104,7 @@ impl TardisMQClient {
                 FieldTable::default(),
             )
             .await?;
+        self.channels.push(channel);
         self.process(address.to_string(), consumer, fun).await
     }
 
@@ -111,6 +127,7 @@ impl TardisMQClient {
             .await?
             .await?;
         if confirm.is_ack() {
+            channel.close(200u16, "").await?;
             Ok(())
         } else {
             Err(TardisError::InternalError("MQ request confirmation error".to_string()))
@@ -155,6 +172,7 @@ impl TardisMQClient {
                 FieldTable::default(),
             )
             .await?;
+        self.channels.push(channel);
         self.process(topic.to_string(), consumer, fun).await
     }
 
@@ -209,20 +227,20 @@ impl TardisMQClient {
                                 Ok(_) => match d.ack(BasicAckOptions::default()).await {
                                     Ok(_) => (),
                                     Err(e) => {
-                                        error!("[Tardis.MQClient] Receive, queue:{}, message:{} | {}", topic_or_address, msg, e.to_string());
+                                        error!("[Tardis.MQClient] Receive ack err, queue:{}, message:{} | {}", topic_or_address, msg, e.to_string());
                                     }
                                 },
                                 Err(e) => {
-                                    error!("[Tardis.MQClient] Receive, queue:{}, message:{} | {}", topic_or_address, msg, e.to_string());
+                                    error!("[Tardis.MQClient] Receive process err, queue:{}, message:{} | {}", topic_or_address, msg, e.to_string());
                                 }
                             }
                         }
                         Err(e) => {
-                            error!("[Tardis.MQClient] Receive, queue:{} | {}", topic_or_address, e.to_string());
+                            error!("[Tardis.MQClient] Receive delivery err, queue:{} | {}", topic_or_address, e.to_string());
                         }
                     },
                     Err(e) => {
-                        error!("[Tardis.MQClient] Receive, queue:{} | {}", topic_or_address, e.to_string());
+                        error!("[Tardis.MQClient] Receive connection err, queue:{} | {}", topic_or_address, e.to_string());
                     }
                 }
             }
@@ -231,6 +249,13 @@ impl TardisMQClient {
         Ok(())
     }
 }
+
+// impl Drop for TardisMQClient {
+//     fn drop(&mut self) {
+//         #[allow(unused)]
+//         self.close();
+//     }
+// }
 
 impl From<lapin::Error> for TardisError {
     fn from(error: lapin::Error) -> Self {

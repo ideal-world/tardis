@@ -206,6 +206,13 @@ impl TardisFuns {
             }
         }
     }
+
+    pub async fn shutdown() -> TardisResult<()> {
+        log::info!("[Tardis] Shutdown...");
+        #[cfg(feature = "mq")]
+        TardisFuns::mq().close().await?;
+        Ok(())
+    }
 }
 
 pub mod basic;
