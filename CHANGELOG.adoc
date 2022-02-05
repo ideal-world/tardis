@@ -18,7 +18,7 @@ TIP: The version number follows the https://semver.org/[``semver``] specificatio
 
 === Release Notes
 
-==== 0.0.1
+==== 0.1.0
 
 Initial release
 

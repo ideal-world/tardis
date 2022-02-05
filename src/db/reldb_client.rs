@@ -102,7 +102,7 @@ impl TardisRelDBClient {
         let result = self.con.execute(statement).await;
         match result {
             Ok(ok) => TardisResult::Ok(ok),
-            Err(err) => TardisResult::Err(TardisError::Box(Box::new(err))),
+            Err(err) => TardisResult::Err(TardisError::from(err)),
         }
     }
 }
@@ -192,7 +192,7 @@ where
         let result = db.execute(statement).await;
         match result {
             Ok(_) => TardisResult::Ok(delete_num),
-            Err(err) => TardisResult::Err(TardisError::Box(Box::new(err))),
+            Err(err) => TardisResult::Err(TardisError::from(err)),
         }
     }
 }

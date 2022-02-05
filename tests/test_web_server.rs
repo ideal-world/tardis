@@ -376,8 +376,6 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 enum FunTags {
     #[oai(rename = "Todo1测试")]
     Todo1,
-    #[oai(rename = "Todo2测试")]
-    Todo2,
 }
 
 #[derive(Object, Serialize, Deserialize, Debug)]
