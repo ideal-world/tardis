@@ -1,19 +1,17 @@
-use std::collections::HashMap;
-
 use log::info;
 use poem::listener::{Listener, RustlsConfig, TcpListener};
-use poem::middleware::{Cors, CorsEndpoint};
+use poem::middleware::Cors;
 use poem::{EndpointExt, Route};
 use poem_openapi::{OpenApi, OpenApiService, ServerObject};
 
 use crate::basic::config::{FrameworkConfig, WebServerConfig};
 use crate::basic::result::TardisResult;
-use crate::web::web_resp::{UniformError, UniformErrorImpl};
+use crate::web::web_resp::UniformError;
 
 pub struct TardisWebServer {
     app_name: String,
     config: WebServerConfig,
-    routes: HashMap<String, UniformErrorImpl<CorsEndpoint<Route>>>,
+    rotue: Route,
 }
 
 impl TardisWebServer {
@@ -21,13 +19,21 @@ impl TardisWebServer {
         Ok(TardisWebServer {
             app_name: conf.app.name.clone(),
             config: conf.web_server.clone(),
-            routes: HashMap::new(),
+            rotue: Route::new(),
         })
     }
 
     pub fn add_module<T>(&mut self, code: &str, apis: T) -> &mut Self
     where
         T: OpenApi + 'static,
+    {
+        self.add_module_with_data::<_, String>(code, apis, None)
+    }
+
+    pub fn add_module_with_data<T, D>(&mut self, code: &str, apis: T, data: Option<D>) -> &mut Self
+    where
+        T: OpenApi + 'static,
+        D: Clone + Send + Sync + 'static,
     {
         let module = self.config.modules.iter().find(|m| m.code == code);
         if module.is_none() {
@@ -61,7 +67,15 @@ impl TardisWebServer {
             Cors::new().allow_origin(&self.config.allowed_origin)
         };
         let route = route.with(cors).with(UniformError);
-        self.routes.insert(module.code.clone(), route);
+        // Solved:  Cannot move out of *** which is behind a mutable reference
+        // https://stackoverflow.com/questions/63353762/cannot-move-out-of-which-is-behind-a-mutable-reference
+        let mut swap_route = Route::new();
+        std::mem::swap(&mut swap_route, &mut self.rotue);
+        self.rotue = if let Some(data) = data {
+            swap_route.nest(format!("/{}", code), route.data(data))
+        } else {
+            swap_route.nest(format!("/{}", code), route)
+        };
         self
     }
 
@@ -77,19 +91,15 @@ impl TardisWebServer {
             protocol = if self.config.tls_key.is_some() { "https" } else { "http" }
         );
 
-        let mut routes = Route::new();
-        for (code, route) in self.routes.iter() {
-            routes = routes.nest(format!("/{}", code), route);
-        }
         if self.config.tls_key.is_some() {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port))
                 .rustls(RustlsConfig::new().key(self.config.tls_key.clone().unwrap()).cert(self.config.tls_cert.clone().unwrap()));
-            let server = poem::Server::new(bind).run(routes);
+            let server = poem::Server::new(bind).run(&self.rotue);
             info!("{}", output_info);
             server.await?;
         } else {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port));
-            let server = poem::Server::new(bind).run(routes);
+            let server = poem::Server::new(bind).run(&self.rotue);
             info!("{}", output_info);
             server.await?;
         };

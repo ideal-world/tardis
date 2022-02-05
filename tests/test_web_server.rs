@@ -127,7 +127,7 @@ FZygs8miAhWPzqnpmgTj1cPiU1M=
         },
     })
     .await?;
-    TardisFuns::web_server().add_module("todo", (TodosApi)).add_module("other", OtherApi).start().await
+    TardisFuns::web_server().add_module("todo", (TodosApi)).add_module_with_data::<_, String>("other", OtherApi, None).start().await
 }
 
 async fn test_basic(url: &str) -> TardisResult<()> {
