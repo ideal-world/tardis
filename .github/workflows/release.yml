@@ -1,0 +1,28 @@
+on:
+  push:
+    tags:
+      - '*'
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+name: RELEASE
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: cargo login
+        run: cargo login ${{ secrets.CRATES_TOKEN }}
+      - name: cargo package
+        run: cargo package
+      - name: Publish
+        run: cargo publish

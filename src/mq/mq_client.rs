@@ -72,7 +72,7 @@ impl TardisMQClient {
 
     pub async fn response<F, T>(&mut self, address: &str, fun: F) -> TardisResult<()>
     where
-        F: FnMut((HashMap<String, String>, String)) -> T + Send + Sync + 'static,
+        F: Fn((HashMap<String, String>, String)) -> T + Send + Sync + 'static,
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
         info!("[Tardis.MQClient] Response, queue:{}", address);
@@ -136,7 +136,7 @@ impl TardisMQClient {
 
     pub async fn subscribe<F, T>(&mut self, topic: &str, fun: F) -> TardisResult<()>
     where
-        F: FnMut((HashMap<String, String>, String)) -> T + Send + Sync + 'static,
+        F: Fn((HashMap<String, String>, String)) -> T + Send + Sync + 'static,
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
         info!("[Tardis.MQClient] Subscribe, queue:{}", topic);
@@ -194,9 +194,9 @@ impl TardisMQClient {
         Ok(())
     }
 
-    async fn process<F, T>(&mut self, topic_or_address: String, mut consumer: Consumer, mut fun: F) -> TardisResult<()>
+    async fn process<F, T>(&mut self, topic_or_address: String, mut consumer: Consumer, fun: F) -> TardisResult<()>
     where
-        F: FnMut((HashMap<String, String>, String)) -> T + Send + Sync + 'static,
+        F: Fn((HashMap<String, String>, String)) -> T + Send + Sync + 'static,
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
         async_global_executor::spawn(async move {
