@@ -58,7 +58,6 @@ jobs:
           path: cobertura.xml
 
   check-examples:
-    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -76,6 +75,8 @@ jobs:
         working-directory: examples
 
   publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [check, check-examples]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
