@@ -43,7 +43,7 @@ impl TardisMQClient {
                 "",
                 address,
                 BasicPublishOptions::default(),
-                message.into_bytes(),
+                message.as_bytes(),
                 BasicProperties::default().with_headers(mq_header).with_delivery_mode(2),
             )
             .await?
@@ -105,7 +105,7 @@ impl TardisMQClient {
                 topic,
                 "",
                 BasicPublishOptions::default(),
-                message.into_bytes(),
+                message.as_bytes(),
                 BasicProperties::default().with_headers(mq_header).with_delivery_mode(2),
             )
             .await?
@@ -184,11 +184,11 @@ impl TardisMQClient {
         async_global_executor::spawn(async move {
             while let Some(delivery) = consumer.next().await {
                 match delivery {
-                    Ok((_, info)) => match std::str::from_utf8(&info.data) {
+                    Ok(d) => match std::str::from_utf8(d.data.as_slice()) {
                         Ok(msg) => {
                             trace!("[Tardis.MQClient] Receive, queue:{}, message:{}", topic_or_address, msg);
                             let mut resp_header: HashMap<String, String> = HashMap::default();
-                            let _ = &info.properties.headers().as_ref().map(|header| {
+                            let _ = d.properties.headers().as_ref().map(|header| {
                                 for (k, v) in header.into_iter() {
                                     let value = if let AMQPValue::LongString(val) = v {
                                         val.to_string()
@@ -206,7 +206,7 @@ impl TardisMQClient {
                                 }
                             });
                             match fun((resp_header, msg.to_string())).await {
-                                Ok(_) => match info.ack(BasicAckOptions::default()).await {
+                                Ok(_) => match d.ack(BasicAckOptions::default()).await {
                                     Ok(_) => (),
                                     Err(e) => {
                                         error!("[Tardis.MQClient] Receive, queue:{}, message:{} | {}", topic_or_address, msg, e.to_string());

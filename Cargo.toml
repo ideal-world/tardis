@@ -77,8 +77,8 @@ reqwest = { version = "0.11.9", features = ["json"], optional = true }
 redis = { version = "^0", features = ["tokio-comp"], optional = true }
 
 # Rabbit
-lapin = { version = "^1", optional = true }
-amq-protocol-types = { version = "^6", optional = true }
+lapin = { version = "^2", optional = true }
+amq-protocol-types = { version = "^7", optional = true }
 async-global-executor = { version = "^2", optional = true }
 
 # Test
