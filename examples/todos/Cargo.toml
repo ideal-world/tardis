@@ -12,7 +12,7 @@ tokio = { version = "1.15.0", features = ["macros"] }
 # Tardis Functions
 tardis = { path = "../..", features = ["web-server", "reldb", "test"] }
 # Web server dependencies
-poem-openapi = { version = "1.2.47" }
+poem-openapi = { version = "1.2.53" }
 # Reldb dependencies
 sea-orm = { version = "0.5.0", features = ["macros"] }
 # Example only
