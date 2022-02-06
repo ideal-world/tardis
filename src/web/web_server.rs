@@ -3,6 +3,7 @@ use poem::listener::{Listener, RustlsConfig, TcpListener};
 use poem::middleware::Cors;
 use poem::{EndpointExt, Route};
 use poem_openapi::{OpenApi, OpenApiService, ServerObject};
+use tokio::time::Duration;
 
 use crate::basic::config::{FrameworkConfig, WebServerConfig};
 use crate::basic::result::TardisResult;
@@ -99,7 +100,13 @@ impl TardisWebServer {
             server.await?;
         } else {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port));
-            let server = poem::Server::new(bind).run(&self.rotue);
+            let server = poem::Server::new(bind).run_with_graceful_shutdown(
+                &self.rotue,
+                async move {
+                    let _ = tokio::signal::ctrl_c().await;
+                },
+                Some(Duration::from_secs(5)),
+            );
             info!("{}", output_info);
             server.await?;
         };

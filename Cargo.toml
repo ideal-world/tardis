@@ -52,7 +52,7 @@ regex = { version = "^1" }
 url = { version = "^2" }
 
 # Future
-tokio = { version = "1.15.0", features = ["macros", "rt-multi-thread"], optional = true }
+tokio = { version = "1.15.0", features = ["macros", "rt-multi-thread", "signal"], optional = true }
 futures = { version = "^0.3", optional = true }
 async-stream = { version = "^0.3", optional = true }
 futures-util = { version = "^0.3", optional = true }
