@@ -1,3 +1,6 @@
+#[cfg(feature = "web-server")]
+pub use poem_openapi::*;
+
 #[cfg(feature = "web-client")]
 pub mod web_client;
 #[cfg(feature = "web-server")]

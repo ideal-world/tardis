@@ -4,7 +4,6 @@ extern crate core;
 
 use std::time::Duration;
 
-use poem_openapi::{param::Path, payload::Json, Object, OpenApi, Tags};
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
@@ -12,6 +11,7 @@ use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, No
 use tardis::basic::error::TardisError;
 use tardis::basic::result::{StatusCodeKind, TardisResult};
 use tardis::web::web_resp::TardisResp;
+use tardis::web::{param::Path, payload::Json, Object, OpenApi, Tags};
 use tardis::TardisFuns;
 
 #[tokio::test]

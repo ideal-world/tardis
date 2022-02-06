@@ -3,18 +3,18 @@
 use std::time::Duration;
 
 use log::info;
-use sea_orm::entity::*;
-use sea_orm::query::*;
-use sea_orm::sea_query::Expr;
-use sea_orm::ActiveValue::Set;
-pub use sea_orm::FromQueryResult;
-use sea_orm::{QueryFilter, QueryOrder};
 use tokio::time::sleep;
 
 use tardis::basic::result::TardisResult;
 use tardis::db::domain::{tardis_db_config, tardis_db_del_record};
+use tardis::db::entity::*;
+use tardis::db::query::*;
 use tardis::db::reldb_client::TardisRelDBClient;
 use tardis::db::reldb_client::TardisSeaORMExtend;
+use tardis::db::sea_query::Expr;
+use tardis::db::ActiveValue::Set;
+pub use tardis::db::FromQueryResult;
+use tardis::db::{QueryFilter, QueryOrder};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 

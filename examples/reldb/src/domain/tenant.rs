@@ -1,7 +1,6 @@
-use sea_orm::entity::prelude::*;
-use sea_orm::ActiveModelBehavior;
-use sea_orm::ActiveValue::Set;
-
+use tardis::db::ActiveModelBehavior;
+use tardis::db::ActiveValue::Set;
+use tardis::db::entity::prelude::*;
 use tardis::TardisFuns;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
