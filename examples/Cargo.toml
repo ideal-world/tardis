@@ -3,6 +3,7 @@
 members = [
     "reldb",
     "web-basic",
+    "webscoket",
     "web-client",
     "cache",
     "mq",

@@ -1,0 +1,13 @@
+[package]
+name = "tardis-example-websocket"
+version = "0.1.0"
+authors = ["gudaoxuri"]
+edition = "2021"
+
+[dependencies]
+futures-util = { version = "^0.3" }
+tokio = { version = "1.15.0", features = ["macros"] }
+tardis = { path = "../..", features = ["web-server"] }
+poem = { version = "1.2.53" }
+poem-openapi = { version = "1.2.53" }
+
