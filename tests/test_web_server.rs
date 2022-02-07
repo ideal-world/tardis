@@ -10,9 +10,9 @@ use tokio::time::sleep;
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};
 use tardis::basic::error::TardisError;
 use tardis::basic::result::{StatusCodeKind, TardisResult};
-use tardis::TardisFuns;
-use tardis::web::{Object, OpenApi, param::Path, payload::Json, Tags};
 use tardis::web::web_resp::TardisResp;
+use tardis::web::{param::Path, payload::Json, Object, OpenApi, Tags};
+use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_web_server() -> TardisResult<()> {

@@ -7,8 +7,8 @@ use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::db::entity::*;
 use tardis::db::Set;
-use tardis::TardisFuns;
 use tardis::test::test_container::TardisTestContainer;
+use tardis::TardisFuns;
 
 mod domain;
 

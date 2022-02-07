@@ -1,6 +1,6 @@
+use tardis::db::entity::prelude::*;
 use tardis::db::ActiveModelBehavior;
 use tardis::db::ActiveValue::Set;
-use tardis::db::entity::prelude::*;
 use tardis::TardisFuns;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
