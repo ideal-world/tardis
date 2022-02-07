@@ -166,7 +166,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                     resp.headers_mut().insert("Content-Type", "application/json; charset=utf8".parse().unwrap());
                     resp.set_body(
                         json!({
-                            "code": mapping_code(code).to_string(),
+                            "code": mapping_code(code).into_unified_code(),
                             "msg": msg,
                         })
                         .to_string(),
@@ -196,14 +196,14 @@ fn mapping_code(http_code: StatusCode) -> StatusCodeKind {
 fn error_handler(err: poem::Error) -> Response {
     let (code, msg) =
         if err.is::<ParseParamError>() || err.is::<ParseJsonError>() || err.is::<ParseMultipartError>() || err.is::<ParsePathError>() || err.is::<MethodNotAllowedError>() {
-            (StatusCodeKind::BadRequest.to_string(), err.to_string())
+            (StatusCodeKind::BadRequest.into_unified_code(), err.to_string())
         } else if err.is::<NotFoundError>() || err.is::<ContentTypeError>() {
-            (StatusCodeKind::NotFound.to_string(), err.to_string())
+            (StatusCodeKind::NotFound.into_unified_code(), err.to_string())
         } else if err.is::<AuthorizationError>() || err.is::<CorsError>() {
-            (StatusCodeKind::Unauthorized.to_string(), err.to_string())
+            (StatusCodeKind::Unauthorized.into_unified_code(), err.to_string())
         } else {
             warn!("[Tardis.WebServer] process error: {:?}", err);
-            (StatusCodeKind::UnKnown.to_string(), err.to_string())
+            (StatusCodeKind::UnKnown.into_unified_code(), err.to_string())
         };
     Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(
         json!({

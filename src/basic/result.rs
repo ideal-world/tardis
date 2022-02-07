@@ -40,6 +40,12 @@ pub enum StatusCodeKind {
     IOError,
 }
 
+impl StatusCodeKind {
+    pub fn into_unified_code(&self) -> String {
+        format!("{}000000000", self)
+    }
+}
+
 #[derive(Display, Debug)]
 pub enum ActionKind {
     #[display(fmt = "01")]
