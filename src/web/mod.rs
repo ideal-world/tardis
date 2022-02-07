@@ -1,4 +1,6 @@
 #[cfg(feature = "web-server")]
+pub use poem::*;
+#[cfg(feature = "web-server")]
 pub use poem_openapi::*;
 
 #[cfg(feature = "web-client")]

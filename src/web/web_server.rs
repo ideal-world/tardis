@@ -80,6 +80,13 @@ impl TardisWebServer {
         self
     }
 
+    pub fn add_module_raw(&mut self, code: &str, route: Route) -> &mut Self {
+        let mut swap_route = Route::new();
+        std::mem::swap(&mut swap_route, &mut self.rotue);
+        self.rotue = swap_route.nest(format!("/{}", code), route);
+        self
+    }
+
     pub async fn start(&'static self) -> TardisResult<()> {
         let output_info = format!(
             r#"
