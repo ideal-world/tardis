@@ -63,7 +63,7 @@ tracing = { version = "^0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
 
 # RelDB
-sea-orm = { version = "0.5.0", features = ["sqlx-all", "macros", "runtime-tokio-rustls", "debug-print"], optional = true }
+sea-orm = { version = "0.6.0", features = ["sqlx-all", "macros", "runtime-tokio-rustls", "debug-print"], optional = true }
 sqlparser = { version = "0.13.0", optional = true }
 
 # Web Server

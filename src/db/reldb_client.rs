@@ -108,31 +108,31 @@ impl TardisRelDBClient {
 }
 
 #[async_trait]
-pub trait TardisSeaORMExtend<'a> {
-    async fn soft_delete<C>(self, db: &'a C, create_user: &str) -> TardisResult<usize>
+pub trait TardisSeaORMExtend {
+    async fn soft_delete<C>(self, db: &C, create_user: &str) -> TardisResult<usize>
     where
-        C: ConnectionTrait<'a>;
+        C: ConnectionTrait;
 
-    async fn soft_delete_custom<C>(self, db: &'a C, create_user: &str, custom_pk_field: &str) -> TardisResult<usize>
+    async fn soft_delete_custom<C>(self, db: &C, create_user: &str, custom_pk_field: &str) -> TardisResult<usize>
     where
-        C: ConnectionTrait<'a>;
+        C: ConnectionTrait;
 }
 
 #[async_trait]
-impl<'a, E> TardisSeaORMExtend<'a> for Select<E>
+impl<E> TardisSeaORMExtend for Select<E>
 where
     E: EntityTrait,
 {
-    async fn soft_delete<C>(self, db: &'a C, create_user: &str) -> TardisResult<usize>
+    async fn soft_delete<C>(self, db: &C, create_user: &str) -> TardisResult<usize>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         self.soft_delete_custom(db, create_user, "id").await
     }
 
-    async fn soft_delete_custom<C>(self, db: &'a C, create_user: &str, custom_pk_field: &str) -> TardisResult<usize>
+    async fn soft_delete_custom<C>(self, db: &C, create_user: &str, custom_pk_field: &str) -> TardisResult<usize>
     where
-        C: ConnectionTrait<'a>,
+        C: ConnectionTrait,
     {
         let db_backend: DbBackend = db.get_database_backend();
 
