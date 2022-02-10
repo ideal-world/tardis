@@ -8,6 +8,6 @@ edition = "2021"
 futures-util = { version = "^0.3" }
 tokio = { version = "1.15.0", features = ["macros"] }
 tardis = { path = "../..", features = ["web-server"] }
-poem = { version = "1.2.53" }
-poem-openapi = { version = "1.2.53" }
+poem = { version = "1.2.56" }
+poem-openapi = { version = "1.2.56" }
 

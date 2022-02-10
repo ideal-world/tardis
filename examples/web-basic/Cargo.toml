@@ -7,5 +7,5 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1.15.0", features = ["macros"] }
 tardis = { path = "../..", features = ["web-server"] }
-poem-openapi = { version = "1.2.53" }
+poem-openapi = { version = "1.2.56" }
 

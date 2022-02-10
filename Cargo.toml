@@ -67,8 +67,8 @@ sea-orm = { version = "0.6.0", features = ["sqlx-all", "macros", "runtime-tokio-
 sqlparser = { version = "0.13.0", optional = true }
 
 # Web Server
-poem-openapi = { version = "1.2.53", features = ["rapidoc"], optional = true }
-poem = { version = "1.2.53", features = ["csrf", "opentelemetry", "rustls", "prometheus", "websocket"], optional = true }
+poem-openapi = { version = "1.2.56", features = ["rapidoc"], optional = true }
+poem = { version = "1.2.56", features = ["csrf", "opentelemetry", "rustls", "prometheus", "websocket"], optional = true }
 
 # Web Client
 reqwest = { version = "0.11.9", features = ["json"], optional = true }
