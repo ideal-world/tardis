@@ -1,4 +1,3 @@
-use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 
 pub struct TardisUri;
@@ -18,15 +17,19 @@ impl TardisUri {
 
     pub fn format(&self, uri_str: &str) -> TardisResult<String> {
         let uri_result = url::Url::parse(uri_str);
-        if uri_result.is_err() {
-            return Err(TardisError::FormatError(uri_result.err().unwrap().to_string()));
-        }
-        let uri = uri_result.unwrap();
-        if uri.host().is_none() {
+        let uri = uri_result?;
+        let host = match uri.host() {
+            Some(host) => host,
+            None =>
             // E.g. jdbc:h2:men:iam 不用解析
-            return Ok(uri.to_string());
-        }
-        let query = self.sort_query(uri.query());
+            {
+                return Ok(uri.to_string())
+            }
+        };
+        let port = match uri.port() {
+            Some(port) => format!(":{}", port),
+            None => "".to_string(),
+        };
         let path = if uri.path().is_empty() {
             ""
         } else if uri.path().ends_with('/') {
@@ -34,18 +37,18 @@ impl TardisUri {
         } else {
             uri.path()
         };
-        let port = if uri.port().is_none() { "".to_string() } else { format!(":{}", uri.port().unwrap()) };
-        let query = if uri.query().is_none() { "".to_string() } else { format!("?{}", query) };
-        let formatted_uri = format!("{}://{}{}{}{}", uri.scheme(), uri.host().unwrap(), port, path, query);
+        let query = self.sort_query(uri.query());
+        let query = match uri.query() {
+            Some(_) => format!("?{}", query),
+            None => "".to_string(),
+        };
+        let formatted_uri = format!("{}://{}{}{}{}", uri.scheme(), host, port, path, query);
         Ok(formatted_uri)
     }
 
     pub fn get_path_and_query(&self, uri_str: &str) -> TardisResult<String> {
         let uri_result = url::Url::parse(uri_str);
-        if uri_result.is_err() {
-            return Err(TardisError::FormatError(uri_result.err().unwrap().to_string()));
-        }
-        let uri = uri_result.unwrap();
+        let uri = uri_result?;
         let path = if uri.path().is_empty() {
             ""
         } else if uri.path().ends_with('/') {
@@ -61,11 +64,13 @@ impl TardisUri {
     }
 
     fn sort_query(&self, query: Option<&str>) -> String {
-        if query.is_none() {
-            return "".to_string();
+        match query {
+            None => "".to_string(),
+            Some(query) => {
+                let mut query = query.split('&').collect::<Vec<&str>>();
+                query.sort_by(|a, b| Ord::cmp(a.split('=').next().unwrap_or(""), b.split('=').next().unwrap_or("")));
+                query.join("&")
+            }
         }
-        let mut query = query.unwrap().split('&').collect::<Vec<&str>>();
-        query.sort_by(|a, b| Ord::cmp(a.split('=').next().unwrap(), b.split('=').next().unwrap()));
-        query.join("&")
     }
 }

@@ -20,9 +20,9 @@ impl TardisWebClient {
     }
 
     pub fn init(connect_timeout_sec: u64) -> TardisResult<TardisWebClient> {
-        info!("[Tardis.WebClient] Initializing",);
-        let client = reqwest::Client::builder().danger_accept_invalid_certs(true).connect_timeout(Duration::from_secs(connect_timeout_sec)).https_only(false).build().unwrap();
-        info!("[Tardis.WebClient] Initialized",);
+        info!("[Tardis.WebClient] Initializing");
+        let client = reqwest::Client::builder().danger_accept_invalid_certs(true).connect_timeout(Duration::from_secs(connect_timeout_sec)).https_only(false).build()?;
+        info!("[Tardis.WebClient] Initialized");
         TardisResult::Ok(TardisWebClient { client })
     }
 
@@ -128,7 +128,16 @@ impl TardisWebClient {
         }
         let response = result.send().await?;
         let code = response.status().as_u16();
-        let headers = response.headers().iter().map(|(k, v)| (k.to_string(), v.to_str().unwrap().to_string())).collect();
+        let headers = response
+            .headers()
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.to_string(),
+                    v.to_str().unwrap_or_else(|_| panic!("[Tardis.WebClient] Http head {:?} parsing error", v)).to_string(),
+                )
+            })
+            .collect();
         Ok((code, headers, response))
     }
 

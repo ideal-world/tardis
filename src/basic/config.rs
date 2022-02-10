@@ -203,7 +203,7 @@ where
         let profile = fetch_profile();
         let path = Path::new(relative_path);
 
-        let parent_path = env::current_dir().unwrap();
+        let parent_path = env::current_dir().expect("[Tardis.Config] Current path get error");
 
         info!(
             "[Tardis.Config] Initializing, base path:{:?}, relative path:{:?}, profile:{}",

@@ -11,7 +11,6 @@ impl TardisLogger {
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
-        println!("1111111111111");
         if std::env::var_os("RUST_LOG").is_none() {
             std::env::set_var("RUST_LOG", "info");
         }

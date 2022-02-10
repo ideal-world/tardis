@@ -2,11 +2,11 @@ use regex::Regex;
 use uuid::Uuid;
 
 lazy_static! {
-    static ref R_PHONE: Regex = Regex::new(r"^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$").unwrap();
-    static ref R_MAIL: Regex =
-        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").unwrap();
-    static ref R_CODE_NCS: Regex = Regex::new(r"^[a-z0-9_]+$").unwrap();
-    static ref R_CODE_CS: Regex = Regex::new(r"^[A-Za-z0-9_]+$").unwrap();
+    static ref R_PHONE: Regex = Regex::new(r"^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$").expect("Regular parsing error");
+    static ref R_MAIL: Regex = Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+        .expect("Regular parsing error");
+    static ref R_CODE_NCS: Regex = Regex::new(r"^[a-z0-9_]+$").expect("Regular parsing error");
+    static ref R_CODE_CS: Regex = Regex::new(r"^[A-Za-z0-9_]+$").expect("Regular parsing error");
 }
 
 static BASE62: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -57,7 +57,7 @@ impl TardisField {
                 result.push(x.to_string());
                 continue;
             }
-            let idx = chars.find(x).unwrap();
+            let idx = chars.find(x).expect("[Tardis.Field] Invalid increment character");
             if idx == chars.len() - 1 {
                 up = true;
                 result.push(chars[..1].to_string());

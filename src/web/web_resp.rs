@@ -64,7 +64,10 @@ where
     T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
 {
     fn into_response(self) -> Response {
-        Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(TardisFuns::json.obj_to_string(&self).unwrap())
+        Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json; charset=utf8")
+            .body(TardisFuns::json.obj_to_string(&self).expect("[Tardis.WebClient] Response body parsing error"))
     }
 }
 
@@ -141,10 +144,11 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
             Ok(resp) => {
                 let mut resp = resp.into_response();
                 if resp.status() != StatusCode::OK {
-                    let msg = resp.take_body().into_string().await.expect("Http request exception type conversion error");
+                    let msg = resp.take_body().into_string().await.expect("[Tardis.WebClient] Request exception type conversion error");
                     let code = if resp.status().as_u16() >= 500 {
                         warn!(
-                            "[Tardis.WebServer] process error,request method:{}, url:{}, response code:{}, message:{}",
+                            "[Tardis.WebServer] Process error,request method:{}, url:{}, response\
+                             code:{}, message:{}",
                             method,
                             url,
                             resp.status().as_u16(),
@@ -153,7 +157,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                         resp.status()
                     } else {
                         trace!(
-                            "[Tardis.WebServer] process error,request method:{}, url:{}, response code:{}, message:{}",
+                            "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
                             method,
                             url,
                             resp.status().as_u16(),
@@ -163,7 +167,10 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                         StatusCode::OK
                     };
                     resp.set_status(code);
-                    resp.headers_mut().insert("Content-Type", "application/json; charset=utf8".parse().unwrap());
+                    resp.headers_mut().insert(
+                        "Content-Type",
+                        "application/json; charset=utf8".parse().expect("[Tardis.WebServer] Http head parsing error"),
+                    );
                     resp.set_body(
                         json!({
                             "code": mapping_code(code).into_unified_code(),
@@ -202,7 +209,7 @@ fn error_handler(err: poem::Error) -> Response {
         } else if err.is::<AuthorizationError>() || err.is::<CorsError>() {
             (StatusCodeKind::Unauthorized.into_unified_code(), err.to_string())
         } else {
-            warn!("[Tardis.WebServer] process error: {:?}", err);
+            warn!("[Tardis.WebServer] Process error: {:?}", err);
             (StatusCodeKind::UnKnown.into_unified_code(), err.to_string())
         };
     Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(

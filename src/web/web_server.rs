@@ -36,11 +36,7 @@ impl TardisWebServer {
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
     {
-        let module = self.config.modules.iter().find(|m| m.code == code);
-        if module.is_none() {
-            panic!("[Tardis.WebServer] Module {} not found", code);
-        }
-        let module = module.unwrap();
+        let module = self.config.modules.iter().find(|m| m.code == code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {} not found", code));
         info!("[Tardis.WebServer] Add module {}", module.code);
         let mut api_serv = OpenApiService::new(apis, &module.title, &module.version);
         for (env, url) in &module.doc_urls {
@@ -100,8 +96,11 @@ impl TardisWebServer {
         );
 
         if self.config.tls_key.is_some() {
-            let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port))
-                .rustls(RustlsConfig::new().key(self.config.tls_key.clone().unwrap()).cert(self.config.tls_cert.clone().unwrap()));
+            let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port)).rustls(
+                RustlsConfig::new()
+                    .key(self.config.tls_key.clone().expect("[Tardis.WebServer] TLS key clone error"))
+                    .cert(self.config.tls_cert.clone().expect("[Tardis.WebServer] TLS cert clone error")),
+            );
             let server = poem::Server::new(bind).run(&self.rotue);
             info!("{}", output_info);
             server.await?;

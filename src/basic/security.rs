@@ -7,6 +7,7 @@ use crypto::sha2::{Sha256, Sha512};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
+use crate::basic::security::Algorithm::SHA1;
 use crate::TardisFuns;
 
 pub struct TardisSecurity {
@@ -17,45 +18,63 @@ pub struct TardisSecurity {
 pub struct TardisSecurityBase64;
 pub struct TardisSecurityKey;
 
+pub enum Algorithm {
+    MD5,
+    SHA1,
+    SHA256,
+    SHA512,
+    HmacSha1,
+    HmacSha265,
+    HmacSha512,
+}
+
 impl TardisSecurity {
-    pub fn digest(&self, str: &str, key: Option<&str>, algorithm: &str) -> String {
-        match algorithm.to_lowercase().as_str() {
-            "sha1" => {
+    pub fn digest(&self, str: &str, key: Option<&str>, algorithm: Algorithm) -> TardisResult<String> {
+        match algorithm {
+            Algorithm::SHA1 => {
                 let mut sha1 = Sha1::new();
                 sha1.input_str(str);
-                sha1.result_str()
+                Ok(sha1.result_str())
             }
-            "sha256" => {
+            Algorithm::SHA256 => {
                 let mut sha265 = Sha256::new();
                 sha265.input_str(str);
-                sha265.result_str()
+                Ok(sha265.result_str())
             }
-            "sha512" => {
+            Algorithm::SHA512 => {
                 let mut sha512 = Sha512::new();
                 sha512.input_str(str);
-                sha512.result_str()
+                Ok(sha512.result_str())
             }
-            "md5" => {
+            Algorithm::MD5 => {
                 let mut md5 = Md5::new();
                 md5.input_str(str);
-                md5.result_str()
+                Ok(md5.result_str())
             }
-            "hmacsha1" => {
-                let mut hmac = Hmac::new(Sha1::new(), key.unwrap().as_bytes());
-                hmac.input(str.as_bytes());
-                String::from_utf8(hmac.result().code().to_vec()).expect("Abstract algorithm conversion error")
-            }
-            "hmacsha256" => {
-                let mut hmac = Hmac::new(Sha256::new(), key.unwrap().as_bytes());
-                hmac.input(str.as_bytes());
-                String::from_utf8(hmac.result().code().to_vec()).expect("Abstract algorithm conversion error")
-            }
-            "hmacsha512" => {
-                let mut hmac = Hmac::new(Sha512::new(), key.unwrap().as_bytes());
-                hmac.input(str.as_bytes());
-                String::from_utf8(hmac.result().code().to_vec()).expect("Abstract algorithm conversion error")
-            }
-            _ => panic!("[Tardis.Security] Digest algorithm [{}] doesn't support", algorithm),
+            Algorithm::HmacSha1 => match key {
+                Some(key) => {
+                    let mut hmac = Hmac::new(Sha1::new(), key.as_bytes());
+                    hmac.input(str.as_bytes());
+                    Ok(base64::encode(hmac.result().code()))
+                }
+                None => Err(TardisError::BadRequest("[Tardis.Security] key is required for hmacsha1".to_string())),
+            },
+            Algorithm::HmacSha265 => match key {
+                Some(key) => {
+                    let mut hmac = Hmac::new(Sha256::new(), key.as_bytes());
+                    hmac.input(str.as_bytes());
+                    Ok(base64::encode(hmac.result().code()))
+                }
+                None => Err(TardisError::BadRequest("[Tardis.Security] key is required for hmacsha256".to_string())),
+            },
+            Algorithm::HmacSha512 => match key {
+                Some(key) => {
+                    let mut hmac = Hmac::new(Sha512::new(), key.as_bytes());
+                    hmac.input(str.as_bytes());
+                    Ok(base64::encode(hmac.result().code()))
+                }
+                None => Err(TardisError::BadRequest("[Tardis.Security] key is required for hmacsha512".to_string())),
+            },
         }
     }
 }
@@ -74,16 +93,19 @@ impl TardisSecurityBase64 {
 }
 
 impl TardisSecurityKey {
-    pub fn generate_token(&self) -> String {
-        format!("tk{}", TardisFuns::field.uuid())
+    pub fn generate_token(&self) -> TardisResult<String> {
+        Ok(format!("tk{}", TardisFuns::field.uuid()))
     }
 
-    pub fn generate_ak(&self) -> String {
-        format!("ak{}", TardisFuns::field.uuid())
+    pub fn generate_ak(&self) -> TardisResult<String> {
+        Ok(format!("ak{}", TardisFuns::field.uuid()))
     }
 
-    pub fn generate_sk(&self, ak: &str) -> String {
-        let sk = TardisFuns::security.digest(format!("{}{}", ak, TardisFuns::field.uuid()).as_str(), None, "SHA1");
-        format!("sk{}", sk)
+    pub fn generate_sk(&self, ak: &str) -> TardisResult<String> {
+        let sk = TardisFuns::security.digest(format!("{}{}", ak, TardisFuns::field.uuid()).as_str(), None, SHA1);
+        match sk {
+            Ok(sk) => Ok(sk),
+            Err(e) => Err(e),
+        }
     }
 }

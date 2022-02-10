@@ -9,7 +9,7 @@ use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbB
 use sqlparser::ast;
 use sqlparser::ast::{SetExpr, TableFactor};
 use sqlparser::dialect::MySqlDialect;
-use sqlparser::parser::Parser;
+use sqlparser::parser::{Parser, ParserError};
 use url::Url;
 
 use crate::basic::error::TardisError;
@@ -137,8 +137,10 @@ where
         let db_backend: DbBackend = db.get_database_backend();
 
         let sql = self.build(db_backend).sql.replace("?", "''");
-        let ast: ast::Statement = Parser::parse_sql(&MySqlDialect {}, &sql).unwrap().pop().unwrap();
-
+        let ast = match Parser::parse_sql(&MySqlDialect {}, &sql)?.pop() {
+            Some(ast) => ast,
+            None => return Err(TardisError::BadRequest("[Tardis.RelDBClient] Sql parsing error, no valid Statement found".to_string())),
+        };
         let mut table_name = String::new();
         if let ast::Statement::Query(query) = ast {
             if let SetExpr::Select(select) = (*query).body {
@@ -160,11 +162,17 @@ where
         let rows = self.into_json().all(db).await?;
         for row in rows {
             let id = row[custom_pk_field].clone();
-            let json = TardisFuns::json.obj_to_string(&row).unwrap();
+            let json = TardisFuns::json.obj_to_string(&row)?;
             if id.is_string() {
-                ids.push(id.as_str().as_ref().unwrap().to_string().into());
+                ids.push(
+                    id.as_str()
+                        .as_ref()
+                        .unwrap_or_else(|| panic!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a character type", id))
+                        .to_string()
+                        .into(),
+                );
             } else {
-                ids.push(id.as_u64().unwrap().into());
+                ids.push(id.as_u64().unwrap_or_else(|| panic!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a number type", id)).into());
             }
             tardis_db_del_record::ActiveModel {
                 entity_name: Set(table_name.to_string()),
@@ -199,6 +207,12 @@ where
 
 impl From<DbErr> for TardisError {
     fn from(error: DbErr) -> Self {
+        TardisError::Box(Box::new(error))
+    }
+}
+
+impl From<ParserError> for TardisError {
+    fn from(error: ParserError) -> Self {
         TardisError::Box(Box::new(error))
     }
 }
