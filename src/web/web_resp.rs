@@ -55,6 +55,7 @@ where
 
     pub fn err(error: TardisError) -> Self {
         let (code, msg) = parse(error);
+        let msg = process_err_msg(code.as_str(), msg);
         Self { code, msg, data: None }
     }
 }
@@ -143,42 +144,44 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
         match resp {
             Ok(resp) => {
                 let mut resp = resp.into_response();
-                if resp.status() != StatusCode::OK {
-                    let msg = resp.take_body().into_string().await.expect("[Tardis.WebClient] Request exception type conversion error");
-                    let code = if resp.status().as_u16() >= 500 {
-                        warn!(
-                            "[Tardis.WebServer] Process error,request method:{}, url:{}, response\
-                             code:{}, message:{}",
-                            method,
-                            url,
-                            resp.status().as_u16(),
-                            msg
-                        );
-                        resp.status()
-                    } else {
-                        trace!(
-                            "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
-                            method,
-                            url,
-                            resp.status().as_u16(),
-                            msg
-                        );
-                        // Request fallback friendly
-                        StatusCode::OK
-                    };
-                    resp.set_status(code);
-                    resp.headers_mut().insert(
-                        "Content-Type",
-                        "application/json; charset=utf8".parse().expect("[Tardis.WebServer] Http head parsing error"),
-                    );
-                    resp.set_body(
-                        json!({
-                            "code": mapping_code(code).into_unified_code(),
-                            "msg": msg,
-                        })
-                        .to_string(),
-                    );
+                if resp.status() == StatusCode::OK {
+                    return Ok(resp);
                 }
+                let msg = resp.take_body().into_string().await.expect("[Tardis.WebClient] Request exception type conversion error");
+                let code = if resp.status().as_u16() >= 500 {
+                    warn!(
+                        "[Tardis.WebServer] Process error,request method:{}, url:{}, response\
+                             code:{}, message:{}",
+                        method,
+                        url,
+                        resp.status().as_u16(),
+                        msg
+                    );
+                    resp.status()
+                } else {
+                    trace!(
+                        "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
+                        method,
+                        url,
+                        resp.status().as_u16(),
+                        msg
+                    );
+                    // Request fallback friendly
+                    StatusCode::OK
+                };
+                resp.set_status(code);
+                resp.headers_mut().insert(
+                    "Content-Type",
+                    "application/json; charset=utf8".parse().expect("[Tardis.WebServer] Http head parsing error"),
+                );
+                let code = mapping_code(code).into_unified_code();
+                resp.set_body(
+                    json!({
+                        "code": code,
+                        "msg": process_err_msg(code.as_str(),msg),
+                    })
+                    .to_string(),
+                );
                 Ok(resp)
             }
             Err(err) => Ok(error_handler(err)),
@@ -215,8 +218,17 @@ fn error_handler(err: poem::Error) -> Response {
     Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(
         json!({
             "code": code,
-            "msg": msg,
+            "msg": process_err_msg(code.as_str(),msg),
         })
         .to_string(),
     )
+}
+
+fn process_err_msg(code: &str, msg: String) -> String {
+    if TardisFuns::fw_config().web_server.security_hide_err_msg {
+        warn!("[Tardis.WebServer] Pesponse error,code:{},msg:{}", code, msg);
+        "Security is enabled, detailed errors are hidden, please check the server logs".to_string()
+    } else {
+        msg
+    }
 }

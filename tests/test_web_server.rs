@@ -14,41 +14,7 @@ use tardis::web::web_resp::TardisResp;
 use tardis::web::{param::Path, payload::Json, Object, OpenApi, Tags};
 use tardis::TardisFuns;
 
-#[tokio::test]
-async fn test_web_server() -> TardisResult<()> {
-    let url = "https://localhost:8080";
-
-    tokio::spawn(async { start_serv(url).await });
-    sleep(Duration::from_millis(500)).await;
-
-    test_basic(url).await?;
-    test_validate(url).await?;
-
-    Ok(())
-}
-
-async fn start_serv(url: &str) -> TardisResult<()> {
-    TardisFuns::init_conf(TardisConfig {
-        ws: NoneConfig {},
-        fw: FrameworkConfig {
-            app: Default::default(),
-            web_server: WebServerConfig {
-                enabled: true,
-                modules: vec![
-                    WebServerModuleConfig {
-                        code: "todo".to_string(),
-                        title: "todo app".to_string(),
-                        doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
-                        ..Default::default()
-                    },
-                    WebServerModuleConfig {
-                        code: "other".to_string(),
-                        title: "other app".to_string(),
-                        ..Default::default()
-                    },
-                ],
-                tls_key: Some(
-                    r#"
+const TLS_KEY: &str = r#"
 -----BEGIN RSA PRIVATE KEY-----
 MIIEpAIBAAKCAQEAqVYYdfxTT9qr1np22UoIWq4v1E4cHncp35xxu4HNyZsoJBHR
 K1gTvwh8x4LMe24lROW/LGWDRAyhaI8qDxxlitm0DPxU8p4iQoDQi3Z+oVKqsSwJ
@@ -76,11 +42,9 @@ eLCYhQKBgQDALJxU/6hMTdytEU5CLOBSMby45YD/RrfQrl2gl/vA0etPrto4RkVq
 UrkDO/9W4mZORClN3knxEFSTlYi8YOboxdlynpFfhcs82wFChs+Ydp1eEsVHAqtu
 T+uzn0sroycBiBfVB949LExnzGDFUkhG0i2c2InarQYLTsIyHCIDEA==
 -----END RSA PRIVATE KEY-----
-"#
-                    .to_string(),
-                ),
-                tls_cert: Some(
-                    r#"
+"#;
+
+const TLS_CERT: &str = r#"
 -----BEGIN CERTIFICATE-----
 MIIEADCCAmigAwIBAgICAcgwDQYJKoZIhvcNAQELBQAwLDEqMCgGA1UEAwwhcG9u
 eXRvd24gUlNBIGxldmVsIDIgaW50ZXJtZWRpYXRlMB4XDTE2MDgxMzE2MDcwNFoX
@@ -105,9 +69,44 @@ RPAKsKB4h7hGgvciZQ7dsMrlGw0DLdJ6UrFyiR5Io7dXYT/+JP91lP5xsl6Lhg9O
 FgALt7GSYRm2cZdgi9pO9rRr83Br1VjQT1vHz6yoZMXSqc4A2zcN2a2ZVq//rHvc
 FZygs8miAhWPzqnpmgTj1cPiU1M=
 -----END CERTIFICATE-----
-"#
-                    .to_string(),
-                ),
+"#;
+
+#[tokio::test]
+async fn test_web_server() -> TardisResult<()> {
+    let url = "https://localhost:8080";
+
+    tokio::spawn(async { start_serv(url).await });
+    sleep(Duration::from_millis(500)).await;
+
+    test_basic(url).await?;
+    test_validate(url).await?;
+    test_security().await?;
+
+    Ok(())
+}
+
+async fn start_serv(url: &str) -> TardisResult<()> {
+    TardisFuns::init_conf(TardisConfig {
+        ws: NoneConfig {},
+        fw: FrameworkConfig {
+            app: Default::default(),
+            web_server: WebServerConfig {
+                enabled: true,
+                modules: vec![
+                    WebServerModuleConfig {
+                        code: "todo".to_string(),
+                        title: "todo app".to_string(),
+                        doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
+                        ..Default::default()
+                    },
+                    WebServerModuleConfig {
+                        code: "other".to_string(),
+                        title: "other app".to_string(),
+                        ..Default::default()
+                    },
+                ],
+                tls_key: Some(TLS_KEY.to_string()),
+                tls_cert: Some(TLS_CERT.to_string()),
                 ..Default::default()
             },
             web_client: Default::default(),
@@ -368,6 +367,95 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .body
         .unwrap();
     assert_eq!(response.code, StatusCodeKind::Success.to_string());
+
+    Ok(())
+}
+
+async fn test_security() -> TardisResult<()> {
+    let url = "https://localhost:8081";
+
+    tokio::spawn(async {
+        TardisFuns::init_conf(TardisConfig {
+            ws: NoneConfig {},
+            fw: FrameworkConfig {
+                app: Default::default(),
+                web_server: WebServerConfig {
+                    enabled: true,
+                    port: 8081,
+                    modules: vec![
+                        WebServerModuleConfig {
+                            code: "todo".to_string(),
+                            title: "todo app".to_string(),
+                            doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
+                            ..Default::default()
+                        },
+                        WebServerModuleConfig {
+                            code: "other".to_string(),
+                            title: "other app".to_string(),
+                            ..Default::default()
+                        },
+                    ],
+                    tls_key: Some(TLS_KEY.to_string()),
+                    tls_cert: Some(TLS_CERT.to_string()),
+                    security_hide_err_msg: true,
+                    ..Default::default()
+                },
+                web_client: Default::default(),
+                cache: CacheConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                db: DBConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                mq: MQConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                adv: Default::default(),
+            },
+        })
+        .await?;
+        TardisFuns::web_server().add_module("todo", (TodosApi)).add_module_with_data::<_, String>("other", OtherApi, None).start().await
+    });
+    sleep(Duration::from_millis(500)).await;
+
+    // Normal
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?.body.unwrap();
+    assert_eq!(response.code, StatusCodeKind::Success.to_string());
+    assert_eq!(response.data.unwrap().description, "测试");
+
+    // Business Error
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/err", url).as_str(), None).await?.body.unwrap();
+    assert_eq!(response.code, TardisError::Conflict("异常".to_string()).code());
+    assert_eq!(response.msg, "Security is enabled, detailed errors are hidden, please check the server logs");
+
+    // Not Found
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/ss", url).as_str(), None).await?.body.unwrap();
+    assert_eq!(response.code, StatusCodeKind::NotFound.into_unified_code());
+    assert_eq!(response.msg, "Security is enabled, detailed errors are hidden, please check the server logs");
+
+    let response = TardisFuns::web_client()
+        .post::<ValidateReq, TardisResp<String>>(
+            format!("{}/other/validate", url).as_str(),
+            &ValidateReq {
+                len: "1".to_string(),
+                eq: "11111".to_string(),
+                range: 444,
+                mail: "ss@ss.ss".to_string(),
+                contain: "gmail".to_string(),
+                phone: "18654110201".to_string(),
+                item_len: vec!["ddd".to_string()],
+                item_unique: vec!["ddd".to_string(), "ddd".to_string()],
+            },
+            None,
+        )
+        .await?
+        .body
+        .unwrap();
+    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.msg, "Security is enabled, detailed errors are hidden, please check the server logs");
 
     Ok(())
 }

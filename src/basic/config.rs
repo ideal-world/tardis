@@ -92,6 +92,7 @@ pub struct WebServerConfig {
     pub tls_key: Option<String>,
     pub tls_cert: Option<String>,
     pub modules: Vec<WebServerModuleConfig>,
+    pub security_hide_err_msg: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -126,6 +127,7 @@ impl Default for WebServerConfig {
             tls_key: None,
             tls_cert: None,
             modules: [WebServerModuleConfig::default()].to_vec(),
+            security_hide_err_msg: false,
         }
     }
 }
