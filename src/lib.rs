@@ -12,9 +12,6 @@ use crate::basic::config::{FrameworkConfig, TardisConfig};
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;
 use crate::basic::logger::TardisLogger;
-use crate::basic::security::TardisSecurity;
-use crate::basic::security::TardisSecurityBase64;
-use crate::basic::security::TardisSecurityKey;
 use crate::basic::uri::TardisUri;
 #[cfg(feature = "cache")]
 use crate::cache::cache_client::TardisCacheClient;
@@ -152,9 +149,13 @@ impl TardisFuns {
     pub const uri: TardisUri = TardisUri {};
 
     #[allow(non_upper_case_globals)]
-    pub const security: TardisSecurity = TardisSecurity {
-        base64: TardisSecurityBase64 {},
-        key: TardisSecurityKey {},
+    #[cfg(feature = "crypto")]
+    pub const crypto: crate::basic::crypto::TardisCrypto = crate::basic::crypto::TardisCrypto {
+        base64: crate::basic::crypto::TardisCryptoBase64 {},
+        aes: crate::basic::crypto::TardisCryptoAes {},
+        rsa: crate::basic::crypto::TardisCryptoRsa {},
+        digest: crate::basic::crypto::TardisCryptoDigest {},
+        key: crate::basic::crypto::TardisCryptoKey {},
     };
 
     #[cfg(feature = "reldb")]

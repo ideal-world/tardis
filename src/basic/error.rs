@@ -89,3 +89,15 @@ impl From<Infallible> for TardisError {
         TardisError::FormatError(error.to_string())
     }
 }
+
+impl From<base64::DecodeError> for TardisError {
+    fn from(error: base64::DecodeError) -> Self {
+        TardisError::FormatError(error.to_string())
+    }
+}
+
+impl From<hex::FromHexError> for TardisError {
+    fn from(error: hex::FromHexError) -> Self {
+        TardisError::FormatError(error.to_string())
+    }
+}
