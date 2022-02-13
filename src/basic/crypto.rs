@@ -2,6 +2,7 @@ use crypto::{
     buffer::{ReadBuffer, WriteBuffer},
     mac::Mac,
 };
+use num::Num;
 use pkcs8::{FromPrivateKey, FromPublicKey, ToPrivateKey, ToPublicKey};
 use rand_core::RngCore;
 use rsa::PublicKey;
@@ -13,18 +14,28 @@ use crate::TardisFuns;
 pub struct TardisCrypto {
     pub base64: TardisCryptoBase64,
     pub aes: TardisCryptoAes,
+    pub sm4: TardisCryptoSm4,
     pub rsa: TardisCryptoRsa,
+    pub sm2: TardisCryptoSm2,
     pub digest: TardisCryptoDigest,
     pub key: TardisCryptoKey,
 }
 pub struct TardisCryptoBase64;
 pub struct TardisCryptoAes;
+pub struct TardisCryptoSm4;
 pub struct TardisCryptoRsa;
 pub struct TardisCryptoRsaPrivateKey {
     pri_key: rsa::RsaPrivateKey,
 }
 pub struct TardisCryptoRsaPublicKey {
     pub_key: rsa::RsaPublicKey,
+}
+pub struct TardisCryptoSm2;
+pub struct TardisCryptoSm2PrivateKey {
+    pri_key: String,
+}
+pub struct TardisCryptoSm2PublicKey {
+    pub_key: String,
 }
 pub struct TardisCryptoDigest;
 pub struct TardisCryptoKey;
@@ -94,6 +105,19 @@ impl TardisCryptoAes {
         }
 
         Ok(String::from_utf8(final_result)?)
+    }
+}
+
+impl TardisCryptoSm4 {
+    pub fn encrypt_cbc(&self, data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
+        let encrypted_data = gmsm::sm4::sm4_cbc_encrypt_byte(data.as_bytes(), hex::decode(hex_key)?.as_slice(), hex::decode(hex_iv)?.as_slice());
+        Ok(base64::encode(encrypted_data))
+    }
+
+    pub fn decrypt_cbc(&self, encrypted_data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
+        let encrypted_data = base64::decode(encrypted_data)?;
+        let data = gmsm::sm4::sm4_cbc_decrypt_byte(encrypted_data.as_slice(), hex::decode(hex_key)?.as_slice(), hex::decode(hex_iv)?.as_slice());
+        Ok(String::from_utf8(data)?)
     }
 }
 
@@ -210,6 +234,73 @@ impl TardisCryptoRsaPublicKey {
     }
 }
 
+impl TardisCryptoSm2 {
+    pub fn new_private_key(&self) -> TardisResult<TardisCryptoSm2PrivateKey> {
+        TardisCryptoSm2PrivateKey::new()
+    }
+
+    pub fn new_private_key_from_str(&self, private_key: &str) -> TardisResult<TardisCryptoSm2PrivateKey> {
+        TardisCryptoSm2PrivateKey::from_private_key(private_key)
+    }
+
+    pub fn new_public_key_from_private_key(&self, private_key: &str) -> TardisResult<TardisCryptoSm2PublicKey> {
+        TardisCryptoSm2PublicKey::from_private_key(private_key)
+    }
+
+    pub fn new_public_key_from_public_key(&self, public_key: &str) -> TardisResult<TardisCryptoSm2PublicKey> {
+        TardisCryptoSm2PublicKey::from_public_key(public_key)
+    }
+}
+
+impl TardisCryptoSm2PrivateKey {
+    pub fn new() -> TardisResult<Self> {
+        Ok(TardisCryptoSm2PrivateKey {
+            pri_key: hex::encode(gmsm::g2::subject::raw_pri_byte(gmsm::sm2::sm2_generate_key())),
+        })
+    }
+
+    pub fn from_private_key(private_key: &str) -> TardisResult<Self> {
+        Ok(TardisCryptoSm2PrivateKey { pri_key: private_key.to_string() })
+    }
+
+    pub fn to_private_key(&self) -> TardisResult<String> {
+        Ok(self.pri_key.clone())
+    }
+
+    pub fn decrypt(&self, encrypted_data: &str) -> TardisResult<String> {
+        Ok(gmsm::sm2::sm2_decrypt(encrypted_data, self.pri_key.as_str()))
+    }
+}
+
+impl TardisCryptoSm2PublicKey {
+    pub fn from_private_key(private_key: &str) -> TardisResult<Self> {
+        let sm2_p256 = gmsm::g2::p256::Sm2P256Curve::new();
+        let pri_result = num::BigUint::from_str_radix(private_key, 16);
+        match pri_result {
+            Ok(pri_key) => {
+                let (pkx, pky) = sm2_p256.scalar_base_mult(pri_key.to_bytes_be());
+                let public_key = gmsm::g2::subject::PublicKey { x: pkx, y: pky };
+                Ok(TardisCryptoSm2PublicKey {
+                    pub_key: hex::encode(gmsm::g2::subject::raw_pub_byte(public_key)),
+                })
+            }
+            Err(e) => Err(TardisError::FormatError(format!("[Tardis.Crypto] SM2 crypto private key error:{}", e))),
+        }
+    }
+
+    pub fn from_public_key(public_key: &str) -> TardisResult<Self> {
+        Ok(TardisCryptoSm2PublicKey { pub_key: public_key.to_string() })
+    }
+
+    pub fn to_public_key(&self) -> TardisResult<String> {
+        Ok(self.pub_key.clone())
+    }
+
+    pub fn encrypt(&self, data: &str) -> TardisResult<String> {
+        Ok(gmsm::sm2::sm2_encrypt(data, self.pub_key.as_str()))
+    }
+}
+
 impl TardisCryptoDigest {
     pub fn sha1(&self, data: &str) -> TardisResult<String> {
         self.digest(data, crypto::sha1::Sha1::new())
@@ -239,6 +330,10 @@ impl TardisCryptoDigest {
         self.digest_hmac(data, key, crypto::sha2::Sha512::new())
     }
 
+    pub fn sm3(&self, data: &str) -> TardisResult<String> {
+        Ok(hex::encode(gmsm::sm3::sm3_byte(data)))
+    }
+
     fn digest<A: crypto::digest::Digest>(&self, data: &str, mut algorithm: A) -> TardisResult<String> {
         algorithm.input_str(data);
         Ok(algorithm.result_str())
@@ -252,6 +347,12 @@ impl TardisCryptoDigest {
 }
 
 impl TardisCryptoKey {
+    pub fn rand_8_hex(&self) -> TardisResult<String> {
+        let mut key: [u8; 8] = [0; 8];
+        rand::rngs::OsRng::default().fill_bytes(&mut key);
+        Ok(hex::encode(key))
+    }
+
     pub fn rand_16_hex(&self) -> TardisResult<String> {
         let mut key: [u8; 16] = [0; 16];
         rand::rngs::OsRng::default().fill_bytes(&mut key);
@@ -293,21 +394,18 @@ impl TardisCryptoKey {
     }
 }
 
-#[cfg(feature = "crypto")]
 impl From<crypto::symmetriccipher::SymmetricCipherError> for TardisError {
     fn from(error: crypto::symmetriccipher::SymmetricCipherError) -> Self {
         TardisError::FormatError(format!("[Tardis.Crypto] AES crypto error, {:?}", error))
     }
 }
 
-#[cfg(feature = "crypto")]
 impl From<rsa::errors::Error> for TardisError {
     fn from(error: rsa::errors::Error) -> Self {
         TardisError::FormatError(format!("[Tardis.Crypto] RSA crypto error, {}", error))
     }
 }
 
-#[cfg(feature = "crypto")]
 impl From<pkcs8::Error> for TardisError {
     fn from(error: pkcs8::Error) -> Self {
         TardisError::FormatError(format!("[Tardis.Crypto] RSA crypto error, {}", error))

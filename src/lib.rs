@@ -153,7 +153,9 @@ impl TardisFuns {
     pub const crypto: crate::basic::crypto::TardisCrypto = crate::basic::crypto::TardisCrypto {
         base64: crate::basic::crypto::TardisCryptoBase64 {},
         aes: crate::basic::crypto::TardisCryptoAes {},
+        sm4: crate::basic::crypto::TardisCryptoSm4 {},
         rsa: crate::basic::crypto::TardisCryptoRsa {},
+        sm2: crate::basic::crypto::TardisCryptoSm2 {},
         digest: crate::basic::crypto::TardisCryptoDigest {},
         key: crate::basic::crypto::TardisCryptoKey {},
     };

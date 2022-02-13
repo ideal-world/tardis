@@ -79,5 +79,38 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
     let encrypted_data = public_key3.encrypt("测试")?;
     assert_eq!(private_key.decrypt(&encrypted_data)?, "测试");
 
+    // SM3
+
+    assert_eq!(TardisFuns::crypto.digest.sm3("测试")?, "6fcf886a3115eb3b18d2dba1b4413fed5067c154e030276d8a78caa773b44eab");
+    assert_eq!(
+        TardisFuns::crypto.digest.sm3(large_text)?,
+        "06717d16b797096e5050adb2f8c2daabf4d8f26d5c3a8da5c6171bec2becb497"
+    );
+
+    // SM4
+
+    let key = TardisFuns::crypto.key.rand_16_hex()?;
+    let iv = TardisFuns::crypto.key.rand_16_hex()?;
+
+    let encrypted_data = TardisFuns::crypto.sm4.encrypt_cbc(large_text, &key, &iv)?;
+    let data = TardisFuns::crypto.sm4.decrypt_cbc(&encrypted_data, &key, &iv)?;
+    assert_eq!(data, large_text);
+
+    // SM2
+
+    let private_key = TardisFuns::crypto.sm2.new_private_key()?;
+    let private_key_str = private_key.to_private_key()?;
+    let private_key_str_copy = TardisFuns::crypto.sm2.new_private_key_from_str(private_key_str.as_str())?.to_private_key()?;
+    assert_eq!(private_key_str_copy, private_key_str);
+
+    let public_key1 = TardisFuns::crypto.sm2.new_public_key_from_private_key(&private_key_str)?;
+    let public_key2 = TardisFuns::crypto.sm2.new_public_key_from_public_key(public_key1.to_public_key()?.as_str())?;
+
+    let encrypted_data = public_key1.encrypt("测试")?;
+    assert_eq!(private_key.decrypt(&encrypted_data)?, "测试");
+
+    let encrypted_data = public_key2.encrypt("测试")?;
+    assert_eq!(private_key.decrypt(&encrypted_data)?, "测试");
+
     Ok(())
 }
