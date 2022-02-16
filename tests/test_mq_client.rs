@@ -1,16 +1,14 @@
 // https://github.com/CleverCloud/lapin
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicI16;
-use std::sync::Arc;
-use std::time::Duration;
-
-use tokio::time::sleep;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
+
+static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 #[tokio::test]
 async fn test_mq_client() -> TardisResult<()> {
@@ -40,18 +38,14 @@ async fn test_mq_client() -> TardisResult<()> {
         })
         .await?;
 
-        let counter = Arc::new(AtomicI16::new(0));
-
         let client = TardisFuns::mq();
-
-        let mut header = HashMap::new();
-        header.insert("k1".to_string(), "v1".to_string());
 
         client
             .response("test-addr", |(header, msg)| async move {
                 println!("response1 {}", msg);
                 assert_eq!(header.get("k1").unwrap(), "v1");
                 assert_eq!(msg, "测试!");
+                COUNTER.fetch_add(1, Ordering::SeqCst);
                 Ok(())
             })
             .await?;
@@ -61,20 +55,17 @@ async fn test_mq_client() -> TardisResult<()> {
                 println!("response2 {}", msg);
                 assert_eq!(header.get("k1").unwrap(), "v1");
                 assert_eq!(msg, "测试!");
+                COUNTER.fetch_add(1, Ordering::SeqCst);
                 Ok(())
             })
             .await?;
-
-        client.request("test-addr", "测试!".to_string(), &header).await?;
-        client.request("test-addr", "测试!".to_string(), &header).await?;
-        client.request("test-addr", "测试!".to_string(), &header).await?;
-        client.request("test-addr", "测试!".to_string(), &header).await?;
 
         client
             .subscribe("test-topic", |(header, msg)| async move {
                 println!("subscribe1 {}", msg);
                 assert_eq!(header.get("k1").unwrap(), "v1");
                 assert_eq!(msg, "测试!");
+                COUNTER.fetch_add(1, Ordering::SeqCst);
                 Ok(())
             })
             .await?;
@@ -84,16 +75,29 @@ async fn test_mq_client() -> TardisResult<()> {
                 println!("subscribe2 {}", msg);
                 assert_eq!(header.get("k1").unwrap(), "v1");
                 assert_eq!(msg, "测试!");
+                COUNTER.fetch_add(1, Ordering::SeqCst);
                 Ok(())
             })
             .await?;
 
+        let mut header = HashMap::new();
+        header.insert("k1".to_string(), "v1".to_string());
+
+        client.request("test-addr", "测试!".to_string(), &header).await?;
+        client.request("test-addr", "测试!".to_string(), &header).await?;
+        client.request("test-addr", "测试!".to_string(), &header).await?;
+        client.request("test-addr", "测试!".to_string(), &header).await?;
+
         client.publish("test-topic", "测试!".to_string(), &header).await?;
         client.publish("test-topic", "测试!".to_string(), &header).await?;
         client.publish("test-topic", "测试!".to_string(), &header).await?;
         client.publish("test-topic", "测试!".to_string(), &header).await?;
 
-        sleep(Duration::from_millis(1000)).await;
+        loop {
+            if COUNTER.load(Ordering::SeqCst) == 12 {
+                break;
+            }
+        }
 
         TardisFuns::shutdown().await?;
         Ok(())
