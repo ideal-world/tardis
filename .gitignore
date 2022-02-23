@@ -6,7 +6,7 @@ out
 *.exe
 
 # Cargo
-*Cargo.lock
+Cargo.lock
 target
 
 # gh pages docs
