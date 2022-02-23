@@ -214,7 +214,9 @@ where
         let mut conf = Config::builder();
         if !relative_path.is_empty() {
             conf = conf.add_source(File::from(path.join("conf-default")).required(true));
-            conf = conf.add_source(File::from(Path::new(relative_path).join(&format!("conf-{}", profile))).required(true));
+            if profile != "" {
+                conf = conf.add_source(File::from(path.join(format!("conf-{}", profile).as_str())).required(true));
+            }
         }
         conf = conf.add_source(Environment::with_prefix("TARDIS"));
         let conf = conf.build()?;

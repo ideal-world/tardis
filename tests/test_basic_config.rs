@@ -9,6 +9,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_basic_config() -> TardisResult<()> {
+    env::set_var("PROFILE", "test");
     TardisFuns::init::<TestConfig>("tests/config").await?;
     assert_eq!(TardisFuns::ws_config::<TestConfig>().project_name, "测试");
     assert!(!TardisFuns::fw_config().db.enabled);
@@ -17,7 +18,6 @@ async fn test_basic_config() -> TardisResult<()> {
     assert_eq!(TardisFuns::fw_config().app.name, "APP1");
 
     env::set_var("PROFILE", "prod");
-
     TardisFuns::init::<TestConfig>("tests/config").await?;
     assert_eq!(TardisFuns::fw_config().db.url, "postgres://postgres@prod");
     assert_eq!(TardisFuns::ws_config::<TestConfig>().db_proj.url, "postgres://postgres@prod.proj");
