@@ -19,12 +19,12 @@ async fn test_basic_field() -> TardisResult<()> {
     assert_eq!(TardisFuns::field.incr_by_base36("a9999").unwrap(), "baaaa");
     assert!(TardisFuns::field.incr_by_base36("999").is_none());
 
-    assert_eq!(TardisFuns::field.is_code_cs("Adw834_dfds"), true);
-    assert_eq!(TardisFuns::field.is_code_cs(" Adw834_dfds"), false);
-    assert_eq!(TardisFuns::field.is_code_cs("Adw834_d-fds"), false);
-    assert_eq!(TardisFuns::field.is_code_ncs("adon2_43323tr"), true);
-    assert_eq!(TardisFuns::field.is_code_ncs("adon2_43323tr "), false);
-    assert_eq!(TardisFuns::field.is_code_ncs("Adw834_dfds"), false);
+    assert!(TardisFuns::field.is_code_cs("Adw834_dfds"));
+    assert!(!TardisFuns::field.is_code_cs(" Adw834_dfds"));
+    assert!(!TardisFuns::field.is_code_cs("Adw834_d-fds"));
+    assert!(TardisFuns::field.is_code_ncs("adon2_43323tr"));
+    assert!(!TardisFuns::field.is_code_ncs("adon2_43323tr "));
+    assert!(!TardisFuns::field.is_code_ncs("Adw834_dfds"));
 
     Ok(())
 }
