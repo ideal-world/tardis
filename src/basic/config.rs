@@ -2,9 +2,9 @@ use std::env;
 use std::fmt::Debug;
 use std::path::Path;
 
+use crate::log::{debug, info};
+use crate::serde::{Deserialize, Serialize};
 use config::{Config, ConfigError, Environment, File};
-use log::{debug, info};
-use serde::{Deserialize, Serialize};
 
 use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
 use crate::basic::fetch_profile;
@@ -214,7 +214,7 @@ where
         let mut conf = Config::builder();
         if !relative_path.is_empty() {
             conf = conf.add_source(File::from(path.join("conf-default")).required(true));
-            if profile != "" {
+            if !profile.is_empty() {
                 conf = conf.add_source(File::from(path.join(format!("conf-{}", profile).as_str())).required(true));
             }
         }

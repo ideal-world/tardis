@@ -5,9 +5,6 @@ authors = ["gudaoxuri"]
 edition = "2021"
 
 [dependencies]
-serde = { version = "^1", features = ["derive"] }
-log = { version = "^0" }
-tokio = { version = "^1.17", features = ["macros"] }
 tardis = { path = "../..", features = ["reldb", "test"] }
 sea-orm = { version = "^0.6", features = ["macros"] }
 # Example only

@@ -124,13 +124,13 @@ pub fn ws_p2p(Path(name): Path<String>, websocket: WebSocket) -> impl IntoRespon
 }
 
 #[handler]
-pub fn ws_broadcast(Path(name): Path<String>, ws: WebSocket, sender: Data<&tokio::sync::broadcast::Sender<String>>) -> impl IntoResponse {
+pub fn ws_broadcast(Path(name): Path<String>, ws: WebSocket, sender: Data<&tardis::tokio::sync::broadcast::Sender<String>>) -> impl IntoResponse {
     let sender = sender.clone();
     let mut receiver = sender.subscribe();
     ws.on_upgrade(move |socket| async move {
         let (mut sink, mut stream) = socket.split();
 
-        tokio::spawn(async move {
+        tardis::tokio::spawn(async move {
             while let Some(Ok(msg)) = stream.next().await {
                 if let Message::Text(text) = msg {
                     if sender.send(format!("{}: {}", name, text)).is_err() {
@@ -140,7 +140,7 @@ pub fn ws_broadcast(Path(name): Path<String>, ws: WebSocket, sender: Data<&tokio
             }
         });
 
-        tokio::spawn(async move {
+        tardis::tokio::spawn(async move {
             while let Ok(msg) = receiver.recv().await {
                 if sink.send(Message::Text(msg)).await.is_err() {
                     break;

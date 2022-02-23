@@ -7,6 +7,7 @@ use tokio::time::sleep;
 use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
+use tardis::tokio;
 use tardis::TardisFuns;
 
 #[tokio::main]

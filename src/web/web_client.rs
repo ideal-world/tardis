@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use log::info;
+use crate::log::info;
+use crate::serde::de::DeserializeOwned;
+use crate::serde::Serialize;
 use reqwest::{Client, Method, Response};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;

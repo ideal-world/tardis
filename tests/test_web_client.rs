@@ -1,10 +1,10 @@
 // https://github.com/seanmonstar/reqwest
 
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig};
 use tardis::basic::result::TardisResult;
+use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
 
 #[tokio::test]

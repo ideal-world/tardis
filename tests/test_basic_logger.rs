@@ -1,8 +1,7 @@
 use std::env;
 
-use log::{error, info};
-
 use tardis::basic::result::TardisResult;
+use tardis::log::{error, info};
 use tardis::TardisFuns;
 
 use crate::app::req::test_req;
@@ -20,7 +19,7 @@ async fn test_basic_logger() -> TardisResult<()> {
 
 mod app {
     pub mod req {
-        use log::{error, info};
+        use tardis::log::{error, info};
 
         pub fn test_req() {
             info!("app::req info");

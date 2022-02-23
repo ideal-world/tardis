@@ -2,7 +2,6 @@
 
 use std::time::Duration;
 
-use log::info;
 use tokio::time::sleep;
 
 use tardis::basic::result::TardisResult;
@@ -15,6 +14,7 @@ use tardis::db::sea_query::Expr;
 use tardis::db::ActiveValue::Set;
 pub use tardis::db::FromQueryResult;
 use tardis::db::{QueryFilter, QueryOrder};
+use tardis::log::info;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 

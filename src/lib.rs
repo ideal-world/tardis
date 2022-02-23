@@ -1,10 +1,11 @@
 #[macro_use]
 extern crate lazy_static;
+pub extern crate serde;
+pub extern crate serde_json;
+pub extern crate tokio;
 
 use std::any::Any;
 use std::ptr::replace;
-
-use serde::Deserialize;
 
 use basic::result::TardisResult;
 
@@ -19,6 +20,7 @@ use crate::cache::cache_client::TardisCacheClient;
 use crate::db::reldb_client::TardisRelDBClient;
 #[cfg(feature = "mq")]
 use crate::mq::mq_client::TardisMQClient;
+use crate::serde::Deserialize;
 #[cfg(feature = "web-client")]
 use crate::web::web_client::TardisWebClient;
 #[cfg(feature = "web-server")]
@@ -228,3 +230,7 @@ pub mod mq;
 #[cfg(feature = "test")]
 pub mod test;
 pub mod web;
+
+pub mod log {
+    pub use log::*;
+}

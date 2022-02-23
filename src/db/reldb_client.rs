@@ -1,7 +1,7 @@
 use std::time::Duration;
 
+use crate::log::info;
 use async_trait::async_trait;
-use log::info;
 use sea_orm::entity::*;
 use sea_orm::sea_query::TableCreateStatement;
 use sea_orm::ActiveValue::Set;

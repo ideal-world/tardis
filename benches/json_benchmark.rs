@@ -1,6 +1,6 @@
-use criterion::{Criterion, criterion_group, criterion_main};
-use serde::{Deserialize, Serialize};
+use criterion::{criterion_group, criterion_main, Criterion};
 
+use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
 
 #[derive(Serialize, Deserialize)]

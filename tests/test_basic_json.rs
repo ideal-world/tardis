@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
-
 use tardis::basic::result::TardisResult;
+use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
 
 #[tokio::test]

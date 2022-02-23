@@ -4,7 +4,7 @@ extern crate core;
 
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
+use tardis::serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};

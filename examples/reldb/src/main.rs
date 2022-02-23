@@ -1,13 +1,14 @@
 use std::env;
 
-use log::info;
 use testcontainers::clients;
 
 use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::db::entity::*;
 use tardis::db::Set;
+use tardis::log::info;
 use tardis::test::test_container::TardisTestContainer;
+use tardis::tokio;
 use tardis::TardisFuns;
 
 mod domain;

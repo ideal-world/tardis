@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use log::info;
+use crate::log::info;
 use redis::aio::Connection;
 use redis::{AsyncCommands, RedisError, RedisResult};
 use url::Url;

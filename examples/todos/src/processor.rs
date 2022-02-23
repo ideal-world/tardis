@@ -3,15 +3,16 @@ use poem_openapi::{param::Path, payload::Json, Object, OpenApi};
 use sea_orm::sea_query::Expr;
 use sea_orm::ActiveValue::Set;
 use sea_orm::*;
-use serde::{Deserialize, Serialize};
 
 use tardis::db::reldb_client::TardisSeaORMExtend;
+use tardis::serde::{self, Deserialize, Serialize};
 use tardis::web::web_resp::{TardisPage, TardisResp};
 use tardis::TardisFuns;
 
 use crate::domain::todos;
 
 #[derive(Object, FromQueryResult, Serialize, Deserialize, Debug)]
+#[serde(crate = "self::serde")]
 struct TodoDetailResp {
     id: i32,
     description: String,
@@ -19,6 +20,7 @@ struct TodoDetailResp {
 }
 
 #[derive(Object, Serialize, Deserialize, Debug)]
+#[serde(crate = "self::serde")]
 struct TodoAddReq {
     #[oai(validator(min_length = "2", max_length = "255"))]
     description: String,
@@ -26,6 +28,7 @@ struct TodoAddReq {
 }
 
 #[derive(Object, Serialize, Deserialize, Debug)]
+#[serde(crate = "self::serde")]
 struct TodoModifyReq {
     #[oai(validator(min_length = "2", max_length = "255"))]
     description: Option<String>,
