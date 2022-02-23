@@ -177,7 +177,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
     assert_eq!(
         response.msg,
-        r#"parse JSON error: failed to parse "ValidateReq": field `len` verification failed. minLength(1)"#
+        r#"parse request payload error: failed to parse "ValidateReq": field `len` verification failed. minLength(1)"#
     );
 
     let response = TardisFuns::web_client()
@@ -201,7 +201,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
     assert_eq!(
         response.msg,
-        r#"parse JSON error: failed to parse "ValidateReq": field `eq` verification failed. minLength(5)"#
+        r#"parse request payload error: failed to parse "ValidateReq": field `eq` verification failed. minLength(5)"#
     );
 
     let response = TardisFuns::web_client()
@@ -225,7 +225,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
     assert_eq!(
         response.msg,
-        r#"parse JSON error: failed to parse "ValidateReq": field `range` verification failed. minimum(1, exclusive: false)"#
+        r#"parse request payload error: failed to parse "ValidateReq": field `range` verification failed. minimum(1, exclusive: false)"#
     );
 
     let response = TardisFuns::web_client()
@@ -249,7 +249,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
     assert_eq!(
         response.msg,
-        r#"parse JSON error: failed to parse "ValidateReq": field `mail` verification failed. Invalid mail format"#
+        r#"parse request payload error: failed to parse "ValidateReq": field `mail` verification failed. Invalid mail format"#
     );
 
     let response = TardisFuns::web_client()
@@ -273,7 +273,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
     assert_eq!(
         response.msg,
-        r#"parse JSON error: failed to parse "ValidateReq": field `contain` verification failed. pattern(".*gmail.*")"#
+        r#"parse request payload error: failed to parse "ValidateReq": field `contain` verification failed. pattern(".*gmail.*")"#
     );
 
     let response = TardisFuns::web_client()
@@ -297,7 +297,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
     assert_eq!(
         response.msg,
-        r#"parse JSON error: failed to parse "ValidateReq": field `phone` verification failed. Invalid phone number format"#
+        r#"parse request payload error: failed to parse "ValidateReq": field `phone` verification failed. Invalid phone number format"#
     );
 
     let response = TardisFuns::web_client()
@@ -321,7 +321,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
     assert_eq!(
         response.msg,
-        r#"parse JSON error: failed to parse "ValidateReq": field `item_len` verification failed. minItems(1)"#
+        r#"parse request payload error: failed to parse "ValidateReq": field `item_len` verification failed. minItems(1)"#
     );
 
     let response = TardisFuns::web_client()
@@ -345,7 +345,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
     assert_eq!(
         response.msg,
-        r#"parse JSON error: failed to parse "ValidateReq": field `item_unique` verification failed. uniqueItems()"#
+        r#"parse request payload error: failed to parse "ValidateReq": field `item_unique` verification failed. uniqueItems()"#
     );
 
     let response = TardisFuns::web_client()

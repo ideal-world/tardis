@@ -211,14 +211,15 @@ where
             "[Tardis.Config] Initializing, base path:{:?}, relative path:{:?}, profile:{}",
             parent_path, relative_path, profile
         );
-        let mut conf = Config::default();
+        let mut conf = Config::builder();
         if !relative_path.is_empty() {
-            conf.merge(File::from(path.join("conf-default")).required(true))?;
-            conf.merge(File::from(Path::new(relative_path).join(&format!("conf-{}", profile))).required(true))?;
+            conf = conf.add_source(File::from(path.join("conf-default")).required(true));
+            conf = conf.add_source(File::from(Path::new(relative_path).join(&format!("conf-{}", profile))).required(true));
         }
-        conf.merge(Environment::with_prefix("TARDIS"))?;
-        let workspace_config = conf.clone().try_into::<T>()?;
-        let framework_config = conf.try_into::<FrameworkConfig>()?;
+        conf = conf.add_source(Environment::with_prefix("TARDIS"));
+        let conf = conf.build()?;
+        let workspace_config = conf.clone().try_deserialize::<T>()?;
+        let framework_config = conf.try_deserialize::<FrameworkConfig>()?;
 
         env::set_var("RUST_BACKTRACE", if framework_config.adv.backtrace { "1" } else { "0" });
 

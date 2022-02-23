@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use poem::error::{CorsError, MethodNotAllowedError, NotFoundError, ParsePathError};
 use poem::http::StatusCode;
 use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
-use poem_openapi::error::{AuthorizationError, ContentTypeError, ParseJsonError, ParseMultipartError, ParseParamError};
+use poem_openapi::error::{AuthorizationError, ContentTypeError, ParseMultipartError, ParseParamError, ParseRequestPayloadError};
 use poem_openapi::payload::Payload;
 use poem_openapi::registry::{MetaMediaType, MetaResponse, MetaResponses, MetaSchemaRef, Registry};
 use poem_openapi::{
@@ -204,17 +204,22 @@ fn mapping_code(http_code: StatusCode) -> StatusCodeKind {
 }
 
 fn error_handler(err: poem::Error) -> Response {
-    let (code, msg) =
-        if err.is::<ParseParamError>() || err.is::<ParseJsonError>() || err.is::<ParseMultipartError>() || err.is::<ParsePathError>() || err.is::<MethodNotAllowedError>() {
-            (StatusCodeKind::BadRequest.into_unified_code(), err.to_string())
-        } else if err.is::<NotFoundError>() || err.is::<ContentTypeError>() {
-            (StatusCodeKind::NotFound.into_unified_code(), err.to_string())
-        } else if err.is::<AuthorizationError>() || err.is::<CorsError>() {
-            (StatusCodeKind::Unauthorized.into_unified_code(), err.to_string())
-        } else {
-            warn!("[Tardis.WebServer] Process error: {:?}", err);
-            (StatusCodeKind::UnKnown.into_unified_code(), err.to_string())
-        };
+    let (code, msg) = if err.is::<ParseParamError>()
+        || err.is::<ParseRequestPayloadError>()
+        || err.is::<ParseMultipartError>()
+        || err.is::<ContentTypeError>()
+        || err.is::<ParsePathError>()
+        || err.is::<MethodNotAllowedError>()
+    {
+        (StatusCodeKind::BadRequest.into_unified_code(), err.to_string())
+    } else if err.is::<NotFoundError>() {
+        (StatusCodeKind::NotFound.into_unified_code(), err.to_string())
+    } else if err.is::<AuthorizationError>() || err.is::<CorsError>() {
+        (StatusCodeKind::Unauthorized.into_unified_code(), err.to_string())
+    } else {
+        warn!("[Tardis.WebServer] Process error: {:?}", err);
+        (StatusCodeKind::UnKnown.into_unified_code(), err.to_string())
+    };
     Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(
         json!({
             "code": code,
