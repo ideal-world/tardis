@@ -8,4 +8,5 @@ members = [
     "cache",
     "mq",
     "todos",
+    "perf-test",
 ]
