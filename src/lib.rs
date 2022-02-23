@@ -1,11 +1,12 @@
 #[macro_use]
 extern crate lazy_static;
-pub extern crate serde;
-pub extern crate serde_json;
-pub extern crate tokio;
 
 use std::any::Any;
 use std::ptr::replace;
+
+pub use serde;
+pub use serde_json;
+pub use tokio;
 
 use basic::result::TardisResult;
 
