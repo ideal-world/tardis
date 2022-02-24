@@ -40,7 +40,7 @@ impl TardisRelDBClient {
         connect_timeout_sec: Option<u64>,
         idle_timeout_sec: Option<u64>,
     ) -> TardisResult<TardisRelDBClient> {
-        let url = Url::parse(str_url)?;
+        let url = Url::parse(str_url).unwrap_or_else(|_| panic!("[Tardis.RelDBClient] Invalid url {}", str_url));
         info!(
             "[Tardis.RelDBClient] Initializing, host:{}, port:{}, max_connections:{}",
             url.host_str().unwrap_or(""),
