@@ -6,6 +6,7 @@ use std::ptr::replace;
 
 pub use serde;
 pub use serde_json;
+#[cfg(feature = "rt_tokio")]
 pub use tokio;
 
 use basic::result::TardisResult;
