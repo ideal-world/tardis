@@ -16,8 +16,7 @@ impl TardisUri {
     }
 
     pub fn format(&self, uri_str: &str) -> TardisResult<String> {
-        let uri_result = url::Url::parse(uri_str);
-        let uri = uri_result?;
+        let uri = url::Url::parse(uri_str)?;
         let host = match uri.host() {
             Some(host) => host,
             None =>
@@ -47,8 +46,7 @@ impl TardisUri {
     }
 
     pub fn get_path_and_query(&self, uri_str: &str) -> TardisResult<String> {
-        let uri_result = url::Url::parse(uri_str);
-        let uri = uri_result?;
+        let uri = url::Url::parse(uri_str)?;
         let path = if uri.path().is_empty() {
             ""
         } else if uri.path().ends_with('/') {
