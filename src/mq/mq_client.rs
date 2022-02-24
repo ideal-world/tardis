@@ -1,16 +1,15 @@
 use std::collections::HashMap;
 use std::future::Future;
 
+use crate::log::{error, info, trace};
 use amq_protocol_types::{AMQPValue, LongString, ShortString};
 use futures_util::stream::StreamExt;
 use lapin::{options::*, types::FieldTable, BasicProperties, Channel, Connection, ConnectionProperties, Consumer, ExchangeKind};
-use tracing_subscriber::fmt::format;
 use url::Url;
 
 use crate::basic::config::FrameworkConfig;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::log::{error, info, trace};
 
 pub struct TardisMQClient {
     con: Connection,
@@ -24,7 +23,7 @@ impl TardisMQClient {
     }
 
     pub async fn init(str_url: &str) -> TardisResult<TardisMQClient> {
-        let url = Url::parse(str_url).unwrap_or_else(|_| panic!("[Tardis.MQClient] Invalid url {}", str_url));
+        let url = Url::parse(str_url)?;
         info!("[Tardis.MQClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
         let con = Connection::connect(str_url, ConnectionProperties::default().with_connection_name("tardis".into())).await?;
         info!("[Tardis.MQClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));

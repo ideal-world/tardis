@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::log::info;
 use redis::aio::Connection;
 use redis::{AsyncCommands, RedisError, RedisResult};
 use url::Url;
@@ -7,7 +8,6 @@ use url::Url;
 use crate::basic::config::FrameworkConfig;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::log::info;
 
 pub struct TardisCacheClient {
     con: Connection,
@@ -19,7 +19,7 @@ impl TardisCacheClient {
     }
 
     pub async fn init(str_url: &str) -> TardisResult<TardisCacheClient> {
-        let url = Url::parse(str_url).unwrap_or_else(|_| panic!("[Tardis.CacheClient] Invalid url {}", str_url));
+        let url = Url::parse(str_url)?;
         info!(
             "[Tardis.CacheClient] Initializing, host:{}, port:{}, db:{}",
             url.host_str().unwrap_or(""),
