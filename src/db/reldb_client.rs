@@ -1,20 +1,23 @@
 use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::log::info;
 use async_trait::async_trait;
-use sea_orm::entity::*;
 use sea_orm::sea_query::TableCreateStatement;
 use sea_orm::ActiveValue::Set;
+use sea_orm::*;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, EntityTrait, ExecResult, QueryTrait, Schema, Select, Statement};
+use sea_query::SelectStatement;
 use sqlparser::ast;
 use sqlparser::ast::{SetExpr, TableFactor};
 use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::{Parser, ParserError};
 use url::Url;
 
+use crate::basic::dto::TardisContext;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
+use crate::log::info;
 use crate::{FrameworkConfig, TardisFuns};
 
 pub struct TardisRelDBClient {
@@ -103,6 +106,72 @@ impl TardisRelDBClient {
         match result {
             Ok(ok) => TardisResult::Ok(ok),
             Err(err) => TardisResult::Err(TardisError::from(err)),
+        }
+    }
+
+    pub async fn get_dto<'a, C, D>(&self, select_statement: &SelectStatement, db: &'a C) -> TardisResult<Option<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        let result = D::find_by_statement(self.backend().build(select_statement)).one(db).await;
+        match result {
+            Ok(r) => TardisResult::Ok(r),
+            Err(err) => TardisResult::Err(TardisError::from(err)),
+        }
+    }
+
+    pub async fn find_dtos<'a, C, D>(&self, select_statement: &SelectStatement, db: &'a C) -> TardisResult<Vec<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        let result = D::find_by_statement(self.backend().build(select_statement)).all(db).await;
+        match result {
+            Ok(r) => TardisResult::Ok(r),
+            Err(err) => TardisResult::Err(TardisError::from(err)),
+        }
+    }
+
+    pub async fn paginate_dtos<'a, C, D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64, db: &'a C) -> TardisResult<(Vec<D>, i64)>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        let statement = self.backend().build(select_statement);
+        let query_sql = format!("{} LIMIT {} , {}", statement.sql, (page_number - 1) * page_size, page_size);
+        let query_statement = Statement {
+            sql: query_sql,
+            values: statement.values,
+            db_backend: statement.db_backend,
+        };
+        let query_result = D::find_by_statement(query_statement).all(db).await?;
+        let count_result = self.count(select_statement, db).await?;
+        Ok((query_result, count_result))
+    }
+
+    pub async fn count<'a, C>(&self, select_statement: &SelectStatement, db: &'a C) -> TardisResult<i64>
+    where
+        C: ConnectionTrait,
+    {
+        let statement = self.backend().build(select_statement);
+        let count_sql = format!(
+            "SELECT COUNT(1) AS count FROM ( {} ) _{}",
+            statement.sql,
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
+        );
+        let count_statement = Statement {
+            sql: count_sql.clone(),
+            values: statement.values,
+            db_backend: statement.db_backend,
+        };
+        let count_result = CountResp::find_by_statement(count_statement).one(db).await?;
+        match count_result {
+            Some(r) => TardisResult::Ok(r.count),
+            None => TardisResult::Err(TardisError::InternalError(format!(
+                "[Tardis.RelDBClient] No results found for count query by {}",
+                count_sql
+            ))),
         }
     }
 }
@@ -203,6 +272,42 @@ where
             Err(err) => TardisResult::Err(TardisError::from(err)),
         }
     }
+}
+
+#[async_trait]
+pub trait TardisActiveModel {
+    type Entity: EntityTrait;
+
+    async fn insert_cust<'a, C>(mut self, db: &'a C, cxt: &TardisContext) -> Result<<<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model, DbErr>
+    where
+        <<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        Self: ActiveModelBehavior + 'a,
+        C: ConnectionTrait,
+    {
+        self.fill_cxt(cxt, true);
+        let am = ActiveModelBehavior::before_save(self, true)?;
+        let model = <<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::insert(am).exec_with_returning(db).await?;
+        Self::after_save(model, true)
+    }
+
+    async fn update_cust<'a, C>(mut self, db: &'a C, cxt: &TardisContext) -> Result<<<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model, DbErr>
+    where
+        <<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
+        Self: ActiveModelBehavior + 'a,
+        C: ConnectionTrait,
+    {
+        self.fill_cxt(cxt, false);
+        let am = ActiveModelBehavior::before_save(self, false)?;
+        let model: <<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model = <Self as sea_orm::ActiveModelTrait>::Entity::update(am).exec(db).await?;
+        Self::after_save(model, false)
+    }
+
+    fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool);
+}
+
+#[derive(Debug, FromQueryResult)]
+struct CountResp {
+    count: i64,
 }
 
 impl From<DbErr> for TardisError {

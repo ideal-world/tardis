@@ -31,7 +31,7 @@ trace = ["tracing", "tracing-subscriber"]
 crypto = ["rust-crypto", "rsa", "pkcs8", "gmsm", "num"]
 rt_tokio = ["tokio"]
 future = ["rt_tokio", "futures", "async-stream", "futures-util", "async-trait"]
-reldb = ["future", "sqlparser", "sea-orm"]
+reldb = ["future", "sqlparser", "sea-orm", "sea-query"]
 web-server = ["trace", "future", "poem", "poem-openapi", "poem-openapi-derive"]
 web-client = ["rt_tokio", "reqwest"]
 cache = ["redis"]
@@ -77,10 +77,11 @@ tracing-subscriber = { version = "^0.3", features = ["env-filter"], optional = t
 
 # RelDB
 sea-orm = { version = "^0.6", features = ["sqlx-all", "macros", "runtime-tokio-rustls", "debug-print"], optional = true }
+sea-query = { version = "^0.21", optional = true }
 sqlparser = { version = "^0.14", optional = true }
 
 # Web Server
-poem-openapi = { version = "^1.3", features = ["rapidoc"], optional = true }
+poem-openapi = { version = "^1.3", features = ["rapidoc", "chrono"], optional = true }
 poem-openapi-derive = { version = "^1.3", optional = true }
 poem = { version = "^1.3", features = ["csrf", "opentelemetry", "rustls", "prometheus", "websocket"], optional = true }
 
