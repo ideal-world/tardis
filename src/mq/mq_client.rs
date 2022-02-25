@@ -4,7 +4,6 @@ use std::future::Future;
 use amq_protocol_types::{AMQPValue, LongString, ShortString};
 use futures_util::stream::StreamExt;
 use lapin::{options::*, types::FieldTable, BasicProperties, Channel, Connection, ConnectionProperties, Consumer, ExchangeKind};
-use tracing_subscriber::fmt::format;
 use url::Url;
 
 use crate::basic::config::FrameworkConfig;
