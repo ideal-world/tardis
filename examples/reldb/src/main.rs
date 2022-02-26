@@ -4,8 +4,7 @@ use testcontainers::clients;
 
 use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
-use tardis::db::entity::*;
-use tardis::db::Set;
+use tardis::db::sea_orm::*;
 use tardis::log::info;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::tokio;

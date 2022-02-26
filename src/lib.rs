@@ -4,12 +4,14 @@ extern crate lazy_static;
 use std::any::Any;
 use std::ptr::replace;
 
+pub use log;
 pub use serde;
 pub use serde_json;
 #[cfg(feature = "rt_tokio")]
 pub use tokio;
 
 use basic::result::TardisResult;
+pub use chrono;
 
 use crate::basic::config::{FrameworkConfig, TardisConfig};
 use crate::basic::field::TardisField;
@@ -232,7 +234,3 @@ pub mod mq;
 #[cfg(feature = "test")]
 pub mod test;
 pub mod web;
-
-pub mod log {
-    pub use log::*;
-}

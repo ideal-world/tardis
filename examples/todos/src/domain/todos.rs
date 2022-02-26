@@ -1,4 +1,4 @@
-use sea_orm::entity::prelude::*;
+use tardis::db::sea_orm::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "todos")]

@@ -1,5 +1,4 @@
-use tardis::db::entity::prelude::*;
-use tardis::db::ActiveModelBehavior;
+use tardis::db::sea_orm::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "test_app_account_rel")]
