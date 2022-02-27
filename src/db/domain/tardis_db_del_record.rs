@@ -1,9 +1,9 @@
-use sea_orm::entity::prelude::*;
-use sea_orm::sea_query::{ColumnDef, Table, TableCreateStatement};
-use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelBehavior, DbBackend};
-
-use crate::db::domain::tardis_db_del_record;
+use crate::basic::dto::TardisContext;
+use crate::db::reldb_client::TardisActiveModel;
+use crate::db::sea_orm::entity::prelude::*;
+use crate::db::sea_orm::ActiveValue::Set;
+use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
+use crate::db::sea_query::{ColumnDef, Table, TableCreateStatement};
 use crate::TardisFuns;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
@@ -21,8 +21,24 @@ pub struct Model {
     pub create_time: DateTime,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+impl TardisActiveModel for ActiveModel {
+    type Entity = Entity;
+
+    fn fill_cxt(&mut self, _: &TardisContext, _: bool) {}
+
+    fn create_table_statement(_: DbBackend) -> TableCreateStatement {
+        Table::create()
+            .table(Entity.table_ref())
+            .if_not_exists()
+            .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
+            .col(ColumnDef::new(Column::EntityName).not_null().string())
+            .col(ColumnDef::new(Column::RecordId).not_null().string())
+            .col(ColumnDef::new(Column::Content).not_null().text())
+            .col(ColumnDef::new(Column::Creator).not_null().string())
+            .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+            .to_owned()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {
     fn new() -> Self {
@@ -33,15 +49,5 @@ impl ActiveModelBehavior for ActiveModel {
     }
 }
 
-pub fn create_table_statement(_: DbBackend) -> TableCreateStatement {
-    Table::create()
-        .table(tardis_db_del_record::Entity.table_ref())
-        .if_not_exists()
-        .col(ColumnDef::new(tardis_db_del_record::Column::Id).not_null().string().primary_key())
-        .col(ColumnDef::new(tardis_db_del_record::Column::EntityName).not_null().string())
-        .col(ColumnDef::new(tardis_db_del_record::Column::RecordId).not_null().string())
-        .col(ColumnDef::new(tardis_db_del_record::Column::Content).not_null().text())
-        .col(ColumnDef::new(tardis_db_del_record::Column::Creator).not_null().string())
-        .col(ColumnDef::new(tardis_db_del_record::Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-        .to_owned()
-}
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {}

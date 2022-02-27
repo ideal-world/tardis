@@ -79,10 +79,10 @@ impl TardisRelDBClient {
     }
 
     async fn init_basic_tables(&self) -> TardisResult<ExecResult> {
-        let config_statement = tardis_db_config::create_table_statement(self.con.get_database_backend());
+        let config_statement = tardis_db_config::ActiveModel::create_table_statement(self.con.get_database_backend());
         self.create_table_from_statement(&config_statement).await?;
-        let config_statement = tardis_db_del_record::create_table_statement(self.con.get_database_backend());
-        self.create_table_from_statement(&config_statement).await
+        let del_record_statement = tardis_db_del_record::ActiveModel::create_table_statement(self.con.get_database_backend());
+        self.create_table_from_statement(&del_record_statement).await
     }
 
     /// TODO 不支持 not_null nullable  default_value  default_expr indexed, unique 等
@@ -303,6 +303,10 @@ pub trait TardisActiveModel {
     }
 
     fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool);
+
+    fn create_table_statement(_: DbBackend) -> TableCreateStatement {
+        TableCreateStatement::new()
+    }
 }
 
 #[derive(Debug, FromQueryResult)]

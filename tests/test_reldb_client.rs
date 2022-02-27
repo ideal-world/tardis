@@ -510,7 +510,7 @@ pub mod entities {
         impl TardisActiveModel for ActiveModel {
             type Entity = Entity;
 
-            fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool) {
+            fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.uuid_str());
                 }
@@ -553,7 +553,7 @@ pub mod entities {
         impl TardisActiveModel for ActiveModel {
             type Entity = Entity;
 
-            fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool) {
+            fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.uuid_str());
                 }
@@ -606,7 +606,7 @@ pub mod entities {
         impl TardisActiveModel for ActiveModel {
             type Entity = Entity;
 
-            fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool) {
+            fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.uuid_str());
                 }
@@ -649,7 +649,7 @@ pub mod entities {
         impl TardisActiveModel for ActiveModel {
             type Entity = Entity;
 
-            fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool) {
+            fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.uuid_str());
                 }

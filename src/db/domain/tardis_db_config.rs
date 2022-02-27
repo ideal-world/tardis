@@ -1,9 +1,9 @@
-use sea_orm::entity::prelude::*;
-use sea_orm::sea_query::{ColumnDef, Table, TableCreateStatement};
-use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelBehavior, DbBackend};
-
-use crate::db::domain::tardis_db_config;
+use crate::basic::dto::TardisContext;
+use crate::db::reldb_client::TardisActiveModel;
+use crate::db::sea_orm::entity::prelude::*;
+use crate::db::sea_orm::ActiveValue::Set;
+use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
+use crate::db::sea_query::{ColumnDef, Table, TableCreateStatement};
 use crate::TardisFuns;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
@@ -21,8 +21,56 @@ pub struct Model {
     pub update_time: DateTime,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+impl TardisActiveModel for ActiveModel {
+    type Entity = Entity;
+
+    fn fill_cxt(&mut self, _: &TardisContext, _: bool) {}
+
+    fn create_table_statement(db_type: DbBackend) -> TableCreateStatement {
+        match db_type {
+            DbBackend::MySql => Table::create()
+                .table(Entity.table_ref())
+                .if_not_exists()
+                .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
+                .col(ColumnDef::new(Column::K).not_null().string())
+                .col(ColumnDef::new(Column::V).not_null().text())
+                .col(ColumnDef::new(Column::Creator).not_null().string())
+                .col(ColumnDef::new(Column::Updater).not_null().string())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).date_time())
+                .to_owned(),
+            DbBackend::Postgres => {
+                Table::create()
+                    .table(Entity.table_ref())
+                    .if_not_exists()
+                    .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
+                    .col(ColumnDef::new(Column::K).not_null().string())
+                    .col(ColumnDef::new(Column::V).not_null().text())
+                    .col(ColumnDef::new(Column::Creator).not_null().string())
+                    .col(ColumnDef::new(Column::Updater).not_null().string())
+                    .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                    // TODO update time
+                    .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                    .to_owned()
+            }
+            DbBackend::Sqlite =>
+            // TODO
+            {
+                Table::create()
+                    .table(Entity.table_ref())
+                    .if_not_exists()
+                    .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
+                    .col(ColumnDef::new(Column::K).not_null().string())
+                    .col(ColumnDef::new(Column::V).not_null().text())
+                    .col(ColumnDef::new(Column::Creator).not_null().string())
+                    .col(ColumnDef::new(Column::Updater).not_null().string())
+                    .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                    .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).date_time())
+                    .to_owned()
+            }
+        }
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {
     fn new() -> Self {
@@ -33,47 +81,5 @@ impl ActiveModelBehavior for ActiveModel {
     }
 }
 
-pub fn create_table_statement(db_type: DbBackend) -> TableCreateStatement {
-    match db_type {
-        DbBackend::MySql => Table::create()
-            .table(tardis_db_config::Entity.table_ref())
-            .if_not_exists()
-            .col(ColumnDef::new(tardis_db_config::Column::Id).not_null().string().primary_key())
-            .col(ColumnDef::new(tardis_db_config::Column::K).not_null().string())
-            .col(ColumnDef::new(tardis_db_config::Column::V).not_null().text())
-            .col(ColumnDef::new(tardis_db_config::Column::Creator).not_null().string())
-            .col(ColumnDef::new(tardis_db_config::Column::Updater).not_null().string())
-            .col(ColumnDef::new(tardis_db_config::Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-            .col(ColumnDef::new(tardis_db_config::Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).date_time())
-            .to_owned(),
-        DbBackend::Postgres => {
-            Table::create()
-                .table(tardis_db_config::Entity.table_ref())
-                .if_not_exists()
-                .col(ColumnDef::new(tardis_db_config::Column::Id).not_null().string().primary_key())
-                .col(ColumnDef::new(tardis_db_config::Column::K).not_null().string())
-                .col(ColumnDef::new(tardis_db_config::Column::V).not_null().text())
-                .col(ColumnDef::new(tardis_db_config::Column::Creator).not_null().string())
-                .col(ColumnDef::new(tardis_db_config::Column::Updater).not_null().string())
-                .col(ColumnDef::new(tardis_db_config::Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-                // TODO update time
-                .col(ColumnDef::new(tardis_db_config::Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-                .to_owned()
-        }
-        DbBackend::Sqlite =>
-        // TODO
-        {
-            Table::create()
-                .table(tardis_db_config::Entity.table_ref())
-                .if_not_exists()
-                .col(ColumnDef::new(tardis_db_config::Column::Id).not_null().string().primary_key())
-                .col(ColumnDef::new(tardis_db_config::Column::K).not_null().string())
-                .col(ColumnDef::new(tardis_db_config::Column::V).not_null().text())
-                .col(ColumnDef::new(tardis_db_config::Column::Creator).not_null().string())
-                .col(ColumnDef::new(tardis_db_config::Column::Updater).not_null().string())
-                .col(ColumnDef::new(tardis_db_config::Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-                .col(ColumnDef::new(tardis_db_config::Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).date_time())
-                .to_owned()
-        }
-    }
-}
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {}
