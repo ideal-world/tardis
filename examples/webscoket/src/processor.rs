@@ -1,8 +1,6 @@
 use futures_util::{SinkExt, StreamExt};
 
-use tardis::web::payload::Html;
-use tardis::web::OpenApi;
-use tardis::web::{
+use tardis::web::poem::{
     handler,
     web::{
         websocket::{Message, WebSocket},
@@ -10,6 +8,8 @@ use tardis::web::{
     },
     IntoResponse,
 };
+use tardis::web::poem_openapi::payload::Html;
+use tardis::web::poem_openapi::OpenApi;
 
 pub struct Page;
 

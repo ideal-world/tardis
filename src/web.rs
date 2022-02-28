@@ -1,7 +1,7 @@
 #[cfg(feature = "web-server")]
-pub use poem::*;
+pub use poem;
 #[cfg(feature = "web-server")]
-pub use poem_openapi::*;
+pub use poem_openapi;
 
 #[cfg(feature = "web-client")]
 pub mod web_client;

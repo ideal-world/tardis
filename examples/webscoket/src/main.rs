@@ -3,7 +3,7 @@ use std::env;
 use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::tokio;
-use tardis::web::{get, EndpointExt, Route};
+use tardis::web::poem::{get, EndpointExt, Route};
 use tardis::TardisFuns;
 
 use crate::processor::ws_broadcast;

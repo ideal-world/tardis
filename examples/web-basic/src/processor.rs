@@ -1,7 +1,7 @@
 use tardis::basic::error::TardisError;
-use tardis::web::param::Query;
+use tardis::web::poem_openapi::param::Query;
+use tardis::web::poem_openapi::OpenApi;
 use tardis::web::web_resp::TardisResp;
-use tardis::web::OpenApi;
 
 pub struct Api;
 
