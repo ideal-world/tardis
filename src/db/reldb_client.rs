@@ -6,7 +6,7 @@ use sea_orm::sea_query::TableCreateStatement;
 use sea_orm::ActiveValue::Set;
 use sea_orm::*;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, EntityTrait, ExecResult, QueryTrait, Schema, Select, Statement};
-use sea_query::SelectStatement;
+use sea_query::{IndexCreateStatement, SelectStatement};
 use sqlparser::ast;
 use sqlparser::ast::{SetExpr, TableFactor};
 use sqlparser::dialect::MySqlDialect;
@@ -78,31 +78,59 @@ impl TardisRelDBClient {
         self.con.get_database_backend()
     }
 
-    async fn init_basic_tables(&self) -> TardisResult<ExecResult> {
-        let config_statement = tardis_db_config::ActiveModel::create_table_statement(self.con.get_database_backend());
-        self.create_table_from_statement(&config_statement).await?;
-        let del_record_statement = tardis_db_del_record::ActiveModel::create_table_statement(self.con.get_database_backend());
-        self.create_table_from_statement(&del_record_statement).await
+    async fn init_basic_tables(&self) -> TardisResult<()> {
+        let tx = self.con.begin().await?;
+        let config_create_table_statement = tardis_db_config::ActiveModel::create_table_statement(self.con.get_database_backend());
+        self.create_table(&config_create_table_statement, &tx).await?;
+        let del_record_create_table_statement = tardis_db_del_record::ActiveModel::create_table_statement(self.con.get_database_backend());
+        self.create_table(&del_record_create_table_statement, &tx).await?;
+        let del_record_create_index_statement = tardis_db_del_record::ActiveModel::create_index_statement();
+        self.create_index(&del_record_create_index_statement, &tx).await?;
+        tx.commit().await?;
+        Ok(())
     }
 
     /// TODO 不支持 not_null nullable  default_value  default_expr indexed, unique 等
-    pub async fn create_table_from_entity<E>(&self, entity: E) -> TardisResult<ExecResult>
+    pub async fn create_table_from_entity<'a, E, C>(&self, entity: E, db: &'a C) -> TardisResult<()>
     where
+        C: ConnectionTrait,
         E: EntityTrait,
     {
         let builder = self.con.get_database_backend();
         let schema = Schema::new(builder);
         let table_create_statement = &schema.create_table_from_entity(entity);
-        self.create_table_from_statement(table_create_statement).await
+        self.create_table(table_create_statement, db).await
     }
 
-    pub async fn create_table_from_statement(&self, statement: &TableCreateStatement) -> TardisResult<ExecResult> {
+    pub async fn create_table<'a, C>(&self, statement: &TableCreateStatement, db: &'a C) -> TardisResult<()>
+    where
+        C: ConnectionTrait,
+    {
         let statement = self.con.get_database_backend().build(statement);
-        self.execute(statement).await
+        match self.execute(statement, db).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
-    pub async fn execute(&self, statement: Statement) -> TardisResult<ExecResult> {
-        let result = self.con.execute(statement).await;
+    pub async fn create_index<'a, C>(&self, statements: &Vec<IndexCreateStatement>, db: &'a C) -> TardisResult<()>
+    where
+        C: ConnectionTrait,
+    {
+        for statement in statements {
+            let statement = self.con.get_database_backend().build(statement);
+            if let Err(e) = self.execute(statement, db).await {
+                return Err(e);
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn execute<'a, C>(&self, statement: Statement, db: &'a C) -> TardisResult<ExecResult>
+    where
+        C: ConnectionTrait,
+    {
+        let result = db.execute(statement).await;
         match result {
             Ok(ok) => TardisResult::Ok(ok),
             Err(err) => TardisResult::Err(TardisError::from(err)),
@@ -133,7 +161,7 @@ impl TardisRelDBClient {
         }
     }
 
-    pub async fn paginate_dtos<'a, C, D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64, db: &'a C) -> TardisResult<(Vec<D>, i64)>
+    pub async fn paginate_dtos<'a, C, D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64, db: &'a C) -> TardisResult<(Vec<D>, u64)>
     where
         C: ConnectionTrait,
         D: FromQueryResult,
@@ -150,7 +178,7 @@ impl TardisRelDBClient {
         Ok((query_result, count_result))
     }
 
-    pub async fn count<'a, C>(&self, select_statement: &SelectStatement, db: &'a C) -> TardisResult<i64>
+    pub async fn count<'a, C>(&self, select_statement: &SelectStatement, db: &'a C) -> TardisResult<u64>
     where
         C: ConnectionTrait,
     {
@@ -167,7 +195,7 @@ impl TardisRelDBClient {
         };
         let count_result = CountResp::find_by_statement(count_statement).one(db).await?;
         match count_result {
-            Some(r) => TardisResult::Ok(r.count),
+            Some(r) => TardisResult::Ok(r.count as u64),
             None => TardisResult::Err(TardisError::InternalError(format!(
                 "[Tardis.RelDBClient] No results found for count query by {}",
                 count_sql
@@ -306,6 +334,10 @@ pub trait TardisActiveModel {
 
     fn create_table_statement(_: DbBackend) -> TableCreateStatement {
         TableCreateStatement::new()
+    }
+
+    fn create_index_statement() -> Vec<IndexCreateStatement> {
+        vec![IndexCreateStatement::new()]
     }
 }
 

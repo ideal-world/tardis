@@ -115,9 +115,9 @@ pub struct TardisPage<T>
 where
     T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
 {
-    pub page_size: usize,
-    pub page_number: usize,
-    pub total_size: usize,
+    pub page_size: u64,
+    pub page_number: u64,
+    pub total_size: u64,
     pub records: Vec<T>,
 }
 

@@ -1,9 +1,9 @@
 use crate::basic::dto::TardisContext;
 use crate::db::reldb_client::TardisActiveModel;
-use crate::db::sea_orm::entity::prelude::*;
-use crate::db::sea_orm::ActiveValue::Set;
 use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
-use crate::db::sea_query::{ColumnDef, Table, TableCreateStatement};
+use crate::db::sea_orm::ActiveValue::Set;
+use crate::db::sea_orm::entity::prelude::*;
+use crate::db::sea_query::{ColumnDef, Index, IndexCreateStatement, Table, TableCreateStatement};
 use crate::TardisFuns;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
@@ -37,6 +37,13 @@ impl TardisActiveModel for ActiveModel {
             .col(ColumnDef::new(Column::Creator).not_null().string())
             .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
             .to_owned()
+    }
+
+    fn create_index_statement() -> Vec<IndexCreateStatement> {
+        vec![
+            Index::create().name(&format!("idx-{}-{}", Entity.table_name(), Column::EntityName.to_string())).table(Entity).col(Column::EntityName).to_owned(),
+            Index::create().name(&format!("idx-{}-{}", Entity.table_name(), Column::RecordId.to_string())).table(Entity).col(Column::RecordId).to_owned(),
+        ]
     }
 }
 

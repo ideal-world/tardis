@@ -299,11 +299,13 @@ async fn test_transaction(client: &TardisRelDBClient) -> TardisResult<()> {
 }
 
 async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
-    client.create_table_from_entity(entities::tenant::Entity).await?;
-    client.create_table_from_entity(entities::tenant_conf::Entity).await?;
-    client.create_table_from_entity(entities::app::Entity).await?;
-    client.create_table_from_entity(entities::account::Entity).await?;
-    client.create_table_from_entity(entities::app_account_rel::Entity).await?;
+    let tx = client.conn().begin().await?;
+    client.create_table_from_entity(entities::tenant::Entity, &tx).await?;
+    client.create_table_from_entity(entities::tenant_conf::Entity, &tx).await?;
+    client.create_table_from_entity(entities::app::Entity, &tx).await?;
+    client.create_table_from_entity(entities::account::Entity, &tx).await?;
+    client.create_table_from_entity(entities::app_account_rel::Entity, &tx).await?;
+    tx.commit().await?;
 
     let cxt = TardisContext {
         app_id: "a1".to_string(),
