@@ -78,9 +78,9 @@ impl TardisRelDBClient {
         self.con.get_database_backend()
     }
 
-    pub async fn begin(&self) -> TardisRelDBClientTransaction {
-        let t = self.con.begin().await.unwrap();
-        TardisRelDBClientTransaction { tx: t }
+    pub async fn begin(&self) -> TardisResult<TardisRelDBClientTransaction> {
+        let t = self.con.begin().await?;
+        Ok(TardisRelDBClientTransaction { tx: t })
     }
 
     async fn init_basic_tables(&self) -> TardisResult<()> {
@@ -96,7 +96,7 @@ impl TardisRelDBClient {
     }
 
     /// TODO 不支持 not_null nullable  default_value  default_expr indexed, unique 等
-    pub(self) async fn create_table_from_entity_inner<'a, E, C>(entity: E, db: &'a C) -> TardisResult<()>
+    pub(self) async fn create_table_from_entity_inner<E, C>(entity: E, db: &C) -> TardisResult<()>
     where
         C: ConnectionTrait,
         E: EntityTrait,
@@ -118,7 +118,7 @@ impl TardisRelDBClient {
         }
     }
 
-    pub(self) async fn create_index_inner<'a, C>(statements: &Vec<IndexCreateStatement>, db: &'a C) -> TardisResult<()>
+    pub(self) async fn create_index_inner<'a, C>(statements: &[IndexCreateStatement], db: &'a C) -> TardisResult<()>
     where
         C: ConnectionTrait,
     {
@@ -131,7 +131,7 @@ impl TardisRelDBClient {
         Ok(())
     }
 
-    pub(self) async fn execute_inner<'a, C>(statement: Statement, db: &'a C) -> TardisResult<ExecResult>
+    pub(self) async fn execute_inner<C>(statement: Statement, db: &C) -> TardisResult<ExecResult>
     where
         C: ConnectionTrait,
     {
@@ -264,33 +264,6 @@ impl TardisRelDBClient {
     }
 }
 
-// #[async_trait]
-// pub trait TardisRelDBClientOperation {
-//     async fn create_table_from_entity<E>(&self, entity: E) -> TardisResult<()>
-//     where
-//         E: EntityTrait;
-//
-//     async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()>;
-//
-//     async fn create_index(&self, statements: &Vec<IndexCreateStatement>) -> TardisResult<()>;
-//
-//     async fn get_dto<D>(&self, select_statement: &SelectStatement) -> TardisResult<Option<D>>
-//     where
-//         D: FromQueryResult;
-//
-//     async fn find_dtos<D>(&self, select_statement: &SelectStatement) -> TardisResult<Vec<D>>
-//     where
-//         D: FromQueryResult;
-//
-//     async fn paginate_dtos<D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
-//     where
-//         D: FromQueryResult;
-//
-//     async fn count(&self, select_statement: &SelectStatement) -> TardisResult<u64>;
-//
-//     async fn execute(&self, statement: Statement) -> TardisResult<ExecResult>;
-// }
-
 impl TardisRelDBClient {
     pub async fn create_table_from_entity<E>(&self, entity: E) -> TardisResult<()>
     where
@@ -300,11 +273,11 @@ impl TardisRelDBClient {
     }
 
     pub async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()> {
-        TardisRelDBClient::create_table_inner(&statement, &self.con).await
+        TardisRelDBClient::create_table_inner(statement, &self.con).await
     }
 
-    pub async fn create_index(&self, statements: &Vec<IndexCreateStatement>) -> TardisResult<()> {
-        TardisRelDBClient::create_index_inner(&statements, &self.con).await
+    pub async fn create_index(&self, statements: &[IndexCreateStatement]) -> TardisResult<()> {
+        TardisRelDBClient::create_index_inner(statements, &self.con).await
     }
 
     pub async fn get_dto<D>(&self, select_statement: &SelectStatement) -> TardisResult<Option<D>>
@@ -399,11 +372,11 @@ impl TardisRelDBClientTransaction {
     }
 
     pub async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()> {
-        TardisRelDBClient::create_table_inner(&statement, &self.tx).await
+        TardisRelDBClient::create_table_inner(statement, &self.tx).await
     }
 
-    pub async fn create_index(&self, statements: &Vec<IndexCreateStatement>) -> TardisResult<()> {
-        TardisRelDBClient::create_index_inner(&statements, &self.tx).await
+    pub async fn create_index(&self, statements: &[IndexCreateStatement]) -> TardisResult<()> {
+        TardisRelDBClient::create_index_inner(statements, &self.tx).await
     }
 
     pub async fn get_dto<D>(&self, select_statement: &SelectStatement) -> TardisResult<Option<D>>

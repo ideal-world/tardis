@@ -1,3 +1,5 @@
+use tardis::basic::dto::TardisContext;
+use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm::*;
 use tardis::TardisFuns;
 
@@ -22,11 +24,12 @@ impl Related<super::tenant::Entity> for super::tenant_conf::Entity {
     }
 }
 
-impl ActiveModelBehavior for ActiveModel {
-    fn new() -> Self {
-        Self {
-            id: Set(TardisFuns::field.uuid_str()),
-            ..ActiveModelTrait::default()
+impl TardisActiveModel for ActiveModel {
+    fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
+        if is_insert {
+            self.id = Set(TardisFuns::field.uuid_str());
         }
     }
 }
+
+impl ActiveModelBehavior for ActiveModel {}

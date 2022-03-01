@@ -1,6 +1,6 @@
-use tardis::db::reldb_client::TardisSeaORMExtend;
+use tardis::basic::dto::TardisContext;
 use tardis::db::sea_orm::*;
-use tardis::db::sea_query::*;
+use tardis::db::sea_query::Query as DbQuery;
 use tardis::serde::{self, Deserialize, Serialize};
 use tardis::web::poem_openapi::param::Query;
 use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi};
@@ -39,67 +39,88 @@ pub struct TodoApi;
 impl TodoApi {
     #[oai(path = "/todo", method = "post")]
     async fn add(&self, todo_add_req: Json<TodoAddReq>) -> TardisResp<i32> {
-        let todo = todos::ActiveModel {
-            description: Set(todo_add_req.description.to_string()),
-            done: Set(todo_add_req.done),
-            ..Default::default()
-        }
-        .insert(TardisFuns::reldb().conn())
-        .await
-        .unwrap();
-        TardisResp::ok(todo.id)
+        let cxt = TardisContext {
+            app_id: "".to_string(),
+            tenant_id: "".to_string(),
+            ak: "".to_string(),
+            account_id: "".to_string(),
+            token: "".to_string(),
+            token_kind: "".to_string(),
+            roles: vec![],
+            groups: vec![],
+        };
+        let todo_id = TardisFuns::reldb()
+            .insert_one(
+                todos::ActiveModel {
+                    description: Set(todo_add_req.description.to_string()),
+                    done: Set(todo_add_req.done),
+                    ..Default::default()
+                },
+                &cxt,
+            )
+            .await
+            .unwrap()
+            .last_insert_id;
+        TardisResp::ok(todo_id)
     }
 
     #[oai(path = "/todo/:id", method = "get")]
     async fn get(&self, id: Path<i32>) -> TardisResp<TodoDetailResp> {
-        let todo_detail_resp = todos::Entity::find()
-            .filter(todos::Column::Id.eq(id.0))
-            .select_only()
-            .column(todos::Column::Id)
-            .column(todos::Column::Description)
-            .column(todos::Column::Done)
-            .into_model::<TodoDetailResp>()
-            .one(TardisFuns::reldb().conn())
+        let todo = TardisFuns::reldb()
+            .get_dto(DbQuery::select().columns(vec![todos::Column::Id, todos::Column::Description, todos::Column::Done]).from(todos::Entity).and_where(todos::Column::Id.eq(id.0)))
             .await
             .unwrap()
             .unwrap();
-        TardisResp::ok(todo_detail_resp)
+        TardisResp::ok(todo)
     }
 
     #[oai(path = "/todo", method = "get")]
-    async fn get_all(&self, page_number: Query<usize>, page_size: Query<usize>) -> TardisResp<TardisPage<TodoDetailResp>> {
-        let result = todos::Entity::find()
-            .select_only()
-            .column(todos::Column::Id)
-            .column(todos::Column::Description)
-            .column(todos::Column::Done)
-            .order_by_desc(todos::Column::Id)
-            .into_model::<TodoDetailResp>()
-            .paginate(TardisFuns::reldb().conn(), page_size.0);
+    async fn get_all(&self, page_number: Query<u64>, page_size: Query<u64>) -> TardisResp<TardisPage<TodoDetailResp>> {
+        let (todos, total_size) = TardisFuns::reldb()
+            .paginate_dtos(
+                DbQuery::select().columns(vec![todos::Column::Id, todos::Column::Description, todos::Column::Done]).from(todos::Entity),
+                page_number.0,
+                page_size.0,
+            )
+            .await
+            .unwrap();
         TardisResp::ok(TardisPage {
+            page_number: page_number.0,
             page_size: page_size.0,
-            page_number: result.num_pages().await.unwrap(),
-            total_size: result.num_items().await.unwrap(),
-            records: result.fetch_page(page_number.0 - 1).await.unwrap(),
+            total_size,
+            records: todos,
         })
     }
 
     #[oai(path = "/todo/:id", method = "delete")]
-    async fn delete(&self, id: Path<i32>) -> TardisResp<usize> {
-        let delete_num = todos::Entity::find().filter(todos::Column::Id.eq(id.0)).soft_delete(TardisFuns::reldb().conn(), "").await.unwrap();
+    async fn delete(&self, id: Path<i32>) -> TardisResp<u64> {
+        let delete_num = TardisFuns::reldb().soft_delete(todos::Entity::find().filter(todos::Column::Id.eq(id.0)), "").await.unwrap();
         TardisResp::ok(delete_num)
     }
 
     #[oai(path = "/todo/:id", method = "put")]
-    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>) -> TardisResp<usize> {
-        let mut update = todos::Entity::update_many().filter(todos::Column::Id.eq(id.0));
-        if let Some(description) = &todo_modify_req.description {
-            update = update.col_expr(todos::Column::Description, Expr::value(description.clone()));
-        }
-        if let Some(done) = todo_modify_req.done {
-            update = update.col_expr(todos::Column::Done, Expr::value(done));
-        }
-        let update_num = update.exec(TardisFuns::reldb().conn()).await.unwrap().rows_affected;
-        TardisResp::ok(update_num as usize)
+    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>) -> TardisResp<u64> {
+        let cxt = TardisContext {
+            app_id: "".to_string(),
+            tenant_id: "".to_string(),
+            ak: "".to_string(),
+            account_id: "".to_string(),
+            token: "".to_string(),
+            token_kind: "".to_string(),
+            roles: vec![],
+            groups: vec![],
+        };
+        TardisFuns::reldb()
+            .update_one(
+                todos::ActiveModel {
+                    id: Set(id.0),
+                    description: todo_modify_req.description.as_ref().map(|v| Set(v.clone())).unwrap_or(NotSet),
+                    done: todo_modify_req.done.map(Set).unwrap_or(NotSet),
+                },
+                &cxt,
+            )
+            .await
+            .unwrap();
+        TardisResp::ok(0)
     }
 }

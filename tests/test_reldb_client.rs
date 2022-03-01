@@ -12,8 +12,8 @@ use tardis::db::reldb_client::TardisSeaORMExtend;
 use tardis::db::sea_orm::*;
 use tardis::db::sea_query::*;
 use tardis::log::info;
-use tardis::TardisFuns;
 use tardis::test::test_container::TardisTestContainer;
+use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_reldb_client() -> TardisResult<()> {
@@ -317,7 +317,7 @@ async fn test_transaction(client: &TardisRelDBClient) -> TardisResult<()> {
 }
 
 async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
-    let tx = client.begin().await;
+    let tx = client.begin().await?;
     tx.create_table_from_entity(entities::tenant::Entity).await?;
     tx.create_table_from_entity(entities::tenant_conf::Entity).await?;
     tx.create_table_from_entity(entities::app::Entity).await?;
@@ -504,9 +504,9 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
 pub mod entities {
 
     pub mod tenant {
+        use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
         use sea_orm::ActiveValue::Set;
-        use sea_orm::entity::prelude::*;
 
         use tardis::basic::dto::TardisContext;
         use tardis::db::reldb_client::TardisActiveModel;
@@ -552,9 +552,9 @@ pub mod entities {
     }
 
     pub mod tenant_conf {
+        use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
         use sea_orm::ActiveValue::Set;
-        use sea_orm::entity::prelude::*;
 
         use tardis::basic::dto::TardisContext;
         use tardis::db::reldb_client::TardisActiveModel;
@@ -593,9 +593,9 @@ pub mod entities {
     }
 
     pub mod app {
+        use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
         use sea_orm::ActiveValue::Set;
-        use sea_orm::entity::prelude::*;
 
         use tardis::basic::dto::TardisContext;
         use tardis::db::reldb_client::TardisActiveModel;
@@ -644,9 +644,9 @@ pub mod entities {
     }
 
     pub mod account {
+        use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
         use sea_orm::ActiveValue::Set;
-        use sea_orm::entity::prelude::*;
 
         use tardis::basic::dto::TardisContext;
         use tardis::db::reldb_client::TardisActiveModel;
@@ -685,8 +685,8 @@ pub mod entities {
     }
 
     pub mod app_account_rel {
-        use sea_orm::ActiveModelBehavior;
         use sea_orm::entity::prelude::*;
+        use sea_orm::ActiveModelBehavior;
 
         #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
         #[sea_orm(table_name = "test_app_account_rel")]

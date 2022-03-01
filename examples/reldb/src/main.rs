@@ -3,6 +3,7 @@ use std::env;
 use testcontainers::clients;
 
 use tardis::basic::config::NoneConfig;
+use tardis::basic::dto::TardisContext;
 use tardis::basic::result::TardisResult;
 use tardis::db::sea_orm::*;
 use tardis::log::info;
@@ -31,6 +32,17 @@ async fn main() -> TardisResult<()> {
 
     // --------------------------------------------------
 
+    let cxt = TardisContext {
+        app_id: "".to_string(),
+        tenant_id: "".to_string(),
+        ak: "".to_string(),
+        account_id: "".to_string(),
+        token: "".to_string(),
+        token_kind: "".to_string(),
+        roles: vec![],
+        groups: vec![],
+    };
+
     // Create table
     client.create_table_from_entity(domain::tenant::Entity).await?;
     client.create_table_from_entity(domain::tenant_conf::Entity).await?;
@@ -39,38 +51,50 @@ async fn main() -> TardisResult<()> {
     client.create_table_from_entity(domain::app_account_rel::Entity).await?;
 
     // Insert some records
-    domain::tenant::ActiveModel {
-        name: Set("tenant1".to_string()),
-        ..Default::default()
-    }
-    .insert(client.conn())
-    .await?;
+    client
+        .insert_one(
+            domain::tenant::ActiveModel {
+                name: Set("tenant1".to_string()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
 
     let tenant = domain::tenant::Entity::find().one(client.conn()).await?.unwrap();
 
-    domain::tenant_conf::ActiveModel {
-        name: Set("conf1".to_string()),
-        tenant_id: Set(tenant.id.clone()),
-        ..Default::default()
-    }
-    .insert(client.conn())
-    .await?;
+    client
+        .insert_one(
+            domain::tenant_conf::ActiveModel {
+                name: Set("conf1".to_string()),
+                tenant_id: Set(tenant.id.clone()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
 
-    domain::app::ActiveModel {
-        name: Set("app1".to_string()),
-        tenant_id: Set(tenant.id.clone()),
-        ..Default::default()
-    }
-    .insert(client.conn())
-    .await?;
+    client
+        .insert_one(
+            domain::app::ActiveModel {
+                name: Set("app1".to_string()),
+                tenant_id: Set(tenant.id.clone()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
 
-    domain::app::ActiveModel {
-        name: Set("app2".to_string()),
-        tenant_id: Set(tenant.id.clone()),
-        ..Default::default()
-    }
-    .insert(client.conn())
-    .await?;
+    client
+        .insert_one(
+            domain::app::ActiveModel {
+                name: Set("app2".to_string()),
+                tenant_id: Set(tenant.id.clone()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
 
     let tenant = domain::tenant::Entity::find_by_id(tenant.id.clone()).one(client.conn()).await?.unwrap();
 
@@ -91,15 +115,20 @@ async fn main() -> TardisResult<()> {
     let accounts = apps[0].find_related(domain::account::Entity).all(client.conn()).await?;
     assert_eq!(accounts.len(), 0);
 
-    let account = domain::account::ActiveModel {
-        name: Set("account1".to_string()),
-        ..Default::default()
-    }
-    .insert(client.conn())
-    .await?;
+    let account_id: String = client
+        .insert_one(
+            domain::account::ActiveModel {
+                name: Set("account1".to_string()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?
+        .last_insert_id;
+
     domain::app_account_rel::ActiveModel {
         app_id: Set(apps[0].id.to_string()),
-        account_id: Set(account.id.to_string()),
+        account_id: Set(account_id.to_string()),
     }
     .insert(client.conn())
     .await?;
