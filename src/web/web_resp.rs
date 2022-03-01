@@ -1,24 +1,71 @@
-use crate::serde::{Deserialize, Serialize};
-use crate::serde_json::json;
 use async_trait::async_trait;
 use poem::error::{CorsError, MethodNotAllowedError, NotFoundError, ParsePathError};
 use poem::http::StatusCode;
 use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
 use poem_openapi::error::{AuthorizationError, ContentTypeError, ParseMultipartError, ParseParamError, ParseRequestPayloadError};
-use poem_openapi::payload::Payload;
-use poem_openapi::registry::{MetaMediaType, MetaResponse, MetaResponses, MetaSchemaRef, Registry};
+use poem_openapi::payload::Json;
 use poem_openapi::{
     types::{ParseFromJSON, ToJSON},
-    ApiResponse, Object,
+    Object,
 };
 use tracing::{trace, warn};
 
 use crate::basic::error::TardisError;
-use crate::basic::result::{parse, StatusCodeKind};
+use crate::basic::result::StatusCodeKind;
+use crate::serde::{Deserialize, Serialize};
+use crate::serde_json::json;
 use crate::TardisFuns;
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(default)]
+const TARDIS_ERROR_FLAG: &str = "__TARDIS_ERROR__";
+
+pub type TardisApiResult<T> = poem::Result<Json<TardisResp<T>>>;
+
+impl From<TardisError> for poem::Error {
+    fn from(error: TardisError) -> Self {
+        let status_code = match error {
+            // TODO
+            TardisError::Custom(_, _) => StatusCode::BAD_REQUEST,
+            // TODO
+            TardisError::Box(_) => StatusCode::BAD_REQUEST,
+            TardisError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            TardisError::NotImplemented(_) => StatusCode::NOT_IMPLEMENTED,
+            TardisError::IOError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            TardisError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            TardisError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            TardisError::NotFound(_) => StatusCode::NOT_FOUND,
+            TardisError::FormatError(_) => StatusCode::BAD_REQUEST,
+            TardisError::Timeout(_) => StatusCode::REQUEST_TIMEOUT,
+            TardisError::Conflict(_) => StatusCode::CONFLICT,
+            // TODO
+            TardisError::_Inner(_) => StatusCode::BAD_REQUEST,
+        };
+        poem::Error::from_string(format!("{}{}", TARDIS_ERROR_FLAG, error), status_code)
+    }
+}
+
+impl From<poem::Error> for TardisError {
+    fn from(error: poem::Error) -> Self {
+        if error.is::<ParseParamError>()
+            || error.is::<ParseRequestPayloadError>()
+            || error.is::<ParseMultipartError>()
+            || error.is::<ContentTypeError>()
+            || error.is::<ParsePathError>()
+            || error.is::<MethodNotAllowedError>()
+        {
+            TardisError::BadRequest(error.to_string())
+        } else if error.is::<NotFoundError>() {
+            TardisError::NotFound(error.to_string())
+        } else if error.is::<AuthorizationError>() || error.is::<CorsError>() {
+            TardisError::Unauthorized(error.to_string())
+        } else {
+            warn!("[Tardis.WebServer] Process error kind: {:?}", error);
+            TardisError::_Inner(error.to_string())
+        }
+    }
+}
+
+#[derive(Object, Deserialize, Serialize, Clone, Debug)]
+#[oai(inline)]
 pub struct TardisResp<T>
 where
     T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
@@ -28,89 +75,25 @@ where
     pub data: Option<T>,
 }
 
-impl<T> Default for TardisResp<T>
-where
-    T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
-{
-    fn default() -> Self {
-        TardisResp {
-            code: "".to_string(),
-            msg: "".to_string(),
-            data: None,
-        }
-    }
-}
-
 impl<T> TardisResp<T>
 where
     T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
 {
-    pub fn ok(data: T) -> Self {
-        Self {
-            code: StatusCodeKind::Success.to_string(),
+    pub fn ok(data: T) -> TardisApiResult<T> {
+        TardisApiResult::Ok(Json(TardisResp {
+            code: StatusCodeKind::Success.into_unified_code(),
             msg: "".to_string(),
             data: Some(data),
-        }
+        }))
     }
 
-    pub fn err(error: TardisError) -> Self {
-        let (code, msg) = parse(error);
-        let msg = process_err_msg(code.as_str(), msg);
-        Self { code, msg, data: None }
-    }
-}
-
-impl<T> IntoResponse for TardisResp<T>
-where
-    T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
-{
-    fn into_response(self) -> Response {
-        Response::builder()
-            .status(StatusCode::OK)
-            .header("Content-Type", "application/json; charset=utf8")
-            .body(TardisFuns::json.obj_to_string(&self).expect("[Tardis.WebClient] Response body parsing error"))
-    }
-}
-
-impl<T> Payload for TardisResp<T>
-where
-    T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
-{
-    const CONTENT_TYPE: &'static str = "application/json";
-    fn schema_ref() -> MetaSchemaRef {
-        T::schema_ref()
-    }
-
-    #[allow(unused_variables)]
-    fn register(registry: &mut Registry) {
-        T::register(registry);
-    }
-}
-
-impl<T> ApiResponse for TardisResp<T>
-where
-    T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
-{
-    fn meta() -> MetaResponses {
-        MetaResponses {
-            responses: vec![MetaResponse {
-                description: "",
-                status: Some(200),
-                content: vec![MetaMediaType {
-                    content_type: Self::CONTENT_TYPE,
-                    schema: Self::schema_ref(),
-                }],
-                headers: vec![],
-            }],
-        }
-    }
-
-    fn register(registry: &mut Registry) {
-        T::register(registry);
+    pub fn err(error: TardisError) -> TardisApiResult<T> {
+        TardisApiResult::Err(error.into())
     }
 }
 
 #[derive(Object, Deserialize, Serialize, Clone, Debug)]
+#[oai(inline)]
 pub struct TardisPage<T>
 where
     T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
@@ -148,7 +131,8 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                     return Ok(resp);
                 }
                 let msg = resp.take_body().into_string().await.expect("[Tardis.WebClient] Request exception type conversion error");
-                let code = if resp.status().as_u16() >= 500 {
+
+                let http_code = if resp.status().as_u16() >= 500 {
                     warn!(
                         "[Tardis.WebServer] Process error,request method:{}, url:{}, response\
                              code:{}, message:{}",
@@ -169,16 +153,22 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                     // Request fallback friendly
                     StatusCode::OK
                 };
-                resp.set_status(code);
+                resp.set_status(http_code);
                 resp.headers_mut().insert(
                     "Content-Type",
                     "application/json; charset=utf8".parse().expect("[Tardis.WebServer] Http head parsing error"),
                 );
-                let code = mapping_code(code).into_unified_code();
+
+                let (bus_code, msg) = if msg.starts_with(TARDIS_ERROR_FLAG) {
+                    let msg = msg.split_at(TARDIS_ERROR_FLAG.len()).1.to_string();
+                    TardisError::parse(msg)
+                } else {
+                    (mapping_code(http_code).into_unified_code(), msg)
+                };
                 resp.set_body(
                     json!({
-                        "code": code,
-                        "msg": process_err_msg(code.as_str(),msg),
+                        "code": bus_code,
+                        "msg": process_err_msg(bus_code.as_str(),msg),
                     })
                     .to_string(),
                 );
@@ -204,7 +194,11 @@ fn mapping_code(http_code: StatusCode) -> StatusCodeKind {
 }
 
 fn error_handler(err: poem::Error) -> Response {
-    let (code, msg) = if err.is::<ParseParamError>()
+    let msg = err.to_string();
+    let (bus_code, msg) = if msg.starts_with(TARDIS_ERROR_FLAG) {
+        let msg = msg.split_at(TARDIS_ERROR_FLAG.len()).1.to_string();
+        TardisError::parse(msg)
+    } else if err.is::<ParseParamError>()
         || err.is::<ParseRequestPayloadError>()
         || err.is::<ParseMultipartError>()
         || err.is::<ContentTypeError>()
@@ -217,13 +211,20 @@ fn error_handler(err: poem::Error) -> Response {
     } else if err.is::<AuthorizationError>() || err.is::<CorsError>() {
         (StatusCodeKind::Unauthorized.into_unified_code(), err.to_string())
     } else {
-        warn!("[Tardis.WebServer] Process error: {:?}", err);
+        warn!("[Tardis.WebServer] Process error kind: {:?}", err);
         (StatusCodeKind::UnKnown.into_unified_code(), err.to_string())
     };
+    // TODO
+    // let http_code = if bus_code.starts_with('5') {
+    //
+    //     StatusCode::INTERNAL_SERVER_ERROR
+    // } else {
+    //     StatusCode::OK
+    // };
     Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(
         json!({
-            "code": code,
-            "msg": process_err_msg(code.as_str(),msg),
+            "code": bus_code,
+            "msg": process_err_msg(bus_code.as_str(),msg),
         })
         .to_string(),
     )

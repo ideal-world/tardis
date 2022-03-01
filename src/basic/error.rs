@@ -39,6 +39,13 @@ pub enum TardisError {
 }
 
 impl TardisError {
+    pub fn parse(msg: String) -> (String, String) {
+        let split_idx = msg.find(GENERAL_SPLIT).expect("Illegal error description format");
+        let code = &msg[..split_idx];
+        let message = &msg[split_idx + 2..];
+        (code.to_string(), message.to_string())
+    }
+
     pub fn code(&self) -> String {
         let text = self.to_string();
         let split_idx = text.find(GENERAL_SPLIT).expect("Illegal error description format");

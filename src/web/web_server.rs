@@ -63,7 +63,7 @@ impl TardisWebServer {
         } else {
             Cors::new().allow_origin(&self.config.allowed_origin)
         };
-        let route = route.with(cors).with(UniformError);
+        let route = route.with(UniformError).with(cors);
         // Solved:  Cannot move out of *** which is behind a mutable reference
         // https://stackoverflow.com/questions/63353762/cannot-move-out-of-which-is-behind-a-mutable-reference
         let mut swap_route = Route::new();

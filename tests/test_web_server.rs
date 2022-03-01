@@ -11,7 +11,7 @@ use tardis::basic::error::TardisError;
 use tardis::basic::result::{StatusCodeKind, TardisResult};
 use tardis::serde::{Deserialize, Serialize};
 use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi, Tags};
-use tardis::web::web_resp::TardisResp;
+use tardis::web::web_resp::{TardisApiResult, TardisResp};
 use tardis::TardisFuns;
 
 const TLS_KEY: &str = r#"
@@ -132,7 +132,7 @@ async fn start_serv(url: &str) -> TardisResult<()> {
 async fn test_basic(url: &str) -> TardisResult<()> {
     // Normal
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, StatusCodeKind::Success.to_string());
+    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
     assert_eq!(response.data.unwrap().description, "测试");
 
     // Business Error
@@ -366,7 +366,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::Success.to_string());
+    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
 
     Ok(())
 }
@@ -423,7 +423,7 @@ async fn test_security() -> TardisResult<()> {
 
     // Normal
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, StatusCodeKind::Success.to_string());
+    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
     assert_eq!(response.data.unwrap().description, "测试");
 
     // Business Error
@@ -510,12 +510,12 @@ struct TodosApi;
 #[OpenApi(tag = "FunTags::Todo1")]
 impl TodosApi {
     #[oai(path = "/todos", method = "post")]
-    async fn create(&self, _todo_add_req: Json<TodoAddReq>) -> TardisResp<String> {
+    async fn create(&self, _todo_add_req: Json<TodoAddReq>) -> TardisApiResult<String> {
         TardisResp::ok("0".into())
     }
 
     #[oai(path = "/todos/:id", method = "get")]
-    async fn get(&self, id: Path<i64>) -> TardisResp<TodoResp> {
+    async fn get(&self, id: Path<i64>) -> TardisApiResult<TodoResp> {
         TardisResp::ok(TodoResp {
             id: id.0,
             description: "测试".to_string(),
@@ -524,7 +524,7 @@ impl TodosApi {
     }
 
     #[oai(path = "/todos/:id/err", method = "get")]
-    async fn get_by_error(&self, id: Path<i64>) -> TardisResp<TodoResp> {
+    async fn get_by_error(&self, id: Path<i64>) -> TardisApiResult<TodoResp> {
         TardisResp::err(TardisError::Conflict("异常".to_string()))
     }
 }
@@ -534,7 +534,7 @@ struct OtherApi;
 #[OpenApi]
 impl OtherApi {
     #[oai(path = "/validate", method = "post")]
-    async fn test(&self, _req: Json<ValidateReq>) -> TardisResp<String> {
+    async fn test(&self, _req: Json<ValidateReq>) -> TardisApiResult<String> {
         TardisResp::ok("".into())
     }
 }

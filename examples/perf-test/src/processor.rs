@@ -4,7 +4,7 @@ use tardis::db::sea_query::Query as DbQuery;
 use tardis::serde::{self, Deserialize, Serialize};
 use tardis::web::poem_openapi::param::Query;
 use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi};
-use tardis::web::web_resp::{TardisPage, TardisResp};
+use tardis::web::web_resp::{TardisApiResult, TardisPage, TardisResp};
 use tardis::TardisFuns;
 
 use crate::domain::todos;
@@ -38,7 +38,7 @@ pub struct TodoApi;
 #[OpenApi]
 impl TodoApi {
     #[oai(path = "/todo", method = "post")]
-    async fn add(&self, todo_add_req: Json<TodoAddReq>) -> TardisResp<i32> {
+    async fn add(&self, todo_add_req: Json<TodoAddReq>) -> TardisApiResult<i32> {
         let cxt = TardisContext {
             app_id: "".to_string(),
             tenant_id: "".to_string(),
@@ -58,32 +58,29 @@ impl TodoApi {
                 },
                 &cxt,
             )
-            .await
-            .unwrap()
+            .await?
             .last_insert_id;
         TardisResp::ok(todo_id)
     }
 
     #[oai(path = "/todo/:id", method = "get")]
-    async fn get(&self, id: Path<i32>) -> TardisResp<TodoDetailResp> {
+    async fn get(&self, id: Path<i32>) -> TardisApiResult<TodoDetailResp> {
         let todo = TardisFuns::reldb()
             .get_dto(DbQuery::select().columns(vec![todos::Column::Id, todos::Column::Description, todos::Column::Done]).from(todos::Entity).and_where(todos::Column::Id.eq(id.0)))
-            .await
-            .unwrap()
+            .await?
             .unwrap();
         TardisResp::ok(todo)
     }
 
     #[oai(path = "/todo", method = "get")]
-    async fn get_all(&self, page_number: Query<u64>, page_size: Query<u64>) -> TardisResp<TardisPage<TodoDetailResp>> {
+    async fn get_all(&self, page_number: Query<u64>, page_size: Query<u64>) -> TardisApiResult<TardisPage<TodoDetailResp>> {
         let (todos, total_size) = TardisFuns::reldb()
             .paginate_dtos(
                 DbQuery::select().columns(vec![todos::Column::Id, todos::Column::Description, todos::Column::Done]).from(todos::Entity),
                 page_number.0,
                 page_size.0,
             )
-            .await
-            .unwrap();
+            .await?;
         TardisResp::ok(TardisPage {
             page_number: page_number.0,
             page_size: page_size.0,
@@ -93,13 +90,13 @@ impl TodoApi {
     }
 
     #[oai(path = "/todo/:id", method = "delete")]
-    async fn delete(&self, id: Path<i32>) -> TardisResp<u64> {
-        let delete_num = TardisFuns::reldb().soft_delete(todos::Entity::find().filter(todos::Column::Id.eq(id.0)), "").await.unwrap();
+    async fn delete(&self, id: Path<i32>) -> TardisApiResult<u64> {
+        let delete_num = TardisFuns::reldb().soft_delete(todos::Entity::find().filter(todos::Column::Id.eq(id.0)), "").await?;
         TardisResp::ok(delete_num)
     }
 
     #[oai(path = "/todo/:id", method = "put")]
-    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>) -> TardisResp<u64> {
+    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>) -> TardisApiResult<u64> {
         let cxt = TardisContext {
             app_id: "".to_string(),
             tenant_id: "".to_string(),
@@ -119,8 +116,7 @@ impl TodoApi {
                 },
                 &cxt,
             )
-            .await
-            .unwrap();
+            .await?;
         TardisResp::ok(0)
     }
 }
