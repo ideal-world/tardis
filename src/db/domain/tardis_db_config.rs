@@ -1,8 +1,8 @@
 use crate::basic::dto::TardisContext;
 use crate::db::reldb_client::TardisActiveModel;
-use crate::db::sea_orm::entity::prelude::*;
-use crate::db::sea_orm::ActiveValue::Set;
 use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
+use crate::db::sea_orm::ActiveValue::Set;
+use crate::db::sea_orm::entity::prelude::*;
 use crate::db::sea_query::{ColumnDef, Table, TableCreateStatement};
 use crate::TardisFuns;
 
@@ -22,7 +22,6 @@ pub struct Model {
 }
 
 impl TardisActiveModel for ActiveModel {
-    type Entity = Entity;
 
     fn fill_cxt(&mut self, _: &TardisContext, _: bool) {}
 

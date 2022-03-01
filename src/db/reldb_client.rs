@@ -6,7 +6,7 @@ use sea_orm::sea_query::TableCreateStatement;
 use sea_orm::ActiveValue::Set;
 use sea_orm::*;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, EntityTrait, ExecResult, QueryTrait, Schema, Select, Statement};
-use sea_query::{IndexCreateStatement, SelectStatement};
+use sea_query::{IndexCreateStatement, SelectStatement, UpdateStatement};
 use sqlparser::ast;
 use sqlparser::ast::{SetExpr, TableFactor};
 use sqlparser::dialect::MySqlDialect;
@@ -78,55 +78,60 @@ impl TardisRelDBClient {
         self.con.get_database_backend()
     }
 
+    pub async fn begin(&self) -> TardisRelDBClientTransaction {
+        let t = self.con.begin().await.unwrap();
+        TardisRelDBClientTransaction { tx: t }
+    }
+
     async fn init_basic_tables(&self) -> TardisResult<()> {
         let tx = self.con.begin().await?;
         let config_create_table_statement = tardis_db_config::ActiveModel::create_table_statement(self.con.get_database_backend());
-        self.create_table(&config_create_table_statement, &tx).await?;
+        TardisRelDBClient::create_table_inner(&config_create_table_statement, &tx).await?;
         let del_record_create_table_statement = tardis_db_del_record::ActiveModel::create_table_statement(self.con.get_database_backend());
-        self.create_table(&del_record_create_table_statement, &tx).await?;
+        TardisRelDBClient::create_table_inner(&del_record_create_table_statement, &tx).await?;
         let del_record_create_index_statement = tardis_db_del_record::ActiveModel::create_index_statement();
-        self.create_index(&del_record_create_index_statement, &tx).await?;
+        TardisRelDBClient::create_index_inner(&del_record_create_index_statement, &tx).await?;
         tx.commit().await?;
         Ok(())
     }
 
     /// TODO 不支持 not_null nullable  default_value  default_expr indexed, unique 等
-    pub async fn create_table_from_entity<'a, E, C>(&self, entity: E, db: &'a C) -> TardisResult<()>
+    pub(self) async fn create_table_from_entity_inner<'a, E, C>(entity: E, db: &'a C) -> TardisResult<()>
     where
         C: ConnectionTrait,
         E: EntityTrait,
     {
-        let builder = self.con.get_database_backend();
+        let builder = db.get_database_backend();
         let schema = Schema::new(builder);
         let table_create_statement = &schema.create_table_from_entity(entity);
-        self.create_table(table_create_statement, db).await
+        TardisRelDBClient::create_table_inner(table_create_statement, db).await
     }
 
-    pub async fn create_table<'a, C>(&self, statement: &TableCreateStatement, db: &'a C) -> TardisResult<()>
+    pub(self) async fn create_table_inner<'a, C>(statement: &TableCreateStatement, db: &'a C) -> TardisResult<()>
     where
         C: ConnectionTrait,
     {
-        let statement = self.con.get_database_backend().build(statement);
-        match self.execute(statement, db).await {
+        let statement = db.get_database_backend().build(statement);
+        match TardisRelDBClient::execute_inner(statement, db).await {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
     }
 
-    pub async fn create_index<'a, C>(&self, statements: &Vec<IndexCreateStatement>, db: &'a C) -> TardisResult<()>
+    pub(self) async fn create_index_inner<'a, C>(statements: &Vec<IndexCreateStatement>, db: &'a C) -> TardisResult<()>
     where
         C: ConnectionTrait,
     {
         for statement in statements {
-            let statement = self.con.get_database_backend().build(statement);
-            if let Err(e) = self.execute(statement, db).await {
+            let statement = db.get_database_backend().build(statement);
+            if let Err(e) = TardisRelDBClient::execute_inner(statement, db).await {
                 return Err(e);
             }
         }
         Ok(())
     }
 
-    pub async fn execute<'a, C>(&self, statement: Statement, db: &'a C) -> TardisResult<ExecResult>
+    pub(self) async fn execute_inner<'a, C>(statement: Statement, db: &'a C) -> TardisResult<ExecResult>
     where
         C: ConnectionTrait,
     {
@@ -137,52 +142,52 @@ impl TardisRelDBClient {
         }
     }
 
-    pub async fn get_dto<'a, C, D>(&self, select_statement: &SelectStatement, db: &'a C) -> TardisResult<Option<D>>
+    pub(self) async fn get_dto_inner<'a, C, D>(select_statement: &SelectStatement, db: &'a C) -> TardisResult<Option<D>>
     where
         C: ConnectionTrait,
         D: FromQueryResult,
     {
-        let result = D::find_by_statement(self.backend().build(select_statement)).one(db).await;
+        let result = D::find_by_statement(db.get_database_backend().build(select_statement)).one(db).await;
         match result {
             Ok(r) => TardisResult::Ok(r),
             Err(err) => TardisResult::Err(TardisError::from(err)),
         }
     }
 
-    pub async fn find_dtos<'a, C, D>(&self, select_statement: &SelectStatement, db: &'a C) -> TardisResult<Vec<D>>
+    pub(self) async fn find_dtos_inner<'a, C, D>(select_statement: &SelectStatement, db: &'a C) -> TardisResult<Vec<D>>
     where
         C: ConnectionTrait,
         D: FromQueryResult,
     {
-        let result = D::find_by_statement(self.backend().build(select_statement)).all(db).await;
+        let result = D::find_by_statement(db.get_database_backend().build(select_statement)).all(db).await;
         match result {
             Ok(r) => TardisResult::Ok(r),
             Err(err) => TardisResult::Err(TardisError::from(err)),
         }
     }
 
-    pub async fn paginate_dtos<'a, C, D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64, db: &'a C) -> TardisResult<(Vec<D>, u64)>
+    pub(self) async fn paginate_dtos_inner<'a, C, D>(select_statement: &SelectStatement, page_number: u64, page_size: u64, db: &'a C) -> TardisResult<(Vec<D>, u64)>
     where
         C: ConnectionTrait,
         D: FromQueryResult,
     {
-        let statement = self.backend().build(select_statement);
-        let query_sql = format!("{} LIMIT {} , {}", statement.sql, (page_number - 1) * page_size, page_size);
+        let statement = db.get_database_backend().build(select_statement);
+        let select_sql = format!("{} LIMIT {} , {}", statement.sql, (page_number - 1) * page_size, page_size);
         let query_statement = Statement {
-            sql: query_sql,
+            sql: select_sql,
             values: statement.values,
             db_backend: statement.db_backend,
         };
         let query_result = D::find_by_statement(query_statement).all(db).await?;
-        let count_result = self.count(select_statement, db).await?;
+        let count_result = TardisRelDBClient::count_inner(select_statement, db).await?;
         Ok((query_result, count_result))
     }
 
-    pub async fn count<'a, C>(&self, select_statement: &SelectStatement, db: &'a C) -> TardisResult<u64>
+    pub(self) async fn count_inner<'a, C>(select_statement: &SelectStatement, db: &'a C) -> TardisResult<u64>
     where
         C: ConnectionTrait,
     {
-        let statement = self.backend().build(select_statement);
+        let statement = db.get_database_backend().build(select_statement);
         let count_sql = format!(
             "SELECT COUNT(1) AS count FROM ( {} ) _{}",
             statement.sql,
@@ -202,15 +207,281 @@ impl TardisRelDBClient {
             ))),
         }
     }
+
+    pub(self) async fn insert_one_inner<'a, T, C>(mut model: T, db: &'a C, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
+    where
+        C: ConnectionTrait,
+        T: TardisActiveModel,
+    {
+        model.fill_cxt(cxt, true);
+        let result = EntityTrait::insert(model).exec(db).await?;
+        Ok(result)
+    }
+
+    pub(self) async fn insert_many_inner<'a, T, C>(mut models: Vec<T>, db: &'a C, cxt: &TardisContext) -> TardisResult<()>
+    where
+        C: ConnectionTrait,
+        T: TardisActiveModel,
+    {
+        models.iter_mut().for_each(|m| m.fill_cxt(cxt, true));
+        EntityTrait::insert_many(models).exec(db).await?;
+        Ok(())
+    }
+
+    pub(self) async fn update_one_inner<'a, T, C>(mut model: T, db: &'a C, cxt: &TardisContext) -> TardisResult<()>
+    where
+        C: ConnectionTrait,
+        T: TardisActiveModel,
+    {
+        model.fill_cxt(cxt, false);
+        let update = EntityTrait::update(model);
+        TardisRelDBClient::execute_inner(db.get_database_backend().build(update.as_query()), db).await?;
+        Ok(())
+    }
+
+    pub(self) async fn update_many_inner<'a, C>(update_statement: &UpdateStatement, db: &'a C) -> TardisResult<()>
+    where
+        C: ConnectionTrait,
+    {
+        TardisRelDBClient::execute_inner(db.get_database_backend().build(update_statement), db).await?;
+        Ok(())
+    }
+
+    pub(self) async fn soft_delete_inner<'a, E, C>(select: Select<E>, delete_user: &str, db: &'a C) -> TardisResult<u64>
+    where
+        C: ConnectionTrait,
+        E: EntityTrait,
+    {
+        select.soft_delete(delete_user, db).await
+    }
+
+    pub(self) async fn soft_delete_custom_inner<'a, E, C>(select: Select<E>, custom_pk_field: &str, delete_user: &str, db: &'a C) -> TardisResult<u64>
+    where
+        C: ConnectionTrait,
+        E: EntityTrait,
+    {
+        select.soft_delete_custom(custom_pk_field, delete_user, db).await
+    }
+}
+
+// #[async_trait]
+// pub trait TardisRelDBClientOperation {
+//     async fn create_table_from_entity<E>(&self, entity: E) -> TardisResult<()>
+//     where
+//         E: EntityTrait;
+//
+//     async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()>;
+//
+//     async fn create_index(&self, statements: &Vec<IndexCreateStatement>) -> TardisResult<()>;
+//
+//     async fn get_dto<D>(&self, select_statement: &SelectStatement) -> TardisResult<Option<D>>
+//     where
+//         D: FromQueryResult;
+//
+//     async fn find_dtos<D>(&self, select_statement: &SelectStatement) -> TardisResult<Vec<D>>
+//     where
+//         D: FromQueryResult;
+//
+//     async fn paginate_dtos<D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
+//     where
+//         D: FromQueryResult;
+//
+//     async fn count(&self, select_statement: &SelectStatement) -> TardisResult<u64>;
+//
+//     async fn execute(&self, statement: Statement) -> TardisResult<ExecResult>;
+// }
+
+impl TardisRelDBClient {
+    pub async fn create_table_from_entity<E>(&self, entity: E) -> TardisResult<()>
+    where
+        E: EntityTrait,
+    {
+        TardisRelDBClient::create_table_from_entity_inner(entity, &self.con).await
+    }
+
+    pub async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()> {
+        TardisRelDBClient::create_table_inner(&statement, &self.con).await
+    }
+
+    pub async fn create_index(&self, statements: &Vec<IndexCreateStatement>) -> TardisResult<()> {
+        TardisRelDBClient::create_index_inner(&statements, &self.con).await
+    }
+
+    pub async fn get_dto<D>(&self, select_statement: &SelectStatement) -> TardisResult<Option<D>>
+    where
+        D: FromQueryResult,
+    {
+        TardisRelDBClient::get_dto_inner(select_statement, &self.con).await
+    }
+
+    pub async fn find_dtos<D>(&self, select_statement: &SelectStatement) -> TardisResult<Vec<D>>
+    where
+        D: FromQueryResult,
+    {
+        TardisRelDBClient::find_dtos_inner(select_statement, &self.con).await
+    }
+
+    pub async fn paginate_dtos<D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
+    where
+        D: FromQueryResult,
+    {
+        TardisRelDBClient::paginate_dtos_inner(select_statement, page_number, page_size, &self.con).await
+    }
+
+    pub async fn count(&self, select_statement: &SelectStatement) -> TardisResult<u64> {
+        TardisRelDBClient::count_inner(select_statement, &self.con).await
+    }
+
+    pub async fn execute(&self, statement: Statement) -> TardisResult<ExecResult> {
+        TardisRelDBClient::execute_inner(statement, &self.con).await
+    }
+
+    pub async fn insert_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
+    where
+        T: TardisActiveModel,
+    {
+        TardisRelDBClient::insert_one_inner(model, &self.con, cxt).await
+    }
+
+    pub async fn insert_many<T>(&self, models: Vec<T>, cxt: &TardisContext) -> TardisResult<()>
+    where
+        T: TardisActiveModel,
+    {
+        TardisRelDBClient::insert_many_inner(models, &self.con, cxt).await
+    }
+
+    pub async fn update_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<()>
+    where
+        T: TardisActiveModel,
+    {
+        TardisRelDBClient::update_one_inner(model, &self.con, cxt).await
+    }
+
+    pub async fn update_many<T>(&self, update_statement: &UpdateStatement) -> TardisResult<()> {
+        TardisRelDBClient::update_many_inner(update_statement, &self.con).await
+    }
+
+    pub async fn soft_delete<E>(&self, select: Select<E>, delete_user: &str) -> TardisResult<u64>
+    where
+        E: EntityTrait,
+    {
+        TardisRelDBClient::soft_delete_inner(select, delete_user, &self.con).await
+    }
+
+    pub async fn soft_delete_custom<E>(&self, select: Select<E>, custom_pk_field: &str, delete_user: &str) -> TardisResult<u64>
+    where
+        E: EntityTrait,
+    {
+        TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, delete_user, &self.con).await
+    }
+}
+
+pub struct TardisRelDBClientTransaction {
+    tx: DatabaseTransaction,
+}
+
+impl TardisRelDBClientTransaction {
+    pub async fn commit(self) -> TardisResult<()> {
+        self.tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn rollback(self) -> TardisResult<()> {
+        self.tx.rollback().await?;
+        Ok(())
+    }
+
+    pub async fn create_table_from_entity<E>(&self, entity: E) -> TardisResult<()>
+    where
+        E: EntityTrait,
+    {
+        TardisRelDBClient::create_table_from_entity_inner(entity, &self.tx).await
+    }
+
+    pub async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()> {
+        TardisRelDBClient::create_table_inner(&statement, &self.tx).await
+    }
+
+    pub async fn create_index(&self, statements: &Vec<IndexCreateStatement>) -> TardisResult<()> {
+        TardisRelDBClient::create_index_inner(&statements, &self.tx).await
+    }
+
+    pub async fn get_dto<D>(&self, select_statement: &SelectStatement) -> TardisResult<Option<D>>
+    where
+        D: FromQueryResult,
+    {
+        TardisRelDBClient::get_dto_inner(select_statement, &self.tx).await
+    }
+
+    pub async fn find_dtos<D>(&self, select_statement: &SelectStatement) -> TardisResult<Vec<D>>
+    where
+        D: FromQueryResult,
+    {
+        TardisRelDBClient::find_dtos_inner(select_statement, &self.tx).await
+    }
+
+    pub async fn paginate_dtos<D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
+    where
+        D: FromQueryResult,
+    {
+        TardisRelDBClient::paginate_dtos_inner(select_statement, page_number, page_size, &self.tx).await
+    }
+
+    pub async fn count(&self, select_statement: &SelectStatement) -> TardisResult<u64> {
+        TardisRelDBClient::count_inner(select_statement, &self.tx).await
+    }
+
+    pub async fn execute(&self, statement: Statement) -> TardisResult<ExecResult> {
+        TardisRelDBClient::execute_inner(statement, &self.tx).await
+    }
+
+    pub async fn insert_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
+    where
+        T: TardisActiveModel,
+    {
+        TardisRelDBClient::insert_one_inner(model, &self.tx, cxt).await
+    }
+
+    pub async fn insert_many<T>(&self, models: Vec<T>, cxt: &TardisContext) -> TardisResult<()>
+    where
+        T: TardisActiveModel,
+    {
+        TardisRelDBClient::insert_many_inner(models, &self.tx, cxt).await
+    }
+
+    pub async fn update_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<()>
+    where
+        T: TardisActiveModel,
+    {
+        TardisRelDBClient::update_one_inner(model, &self.tx, cxt).await
+    }
+
+    pub async fn update_many<T>(&self, update_statement: &UpdateStatement) -> TardisResult<()> {
+        TardisRelDBClient::update_many_inner(update_statement, &self.tx).await
+    }
+
+    pub async fn soft_delete<E>(&self, select: Select<E>, delete_user: &str) -> TardisResult<u64>
+    where
+        E: EntityTrait,
+    {
+        TardisRelDBClient::soft_delete_inner(select, delete_user, &self.tx).await
+    }
+
+    pub async fn soft_delete_custom<E>(&self, select: Select<E>, custom_pk_field: &str, delete_user: &str) -> TardisResult<u64>
+    where
+        E: EntityTrait,
+    {
+        TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, delete_user, &self.tx).await
+    }
 }
 
 #[async_trait]
 pub trait TardisSeaORMExtend {
-    async fn soft_delete<C>(self, db: &C, create_user: &str) -> TardisResult<usize>
+    async fn soft_delete<C>(self, delete_user: &str, db: &C) -> TardisResult<u64>
     where
         C: ConnectionTrait;
 
-    async fn soft_delete_custom<C>(self, db: &C, create_user: &str, custom_pk_field: &str) -> TardisResult<usize>
+    async fn soft_delete_custom<C>(self, custom_pk_field: &str, delete_user: &str, db: &C) -> TardisResult<u64>
     where
         C: ConnectionTrait;
 }
@@ -220,14 +491,14 @@ impl<E> TardisSeaORMExtend for Select<E>
 where
     E: EntityTrait,
 {
-    async fn soft_delete<C>(self, db: &C, create_user: &str) -> TardisResult<usize>
+    async fn soft_delete<C>(self, delete_user: &str, db: &C) -> TardisResult<u64>
     where
         C: ConnectionTrait,
     {
-        self.soft_delete_custom(db, create_user, "id").await
+        self.soft_delete_custom("id", delete_user, db).await
     }
 
-    async fn soft_delete_custom<C>(self, db: &C, create_user: &str, custom_pk_field: &str) -> TardisResult<usize>
+    async fn soft_delete_custom<C>(self, custom_pk_field: &str, delete_user: &str, db: &C) -> TardisResult<u64>
     where
         C: ConnectionTrait,
     {
@@ -275,7 +546,7 @@ where
                 entity_name: Set(table_name.to_string()),
                 record_id: Set(id.to_string()),
                 content: Set(json),
-                creator: Set(create_user.to_string()),
+                creator: Set(delete_user.to_string()),
                 ..Default::default()
             }
             .insert(db)
@@ -296,40 +567,14 @@ where
         );
         let result = db.execute(statement).await;
         match result {
-            Ok(_) => TardisResult::Ok(delete_num),
+            Ok(_) => TardisResult::Ok(delete_num as u64),
             Err(err) => TardisResult::Err(TardisError::from(err)),
         }
     }
 }
 
 #[async_trait]
-pub trait TardisActiveModel {
-    type Entity: EntityTrait;
-
-    async fn insert_cust<'a, C>(mut self, db: &'a C, cxt: &TardisContext) -> Result<<<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model, DbErr>
-    where
-        <<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait,
-    {
-        self.fill_cxt(cxt, true);
-        let am = ActiveModelBehavior::before_save(self, true)?;
-        let model = <<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::insert(am).exec_with_returning(db).await?;
-        Self::after_save(model, true)
-    }
-
-    async fn update_cust<'a, C>(mut self, db: &'a C, cxt: &TardisContext) -> Result<<<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model, DbErr>
-    where
-        <<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<Self>,
-        Self: ActiveModelBehavior + 'a,
-        C: ConnectionTrait,
-    {
-        self.fill_cxt(cxt, false);
-        let am = ActiveModelBehavior::before_save(self, false)?;
-        let model: <<Self as sea_orm::ActiveModelTrait>::Entity as EntityTrait>::Model = <Self as sea_orm::ActiveModelTrait>::Entity::update(am).exec(db).await?;
-        Self::after_save(model, false)
-    }
-
+pub trait TardisActiveModel: ActiveModelBehavior {
     fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool);
 
     fn create_table_statement(_: DbBackend) -> TableCreateStatement {

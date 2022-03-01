@@ -7,13 +7,13 @@ use tokio::time::sleep;
 use tardis::basic::dto::TardisContext;
 use tardis::basic::result::TardisResult;
 use tardis::db::domain::{tardis_db_config, tardis_db_del_record};
+use tardis::db::reldb_client::TardisRelDBClient;
 use tardis::db::reldb_client::TardisSeaORMExtend;
-use tardis::db::reldb_client::{TardisActiveModel, TardisRelDBClient};
 use tardis::db::sea_orm::*;
 use tardis::db::sea_query::*;
 use tardis::log::info;
-use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
+use tardis::test::test_container::TardisTestContainer;
 
 #[tokio::test]
 async fn test_reldb_client() -> TardisResult<()> {
@@ -50,24 +50,35 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
     entities::tenant_conf::Entity::delete_many().exec(client.conn()).await?;
     entities::tenant::Entity::delete_many().exec(client.conn()).await?;
 
-    entities::tenant::ActiveModel {
-        name: Set("tenant1".to_string()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
-    entities::tenant::ActiveModel {
-        name: Set("tenant2".to_string()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
-    entities::tenant::ActiveModel {
-        name: Set("tenant3".to_string()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
+    client
+        .insert_one(
+            entities::tenant::ActiveModel {
+                name: Set("tenant1".to_string()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
+
+    client
+        .insert_one(
+            entities::tenant::ActiveModel {
+                name: Set("tenant2".to_string()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
+
+    client
+        .insert_one(
+            entities::tenant::ActiveModel {
+                name: Set("tenant3".to_string()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
 
     #[derive(Debug, FromQueryResult)]
     struct TenantResp {
@@ -75,29 +86,20 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
         name: String,
     }
 
-    let tenant_resp: Option<TenantResp> = client
-        .get_dto(
-            Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity),
-            client.conn(),
-        )
-        .await?;
+    let tenant_resp: Option<TenantResp> =
+        client.get_dto(Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity)).await?;
     assert!(tenant_resp.is_some());
     assert!(tenant_resp.unwrap().name.contains("tenant"));
 
-    let tenant_resp: Vec<TenantResp> = client
-        .find_dtos(
-            Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity),
-            client.conn(),
-        )
-        .await?;
+    let tenant_resp: Vec<TenantResp> =
+        client.find_dtos(Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity)).await?;
     assert_eq!(tenant_resp.len(), 3);
 
-    let tenant_resp: (Vec<TenantResp>, i64) = client
+    let tenant_resp: (Vec<TenantResp>, u64) = client
         .paginate_dtos(
             Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity),
             1,
             2,
-            client.conn(),
         )
         .await?;
     assert_eq!(tenant_resp.0.len(), 2);
@@ -126,38 +128,54 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
     entities::tenant_conf::Entity::delete_many().exec(client.conn()).await?;
     entities::tenant::Entity::delete_many().exec(client.conn()).await?;
 
-    let tenant = entities::tenant::ActiveModel {
-        name: Set("tenant1".to_string()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
+    let tenant_id: String = client
+        .insert_one(
+            entities::tenant::ActiveModel {
+                name: Set("tenant1".to_string()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?
+        .last_insert_id;
 
-    entities::app::ActiveModel {
-        name: Set("app1".to_string()),
-        tenant_id: Set(tenant.id.clone()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
+    client
+        .insert_one(
+            entities::app::ActiveModel {
+                name: Set("app1".to_string()),
+                tenant_id: Set(tenant_id.clone()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
 
-    let app = entities::app::ActiveModel {
-        name: Set("app2".to_string()),
-        tenant_id: Set(tenant.id.clone()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
+    let app_id: String = client
+        .insert_one(
+            entities::app::ActiveModel {
+                name: Set("app2".to_string()),
+                tenant_id: Set(tenant_id.clone()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?
+        .last_insert_id;
 
-    let account = entities::account::ActiveModel {
-        name: Set("account1".to_string()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
+    let account_id: String = client
+        .insert_one(
+            entities::account::ActiveModel {
+                name: Set("account1".to_string()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?
+        .last_insert_id;
+
     entities::app_account_rel::ActiveModel {
-        app_id: Set(app.id.to_string()),
-        account_id: Set(account.id.to_string()),
+        app_id: Set(app_id.clone()),
+        account_id: Set(account_id.clone()),
     }
     .insert(client.conn())
     .await?;
@@ -177,7 +195,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         .one(client.conn())
         .await?
         .unwrap();
-    assert_eq!(select_result.aa_id, tenant.id);
+    assert_eq!(select_result.aa_id, tenant_id);
     assert_eq!(select_result.name, "tenant1");
 
     // AND Condition
@@ -299,12 +317,12 @@ async fn test_transaction(client: &TardisRelDBClient) -> TardisResult<()> {
 }
 
 async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
-    let tx = client.conn().begin().await?;
-    client.create_table_from_entity(entities::tenant::Entity, &tx).await?;
-    client.create_table_from_entity(entities::tenant_conf::Entity, &tx).await?;
-    client.create_table_from_entity(entities::app::Entity, &tx).await?;
-    client.create_table_from_entity(entities::account::Entity, &tx).await?;
-    client.create_table_from_entity(entities::app_account_rel::Entity, &tx).await?;
+    let tx = client.begin().await;
+    tx.create_table_from_entity(entities::tenant::Entity).await?;
+    tx.create_table_from_entity(entities::tenant_conf::Entity).await?;
+    tx.create_table_from_entity(entities::app::Entity).await?;
+    tx.create_table_from_entity(entities::account::Entity).await?;
+    tx.create_table_from_entity(entities::app_account_rel::Entity).await?;
     tx.commit().await?;
 
     let cxt = TardisContext {
@@ -318,41 +336,49 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
         groups: vec![],
     };
 
-    entities::tenant::ActiveModel {
-        name: Set("tenant1".to_string()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
+    client
+        .insert_one(
+            entities::tenant::ActiveModel {
+                name: Set("tenant1".to_string()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
 
     let tenant = entities::tenant::Entity::find().one(client.conn()).await?.unwrap();
     let config = tenant.find_related(entities::tenant_conf::Entity).one(client.conn()).await?;
     // Not Exists
     assert_eq!(config, None);
 
-    entities::tenant_conf::ActiveModel {
-        name: Set("conf1".to_string()),
-        tenant_id: Set(tenant.id.clone()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
+    client
+        .insert_one(
+            entities::tenant_conf::ActiveModel {
+                name: Set("conf1".to_string()),
+                tenant_id: Set(tenant.id.clone()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?;
 
-    entities::app::ActiveModel {
-        name: Set("app1".to_string()),
-        tenant_id: Set(tenant.id.clone()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
-
-    entities::app::ActiveModel {
-        name: Set("app2".to_string()),
-        tenant_id: Set(tenant.id.clone()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
+    client
+        .insert_many(
+            vec![
+                entities::app::ActiveModel {
+                    name: Set("app1".to_string()),
+                    tenant_id: Set(tenant.id.clone()),
+                    ..Default::default()
+                },
+                entities::app::ActiveModel {
+                    name: Set("app2".to_string()),
+                    tenant_id: Set(tenant.id.clone()),
+                    ..Default::default()
+                },
+            ],
+            &cxt,
+        )
+        .await?;
 
     let tenant = entities::tenant::Entity::find_by_id(tenant.id.clone()).one(client.conn()).await?.unwrap();
 
@@ -373,15 +399,20 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
     let accounts = apps[0].find_related(entities::account::Entity).all(client.conn()).await?;
     assert_eq!(accounts.len(), 0);
 
-    let account = entities::account::ActiveModel {
-        name: Set("account1".to_string()),
-        ..Default::default()
-    }
-    .insert_cust(client.conn(), &cxt)
-    .await?;
+    let account_id: String = client
+        .insert_one(
+            entities::account::ActiveModel {
+                name: Set("account1".to_string()),
+                ..Default::default()
+            },
+            &cxt,
+        )
+        .await?
+        .last_insert_id;
+
     entities::app_account_rel::ActiveModel {
         app_id: Set(apps[0].id.to_string()),
-        account_id: Set(account.id.to_string()),
+        account_id: Set(account_id.clone()),
     }
     .insert(client.conn())
     .await?;
@@ -454,7 +485,7 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
     // Exists TODO https://github.com/SeaQL/sea-orm/issues/408
 
     // Soft Delete
-    tardis_db_config::Entity::find().soft_delete(client.conn(), "admin").await?;
+    tardis_db_config::Entity::find().soft_delete("admin", client.conn()).await?;
     let dels = tardis_db_del_record::Entity::find().all(client.conn()).await?;
     assert_eq!(dels.len(), 2);
     assert_eq!(dels[0].entity_name, "tardis_config");
@@ -473,9 +504,9 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
 pub mod entities {
 
     pub mod tenant {
-        use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
         use sea_orm::ActiveValue::Set;
+        use sea_orm::entity::prelude::*;
 
         use tardis::basic::dto::TardisContext;
         use tardis::db::reldb_client::TardisActiveModel;
@@ -510,8 +541,6 @@ pub mod entities {
         }
 
         impl TardisActiveModel for ActiveModel {
-            type Entity = Entity;
-
             fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.uuid_str());
@@ -523,9 +552,9 @@ pub mod entities {
     }
 
     pub mod tenant_conf {
-        use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
         use sea_orm::ActiveValue::Set;
+        use sea_orm::entity::prelude::*;
 
         use tardis::basic::dto::TardisContext;
         use tardis::db::reldb_client::TardisActiveModel;
@@ -553,8 +582,6 @@ pub mod entities {
         }
 
         impl TardisActiveModel for ActiveModel {
-            type Entity = Entity;
-
             fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.uuid_str());
@@ -566,9 +593,9 @@ pub mod entities {
     }
 
     pub mod app {
-        use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
         use sea_orm::ActiveValue::Set;
+        use sea_orm::entity::prelude::*;
 
         use tardis::basic::dto::TardisContext;
         use tardis::db::reldb_client::TardisActiveModel;
@@ -606,8 +633,6 @@ pub mod entities {
         }
 
         impl TardisActiveModel for ActiveModel {
-            type Entity = Entity;
-
             fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.uuid_str());
@@ -619,9 +644,9 @@ pub mod entities {
     }
 
     pub mod account {
-        use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
         use sea_orm::ActiveValue::Set;
+        use sea_orm::entity::prelude::*;
 
         use tardis::basic::dto::TardisContext;
         use tardis::db::reldb_client::TardisActiveModel;
@@ -649,8 +674,6 @@ pub mod entities {
         }
 
         impl TardisActiveModel for ActiveModel {
-            type Entity = Entity;
-
             fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.uuid_str());
@@ -662,8 +685,8 @@ pub mod entities {
     }
 
     pub mod app_account_rel {
-        use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
+        use sea_orm::entity::prelude::*;
 
         #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
         #[sea_orm(table_name = "test_app_account_rel")]
