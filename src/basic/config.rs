@@ -2,13 +2,13 @@ use std::env;
 use std::fmt::Debug;
 use std::path::Path;
 
-use crate::log::{debug, info};
-use crate::serde::{Deserialize, Serialize};
 use config::{Config, ConfigError, Environment, File};
 
 use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
 use crate::basic::fetch_profile;
 use crate::basic::result::TardisResult;
+use crate::log::{debug, info};
+use crate::serde::{Deserialize, Serialize};
 use crate::TardisFuns;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -93,6 +93,7 @@ pub struct WebServerConfig {
     pub tls_cert: Option<String>,
     pub modules: Vec<WebServerModuleConfig>,
     pub security_hide_err_msg: bool,
+    pub context_conf: WebServerContextConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -106,6 +107,14 @@ pub struct WebServerModuleConfig {
     pub authors: Vec<(String, String)>,
     pub ui_path: Option<String>,
     pub spec_path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct WebServerContextConfig {
+    pub context_header_name: Option<String>,
+    pub token_header_name: Option<String>,
+    pub token_redis_key: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -128,6 +137,7 @@ impl Default for WebServerConfig {
             tls_cert: None,
             modules: [WebServerModuleConfig::default()].to_vec(),
             security_hide_err_msg: false,
+            context_conf: WebServerContextConfig::default(),
         }
     }
 }
@@ -142,6 +152,16 @@ impl Default for WebServerModuleConfig {
             authors: [("gudaoxuri".to_string(), "i@sunisle.org".to_string())].to_vec(),
             ui_path: Some("ui".to_string()),
             spec_path: Some("spec".to_string()),
+        }
+    }
+}
+
+impl Default for WebServerContextConfig {
+    fn default() -> Self {
+        WebServerContextConfig {
+            context_header_name: Some("Tardis-Context".to_string()),
+            token_header_name: Some("Tardis-Token".to_string()),
+            token_redis_key: "tardis::ident::token::".to_string(),
         }
     }
 }

@@ -3,6 +3,10 @@ pub use poem;
 #[cfg(feature = "web-server")]
 pub use poem_openapi;
 
+#[cfg(feature = "web-server")]
+pub mod context_extractor;
+#[cfg(feature = "web-server")]
+pub mod uniform_error_mw;
 #[cfg(feature = "web-client")]
 pub mod web_client;
 #[cfg(feature = "web-server")]
