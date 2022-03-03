@@ -2,13 +2,11 @@
 
 extern crate core;
 
-use std::env;
 use std::time::Duration;
 
 use poem::Request;
 use testcontainers::clients;
 use tokio::time::sleep;
-use url::quirks::port;
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};
 use tardis::basic::dto::TardisContext;
