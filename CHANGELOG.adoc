@@ -18,7 +18,7 @@ TIP: The version number follows the https://semver.org/[``semver``] specificatio
 
 === Release Notes
 
-==== 0.1.0
+==== 0.1.0(WIP)
 
 Initial release
 
@@ -27,6 +27,7 @@ Initial release
 * Web service and web client for OpenAPI v3.x
 * Distributed cache client for Redis protocol
 * RabbitMQ client for AMQP protocol
+* Mainstream encryption algorithms and SM2/3/4 algorithms
 * Containerized unit testing of mainstream middleware
 * Multi-environment configuration
 * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
