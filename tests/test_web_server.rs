@@ -2,16 +2,20 @@
 
 extern crate core;
 
+use std::env;
 use std::time::Duration;
 
 use poem::Request;
+use testcontainers::clients;
 use tokio::time::sleep;
+use url::quirks::port;
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};
 use tardis::basic::dto::TardisContext;
 use tardis::basic::error::TardisError;
 use tardis::basic::result::{StatusCodeKind, TardisResult};
 use tardis::serde::{Deserialize, Serialize};
+use tardis::test::test_container::TardisTestContainer;
 use tardis::web::context_extractor::ContextExtractor;
 use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi, Tags};
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
@@ -76,20 +80,25 @@ FZygs8miAhWPzqnpmgTj1cPiU1M=
 
 #[tokio::test]
 async fn test_web_server() -> TardisResult<()> {
-    let url = "https://localhost:8080";
+    let web_url = "https://localhost:8080";
 
-    tokio::spawn(async { start_serv(url).await });
+    let docker = clients::Cli::default();
+    let redis_container = TardisTestContainer::redis_custom(&docker);
+    let redis_port = redis_container.get_host_port(6379).expect("Test port acquisition error");
+    let redis_url = format!("redis://127.0.0.1:{}/0", redis_port);
+
+    tokio::spawn(async move { start_serv(web_url, &redis_url).await });
     sleep(Duration::from_millis(500)).await;
 
-    test_basic(url).await?;
-    test_validate(url).await?;
-    test_context(url).await?;
+    test_basic(web_url).await?;
+    test_validate(web_url).await?;
+    test_context(web_url).await?;
     test_security().await?;
 
     Ok(())
 }
 
-async fn start_serv(url: &str) -> TardisResult<()> {
+async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
     TardisFuns::init_conf(TardisConfig {
         ws: NoneConfig {},
         fw: FrameworkConfig {
@@ -100,7 +109,7 @@ async fn start_serv(url: &str) -> TardisResult<()> {
                     WebServerModuleConfig {
                         code: "todo".to_string(),
                         title: "todo app".to_string(),
-                        doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
+                        doc_urls: [("test env".to_string(), web_url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
                         ..Default::default()
                     },
                     WebServerModuleConfig {
@@ -115,8 +124,8 @@ async fn start_serv(url: &str) -> TardisResult<()> {
             },
             web_client: Default::default(),
             cache: CacheConfig {
-                enabled: false,
-                ..Default::default()
+                enabled: true,
+                url: redis_url.to_string(),
             },
             db: DBConfig {
                 enabled: false,
@@ -380,6 +389,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
     assert_eq!(response.msg, "[Tardis.WebServer] Context is not found");
 
+    // from header
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
             format!("{}/other/context_in_header", url).as_str(),
@@ -438,6 +448,52 @@ async fn test_context(url: &str) -> TardisResult<()> {
             Some(vec![(
                 TardisFuns::fw_config().web_server.context_conf.context_header_name.as_ref().unwrap().to_string(),
                 base64::encode(TardisFuns::json.obj_to_string(&context).unwrap()),
+            )]),
+        )
+        .await?
+        .body
+        .unwrap();
+    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
+    assert_eq!(response.data.unwrap(), "管理员");
+
+    // from cache
+    let response = TardisFuns::web_client()
+        .get::<TardisResp<String>>(
+            format!("{}/other/context_in_header", url).as_str(),
+            Some(vec![(
+                TardisFuns::fw_config().web_server.context_conf.token_header_name.as_ref().unwrap().to_string(),
+                "token1".to_string(),
+            )]),
+        )
+        .await?
+        .body
+        .unwrap();
+    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.msg, "[Tardis.WebServer] Token is not in cache");
+
+    let context = TardisContext {
+        app_id: "app1".to_string(),
+        tenant_id: "tenant1".to_string(),
+        ak: "ak1".to_string(),
+        account_id: "acc1".to_string(),
+        token: "token1".to_string(),
+        token_kind: "测试".to_string(),
+        roles: vec!["r1".to_string(), "管理员".to_string()],
+        groups: vec!["g1".to_string()],
+    };
+    TardisFuns::cache()
+        .set(
+            format!("{}token1", TardisFuns::fw_config().web_server.context_conf.token_redis_key).as_str(),
+            TardisFuns::json.obj_to_string(&context).unwrap().as_str(),
+        )
+        .await
+        .unwrap();
+    let response = TardisFuns::web_client()
+        .get::<TardisResp<String>>(
+            format!("{}/other/context_in_header", url).as_str(),
+            Some(vec![(
+                TardisFuns::fw_config().web_server.context_conf.token_header_name.as_ref().unwrap().to_string(),
+                "token1".to_string(),
             )]),
         )
         .await?

@@ -21,11 +21,7 @@ impl ContextExtractor for Request {
                 }
                 let context = base64::decode(context.unwrap());
                 if context.is_err() {
-                    return Err(TardisError::BadRequest(
-                        "[Tardis.WebServer] Context header is not \
-                    base64"
-                            .to_string(),
-                    ));
+                    return Err(TardisError::BadRequest("[Tardis.WebServer] Context header is not base64".to_string()));
                 }
                 let context = String::from_utf8(context.unwrap());
                 if context.is_err() {
@@ -51,7 +47,7 @@ impl ContextExtractor for Request {
                 }
                 let context = TardisFuns::json.str_to_obj(context.unwrap().as_str());
                 if context.is_err() {
-                    return Err(TardisError::BadRequest("[Tardis.WebServer] Context header is not valid json".to_string()));
+                    return Err(TardisError::BadRequest("[Tardis.WebServer] Context cache is not valid json".to_string()));
                 }
                 return Ok(context.unwrap());
             }

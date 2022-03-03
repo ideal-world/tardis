@@ -115,7 +115,7 @@ required-features = ["test", "reldb"]
 
 [[test]]
 name = "test_web_server"
-required-features = ["test", "web-server", "web-client"]
+required-features = ["test", "web-server", "cache", "web-client"]
 
 [[test]]
 name = "test_web_client"

@@ -1,6 +1,6 @@
-use poem::{EndpointExt, Route};
 use poem::listener::{Listener, RustlsConfig, TcpListener};
 use poem::middleware::Cors;
+use poem::{EndpointExt, Route};
 use poem_openapi::{OpenApi, OpenApiService, ServerObject};
 use tokio::time::Duration;
 
