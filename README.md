@@ -22,6 +22,7 @@ com/ideal-world/tardis/actions/workflows/cicd.yml)
 * Web service and web client for OpenAPI v3.x
 * Distributed cache client for Redis protocol
 * RabbitMQ client for AMQP protocol
+* Mainstream encryption algorithms and SM2/3/4 algorithms
 * Containerized unit testing of mainstream middleware
 * Multi-environment configuration
 * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
@@ -29,9 +30,10 @@ com/ideal-world/tardis/actions/workflows/cicd.yml)
 ## ⚙️Feature description
 
 * ``trace`` tracing operation
+* ``crypto`` Encryption, decryption and digest operations
 * ``future`` asynchronous operations
-* ``reldb`` relational database operations
-* ``web-server`` web service operations
+* ``reldb`` relational database operations(based on [SeaORM](https://github.com/SeaQL/sea-orm))
+* ``web-server`` web service operations(based on [Poem](https://github.com/poem-web/poem))
 * ``web-client`` web client operations
 * ``cache`` cache operations
 * ``mq`` message queue operations
@@ -54,9 +56,8 @@ TardisFuns::web_server().x           // Some web service operations
 Dependency Configuration
 ```toml
 [dependencies]
-tokio = { version = "1.15.0", features = ["macros"] }
-tardis = { version = "0", features = ["web-server"] }
-poem-openapi = { version = "1.2.39"}
+tardis = { version = "^0", features = ["web-server"] }
+poem-openapi = { version = "^1"}
 ```
 
 Processor Configuration
@@ -66,7 +67,7 @@ pub struct Api;
 #[OpenApi]
 impl Api {
     #[oai(path = "/hello", method = "get")]
-    async fn index(&self, name: Query<Option<String>>) -> TardisResp<String> {
+    async fn index(&self, name: Query<Option<String>>) -> TardisResult<String> {
         match name.0 {
             Some(name) => TardisResp::ok(format!("hello, {}!", name)),
             None => TardisResp::err(TardisError::NotFound("name does not exist".to_string())),
@@ -93,7 +94,9 @@ async fn main() -> TardisResult<()> {
   |-- reldb         Relational database usage example
   |-- web-basic     Web service Usage Example
   |-- web-client    Web client Usage Example
+  |-- webscoket     WebSocket Usage Example
   |-- cache         Cache Usage Example
   |-- mq            Message Queue Usage Example
   |-- todo          A complete project usage example
+  |-- perf-test     Performance test case
 ```
