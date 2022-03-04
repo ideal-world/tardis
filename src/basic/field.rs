@@ -1,4 +1,8 @@
+use std::borrow::Cow;
+use std::fmt::{Display, Formatter};
+
 use regex::Regex;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
 lazy_static! {
@@ -71,6 +75,95 @@ impl TardisField {
             Some(result.join(""))
         } else {
             None
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct TrimString(String);
+
+impl From<&str> for TrimString {
+    fn from(str: &str) -> Self {
+        TrimString(str.to_string())
+    }
+}
+
+impl From<String> for TrimString {
+    fn from(str: String) -> Self {
+        TrimString(str)
+    }
+}
+
+impl Display for TrimString {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.0.trim(), f)
+    }
+}
+
+impl Serialize for TrimString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for TrimString {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Deserialize::deserialize(deserializer).map(TrimString)
+    }
+}
+
+impl AsRef<str> for TrimString {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+#[cfg(feature = "web-server")]
+impl crate::web::poem_openapi::types::Type for TrimString {
+    const IS_REQUIRED: bool = true;
+
+    type RawValueType = Self;
+
+    type RawElementValueType = Self;
+
+    fn name() -> Cow<'static, str> {
+        "trim_string".into()
+    }
+
+    fn schema_ref() -> poem_openapi::registry::MetaSchemaRef {
+        String::schema_ref()
+    }
+
+    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+        Some(self)
+    }
+
+    fn raw_element_iter<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Self::RawElementValueType> + 'a> {
+        Box::new(self.as_raw_value().into_iter())
+    }
+}
+
+#[cfg(feature = "web-server")]
+impl crate::web::poem_openapi::types::ToJSON for TrimString {
+    fn to_json(&self) -> Option<serde_json::Value> {
+        self.0.to_json()
+    }
+}
+
+#[cfg(feature = "web-server")]
+impl crate::web::poem_openapi::types::ParseFromJSON for TrimString {
+    fn parse_from_json(value: Option<serde_json::Value>) -> poem_openapi::types::ParseResult<Self> {
+        let value = value.unwrap_or_default();
+        if let serde_json::Value::String(value) = value {
+            Ok(TrimString(value))
+        } else {
+            Err(poem_openapi::types::ParseError::expected_type(value))
         }
     }
 }

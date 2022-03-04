@@ -5,6 +5,7 @@ authors = ["gudaoxuri"]
 edition = "2021"
 
 [dependencies]
+serde = { version = "^1", features = ["derive"] }
 # Tardis Functions
 tardis = { path = "../..", features = ["web-server", "reldb", "test"] }
 # Web server dependencies

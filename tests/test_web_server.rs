@@ -11,6 +11,7 @@ use tokio::time::sleep;
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};
 use tardis::basic::dto::TardisContext;
 use tardis::basic::error::TardisError;
+use tardis::basic::field::TrimString;
 use tardis::basic::result::{StatusCodeKind, TardisResult};
 use tardis::serde::{Deserialize, Serialize};
 use tardis::test::test_container::TardisTestContainer;
@@ -144,7 +145,7 @@ async fn test_basic(url: &str) -> TardisResult<()> {
     // Normal
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
-    assert_eq!(response.data.unwrap().description, "测试");
+    assert_eq!(response.data.unwrap().code.to_string(), "code1");
 
     // Business Error
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/err", url).as_str(), None).await?.body.unwrap();
@@ -554,6 +555,22 @@ async fn test_security() -> TardisResult<()> {
     sleep(Duration::from_millis(500)).await;
 
     // Normal
+    let response = TardisFuns::web_client()
+        .post::<TodoAddReq, TardisResp<String>>(
+            format!("{}/todo/todos", url).as_str(),
+            &TodoAddReq {
+                code: "  编码1 ".into(),
+                description: "测试".to_string(),
+                done: false,
+            },
+            None,
+        )
+        .await?
+        .body
+        .unwrap();
+    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
+    assert_eq!(response.data.unwrap(), "编码1");
+
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
     assert_eq!(response.data.unwrap().description, "测试");
@@ -601,12 +618,14 @@ enum FunTags {
 #[derive(Object, Serialize, Deserialize, Debug)]
 struct TodoResp {
     id: i64,
+    code: TrimString,
     description: String,
     done: bool,
 }
 
 #[derive(Object, Serialize, Deserialize, Debug)]
 struct TodoAddReq {
+    code: TrimString,
     description: String,
     done: bool,
 }
@@ -642,14 +661,15 @@ struct TodosApi;
 #[OpenApi(tag = "FunTags::Todo1")]
 impl TodosApi {
     #[oai(path = "/todos", method = "post")]
-    async fn create(&self, _todo_add_req: Json<TodoAddReq>) -> TardisApiResult<String> {
-        TardisResp::ok("0".into())
+    async fn create(&self, todo_add_req: Json<TodoAddReq>) -> TardisApiResult<String> {
+        TardisResp::ok(todo_add_req.code.to_string())
     }
 
     #[oai(path = "/todos/:id", method = "get")]
     async fn get(&self, id: Path<i64>) -> TardisApiResult<TodoResp> {
         TardisResp::ok(TodoResp {
             id: id.0,
+            code: "  code1  ".into(),
             description: "测试".to_string(),
             done: false,
         })

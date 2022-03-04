@@ -7,6 +7,7 @@ use tardis::db::sea_orm::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub code: String,
     pub description: String,
     pub done: bool,
 }
