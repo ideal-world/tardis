@@ -27,12 +27,9 @@ impl ContextExtractor for Request {
             if let Some(token) = self.headers().get(token_header_name) {
                 let token = token.to_str().map_err(|_| TardisError::BadRequest("[Tardis.WebServer] Token header is not string".to_string()))?;
                 let context = TardisFuns::cache().get(format!("{}{}", TardisFuns::fw_config().web_server.context_conf.token_redis_key, token).as_str()).await?;
-                if let Some(context) = context {
-                    let context = TardisFuns::json.str_to_obj(&context).map_err(|_| TardisError::BadRequest("[Tardis.WebServer] Context cache is not valid json".to_string()))?;
-                    return Ok(context);
-                } else {
-                    return Err(TardisError::BadRequest("[Tardis.WebServer] Token is not in cache".to_string()));
-                }
+                let context = context.ok_or_else(|| TardisError::BadRequest("[Tardis.WebServer] Token is not in cache".to_string()))?;
+                let context = TardisFuns::json.str_to_obj(&context).map_err(|_| TardisError::BadRequest("[Tardis.WebServer] Context cache is not valid json".to_string()))?;
+                return Ok(context);
             }
         }
         Err(TardisError::BadRequest("[Tardis.WebServer] Context is not found".to_string()))

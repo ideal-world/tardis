@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use tardis::basic::error::TardisError;
 use tardis::basic::field::TrimString;
 use tardis::db::sea_orm::*;
 use tardis::db::sea_query::Query as DbQuery;
@@ -39,14 +40,14 @@ struct TodoModifyReq {
 
 pub struct TodoApi;
 
-#[OpenApi]
+#[OpenApi(prefix_path = "/todo")]
 impl TodoApi {
     // curl -X POST "http://127.0.0.1:8089/todo" \
     //  -H "Accept: application/json" \
     //  -H "Content-Type: application/json" \
     //  -H "Tardis-Context: eyJhcHBfaWQiOiAiIiwidGVuYW50X2lkIjogIiIsImFrIjogIiIsImFjY291bnRfaWQiOiAiIiwidG9rZW4iOiAiIiwidG9rZW5fa2luZCI6ICIiLCJyb2xlcyI6IFtdLCJncm91cHMiOiBbXX0=" \
     //  -d '{"code":"  测试2  ","description":"AA","done":false}'
-    #[oai(path = "/todo", method = "post")]
+    #[oai(path = "/", method = "post")]
     async fn add(&self, todo_add_req: Json<TodoAddReq>, req: &Request) -> TardisApiResult<i32> {
         let cxt = req.extract_context().await?;
         let todo_id = TardisFuns::reldb()
@@ -66,7 +67,7 @@ impl TodoApi {
 
     // curl -X GET "http://localhost:8089/todo/1" \
     //  -H "Accept: application/json"
-    #[oai(path = "/todo/:id", method = "get")]
+    #[oai(path = "/:id", method = "get")]
     async fn get(&self, id: Path<i32>) -> TardisApiResult<TodoDetailResp> {
         let todo = TardisFuns::reldb()
             .get_dto(
@@ -76,11 +77,11 @@ impl TodoApi {
                     .and_where(todos::Column::Id.eq(id.0)),
             )
             .await?
-            .unwrap();
+            .ok_or_else(|| TardisError::NotFound("Not found".to_string()))?;
         TardisResp::ok(todo)
     }
 
-    #[oai(path = "/todo", method = "get")]
+    #[oai(path = "/", method = "get")]
     async fn get_all(&self, page_number: Query<u64>, page_size: Query<u64>) -> TardisApiResult<TardisPage<TodoDetailResp>> {
         let (todos, total_size) = TardisFuns::reldb()
             .paginate_dtos(
@@ -97,14 +98,14 @@ impl TodoApi {
         })
     }
 
-    #[oai(path = "/todo/:id", method = "delete")]
+    #[oai(path = "/:id", method = "delete")]
     async fn delete(&self, id: Path<i32>) -> TardisApiResult<u64> {
         let delete_num = TardisFuns::reldb().soft_delete(todos::Entity::find().filter(todos::Column::Id.eq(id.0)), "").await?;
         TardisResp::ok(delete_num)
     }
 
     // TODO
-    #[oai(path = "/todo/:id", method = "put")]
+    #[oai(path = "/:id", method = "put")]
     async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>, req: &Request) -> TardisApiResult<u64> {
         let cxt = req.extract_context().await?;
         TardisFuns::reldb()
