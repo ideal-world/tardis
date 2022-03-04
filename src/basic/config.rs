@@ -112,8 +112,7 @@ pub struct WebServerModuleConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct WebServerContextConfig {
-    pub context_header_name: Option<String>,
-    pub token_header_name: Option<String>,
+    pub context_header_name: String,
     pub token_redis_key: String,
 }
 
@@ -159,8 +158,7 @@ impl Default for WebServerModuleConfig {
 impl Default for WebServerContextConfig {
     fn default() -> Self {
         WebServerContextConfig {
-            context_header_name: Some("Tardis-Context".to_string()),
-            token_header_name: Some("Tardis-Token".to_string()),
+            context_header_name: "Tardis-Context".to_string(),
             token_redis_key: "tardis::ident::token::".to_string(),
         }
     }

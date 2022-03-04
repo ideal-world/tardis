@@ -4,8 +4,7 @@ use tardis::basic::error::TardisError;
 use tardis::basic::field::TrimString;
 use tardis::db::sea_orm::*;
 use tardis::db::sea_query::Query as DbQuery;
-use tardis::web::context_extractor::ContextExtractor;
-use tardis::web::poem::Request;
+use tardis::web::context_extractor::TardisContextExtractor;
 use tardis::web::poem_openapi::param::Query;
 use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi};
 use tardis::web::web_resp::TardisApiResult;
@@ -48,8 +47,7 @@ impl TodoApi {
     //  -H "Tardis-Context: eyJhcHBfaWQiOiAiIiwidGVuYW50X2lkIjogIiIsImFrIjogIiIsImFjY291bnRfaWQiOiAiIiwidG9rZW4iOiAiIiwidG9rZW5fa2luZCI6ICIiLCJyb2xlcyI6IFtdLCJncm91cHMiOiBbXX0=" \
     //  -d '{"code":"  测试2  ","description":"AA","done":false}'
     #[oai(path = "/", method = "post")]
-    async fn add(&self, todo_add_req: Json<TodoAddReq>, req: &Request) -> TardisApiResult<i32> {
-        let cxt = req.extract_context().await?;
+    async fn add(&self, todo_add_req: Json<TodoAddReq>, cxt: TardisContextExtractor) -> TardisApiResult<i32> {
         let todo_id = TardisFuns::reldb()
             .insert_one(
                 todos::ActiveModel {
@@ -58,7 +56,7 @@ impl TodoApi {
                     done: Set(todo_add_req.done),
                     ..Default::default()
                 },
-                &cxt,
+                &cxt.0,
             )
             .await?
             .last_insert_id;
@@ -106,8 +104,7 @@ impl TodoApi {
 
     // TODO
     #[oai(path = "/:id", method = "put")]
-    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>, req: &Request) -> TardisApiResult<u64> {
-        let cxt = req.extract_context().await?;
+    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>, cxt: TardisContextExtractor) -> TardisApiResult<u64> {
         TardisFuns::reldb()
             .update_one(
                 todos::ActiveModel {
@@ -116,7 +113,7 @@ impl TodoApi {
                     done: todo_modify_req.done.map(Set).unwrap_or(NotSet),
                     ..Default::default()
                 },
-                &cxt,
+                &cxt.0,
             )
             .await?;
         TardisResp::ok(0)

@@ -4,7 +4,6 @@ extern crate core;
 
 use std::time::Duration;
 
-use poem::Request;
 use testcontainers::clients;
 use tokio::time::sleep;
 
@@ -15,7 +14,7 @@ use tardis::basic::field::TrimString;
 use tardis::basic::result::{StatusCodeKind, TardisResult};
 use tardis::serde::{Deserialize, Serialize};
 use tardis::test::test_container::TardisTestContainer;
-use tardis::web::context_extractor::ContextExtractor;
+use tardis::web::context_extractor::{TardisContextExtractor, TOKEN_FLAG};
 use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi, Tags};
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
 use tardis::TardisFuns;
@@ -385,37 +384,31 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
 async fn test_context(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client().get::<TardisResp<String>>(format!("{}/other/context_in_header", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
-    assert_eq!(response.msg, "[Tardis.WebServer] Context is not found");
+    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.msg, "authorization error");
 
     // from header
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
             format!("{}/other/context_in_header", url).as_str(),
-            Some(vec![(
-                TardisFuns::fw_config().web_server.context_conf.context_header_name.as_ref().unwrap().to_string(),
-                "sss".to_string(),
-            )]),
+            Some(vec![(TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(), "sss".to_string())]),
         )
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
-    assert_eq!(response.msg, "[Tardis.WebServer] Context header is not utf8");
+    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.msg, "authorization error");
 
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
             format!("{}/other/context_in_header", url).as_str(),
-            Some(vec![(
-                TardisFuns::fw_config().web_server.context_conf.context_header_name.as_ref().unwrap().to_string(),
-                "c3Nz".to_string(),
-            )]),
+            Some(vec![(TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(), "c3Nz".to_string())]),
         )
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
-    assert_eq!(response.msg, "[Tardis.WebServer] Context header is not valid json");
+    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
         app_id: "app1".to_string(),
@@ -431,21 +424,21 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .get::<TardisResp<String>>(
             format!("{}/other/context_in_header", url).as_str(),
             Some(vec![(
-                TardisFuns::fw_config().web_server.context_conf.context_header_name.as_ref().unwrap().to_string(),
+                TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(),
                 TardisFuns::json.obj_to_string(&context).unwrap(),
             )]),
         )
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
-    assert_eq!(response.msg, "[Tardis.WebServer] Context header is not string");
+    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.msg, "authorization error");
 
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
             format!("{}/other/context_in_header", url).as_str(),
             Some(vec![(
-                TardisFuns::fw_config().web_server.context_conf.context_header_name.as_ref().unwrap().to_string(),
+                TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(),
                 base64::encode(TardisFuns::json.obj_to_string(&context).unwrap()),
             )]),
         )
@@ -460,15 +453,15 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .get::<TardisResp<String>>(
             format!("{}/other/context_in_header", url).as_str(),
             Some(vec![(
-                TardisFuns::fw_config().web_server.context_conf.token_header_name.as_ref().unwrap().to_string(),
-                "token1".to_string(),
+                TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(),
+                format!("{}{}", TOKEN_FLAG, "token1").to_string(),
             )]),
         )
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
-    assert_eq!(response.msg, "[Tardis.WebServer] Token is not in cache");
+    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
         app_id: "app1".to_string(),
@@ -491,8 +484,8 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .get::<TardisResp<String>>(
             format!("{}/other/context_in_header", url).as_str(),
             Some(vec![(
-                TardisFuns::fw_config().web_server.context_conf.token_header_name.as_ref().unwrap().to_string(),
-                "token1".to_string(),
+                TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(),
+                format!("{}{}", TOKEN_FLAG, "token1"),
             )]),
         )
         .await?
@@ -691,8 +684,7 @@ impl OtherApi {
     }
 
     #[oai(path = "/context_in_header", method = "get")]
-    async fn context_in_header(&self, req: &Request) -> TardisApiResult<String> {
-        let context = req.extract_context().await?;
-        TardisResp::ok(context.roles.get(1).unwrap().to_string())
+    async fn context_in_header(&self, cxt: TardisContextExtractor) -> TardisApiResult<String> {
+        TardisResp::ok(cxt.0.roles.get(1).unwrap().to_string())
     }
 }
