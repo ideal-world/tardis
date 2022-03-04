@@ -9,8 +9,7 @@ Do NOT use in production environment!**
 
 [![Crate](https://img.shields.io/crates/v/tardis.svg)](https://crates.io/crates/tardis)
 [![Docs](https://docs.rs/tardis/badge.svg)](https://docs.rs/tardis)
-[![Build Status](https://github.com/ideal-world/tardis/actions/workflows/cicd.yml/badge.svg)](https://github.
-com/ideal-world/tardis/actions/workflows/cicd.yml)
+[![Build Status](https://github.com/ideal-world/tardis/actions/workflows/cicd.yml/badge.svg)](https://github.com/ideal-world/tardis/actions/workflows/cicd.yml)
 [![Test Coverage](https://codecov.io/gh/ideal-world/tardis/branch/main/graph/badge.svg?token=L1LQ8DLUS2)](https://codecov.io/gh/ideal-world/tardis)
 [![License](https://img.shields.io/github/license/ideal-world/tardis)](https://github.com/ideal-world/tardis/blob/main/LICENSE)
 
