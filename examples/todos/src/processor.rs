@@ -7,7 +7,7 @@ use tardis::db::sea_query::Query as DbQuery;
 use tardis::web::context_extractor::TardisContextExtractor;
 use tardis::web::poem_openapi::param::Query;
 use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi};
-use tardis::web::web_resp::TardisApiResult;
+use tardis::web::web_resp::{TardisApiResult, Void};
 use tardis::web::web_resp::{TardisPage, TardisResp};
 use tardis::TardisFuns;
 
@@ -102,9 +102,13 @@ impl TodoApi {
         TardisResp::ok(delete_num)
     }
 
-    // TODO
+    // curl -X PUT "http://localhost:8089/todo/1" \
+    //  -H "Accept: application/json" \
+    //  -H "Tardis-Context: eyJhcHBfaWQiOiAiIiwidGVuYW50X2lkIjogIiIsImFrIjogIiIsImFjY291bnRfaWQiOiAiIiwidG9rZW4iOiAiIiwidG9rZW5fa2luZCI6ICIiLCJyb2xlcyI6IFtdLCJncm91cHMiOiBbXX0=" \
+    //  -H "Content-Type: application/json" \
+    //  -d '{"description":"AAAAAAAA","done":false}'
     #[oai(path = "/:id", method = "put")]
-    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>, cxt: TardisContextExtractor) -> TardisApiResult<u64> {
+    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>, cxt: TardisContextExtractor) -> TardisApiResult<Void> {
         TardisFuns::reldb()
             .update_one(
                 todos::ActiveModel {
@@ -116,6 +120,6 @@ impl TodoApi {
                 &cxt.0,
             )
             .await?;
-        TardisResp::ok(0)
+        TardisResp::ok(Void {})
     }
 }

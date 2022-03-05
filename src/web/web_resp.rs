@@ -99,3 +99,7 @@ where
     pub total_size: u64,
     pub records: Vec<T>,
 }
+
+#[derive(Object, Deserialize, Serialize, Clone, Debug)]
+#[oai(inline)]
+pub struct Void {}
