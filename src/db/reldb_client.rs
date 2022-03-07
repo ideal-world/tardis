@@ -70,17 +70,12 @@ impl TardisRelDBClient {
         Ok(client)
     }
 
-    pub fn conn(&self) -> &DatabaseConnection {
-        &self.con
-    }
-
     pub fn backend(&self) -> DbBackend {
         self.con.get_database_backend()
     }
 
-    pub async fn begin(&self) -> TardisResult<TardisRelDBClientTransaction> {
-        let t = self.con.begin().await?;
-        Ok(TardisRelDBClientTransaction { tx: t })
+    pub fn conn(&self) -> TardisRelDBlConnection {
+        TardisRelDBlConnection { conn: &self.con, tx: None }
     }
 
     async fn init_basic_tables(&self) -> TardisResult<()> {
@@ -264,103 +259,40 @@ impl TardisRelDBClient {
     }
 }
 
-impl TardisRelDBClient {
-    pub async fn create_table_from_entity<E>(&self, entity: E) -> TardisResult<()>
-    where
-        E: EntityTrait,
-    {
-        TardisRelDBClient::create_table_from_entity_inner(entity, &self.con).await
-    }
-
-    pub async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()> {
-        TardisRelDBClient::create_table_inner(statement, &self.con).await
-    }
-
-    pub async fn create_index(&self, statements: &[IndexCreateStatement]) -> TardisResult<()> {
-        TardisRelDBClient::create_index_inner(statements, &self.con).await
-    }
-
-    pub async fn get_dto<D>(&self, select_statement: &SelectStatement) -> TardisResult<Option<D>>
-    where
-        D: FromQueryResult,
-    {
-        TardisRelDBClient::get_dto_inner(select_statement, &self.con).await
-    }
-
-    pub async fn find_dtos<D>(&self, select_statement: &SelectStatement) -> TardisResult<Vec<D>>
-    where
-        D: FromQueryResult,
-    {
-        TardisRelDBClient::find_dtos_inner(select_statement, &self.con).await
-    }
-
-    pub async fn paginate_dtos<D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
-    where
-        D: FromQueryResult,
-    {
-        TardisRelDBClient::paginate_dtos_inner(select_statement, page_number, page_size, &self.con).await
-    }
-
-    pub async fn count(&self, select_statement: &SelectStatement) -> TardisResult<u64> {
-        TardisRelDBClient::count_inner(select_statement, &self.con).await
-    }
-
-    pub async fn execute(&self, statement: Statement) -> TardisResult<ExecResult> {
-        TardisRelDBClient::execute_inner(statement, &self.con).await
-    }
-
-    pub async fn insert_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
-    where
-        T: TardisActiveModel,
-    {
-        TardisRelDBClient::insert_one_inner(model, &self.con, cxt).await
-    }
-
-    pub async fn insert_many<T>(&self, models: Vec<T>, cxt: &TardisContext) -> TardisResult<()>
-    where
-        T: TardisActiveModel,
-    {
-        TardisRelDBClient::insert_many_inner(models, &self.con, cxt).await
-    }
-
-    pub async fn update_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<()>
-    where
-        T: TardisActiveModel,
-    {
-        TardisRelDBClient::update_one_inner(model, &self.con, cxt).await
-    }
-
-    pub async fn update_many<T>(&self, update_statement: &UpdateStatement) -> TardisResult<()> {
-        TardisRelDBClient::update_many_inner(update_statement, &self.con).await
-    }
-
-    pub async fn soft_delete<E>(&self, select: Select<E>, delete_user: &str) -> TardisResult<u64>
-    where
-        E: EntityTrait,
-    {
-        TardisRelDBClient::soft_delete_inner(select, delete_user, &self.con).await
-    }
-
-    pub async fn soft_delete_custom<E>(&self, select: Select<E>, custom_pk_field: &str, delete_user: &str) -> TardisResult<u64>
-    where
-        E: EntityTrait,
-    {
-        TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, delete_user, &self.con).await
-    }
+pub struct TardisRelDBlConnection<'a> {
+    conn: &'a DatabaseConnection,
+    tx: Option<DatabaseTransaction>,
 }
 
-pub struct TardisRelDBClientTransaction {
-    tx: DatabaseTransaction,
-}
+impl<'a> TardisRelDBlConnection<'a> {
+    pub fn raw_conn(&self) -> &DatabaseConnection {
+        self.conn
+    }
 
-impl TardisRelDBClientTransaction {
+    pub fn raw_tx(&self) -> TardisResult<&DatabaseTransaction> {
+        if let Some(tx) = &self.tx {
+            Ok(tx)
+        } else {
+            Err(TardisError::NotFound("[Tardis.RelDBClient] The current connection  has no transactions".to_string()))
+        }
+    }
+
+    pub async fn begin(&mut self) -> TardisResult<()> {
+        self.tx = Some(self.conn.begin().await?);
+        Ok(())
+    }
+
     pub async fn commit(self) -> TardisResult<()> {
-        self.tx.commit().await?;
+        if let Some(tx) = self.tx {
+            tx.commit().await?;
+        }
         Ok(())
     }
 
     pub async fn rollback(self) -> TardisResult<()> {
-        self.tx.rollback().await?;
+        if let Some(tx) = self.tx {
+            tx.rollback().await?;
+        }
         Ok(())
     }
 
@@ -368,83 +300,139 @@ impl TardisRelDBClientTransaction {
     where
         E: EntityTrait,
     {
-        TardisRelDBClient::create_table_from_entity_inner(entity, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::create_table_from_entity_inner(entity, tx).await
+        } else {
+            TardisRelDBClient::create_table_from_entity_inner(entity, self.conn).await
+        }
     }
 
     pub async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()> {
-        TardisRelDBClient::create_table_inner(statement, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::create_table_inner(statement, tx).await
+        } else {
+            TardisRelDBClient::create_table_inner(statement, self.conn).await
+        }
     }
 
     pub async fn create_index(&self, statements: &[IndexCreateStatement]) -> TardisResult<()> {
-        TardisRelDBClient::create_index_inner(statements, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::create_index_inner(statements, tx).await
+        } else {
+            TardisRelDBClient::create_index_inner(statements, self.conn).await
+        }
     }
 
     pub async fn get_dto<D>(&self, select_statement: &SelectStatement) -> TardisResult<Option<D>>
     where
         D: FromQueryResult,
     {
-        TardisRelDBClient::get_dto_inner(select_statement, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::get_dto_inner(select_statement, tx).await
+        } else {
+            TardisRelDBClient::get_dto_inner(select_statement, self.conn).await
+        }
     }
 
     pub async fn find_dtos<D>(&self, select_statement: &SelectStatement) -> TardisResult<Vec<D>>
     where
         D: FromQueryResult,
     {
-        TardisRelDBClient::find_dtos_inner(select_statement, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::find_dtos_inner(select_statement, tx).await
+        } else {
+            TardisRelDBClient::find_dtos_inner(select_statement, self.conn).await
+        }
     }
 
     pub async fn paginate_dtos<D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
     where
         D: FromQueryResult,
     {
-        TardisRelDBClient::paginate_dtos_inner(select_statement, page_number, page_size, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::paginate_dtos_inner(select_statement, page_number, page_size, tx).await
+        } else {
+            TardisRelDBClient::paginate_dtos_inner(select_statement, page_number, page_size, self.conn).await
+        }
     }
 
     pub async fn count(&self, select_statement: &SelectStatement) -> TardisResult<u64> {
-        TardisRelDBClient::count_inner(select_statement, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::count_inner(select_statement, tx).await
+        } else {
+            TardisRelDBClient::count_inner(select_statement, self.conn).await
+        }
     }
 
     pub async fn execute(&self, statement: Statement) -> TardisResult<ExecResult> {
-        TardisRelDBClient::execute_inner(statement, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::execute_inner(statement, tx).await
+        } else {
+            TardisRelDBClient::execute_inner(statement, self.conn).await
+        }
     }
 
     pub async fn insert_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
     where
         T: TardisActiveModel,
     {
-        TardisRelDBClient::insert_one_inner(model, &self.tx, cxt).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::insert_one_inner(model, tx, cxt).await
+        } else {
+            TardisRelDBClient::insert_one_inner(model, self.conn, cxt).await
+        }
     }
 
     pub async fn insert_many<T>(&self, models: Vec<T>, cxt: &TardisContext) -> TardisResult<()>
     where
         T: TardisActiveModel,
     {
-        TardisRelDBClient::insert_many_inner(models, &self.tx, cxt).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::insert_many_inner(models, tx, cxt).await
+        } else {
+            TardisRelDBClient::insert_many_inner(models, self.conn, cxt).await
+        }
     }
 
     pub async fn update_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<()>
     where
         T: TardisActiveModel,
     {
-        TardisRelDBClient::update_one_inner(model, &self.tx, cxt).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::update_one_inner(model, tx, cxt).await
+        } else {
+            TardisRelDBClient::update_one_inner(model, self.conn, cxt).await
+        }
     }
 
     pub async fn update_many<T>(&self, update_statement: &UpdateStatement) -> TardisResult<()> {
-        TardisRelDBClient::update_many_inner(update_statement, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::update_many_inner(update_statement, tx).await
+        } else {
+            TardisRelDBClient::update_many_inner(update_statement, self.conn).await
+        }
     }
 
     pub async fn soft_delete<E>(&self, select: Select<E>, delete_user: &str) -> TardisResult<u64>
     where
         E: EntityTrait,
     {
-        TardisRelDBClient::soft_delete_inner(select, delete_user, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::soft_delete_inner(select, delete_user, tx).await
+        } else {
+            TardisRelDBClient::soft_delete_inner(select, delete_user, self.conn).await
+        }
     }
 
     pub async fn soft_delete_custom<E>(&self, select: Select<E>, custom_pk_field: &str, delete_user: &str) -> TardisResult<u64>
     where
         E: EntityTrait,
     {
-        TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, delete_user, &self.tx).await
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, delete_user, tx).await
+        } else {
+            TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, delete_user, self.conn).await
+        }
     }
 }
 

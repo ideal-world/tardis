@@ -43,42 +43,42 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
         groups: vec![],
     };
 
+    let db = client.conn();
+    let conn = db.raw_conn();
+
     // Prepare data
-    entities::app_account_rel::Entity::delete_many().exec(client.conn()).await?;
-    entities::account::Entity::delete_many().exec(client.conn()).await?;
-    entities::app::Entity::delete_many().exec(client.conn()).await?;
-    entities::tenant_conf::Entity::delete_many().exec(client.conn()).await?;
-    entities::tenant::Entity::delete_many().exec(client.conn()).await?;
+    entities::app_account_rel::Entity::delete_many().exec(conn).await?;
+    entities::account::Entity::delete_many().exec(conn).await?;
+    entities::app::Entity::delete_many().exec(conn).await?;
+    entities::tenant_conf::Entity::delete_many().exec(conn).await?;
+    entities::tenant::Entity::delete_many().exec(conn).await?;
 
-    client
-        .insert_one(
-            entities::tenant::ActiveModel {
-                name: Set("tenant1".to_string()),
-                ..Default::default()
-            },
-            &cxt,
-        )
-        .await?;
+    db.insert_one(
+        entities::tenant::ActiveModel {
+            name: Set("tenant1".to_string()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
 
-    client
-        .insert_one(
-            entities::tenant::ActiveModel {
-                name: Set("tenant2".to_string()),
-                ..Default::default()
-            },
-            &cxt,
-        )
-        .await?;
+    db.insert_one(
+        entities::tenant::ActiveModel {
+            name: Set("tenant2".to_string()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
 
-    client
-        .insert_one(
-            entities::tenant::ActiveModel {
-                name: Set("tenant3".to_string()),
-                ..Default::default()
-            },
-            &cxt,
-        )
-        .await?;
+    db.insert_one(
+        entities::tenant::ActiveModel {
+            name: Set("tenant3".to_string()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
 
     #[derive(Debug, FromQueryResult)]
     struct TenantResp {
@@ -87,15 +87,15 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
     }
 
     let tenant_resp: Option<TenantResp> =
-        client.get_dto(Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity)).await?;
+        db.get_dto(Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity)).await?;
     assert!(tenant_resp.is_some());
     assert!(tenant_resp.unwrap().name.contains("tenant"));
 
     let tenant_resp: Vec<TenantResp> =
-        client.find_dtos(Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity)).await?;
+        db.find_dtos(Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity)).await?;
     assert_eq!(tenant_resp.len(), 3);
 
-    let tenant_resp: (Vec<TenantResp>, u64) = client
+    let tenant_resp: (Vec<TenantResp>, u64) = db
         .paginate_dtos(
             Query::select().columns(vec![entities::tenant::Column::Id, entities::tenant::Column::Name]).from(entities::tenant::Entity),
             1,
@@ -121,14 +121,17 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         groups: vec![],
     };
 
-    // Prepare data
-    entities::app_account_rel::Entity::delete_many().exec(client.conn()).await?;
-    entities::account::Entity::delete_many().exec(client.conn()).await?;
-    entities::app::Entity::delete_many().exec(client.conn()).await?;
-    entities::tenant_conf::Entity::delete_many().exec(client.conn()).await?;
-    entities::tenant::Entity::delete_many().exec(client.conn()).await?;
+    let db = client.conn();
+    let conn = db.raw_conn();
 
-    let tenant_id: String = client
+    // Prepare data
+    entities::app_account_rel::Entity::delete_many().exec(conn).await?;
+    entities::account::Entity::delete_many().exec(conn).await?;
+    entities::app::Entity::delete_many().exec(conn).await?;
+    entities::tenant_conf::Entity::delete_many().exec(conn).await?;
+    entities::tenant::Entity::delete_many().exec(conn).await?;
+
+    let tenant_id: String = db
         .insert_one(
             entities::tenant::ActiveModel {
                 name: Set("tenant1".to_string()),
@@ -139,18 +142,17 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         .await?
         .last_insert_id;
 
-    client
-        .insert_one(
-            entities::app::ActiveModel {
-                name: Set("app1".to_string()),
-                tenant_id: Set(tenant_id.clone()),
-                ..Default::default()
-            },
-            &cxt,
-        )
-        .await?;
+    db.insert_one(
+        entities::app::ActiveModel {
+            name: Set("app1".to_string()),
+            tenant_id: Set(tenant_id.clone()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
 
-    let app_id: String = client
+    let app_id: String = db
         .insert_one(
             entities::app::ActiveModel {
                 name: Set("app2".to_string()),
@@ -162,7 +164,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         .await?
         .last_insert_id;
 
-    let account_id: String = client
+    let account_id: String = db
         .insert_one(
             entities::account::ActiveModel {
                 name: Set("account1".to_string()),
@@ -177,7 +179,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         app_id: Set(app_id.clone()),
         account_id: Set(account_id.clone()),
     }
-    .insert(client.conn())
+    .insert(conn)
     .await?;
 
     // Select to DTO
@@ -192,20 +194,18 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         .column(entities::tenant::Column::Name)
         .column_as(entities::tenant::Column::Id, "aa_id")
         .into_model::<SelectResult>()
-        .one(client.conn())
+        .one(conn)
         .await?
         .unwrap();
     assert_eq!(select_result.aa_id, tenant_id);
     assert_eq!(select_result.name, "tenant1");
 
     // AND Condition
-    let apps =
-        entities::app::Entity::find().filter(Condition::all().add(entities::app::Column::Id.eq("__")).add(entities::app::Column::Name.like("%app%"))).all(client.conn()).await?;
+    let apps = entities::app::Entity::find().filter(Condition::all().add(entities::app::Column::Id.eq("__")).add(entities::app::Column::Name.like("%app%"))).all(conn).await?;
     assert_eq!(apps.len(), 0);
 
     // OR Condition
-    let apps =
-        entities::app::Entity::find().filter(Condition::any().add(entities::app::Column::Id.eq("__")).add(entities::app::Column::Name.like("%app%"))).all(client.conn()).await?;
+    let apps = entities::app::Entity::find().filter(Condition::any().add(entities::app::Column::Id.eq("__")).add(entities::app::Column::Name.like("%app%"))).all(conn).await?;
     assert_eq!(apps.len(), 2);
 
     // Group By
@@ -215,7 +215,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         .column_as(entities::app::Column::Id.count(), "count")
         .group_by(entities::app::Column::Name)
         .into_json()
-        .all(client.conn())
+        .all(conn)
         .await?;
     assert_eq!(apps[0]["count"], 1);
 
@@ -226,7 +226,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         .column_as(entities::tenant_conf::Column::Name, "conf_name")
         .left_join(entities::tenant_conf::Entity)
         .into_json()
-        .all(client.conn())
+        .all(conn)
         .await?;
     assert_eq!(tenants.len(), 1);
     let tenants = entities::tenant::Entity::find()
@@ -235,7 +235,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         .column_as(entities::tenant_conf::Column::Name, "conf_name")
         .inner_join(entities::tenant_conf::Entity)
         .into_json()
-        .all(client.conn())
+        .all(conn)
         .await?;
     assert_eq!(tenants.len(), 0);
 
@@ -246,7 +246,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         .left_join(entities::tenant::Entity)
         .filter(entities::tenant::Column::Name.contains("tenant"))
         .into_json()
-        .all(client.conn())
+        .all(conn)
         .await?;
     assert_eq!(apps.len(), 2);
     assert_eq!(apps[0]["tenant_name"], "tenant1");
@@ -262,7 +262,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         )
         .filter(entities::tenant::Column::Name.contains("tenant"))
         .into_json()
-        .all(client.conn())
+        .all(conn)
         .await?;
     assert_eq!(apps.len(), 2);
     assert_eq!(apps[0]["tenant_name"], "tenant1");
@@ -272,7 +272,8 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
 
 async fn test_transaction(client: &TardisRelDBClient) -> TardisResult<()> {
     // Normal transaction
-    let tx = client.conn().begin().await?;
+    let mut db = client.conn();
+    db.begin().await?;
 
     let config = tardis_db_config::ActiveModel {
         k: Set("kn".to_string()),
@@ -281,22 +282,23 @@ async fn test_transaction(client: &TardisRelDBClient) -> TardisResult<()> {
         updater: Set("admin".to_string()),
         ..Default::default()
     }
-    .insert(&tx)
+    .insert(db.raw_tx().unwrap())
     .await?;
 
-    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(client.conn()).await?;
+    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(db.raw_conn()).await?;
     assert_eq!(conf, None);
-    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(&tx).await?.unwrap();
+    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(db.raw_tx().unwrap()).await?.unwrap();
     assert_eq!(conf.k, "kn");
 
-    tx.commit().await?;
+    db.commit().await?;
 
-    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(client.conn()).await?.unwrap();
+    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(client.conn().raw_conn()).await?.unwrap();
     assert_eq!(conf.k, "kn");
 
     // Rollback transaction
 
-    let tx = client.conn().begin().await?;
+    let mut db = client.conn();
+    db.begin().await?;
 
     let config = tardis_db_config::ActiveModel {
         k: Set("ke".to_string()),
@@ -305,25 +307,28 @@ async fn test_transaction(client: &TardisRelDBClient) -> TardisResult<()> {
         updater: Set("admin".to_string()),
         ..Default::default()
     }
-    .insert(&tx)
+    .insert(db.raw_tx().unwrap())
     .await?;
 
-    tx.rollback().await?;
+    db.rollback().await?;
 
-    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(client.conn()).await?;
+    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(client.conn().raw_conn()).await?;
     assert_eq!(conf, None);
 
     Ok(())
 }
 
 async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
-    let tx = client.begin().await?;
-    tx.create_table_from_entity(entities::tenant::Entity).await?;
-    tx.create_table_from_entity(entities::tenant_conf::Entity).await?;
-    tx.create_table_from_entity(entities::app::Entity).await?;
-    tx.create_table_from_entity(entities::account::Entity).await?;
-    tx.create_table_from_entity(entities::app_account_rel::Entity).await?;
-    tx.commit().await?;
+    let mut db = client.conn();
+    db.begin().await?;
+    db.create_table_from_entity(entities::tenant::Entity).await?;
+    db.create_table_from_entity(entities::tenant_conf::Entity).await?;
+    db.create_table_from_entity(entities::app::Entity).await?;
+    db.create_table_from_entity(entities::account::Entity).await?;
+    db.create_table_from_entity(entities::app_account_rel::Entity).await?;
+    db.commit().await?;
+
+    let db = client.conn();
 
     let cxt = TardisContext {
         app_id: "a1".to_string(),
@@ -336,70 +341,67 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
         groups: vec![],
     };
 
-    client
-        .insert_one(
-            entities::tenant::ActiveModel {
-                name: Set("tenant1".to_string()),
-                ..Default::default()
-            },
-            &cxt,
-        )
-        .await?;
+    db.insert_one(
+        entities::tenant::ActiveModel {
+            name: Set("tenant1".to_string()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
 
-    let tenant = entities::tenant::Entity::find().one(client.conn()).await?.unwrap();
-    let config = tenant.find_related(entities::tenant_conf::Entity).one(client.conn()).await?;
+    let tenant = entities::tenant::Entity::find().one(db.raw_conn()).await?.unwrap();
+    let config = tenant.find_related(entities::tenant_conf::Entity).one(db.raw_conn()).await?;
     // Not Exists
     assert_eq!(config, None);
 
-    client
-        .insert_one(
-            entities::tenant_conf::ActiveModel {
-                name: Set("conf1".to_string()),
+    db.insert_one(
+        entities::tenant_conf::ActiveModel {
+            name: Set("conf1".to_string()),
+            tenant_id: Set(tenant.id.clone()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
+
+    db.insert_many(
+        vec![
+            entities::app::ActiveModel {
+                name: Set("app1".to_string()),
                 tenant_id: Set(tenant.id.clone()),
                 ..Default::default()
             },
-            &cxt,
-        )
-        .await?;
+            entities::app::ActiveModel {
+                name: Set("app2".to_string()),
+                tenant_id: Set(tenant.id.clone()),
+                ..Default::default()
+            },
+        ],
+        &cxt,
+    )
+    .await?;
 
-    client
-        .insert_many(
-            vec![
-                entities::app::ActiveModel {
-                    name: Set("app1".to_string()),
-                    tenant_id: Set(tenant.id.clone()),
-                    ..Default::default()
-                },
-                entities::app::ActiveModel {
-                    name: Set("app2".to_string()),
-                    tenant_id: Set(tenant.id.clone()),
-                    ..Default::default()
-                },
-            ],
-            &cxt,
-        )
-        .await?;
-
-    let tenant = entities::tenant::Entity::find_by_id(tenant.id.clone()).one(client.conn()).await?.unwrap();
+    let tenant = entities::tenant::Entity::find_by_id(tenant.id.clone()).one(db.raw_conn()).await?.unwrap();
 
     info!("----------------- One To One -----------------");
-    let config = tenant.find_related(entities::tenant_conf::Entity).one(client.conn()).await?.unwrap();
+    let config = tenant.find_related(entities::tenant_conf::Entity).one(db.raw_conn()).await?.unwrap();
     assert_eq!(config.name, "conf1");
-    let tenant = config.find_related(entities::tenant::Entity).one(client.conn()).await?.unwrap();
+    let tenant = config.find_related(entities::tenant::Entity).one(db.raw_conn()).await?.unwrap();
     assert_eq!(tenant.name, "tenant1");
 
     info!("----------------- One To Many -----------------");
-    let apps = tenant.find_related(entities::app::Entity).all(client.conn()).await?;
+    let apps = tenant.find_related(entities::app::Entity).all(db.raw_conn()).await?;
     assert_eq!(apps.len(), 2);
     info!("----------------- Many To One -----------------");
-    let tenant = apps[0].find_related(entities::tenant::Entity).one(client.conn()).await?.unwrap();
+    let tenant = apps[0].find_related(entities::tenant::Entity).one(db.raw_conn()).await?.unwrap();
     assert_eq!(tenant.name, "tenant1");
 
     info!("----------------- Many To Many -----------------");
-    let accounts = apps[0].find_related(entities::account::Entity).all(client.conn()).await?;
+    let accounts = apps[0].find_related(entities::account::Entity).all(db.raw_conn()).await?;
     assert_eq!(accounts.len(), 0);
 
-    let account_id: String = client
+    let account_id: String = db
         .insert_one(
             entities::account::ActiveModel {
                 name: Set("account1".to_string()),
@@ -414,16 +416,17 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
         app_id: Set(apps[0].id.to_string()),
         account_id: Set(account_id.clone()),
     }
-    .insert(client.conn())
+    .insert(db.raw_conn())
     .await?;
 
-    let accounts = apps[0].find_related(entities::account::Entity).all(client.conn()).await?;
+    let accounts = apps[0].find_related(entities::account::Entity).all(db.raw_conn()).await?;
     assert_eq!(accounts.len(), 1);
 
     Ok(())
 }
 
 async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
+    let db = client.conn();
     // Insert
     tardis_db_config::ActiveModel {
         k: Set("k1".to_string()),
@@ -432,7 +435,7 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
         updater: Set("admin".to_string()),
         ..Default::default()
     }
-    .insert(client.conn())
+    .insert(db.raw_conn())
     .await?;
 
     let conf2 = tardis_db_config::ActiveModel {
@@ -442,10 +445,10 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
         updater: Set("admin".to_string()),
         ..Default::default()
     };
-    let insert_result = tardis_db_config::Entity::insert(conf2).exec(client.conn()).await?;
+    let insert_result = tardis_db_config::Entity::insert(conf2).exec(db.raw_conn()).await?;
 
     // Find One
-    let conf2 = tardis_db_config::Entity::find_by_id(insert_result.last_insert_id.clone()).one(client.conn()).await?.unwrap();
+    let conf2 = tardis_db_config::Entity::find_by_id(insert_result.last_insert_id.clone()).one(db.raw_conn()).await?.unwrap();
     assert_eq!(conf2.k, "k2");
     assert_eq!(conf2.create_time, conf2.update_time);
 
@@ -453,8 +456,8 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
     sleep(Duration::from_millis(1100)).await;
     let mut conf2: tardis_db_config::ActiveModel = conf2.into();
     conf2.v = Set("v2更新".to_string());
-    conf2.update(client.conn()).await?;
-    let conf2 = tardis_db_config::Entity::find_by_id(insert_result.last_insert_id.clone()).one(client.conn()).await?.unwrap();
+    conf2.update(db.raw_conn()).await?;
+    let conf2 = tardis_db_config::Entity::find_by_id(insert_result.last_insert_id.clone()).one(db.raw_conn()).await?.unwrap();
     assert_eq!(conf2.v, "v2更新");
     assert_ne!(conf2.create_time, conf2.update_time);
 
@@ -462,11 +465,11 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
     tardis_db_config::Entity::update_many()
         .col_expr(tardis_db_config::Column::V, Expr::value("v1更新"))
         .filter(tardis_db_config::Column::Id.ne(insert_result.last_insert_id))
-        .exec(client.conn())
+        .exec(db.raw_conn())
         .await?;
 
     // Find Many
-    let confs = tardis_db_config::Entity::find().filter(tardis_db_config::Column::K.contains("k")).order_by_desc(tardis_db_config::Column::K).all(client.conn()).await?;
+    let confs = tardis_db_config::Entity::find().filter(tardis_db_config::Column::K.contains("k")).order_by_desc(tardis_db_config::Column::K).all(db.raw_conn()).await?;
     assert_eq!(confs.len(), 2);
     assert_eq!(confs[0].k, "k2");
     assert_eq!(confs[1].k, "k1");
@@ -474,7 +477,7 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
     assert_eq!(confs[1].v, "v1更新");
 
     // Page
-    let conf_page = tardis_db_config::Entity::find().filter(tardis_db_config::Column::K.contains("k1")).order_by_desc(tardis_db_config::Column::K).paginate(client.conn(), 1);
+    let conf_page = tardis_db_config::Entity::find().filter(tardis_db_config::Column::K.contains("k1")).order_by_desc(tardis_db_config::Column::K).paginate(db.raw_conn(), 1);
     assert_eq!(conf_page.num_pages().await.unwrap(), 1);
     assert_eq!(conf_page.cur_page(), 0);
     let confs = conf_page.fetch_page(0).await?;
@@ -485,17 +488,17 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
     // Exists TODO https://github.com/SeaQL/sea-orm/issues/408
 
     // Soft Delete
-    tardis_db_config::Entity::find().soft_delete("admin", client.conn()).await?;
-    let dels = tardis_db_del_record::Entity::find().all(client.conn()).await?;
+    tardis_db_config::Entity::find().soft_delete("admin", db.raw_conn()).await?;
+    let dels = tardis_db_del_record::Entity::find().all(db.raw_conn()).await?;
     assert_eq!(dels.len(), 2);
     assert_eq!(dels[0].entity_name, "tardis_config");
 
     // Delete
-    let delete_result = tardis_db_del_record::Entity::delete_many().filter(tardis_db_del_record::Column::Id.eq(dels[0].id.clone())).exec(client.conn()).await?;
+    let delete_result = tardis_db_del_record::Entity::delete_many().filter(tardis_db_del_record::Column::Id.eq(dels[0].id.clone())).exec(db.raw_conn()).await?;
     assert_eq!(delete_result.rows_affected, 1);
 
     // Count
-    let count = tardis_db_del_record::Entity::find().count(client.conn()).await?;
+    let count = tardis_db_del_record::Entity::find().count(db.raw_conn()).await?;
     assert_eq!(count, 1);
 
     Ok(())

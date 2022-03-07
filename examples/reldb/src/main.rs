@@ -28,7 +28,7 @@ async fn main() -> TardisResult<()> {
     // Initial configuration
     TardisFuns::init::<NoneConfig>("config").await?;
 
-    let client = TardisFuns::reldb();
+    let db = TardisFuns::reldb().conn();
 
     // --------------------------------------------------
 
@@ -44,78 +44,74 @@ async fn main() -> TardisResult<()> {
     };
 
     // Create table
-    client.create_table_from_entity(domain::tenant::Entity).await?;
-    client.create_table_from_entity(domain::tenant_conf::Entity).await?;
-    client.create_table_from_entity(domain::app::Entity).await?;
-    client.create_table_from_entity(domain::account::Entity).await?;
-    client.create_table_from_entity(domain::app_account_rel::Entity).await?;
+    db.create_table_from_entity(domain::tenant::Entity).await?;
+    db.create_table_from_entity(domain::tenant_conf::Entity).await?;
+    db.create_table_from_entity(domain::app::Entity).await?;
+    db.create_table_from_entity(domain::account::Entity).await?;
+    db.create_table_from_entity(domain::app_account_rel::Entity).await?;
 
     // Insert some records
-    client
-        .insert_one(
-            domain::tenant::ActiveModel {
-                name: Set("tenant1".to_string()),
-                ..Default::default()
-            },
-            &cxt,
-        )
-        .await?;
+    db.insert_one(
+        domain::tenant::ActiveModel {
+            name: Set("tenant1".to_string()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
 
-    let tenant = domain::tenant::Entity::find().one(client.conn()).await?.unwrap();
+    let tenant = domain::tenant::Entity::find().one(db.raw_conn()).await?.unwrap();
 
-    client
-        .insert_one(
-            domain::tenant_conf::ActiveModel {
-                name: Set("conf1".to_string()),
-                tenant_id: Set(tenant.id.clone()),
-                ..Default::default()
-            },
-            &cxt,
-        )
-        .await?;
+    db.insert_one(
+        domain::tenant_conf::ActiveModel {
+            name: Set("conf1".to_string()),
+            tenant_id: Set(tenant.id.clone()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
 
-    client
-        .insert_one(
-            domain::app::ActiveModel {
-                name: Set("app1".to_string()),
-                tenant_id: Set(tenant.id.clone()),
-                ..Default::default()
-            },
-            &cxt,
-        )
-        .await?;
+    db.insert_one(
+        domain::app::ActiveModel {
+            name: Set("app1".to_string()),
+            tenant_id: Set(tenant.id.clone()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
 
-    client
-        .insert_one(
-            domain::app::ActiveModel {
-                name: Set("app2".to_string()),
-                tenant_id: Set(tenant.id.clone()),
-                ..Default::default()
-            },
-            &cxt,
-        )
-        .await?;
+    db.insert_one(
+        domain::app::ActiveModel {
+            name: Set("app2".to_string()),
+            tenant_id: Set(tenant.id.clone()),
+            ..Default::default()
+        },
+        &cxt,
+    )
+    .await?;
 
-    let tenant = domain::tenant::Entity::find_by_id(tenant.id.clone()).one(client.conn()).await?.unwrap();
+    let tenant = domain::tenant::Entity::find_by_id(tenant.id.clone()).one(db.raw_conn()).await?.unwrap();
 
     info!("----------------- One To One -----------------");
-    let config = tenant.find_related(domain::tenant_conf::Entity).one(client.conn()).await?.unwrap();
+    let config = tenant.find_related(domain::tenant_conf::Entity).one(db.raw_conn()).await?.unwrap();
     assert_eq!(config.name, "conf1");
-    let tenant = config.find_related(domain::tenant::Entity).one(client.conn()).await?.unwrap();
+    let tenant = config.find_related(domain::tenant::Entity).one(db.raw_conn()).await?.unwrap();
     assert_eq!(tenant.name, "tenant1");
 
     info!("----------------- One To Many -----------------");
-    let apps = tenant.find_related(domain::app::Entity).all(client.conn()).await?;
+    let apps = tenant.find_related(domain::app::Entity).all(db.raw_conn()).await?;
     assert_eq!(apps.len(), 2);
     info!("----------------- Many To One -----------------");
-    let tenant = apps[0].find_related(domain::tenant::Entity).one(client.conn()).await?.unwrap();
+    let tenant = apps[0].find_related(domain::tenant::Entity).one(db.raw_conn()).await?.unwrap();
     assert_eq!(tenant.name, "tenant1");
 
     info!("----------------- Many To Many -----------------");
-    let accounts = apps[0].find_related(domain::account::Entity).all(client.conn()).await?;
+    let accounts = apps[0].find_related(domain::account::Entity).all(db.raw_conn()).await?;
     assert_eq!(accounts.len(), 0);
 
-    let account_id: String = client
+    let account_id: String = db
         .insert_one(
             domain::account::ActiveModel {
                 name: Set("account1".to_string()),
@@ -130,10 +126,10 @@ async fn main() -> TardisResult<()> {
         app_id: Set(apps[0].id.to_string()),
         account_id: Set(account_id.to_string()),
     }
-    .insert(client.conn())
+    .insert(db.raw_conn())
     .await?;
 
-    let accounts = apps[0].find_related(domain::account::Entity).all(client.conn()).await?;
+    let accounts = apps[0].find_related(domain::account::Entity).all(db.raw_conn()).await?;
     assert_eq!(accounts.len(), 1);
 
     Ok(())

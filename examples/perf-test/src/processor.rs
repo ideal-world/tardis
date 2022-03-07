@@ -50,6 +50,7 @@ impl TodoApi {
             groups: vec![],
         };
         let todo_id = TardisFuns::reldb()
+            .conn()
             .insert_one(
                 todos::ActiveModel {
                     description: Set(todo_add_req.description.to_string()),
@@ -66,6 +67,7 @@ impl TodoApi {
     #[oai(path = "/todo/:id", method = "get")]
     async fn get(&self, id: Path<i32>) -> TardisApiResult<TodoDetailResp> {
         let todo = TardisFuns::reldb()
+            .conn()
             .get_dto(DbQuery::select().columns(vec![todos::Column::Id, todos::Column::Description, todos::Column::Done]).from(todos::Entity).and_where(todos::Column::Id.eq(id.0)))
             .await?
             .unwrap();
@@ -75,6 +77,7 @@ impl TodoApi {
     #[oai(path = "/todo", method = "get")]
     async fn get_all(&self, page_number: Query<u64>, page_size: Query<u64>) -> TardisApiResult<TardisPage<TodoDetailResp>> {
         let (todos, total_size) = TardisFuns::reldb()
+            .conn()
             .paginate_dtos(
                 DbQuery::select().columns(vec![todos::Column::Id, todos::Column::Description, todos::Column::Done]).from(todos::Entity),
                 page_number.0,
@@ -91,7 +94,7 @@ impl TodoApi {
 
     #[oai(path = "/todo/:id", method = "delete")]
     async fn delete(&self, id: Path<i32>) -> TardisApiResult<u64> {
-        let delete_num = TardisFuns::reldb().soft_delete(todos::Entity::find().filter(todos::Column::Id.eq(id.0)), "").await?;
+        let delete_num = TardisFuns::reldb().conn().soft_delete(todos::Entity::find().filter(todos::Column::Id.eq(id.0)), "").await?;
         TardisResp::ok(delete_num)
     }
 
@@ -108,6 +111,7 @@ impl TodoApi {
             groups: vec![],
         };
         TardisFuns::reldb()
+            .conn()
             .update_one(
                 todos::ActiveModel {
                     id: Set(id.0),
