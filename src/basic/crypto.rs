@@ -76,7 +76,7 @@ impl TardisCryptoAes {
                 crypto::buffer::BufferResult::BufferOverflow => {}
             }
         }
-        Ok(base64::encode(final_result))
+        Ok(base64::encode(&final_result))
     }
 
     pub fn decrypt_cbc(&self, encrypted_data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
@@ -111,7 +111,7 @@ impl TardisCryptoAes {
 impl TardisCryptoSm4 {
     pub fn encrypt_cbc(&self, data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
         let encrypted_data = gmsm::sm4::sm4_cbc_encrypt_byte(data.as_bytes(), hex::decode(hex_key)?.as_slice(), hex::decode(hex_iv)?.as_slice());
-        Ok(base64::encode(encrypted_data))
+        Ok(base64::encode(&encrypted_data))
     }
 
     pub fn decrypt_cbc(&self, encrypted_data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
@@ -164,7 +164,7 @@ impl TardisCryptoRsaPrivateKey {
     pub fn encrypt(&self, data: &str) -> TardisResult<String> {
         let mut rand = rand::rngs::OsRng;
         let encrypted_data = self.pri_key.encrypt(&mut rand, rsa::PaddingScheme::PKCS1v15Encrypt, data.as_bytes())?;
-        Ok(base64::encode(encrypted_data))
+        Ok(base64::encode(&encrypted_data))
     }
 
     pub fn decrypt(&self, encrypted_data: &str) -> TardisResult<String> {
@@ -175,7 +175,7 @@ impl TardisCryptoRsaPrivateKey {
 
     pub fn sign(&self, data: &str) -> TardisResult<String> {
         let signed_data = self.pri_key.sign(rsa::PaddingScheme::PKCS1v15Sign { hash: None }, TardisFuns::crypto.digest.sha256(data)?.as_bytes())?;
-        Ok(base64::encode(signed_data))
+        Ok(base64::encode(&signed_data))
     }
 
     pub fn verify(&self, data: &str, signed_data: &str) -> TardisResult<bool> {
@@ -217,7 +217,7 @@ impl TardisCryptoRsaPublicKey {
     pub fn encrypt(&self, data: &str) -> TardisResult<String> {
         let mut rand = rand::rngs::OsRng;
         let encrypted_data = self.pub_key.encrypt(&mut rand, rsa::PaddingScheme::PKCS1v15Encrypt, data.as_bytes())?;
-        Ok(base64::encode(encrypted_data))
+        Ok(base64::encode(&encrypted_data))
     }
 
     pub fn verify(&self, data: &str, signed_data: &str) -> TardisResult<bool> {
