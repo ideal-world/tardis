@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
 
 use regex::Regex;
@@ -132,7 +131,7 @@ impl crate::web::poem_openapi::types::Type for TrimString {
 
     type RawElementValueType = Self;
 
-    fn name() -> Cow<'static, str> {
+    fn name() -> std::borrow::Cow<'static, str> {
         "trim_string".into()
     }
 

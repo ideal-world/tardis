@@ -10,8 +10,8 @@ categories = [
     "database",
     "caching",
 ]
-homepage = "https://tardis.idealworld.group"
-documentation = "https://tardis.idealworld.group"
+homepage = "https://github.com/ideal-world/tardis"
+documentation = "https://docs.rs/tardis/"
 repository = "https://github.com/ideal-world/tardis"
 license = "MIT"
 edition = "2021"
@@ -141,3 +141,7 @@ harness = false
 name = "crypto_benchmark"
 harness = false
 required-features = ["crypto"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

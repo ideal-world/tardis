@@ -2,6 +2,7 @@ use std::env;
 
 pub mod config;
 #[cfg(feature = "crypto")]
+#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 pub mod crypto;
 pub mod dto;
 pub mod error;
