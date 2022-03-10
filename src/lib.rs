@@ -120,6 +120,102 @@ use crate::web::web_client::TardisWebClient;
 #[cfg(feature = "web-server")]
 use crate::web::web_server::TardisWebServer;
 
+/// The operational portal for Tardis core functions / Tardis核心功能的操作入口
+///
+/// # Initialization / 初始化
+///
+/// ## Define project-level configuration objects / 定义项目级配置对象
+///
+/// ```rust
+/// #[derive(Debug, Serialize, Deserialize)]
+/// #[serde(default)]
+/// struct ExampleConfig {
+///     conf1: String,
+///     conf2: String,
+/// }
+/// impl Default for ExampleConfig {
+///     fn default() -> Self {
+///         ExampleConfig {
+///             conf1: "".to_string(),
+///             conf2: "".to_string(),
+///         }
+///     }
+/// }
+/// ```
+/// ## Define configuration file / 定义配置文件
+///
+/// The name of the configuration file is `conf-<profile>.toml`, where `conf-default.toml` is the
+/// base configuration and you can define a file such as `conf-test.toml` to override the base configuration.
+///
+/// 配置文件名称为 `conf-<profile>.toml`，其中 `conf-default.toml` 为基础配置，可定义诸如 `conf-test.toml` 用于覆盖基础配置.
+///
+/// The current configuration environment can be specified via ```env::set_var("PROFILE", "test")``.
+///
+/// 可通过 ```env::set_var("PROFILE", "test")``` 来指定当前的配置环境.
+///
+/// The format of the configuration file is.
+///
+/// 配置文件的格式为：
+///
+/// ```txt
+/// <project specific configuration set> / <项目特殊配置集合>
+///
+/// <Tardis configuration set> / <Tardis配置集合>
+/// ```
+///
+/// The project-specific configuration set is the format defined in the first step, for the
+/// Tardis configuration set see [`FrameworkConfig`](basic::config::FrameworkConfig) .
+///
+/// 项目特殊的配置集合即为第一步定义的格式，Tardis配置集合见 [`FrameworkConfig`](basic::config::FrameworkConfig) .
+///
+/// . An example configuration / 一个示例配置
+/// ```toml
+/// conf1 = "some value"
+/// conf2 = "some value"
+///
+/// [db]
+/// enabled = false
+/// port = 8089
+///
+/// [web_server]
+/// enabled = false
+///
+/// [cache]
+/// enabled = false
+///
+/// [mq]
+/// enabled = false
+/// ```
+///
+/// ## Perform initialization operation / 执行初始化操作
+///
+/// ```rust
+/// use tardis::TardisFuns;
+/// TardisFuns::init::<ExampleConfig>("proj/config").await?;
+/// ```
+///
+/// More examples of initialization can be found in: `test_basic_config.rs` .
+///
+/// 更多初始化的示例可参考： [`test_basic_config`] `test_basic_config.rs` .
+///
+/// # 使用
+///
+/// ```rust
+/// use tardis::TardisFuns;
+/// TardisFuns::ws_config();  
+/// TardisFuns::fw_config();
+/// TardisFuns::field;
+/// TardisFuns::json;
+/// TardisFuns::uri;  
+/// TardisFuns::crypto;   
+/// TardisFuns::reldb();    
+/// TardisFuns::web_server();  
+/// TardisFuns::web_client();  
+/// TardisFuns::cache();
+/// TardisFuns::mq();
+/// ```
+///
+///
 pub struct TardisFuns {
     workspace_config: Option<Box<dyn Any>>,
     framework_config: Option<FrameworkConfig>,
@@ -152,16 +248,71 @@ static mut TARDIS_INST: TardisFuns = TardisFuns {
 
 #[allow(unsafe_code)]
 impl TardisFuns {
+    /// Get the configuration file from the specified path and initialize it / 从指定的路径中获取配置文件并初始化
+    ///
+    /// # Arguments
+    ///
+    /// * `relative_path` - the directory where the configuration file is located, without the
+    /// configuration file name / 配置文件所在目录，不包含配置文件名
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// env::set_var("PROFILE", "test");
+    /// TardisFuns::init::<ExampleConfig>("proj/config").await;
+    /// ```
     pub async fn init<T: 'static + Deserialize<'static>>(relative_path: &str) -> TardisResult<()> {
         TardisLogger::init()?;
         let config = TardisConfig::<T>::init(relative_path)?;
         TardisFuns::init_conf::<T>(config).await
     }
 
+    /// Initialize log / 初始化日志
+    ///
+    /// The [init](Self::init) function will automatically call this function
+    ///
+    /// [init](Self::init) 函数时会自动调用此函数
     pub fn init_log() -> TardisResult<()> {
         TardisLogger::init()
     }
 
+    /// Initialized by the configuration object / 通过配置对象初始化
+    ///
+    /// This function does not require a configuration file, it uses the rust object instance to
+    /// initialize directly.
+    ///
+    /// 本函数不需要配置文件，直接使用rust对象实例初始化.
+    ///
+    /// # Arguments
+    ///
+    /// * `conf` - configuration object instance / 配置对象实例
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// TardisFuns::init_conf(TardisConfig {
+    ///             ws: NoneConfig {},
+    ///             fw: FrameworkConfig {
+    ///                 app: Default::default(),
+    ///                 web_server: WebServerConfig {
+    ///                     enabled: false,
+    ///                     ..Default::default()
+    ///                 },
+    ///                 web_client: Default::default(),
+    ///                 cache: CacheConfig { enabled: true, url },
+    ///                 db: DBConfig {
+    ///                     enabled: false,
+    ///                     ..Default::default()
+    ///                 },
+    ///                 mq: MQConfig {
+    ///                     enabled: false,
+    ///                     ..Default::default()
+    ///                 },
+    ///                 adv: Default::default(),
+    ///             },
+    ///         })
+    ///         .await
+    /// ```
     pub async fn init_conf<T: 'static>(conf: TardisConfig<T>) -> TardisResult<()> {
         TardisLogger::init()?;
         unsafe {
