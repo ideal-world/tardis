@@ -99,3 +99,6 @@ async fn main() -> TardisResult<()> {
   |-- todo          A complete project usage example
   |-- perf-test     Performance test case
 ```
+
+----
+Thanks to `Jetbrains` for the [Open Source License](https://www.jetbrains.com/community/opensource/)

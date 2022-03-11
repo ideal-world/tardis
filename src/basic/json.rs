@@ -1,13 +1,24 @@
+//! Json handle / Json处理
+use crate::basic::error::TardisError;
+use crate::basic::result::TardisResult;
 use crate::serde::de::DeserializeOwned;
 use crate::serde::{Deserialize, Serialize};
 use crate::serde_json::Value;
 
-use crate::basic::error::TardisError;
-use crate::basic::result::TardisResult;
-
 pub struct TardisJson;
 
 impl TardisJson {
+    /// Convert Json string to Rust object / 将Json字符串转换为Rust对象
+    ///
+    /// # Arguments
+    ///
+    /// * `str` - Json string / Json字符串
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// TardisFuns::json.str_to_obj::<TestConfig<DatabaseConfig>>(&json_str);
+    /// ```
     pub fn str_to_obj<'a, T: Deserialize<'a>>(&self, str: &'a str) -> TardisResult<T> {
         let result = serde_json::from_str::<'a, T>(str);
         match result {
@@ -16,6 +27,17 @@ impl TardisJson {
         }
     }
 
+    /// Convert Json string to Json object / 将Json字符串转换为Json对象
+    ///
+    /// # Arguments
+    ///
+    /// * `str` - Json string / Json字符串
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// TardisFuns::json.str_to_json(&json_str);
+    /// ```
     pub fn str_to_json<'a>(&self, str: &'a str) -> TardisResult<Value> {
         let result = serde_json::from_str::<'a, Value>(str);
         match result {
@@ -24,6 +46,17 @@ impl TardisJson {
         }
     }
 
+    /// Convert Json object to Rust object / 将Json对象转换为Rust对象
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Json object / Json对象
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// TardisFuns::json.json_to_obj::<TestConfig<DatabaseConfig>>(json_value);
+    /// ```
     pub fn json_to_obj<T: DeserializeOwned>(&self, value: Value) -> TardisResult<T> {
         let result = serde_json::from_value::<T>(value);
         match result {
@@ -32,6 +65,17 @@ impl TardisJson {
         }
     }
 
+    /// Convert Rust string to Json string / 将Rust对象转换为Json字符串
+    ///
+    /// # Arguments
+    ///
+    /// * `obj` - Rust object  / Rust对象
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// TardisFuns::json.obj_to_string(&rust_obj);
+    /// ```
     pub fn obj_to_string<T: ?Sized + Serialize>(&self, obj: &T) -> TardisResult<String> {
         let result = serde_json::to_string(obj);
         match result {
@@ -40,6 +84,17 @@ impl TardisJson {
         }
     }
 
+    /// Convert Rust object to Json object / 将Rust对象转换为Json对象
+    ///
+    /// # Arguments
+    ///
+    /// * `obj` - Rust object  / Rust对象
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// TardisFuns::json.obj_to_json(&rust_obj);
+    /// ```
     pub fn obj_to_json<T: Serialize>(&self, obj: &T) -> TardisResult<Value> {
         let result = serde_json::to_value(obj);
         match result {
@@ -48,6 +103,17 @@ impl TardisJson {
         }
     }
 
+    /// Convert Json object to Json string / 将Json对象转换成Json字符串
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - Json object / Json对象
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// TardisFuns::json.json_to_string(json_value);
+    /// ```
     pub fn json_to_string(&self, value: Value) -> TardisResult<String> {
         let result = serde_json::to_string(&value);
         match result {

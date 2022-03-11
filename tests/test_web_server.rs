@@ -475,7 +475,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     };
     TardisFuns::cache()
         .set(
-            format!("{}token1", TardisFuns::fw_config().web_server.context_conf.token_redis_key).as_str(),
+            format!("{}token1", TardisFuns::fw_config().web_server.context_conf.token_cache_key).as_str(),
             TardisFuns::json.obj_to_string(&context).unwrap().as_str(),
         )
         .await

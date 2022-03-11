@@ -1,3 +1,8 @@
+/// Configuration handle / 配置处理
+///
+/// Organizing Configuration Management with Tardis Best Practices
+///
+/// 使用 Tardis 最佳实践组织配置管理
 use std::env;
 use std::fmt::Debug;
 use std::path::Path;
@@ -11,34 +16,80 @@ use crate::log::{debug, info};
 use crate::serde::{Deserialize, Serialize};
 use crate::TardisFuns;
 
+/// Configuration of Tarids / Tarids的配置
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct TardisConfig<T> {
+    /// Project custom configuration / 项目自定义的配置
     pub ws: T,
+    /// Tardis framework configuration / Tardis框架的各功能配置
     pub fw: FrameworkConfig,
 }
 
+/// Configuration of each function of the Tardis framework / Tardis框架的各功能配置
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct FrameworkConfig {
+    /// Application configuration / 应用配置
     pub app: AppConfig,
+    /// Database configuration / 数据库配置
     pub db: DBConfig,
+    /// Web service configuration / Web服务配置
     pub web_server: WebServerConfig,
+    /// Web client configuration / Web客户端配置
     pub web_client: WebClientConfig,
+    /// Distributed cache configuration / 分布式缓存配置
     pub cache: CacheConfig,
+    /// Message queue configuration / 消息队列配置
     pub mq: MQConfig,
+    /// Advanced configuration / 高级配置
     pub adv: AdvConfig,
 }
 
+/// Application configuration / 应用配置
+///
+/// By application, it means the current service
+///
+/// 所谓应用指的就是当前的服务
+///
+/// # Examples
+/// ```rust
+/// use tardis::basic::config::AppConfig;
+/// AppConfig{
+///     id: "todo".to_string(),
+///     name: "Todo App".to_string(),
+///     version: "1.0.0".to_string(),
+///     ..Default::default()
+/// };
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct AppConfig {
+    /// Application identifier / 应用标识
+    ///
+    /// Used to distinguish different services (applications) in a microservice environment.
+    ///
+    /// 在微服务环境下用于区别不同的服务（应用）.
     pub id: String,
+    /// Application name / 应用名称
     pub name: String,
+    /// Application description / 应用描述
     pub desc: String,
+    /// Application version / 应用版本
     pub version: String,
+    /// Application address / 应用地址
+    ///
+    /// Can be either the access address or the documentation address.
+    ///
+    /// 可以是访问地址，也可以是文档地址.
     pub url: String,
+    /// Application contact email / 应用联系邮箱
     pub email: String,
+    /// Application instance identification / 应用实例标识
+    ///
+    /// An application can have multiple instances, each with its own identity, using the UUID by default.
+    ///
+    /// 一个应用可以有多个实例，每个实例都有自己的标识，默认使用UUID.
     pub inst: String,
 }
 
@@ -56,14 +107,34 @@ impl Default for AppConfig {
     }
 }
 
+/// Database configuration / 数据库配置
+///
+/// Database operations need to be enabled ```#[cfg(feature = "reldb")]``` .
+///
+/// 数据库的操作需要启用 ```#[cfg(feature = "reldb")]``` .
+///
+/// # Examples
+/// ```rust
+/// use tardis::basic::config::DBConfig;
+/// let config = DBConfig{
+///    url: "mysql://root:123456@localhost:3306/test".to_string(),
+///    ..Default::default()
+/// };
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct DBConfig {
+    /// Whether to enable the database operation function / 是否启用数据库操作功能
     pub enabled: bool,
+    /// Database access Url, Url with permission information / 数据库访问Url，Url带权限信息
     pub url: String,
+    /// Maximum number of connections, default 20 / 最大连接数，默认 20
     pub max_connections: u32,
+    /// Minimum number of connections, default 5 / 最小连接数，默认 5
     pub min_connections: u32,
+    /// Connection timeout / 连接超时时间
     pub connect_timeout_sec: Option<u64>,
+    /// Idle connection timeout / 空闲连接超时时间
     pub idle_timeout_sec: Option<u64>,
 }
 
@@ -80,46 +151,136 @@ impl Default for DBConfig {
     }
 }
 
+/// Web service configuration / Web服务配置
+///
+/// Web service operations need to be enabled ```#[cfg(feature = "web-server")]``` .
+///
+/// Web服务操作需要启用 ```#[cfg(feature = "web-server")]``` .
+///
+/// # Examples
+/// ```rust
+/// use tardis::basic::config::{WebServerConfig, WebServerModuleConfig};
+/// let config = WebServerConfig {
+///    modules: vec![
+///        WebServerModuleConfig {
+///            code: "todo".to_string(),
+///            title: "todo app".to_string(),
+///            doc_urls: [("test env".to_string(), web_url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
+///            ..Default::default()
+///        },
+///        WebServerModuleConfig {
+///            code: "other".to_string(),
+///            title: "other app".to_string(),
+///            ..Default::default()
+///        },
+///    ],
+///    tls_key: Some(TLS_KEY.to_string()),
+///    tls_cert: Some(TLS_CERT.to_string()),
+///    ..Default::default()
+///};
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct WebServerConfig {
+    /// Whether to enable the web service operation function / 是否启用Web服务操作功能
     pub enabled: bool,
+    /// Web service Host, default is `0.0.0.0` / Web服务Host，默认为 `0.0.0.0`
     pub host: String,
+    /// Web service port, default is `8080` / Web服务端口，默认为 `8080`
     pub port: u16,
+    /// Allowed cross-domain sources, default is `*` / 允许的跨域来源，默认为 `*`
     pub allowed_origin: String,
-    pub context_flag: String,
-    pub lang_flag: String,
+    /// TLS Key, if this configuration is included then the protocol is HTTPS / TLS Key，如果包含此配置则协议为
+    /// HTTPS
     pub tls_key: Option<String>,
+    /// TLS certificate / TLS 证书
     pub tls_cert: Option<String>,
+    /// Web module configuration / Web模块配置
     pub modules: Vec<WebServerModuleConfig>,
+    /// Whether to hide detailed error messages in the return message / 返回信息中是否隐藏详细错误信息
     pub security_hide_err_msg: bool,
+    /// Tardis context configuration / Tardis上下文配置
     pub context_conf: WebServerContextConfig,
 }
 
+/// Web module configuration / Web模块配置
+///
+/// An application can contain multiple web modules, each of which can have its own independent
+/// request root path and API documentation.
+///
+/// 一个应用可以包含多个Web模块，每个模块可以有自己独立的请求根路径及API文档.
+///
+/// # Examples
+/// ```rust
+/// use tardis::basic::config::WebServerModuleConfig;
+/// let config = WebServerModuleConfig {
+///     code: "todo".to_string(),
+///     title: "todo app".to_string(),
+///     doc_urls: [
+///         ("test env".to_string(), "http://127.0.0.1:8081".to_string()),
+///         ("prod env".to_string(), "http://127.0.0.1:8082".to_string())
+///     ].iter().cloned().collect(),
+///     ..Default::default()
+/// };
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct WebServerModuleConfig {
+    /// Module code / 模块编码
     pub code: String,
+    /// Module title for ``OpenAPI`` / 模块标题，用于 ``OpenAPI``
     pub title: String,
+    /// Module version for ``OpenAPI`` / 模块版本，用于 ``OpenAPI``
     pub version: String,
+    /// Module API request path for ``OpenAPI`` / 模块API请求路径，用于 ``OpenAPI``
+    ///
+    /// Formatted as ``[(environment identifier, request path)]`` / 格式为 ``[（环境标识，请求路径）]``
     pub doc_urls: Vec<(String, String)>,
-    // TODO
-    pub authors: Vec<(String, String)>,
+    /// Module ``OpenAPI`` UI path / 模块 ``OpenAPI`` UI路径
     pub ui_path: Option<String>,
+    /// Module ``OpenAPI`` information path / 模块 ``OpenAPI`` 信息路径
     pub spec_path: Option<String>,
 }
 
+/// Tardis context configuration / Tardis上下文配置
+///
+/// `Tardis Context` [TardisContext](crate::basic::dto::TardisContext) is used to bring in some
+/// authentication information when a web request is received.
+///
+/// `Tardis上下文` [TardisContext](crate::basic::dto::TardisContext) 用于Web请求时带入一些认证信息.
+///
+/// This configuration specifies the source of the [TardisContext](crate::basic::dto::TardisContext).
+///
+/// 该配置用于指明 [TardisContext](crate::basic::dto::TardisContext) 的生成来源.
+///
+/// First it will try to get [context_header_name](Self::context_header_name) from the request header,
+/// and if it is not specified or has no value it will try to get it from the cache.
+///
+/// 首先会尝试从请求头信息中获取 [context_header_name](Self::context_header_name) ,如果没指定或是没有值时会尝试从缓存中获取.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct WebServerContextConfig {
+    /// Tardis context identifier, used to specify the request header name, default is `Tardis-Context`
+    ///
+    /// Tardis上下文标识，用于指定请求头名，默认为 `Tardis-Context`
     pub context_header_name: String,
-    pub token_redis_key: String,
+    /// Tardis context identifier, used to specify the `key` of the cache, default is `tardis::ident::token::`
+    ///
+    /// Tardis上下文标识，用于指定缓存的 `key`，默认为 `tardis::ident::token::`
+    pub token_cache_key: String,
 }
 
+/// Web client configuration / Web客户端配置
+///
+/// Web client operation needs to be enabled ```#[cfg(feature = "web-client")]``` .
+///
+/// Web客户端操作需要启用 ```#[cfg(feature = "web-client")]``` .
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct WebClientConfig {
+    /// Connection timeout / 连接超时时间
     pub connect_timeout_sec: u64,
+    /// Request timeout / 请求超时时间
     pub request_timeout_sec: u64,
 }
 
@@ -130,8 +291,6 @@ impl Default for WebServerConfig {
             host: "0.0.0.0".to_string(),
             port: 8080,
             allowed_origin: "*".to_string(),
-            context_flag: "Tardis-Context".to_string(),
-            lang_flag: "Accept-Language".to_string(),
             tls_key: None,
             tls_cert: None,
             modules: [WebServerModuleConfig::default()].to_vec(),
@@ -148,7 +307,6 @@ impl Default for WebServerModuleConfig {
             title: "Tardis-based application".to_string(),
             version: "1.0.0".to_string(),
             doc_urls: [("test env".to_string(), "http://localhost:8080/".to_string())].to_vec(),
-            authors: [("gudaoxuri".to_string(), "i@sunisle.org".to_string())].to_vec(),
             ui_path: Some("ui".to_string()),
             spec_path: Some("spec".to_string()),
         }
@@ -159,7 +317,7 @@ impl Default for WebServerContextConfig {
     fn default() -> Self {
         WebServerContextConfig {
             context_header_name: "Tardis-Context".to_string(),
-            token_redis_key: "tardis::ident::token::".to_string(),
+            token_cache_key: "tardis::ident::token::".to_string(),
         }
     }
 }
@@ -173,10 +331,26 @@ impl Default for WebClientConfig {
     }
 }
 
+/// Distributed cache configuration / 分布式缓存配置
+///
+/// Distributed cache operations need to be enabled ```#[cfg(feature = "cache")]``` .
+///
+/// 分布式缓存操作需要启用 ```#[cfg(feature = "cache")]``` .
+///
+/// # Examples
+/// ```rust
+/// use tardis::basic::config::CacheConfig;
+/// let config = CacheConfig {
+///    url: "redis://123456@127.0.0.1:6379".to_string(),
+///    ..Default::default()
+///};
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct CacheConfig {
+    /// Whether to enable the distributed cache operation function / 是否启用分布式缓存操作功能
     pub enabled: bool,
+    /// Cache access Url, Url with permission information / 缓存访问Url，Url带权限信息
     pub url: String,
 }
 
@@ -189,10 +363,26 @@ impl Default for CacheConfig {
     }
 }
 
+/// Message queue configuration / 消息队列配置
+///
+/// Message queue operation needs to be enabled ```#[cfg(feature = "mq")]``` .
+///
+/// 消息队列操作需要启用 ```#[cfg(feature = "mq")]``` .
+///
+/// # Examples
+/// ```rust
+/// use tardis::basic::config::MQConfig;
+/// let config = MQConfig {
+///    url: "amqp://guest:guest@127.0.0.1:5672/%2f".to_string(),
+///    ..Default::default()
+///};
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct MQConfig {
+    /// Whether to enable the message queue operation function / 是否启用消息队列操作功能
     pub enabled: bool,
+    /// Message queue access Url, Url with permission information / 消息队列访问Url，Url带权限信息
     pub url: String,
 }
 
@@ -205,12 +395,23 @@ impl Default for MQConfig {
     }
 }
 
+/// Advanced configuration / 高级配置
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct AdvConfig {
+    /// Whether to capture the error stack / 是否捕捉错误堆栈
+    ///
+    /// Enable it to locate errors easily, but it will affect performance.
+    ///
+    /// 启用后可方便定位错误，但会影响性能.
     pub backtrace: bool,
 }
 
+/// Empty configuration / 空配置
+///
+/// For cases where project-level configuration is not needed.
+///
+/// 用于不需要项目级配置的情况.
 #[derive(Default, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct NoneConfig {}

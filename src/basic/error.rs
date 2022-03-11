@@ -10,6 +10,7 @@ use crate::basic::field::GENERAL_SPLIT;
 
 pub static ERROR_DEFAULT_CODE: &str = "-1";
 
+/// Tardis unified error wrapper / Tardis统一错误封装
 #[derive(Display, Debug)]
 pub enum TardisError {
     #[display(fmt = "{}##{}", _0, _1)]

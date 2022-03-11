@@ -40,6 +40,14 @@ pub struct TardisCryptoSm2PublicKey {
 pub struct TardisCryptoDigest;
 pub struct TardisCryptoKey;
 
+/// Base64 handle / Base64处理
+///
+/// # Examples
+/// ```rust
+/// use tardis::TardisFuns;
+/// let b64_str = TardisFuns::crypto.base64.encode("测试");
+/// let str = TardisFuns::crypto.base64.decode(&b64_str).unwrap();
+/// ```
 impl TardisCryptoBase64 {
     pub fn decode(&self, data: &str) -> TardisResult<String> {
         match base64::decode(data) {
@@ -53,6 +61,17 @@ impl TardisCryptoBase64 {
     }
 }
 
+/// AES handle / AES处理
+///
+/// # Examples
+/// ```rust
+/// use tardis::TardisFuns;
+/// let key = TardisFuns::crypto.key.rand_16_hex().unwrap();
+/// let iv = TardisFuns::crypto.key.rand_16_hex().unwrap();
+/// let text = "为什么选择 Rust?";
+/// let encrypted_data = TardisFuns::crypto.aes.encrypt_cbc(text, &key, &iv).unwrap();
+/// let data = TardisFuns::crypto.aes.decrypt_cbc(&encrypted_data, &key, &iv).unwrap();
+/// ```
 impl TardisCryptoAes {
     pub fn encrypt_cbc(&self, data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
         let key_size = match hex_key.len() {
@@ -108,6 +127,17 @@ impl TardisCryptoAes {
     }
 }
 
+/// SM4 handle / SM4处理
+///
+/// # Examples
+/// ```rust
+/// use tardis::TardisFuns;
+/// let key = TardisFuns::crypto.key.rand_16_hex().unwrap();
+/// let iv = TardisFuns::crypto.key.rand_16_hex().unwrap();
+/// let text = "为什么选择 Rust?";
+/// let encrypted_data = TardisFuns::crypto.sm4.encrypt_cbc(text, &key, &iv).unwrap();
+/// let data = TardisFuns::crypto.sm4.decrypt_cbc(&encrypted_data, &key, &iv).unwrap();
+/// ```
 impl TardisCryptoSm4 {
     pub fn encrypt_cbc(&self, data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
         let encrypted_data = gmsm::sm4::sm4_cbc_encrypt_byte(data.as_bytes(), hex::decode(hex_key)?.as_slice(), hex::decode(hex_iv)?.as_slice());
@@ -121,6 +151,20 @@ impl TardisCryptoSm4 {
     }
 }
 
+/// RSA handle / RSA处理
+///
+/// # Examples
+/// ```rust
+/// use tardis::TardisFuns;
+/// let private_key = TardisFuns::crypto.rsa.new_private_key(2048).unwrap();
+/// let public_key = TardisFuns::crypto.rsa.new_public_key(&private_key).unwrap();
+///
+/// let signed_data = private_key.sign("测试").unwrap();
+/// public_key.verify("测试", &signed_data).unwrap();
+///
+/// let encrypted_data = public_key.encrypt("测试").unwrap();
+/// private_key.decrypt(&encrypted_data).unwrap();
+/// ```
 impl TardisCryptoRsa {
     pub fn new_private_key(&self, bits: usize) -> TardisResult<TardisCryptoRsaPrivateKey> {
         TardisCryptoRsaPrivateKey::new(bits)
@@ -234,6 +278,18 @@ impl TardisCryptoRsaPublicKey {
     }
 }
 
+/// SM2 handle / SM2处理
+///
+/// # Examples
+/// ```rust
+/// use tardis::TardisFuns;
+/// let private_key = TardisFuns::crypto.sm2.new_private_key().unwrap();
+/// let private_key_str = private_key.to_private_key().unwrap();
+/// let public_key = TardisFuns::crypto.sm2.new_public_key_from_private_key(&private_key_str).unwrap();
+///
+/// let encrypted_data = public_key.encrypt("测试").unwrap();
+/// private_key.decrypt(&encrypted_data).unwrap();
+/// ```
 impl TardisCryptoSm2 {
     pub fn new_private_key(&self) -> TardisResult<TardisCryptoSm2PrivateKey> {
         TardisCryptoSm2PrivateKey::new()
@@ -301,6 +357,22 @@ impl TardisCryptoSm2PublicKey {
     }
 }
 
+/// Digest handle / 摘要处理
+///
+/// # Examples
+/// ```rust
+/// use tardis::TardisFuns;
+/// TardisFuns::crypto.digest.md5("测试").unwrap();
+/// TardisFuns::crypto.digest.sha1("测试").unwrap();
+/// TardisFuns::crypto.digest.sha256("测试").unwrap();
+/// TardisFuns::crypto.digest.sha512("测试").unwrap();
+///
+/// TardisFuns::crypto.digest.hmac_sha1("测试", "pwd").unwrap();
+/// TardisFuns::crypto.digest.hmac_sha256("测试", "pwd").unwrap();
+/// TardisFuns::crypto.digest.hmac_sha512("测试", "pwd").unwrap();
+///
+/// TardisFuns::crypto.digest.sm3("测试").unwrap();
+/// ```
 impl TardisCryptoDigest {
     pub fn sha1(&self, data: &str) -> TardisResult<String> {
         self.digest(data, crypto::sha1::Sha1::new())

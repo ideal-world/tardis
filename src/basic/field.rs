@@ -1,3 +1,8 @@
+//! Field handle / 字段处理
+//!
+//! Provides some common regular, Id generation and other functions.
+//!
+//! 提供了一些常用的正则判断、Id生成等功能.
 use std::fmt::{Display, Formatter};
 
 use regex::Regex;
@@ -20,38 +25,99 @@ pub static GENERAL_SPLIT: &str = "##";
 pub struct TardisField;
 
 impl TardisField {
+    /// Determine if it is a cell phone number (only supports mainland China) / 判断是否是手机号（仅支持中国大陆）
     pub fn is_phone(&self, phone: &str) -> bool {
         R_PHONE.is_match(phone)
     }
 
+    /// Determine if it is a email / 判断是否是邮箱
     pub fn is_mail(&self, mail: &str) -> bool {
         R_MAIL.is_match(mail)
     }
 
+    /// Determine if it contains only numbers, lowercase letters and underscores /
+    /// 判断是否只包含数字、小写字母及下划线
     pub fn is_code_cs(&self, str: &str) -> bool {
         R_CODE_CS.is_match(str)
     }
 
+    /// Determine if only numbers, upper and lower case letters and underscores are included /
+    /// 判断是否只包含数字、大小写字母及下划线
     pub fn is_code_ncs(&self, str: &str) -> bool {
         R_CODE_NCS.is_match(str)
     }
 
+    /// Generate UUID / 生成UUID
     pub fn uuid(&self) -> Uuid {
         uuid::Uuid::new_v4()
     }
 
+    /// Generate UUID as a string / 生成字符串形式的UUID
     pub fn uuid_str(&self) -> String {
         uuid::Uuid::new_v4().to_simple().to_string()
     }
 
+    /// Generate self-incrementing ID based on base62 code / 根据base62编码生成自增ID
+    ///
+    /// `BASE62` refers to Base64 encoding that does not contain `+`
+    /// `-` .
+    ///
+    /// `BASE62` 指的是不包含 `+` `-` 的Base64编码.
+    ///
+    /// # Arguments
+    ///
+    /// * `str` - current string / 当前字符串
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// assert_eq!(TardisFuns::field.incr_by_base62("abcd1").unwrap(), "abcd2");
+    /// assert_eq!(TardisFuns::field.incr_by_base62("abcd12").unwrap(), "abcd13");
+    /// assert_eq!(TardisFuns::field.incr_by_base62("abcd9").unwrap(), "abceA");
+    /// assert_eq!(TardisFuns::field.incr_by_base62("azzz9").unwrap(), "azz0A");
+    /// assert_eq!(TardisFuns::field.incr_by_base62("a9999").unwrap(), "bAAAA");
+    /// assert!(TardisFuns::field.incr_by_base62("999").is_none());
+    /// ```
+    ///
     pub fn incr_by_base62(&self, str: &str) -> Option<String> {
         self.incr_by(str, BASE62)
     }
 
+    /// Generate self-incrementing ID based on base36 code / 根据base36编码生成自增ID
+    ///
+    /// `BASE36` refers to Base64 encoding that does not contain `+` `-`
+    /// `A-Z` .
+    ///
+    /// `BASE36` 指的是不包含 `+` `-` `A-Z` 的Base64编码.
+    ///
+    /// # Arguments
+    ///
+    /// * `str` - current string / 当前字符串
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// assert_eq!(TardisFuns::field.incr_by_base36("abcd1").unwrap(), "abcd2");
+    /// assert_eq!(TardisFuns::field.incr_by_base36("abcd12").unwrap(), "abcd13");
+    /// assert_eq!(TardisFuns::field.incr_by_base36("abcd9").unwrap(), "abcea");
+    /// assert_eq!(TardisFuns::field.incr_by_base36("azzz9").unwrap(), "azz0a");
+    /// assert_eq!(TardisFuns::field.incr_by_base36("a9999").unwrap(), "baaaa");
+    /// assert!(TardisFuns::field.incr_by_base36("999").is_none());
+    /// ```
+    ///
     pub fn incr_by_base36(&self, str: &str) -> Option<String> {
         self.incr_by(str, BASE36)
     }
 
+    /// Using custom codes to generate self-incrementing ID / 使用自定义编码生成自增ID
+    ///
+    /// # Arguments
+    ///
+    /// * `str` - current string / 当前字符串
+    /// * `chars` - custom encoded string / 自定义的编码字符串
+    ///
     pub fn incr_by(&self, str: &str, chars: &str) -> Option<String> {
         let mut result = Vec::new();
         let mut up = true;
@@ -78,6 +144,27 @@ impl TardisField {
     }
 }
 
+/// String types that support auto-trim / 支持自动trim的字符串类型
+///
+/// Valid by default when using [serde] serialization and deserialization.
+///
+/// 默认情况下，在使用 [serde] 序列化与反序列化时有效.
+///
+/// Valid when request body to Rust object when `web-server` feature is enabled.
+///
+/// 当启用 `web-server` feature时，在请求体转Rust对象时有效.
+///
+/// ```rust
+/// use serde::{Serialize,Deserialize};
+/// use serde_json::Value::Object;
+/// use tardis::basic::field::TrimString;
+/// #[derive(Object, Serialize, Deserialize, Debug)]
+/// struct TodoAddReq {
+///     code: TrimString,
+///     description: String,
+///     done: bool,
+/// }
+/// ```
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct TrimString(String);
 

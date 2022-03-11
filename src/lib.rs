@@ -1,6 +1,6 @@
 //! **Elegant, Clean Rust development framework🛸**
 //!
-//! > TARDIS([tɑːrdɪs] "Time And Relative Dimension In Space") From "Doctor Who".
+//! > TARDIS(\[tɑːrdɪs\] "Time And Relative Dimension In Space") From "Doctor Who".
 //!
 //! ## 💖 Core functions
 //!
@@ -11,8 +11,7 @@
 //! * Mainstream encryption algorithms and SM2/3/4 algorithms
 //! * Containerized unit testing of mainstream middleware
 //! * Multi-environment configuration
-//! * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular
-//! checksums)
+//! * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
 //!
 //! ## ⚙️Feature description
 //!
@@ -46,7 +45,8 @@
 //! ```
 //!
 //! Processor Configuration
-//! ```rust
+//!```rust
+//! use tardis::web::poem_openapi::OpenApi;
 //! pub struct Api;
 //!
 //! #[OpenApi]
@@ -62,11 +62,14 @@
 //! ```
 //!
 //! Startup class configuration
-//! ```rust
+//!```rust
+//! use tardis::basic::result::TardisResult;
 //! #[tokio::main]
 //! async fn main() -> TardisResult<()> {
-//!     // Initial configuration
-//!     TardisFuns::init::<NoneConfig>("config").await?;
+//!     use tardis::basic::config::NoneConfig;
+//! // Initial configuration
+//!     use tardis::basic::result::TardisResult;
+//! use tardis::TardisFuns;TardisFuns::init::<NoneConfig>("config").await?;
 //!     // Register the processor and start the web service
 //!     TardisFuns::web_server().add_module("", Api).start().await
 //! }
@@ -85,6 +88,7 @@
 //!>   |-- perf-test     Performance test case  
 //!
 
+#![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-wrold/tardis/main/logo.png")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 extern crate core;
@@ -120,13 +124,14 @@ use crate::web::web_client::TardisWebClient;
 #[cfg(feature = "web-server")]
 use crate::web::web_server::TardisWebServer;
 
-/// The operational portal for Tardis core functions / Tardis核心功能的操作入口
+/// The operational portal for Tardis core features / Tardis核心功能的操作入口
 ///
 /// # Initialization / 初始化
 ///
-/// ## Define project-level configuration objects / 定义项目级配置对象
+/// ## Define project-level configuration object / 定义项目级配置对象
 ///
 /// ```rust
+/// use serde::{Serialize,Deserialize};
 /// #[derive(Debug, Serialize, Deserialize)]
 /// #[serde(default)]
 /// struct ExampleConfig {
@@ -196,7 +201,7 @@ use crate::web::web_server::TardisWebServer;
 ///
 /// More examples of initialization can be found in: `test_basic_config.rs` .
 ///
-/// 更多初始化的示例可参考： [`test_basic_config`] `test_basic_config.rs` .
+/// 更多初始化的示例可参考： `test_basic_config.rs` .
 ///
 /// # 使用
 ///
@@ -214,8 +219,6 @@ use crate::web::web_server::TardisWebServer;
 /// TardisFuns::cache();
 /// TardisFuns::mq();
 /// ```
-///
-///
 pub struct TardisFuns {
     workspace_config: Option<Box<dyn Any>>,
     framework_config: Option<FrameworkConfig>,
@@ -258,6 +261,8 @@ impl TardisFuns {
     /// # Examples
     ///
     /// ```rust
+    /// use std::env;
+    /// use tardis::TardisFuns;
     /// env::set_var("PROFILE", "test");
     /// TardisFuns::init::<ExampleConfig>("proj/config").await;
     /// ```
@@ -290,7 +295,9 @@ impl TardisFuns {
     /// # Examples
     ///
     /// ```rust
-    /// TardisFuns::init_conf(TardisConfig {
+    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig};
+    /// use tardis::TardisFuns;
+    /// let result = TardisFuns::init_conf(TardisConfig {
     ///             ws: NoneConfig {},
     ///             fw: FrameworkConfig {
     ///                 app: Default::default(),
@@ -311,7 +318,7 @@ impl TardisFuns {
     ///                 adv: Default::default(),
     ///             },
     ///         })
-    ///         .await
+    ///         .await;
     /// ```
     pub async fn init_conf<T: 'static>(conf: TardisConfig<T>) -> TardisResult<()> {
         TardisLogger::init()?;
@@ -365,6 +372,7 @@ impl TardisFuns {
         TardisResult::Ok(())
     }
 
+    /// Get the project-level configuration object / 获取项目级配置对象
     pub fn ws_config<T>() -> &'static T {
         unsafe {
             match &TARDIS_INST.workspace_config {
@@ -377,6 +385,7 @@ impl TardisFuns {
         }
     }
 
+    /// Get the Tardis configuration object / 获取Tardis配置对象
     pub fn fw_config() -> &'static FrameworkConfig {
         unsafe {
             match &TARDIS_INST.framework_config {
@@ -386,15 +395,67 @@ impl TardisFuns {
         }
     }
 
+    /// Using the field feature / 使用字段功能
+    ///
+    /// # Examples
+    /// ```rust
+    ///
+    /// use tardis::TardisFuns;
+    /// TardisFuns::field.is_phone("18657120202");
+    ///
+    /// TardisFuns::field.incr_by_base62("abcd1");
+    /// ```
     #[allow(non_upper_case_globals)]
     pub const field: TardisField = TardisField {};
 
+    /// Using the json feature / 使用Json功能
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// let test_config = TestConfig {
+    ///         project_name: "测试".to_string(),
+    ///         level_num: 0,
+    ///         db_proj: DatabaseConfig { url: "http://xxx".to_string() },
+    ///     };
+    ///
+    /// // Rust object to Json string / Rust对象转成Json字符串
+    /// let json_str = TardisFuns::json.obj_to_string(&test_config).unwrap();
+    ///
+    /// // Json string to Rust Object / Json字符串转成Rust对象
+    /// TardisFuns::json.str_to_obj::<TestConfig<DatabaseConfig>>(&json_str).unwrap();
+    /// ```
     #[allow(non_upper_case_globals)]
     pub const json: TardisJson = TardisJson {};
 
+    /// Using the uri feature / 使用Url功能
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// // Query sort
+    /// assert_eq!(TardisFuns::uri.format("api://a1.t1/e1?q2=2&q1=1&q3=3").unwrap(), "api://a1.t1/e1?q1=1&q2=2&q3=3");
+    /// ```
     #[allow(non_upper_case_globals)]
     pub const uri: TardisUri = TardisUri {};
 
+    /// Use of encryption/decryption/digest features / 使用加解密/摘要功能
+    ///
+    /// Supported algorithms: base64/md5/sha/mac/aes/rsa/sm2/sm3/sm4.
+    ///
+    /// 支持的算法： base64/md5/sha/hmac/aes/rsa/sm2/sm3/sm4.
+    ///
+    /// This feature needs to be enabled #[cfg(feature = "crypto")] .
+    ///
+    /// 本功能需要启用 #[cfg(feature = "crypto")] .
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// TardisFuns::crypto.base64.decode(&b64_str);
+    /// TardisFuns::crypto.digest.sha256("测试");
+    /// TardisFuns::crypto.digest.sm3("测试");
+    /// ```
     #[allow(non_upper_case_globals)]
     #[cfg(feature = "crypto")]
     pub const crypto: crate::basic::crypto::TardisCrypto = crate::basic::crypto::TardisCrypto {
@@ -407,6 +468,75 @@ impl TardisFuns {
         key: crate::basic::crypto::TardisCryptoKey {},
     };
 
+    /// Use the relational database feature / 使用关系型数据库功能
+    ///
+    /// This feature needs to be enabled #[cfg(feature = "reldb")] .
+    ///
+    /// 本功能需要启用 #[cfg(feature = "reldb")] .
+    ///
+    /// # Steps to use / 使用步骤
+    ///
+    /// 1. Initialize the database configuration / 初始化数据库配置 @see [init](Self::init)
+    /// 2. Add the database / 添加数据库 E.g.
+    /// ```rust
+    /// mod todos{
+    ///     use tardis::basic::dto::TardisContext;
+    ///     use tardis::db::reldb_client::TardisActiveModel;
+    ///     use tardis::db::sea_orm::*;
+    ///     
+    ///     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+    ///     #[sea_orm(table_name = "todos")]
+    ///     pub struct Model {
+    ///         #[sea_orm(primary_key)]
+    ///         pub id: i32,
+    ///         pub code: String,
+    ///         pub description: String,
+    ///         pub done: bool,
+    ///     }
+    ///     
+    ///     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+    ///     pub enum Relation {}
+    ///     
+    ///     impl TardisActiveModel for ActiveModel {
+    ///         fn fill_cxt(&mut self, _: &TardisContext, _: bool) {}
+    ///     }
+    ///     
+    ///     impl ActiveModelBehavior for ActiveModel {}
+    /// }
+    /// ```
+    /// 3. Call this function to complete various data processing operations / 调用本函数完成各种数据处理操作 E.g.
+    /// ```rust
+    /// use std::process::id;
+    /// use tardis::basic::error::TardisError;
+    /// use tardis::TardisFuns;
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::Query;
+    /// // Initialize table structure
+    /// TardisFuns::reldb().conn().create_table_from_entity(todos::Entity).await?;
+    /// // Create record
+    /// let todo_id = TardisFuns::reldb()
+    ///     .conn()
+    ///     .insert_one(
+    ///         todos::ActiveModel {
+    ///             code: Set(todo_add_req.code.to_string()),
+    ///             description: Set(todo_add_req.description.to_string()),
+    ///             done: Set(todo_add_req.done),
+    ///             ..Default::default()
+    ///         },
+    ///         &cxt.0,
+    ///     ).unwrap()
+    ///     .last_insert_id;
+    /// // Query record
+    /// let todo = TardisFuns::reldb()
+    ///     .conn()
+    ///     .get_dto(
+    ///         DbQuery::select()
+    ///             .columns(vec![todos::Column::Id, todos::Column::Code, todos::Column::Description, todos::Column::Done])
+    ///             .from(todos::Entity)
+    ///             .and_where(todos::Column::Id.eq(todo_id)),
+    ///     )
+    ///     .await.unwrap();
+    /// ```
     #[cfg(feature = "reldb")]
     pub fn reldb() -> &'static TardisRelDBClient {
         unsafe {

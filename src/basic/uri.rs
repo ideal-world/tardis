@@ -1,8 +1,19 @@
+//! Uri handle / Uri处理
 use crate::basic::result::TardisResult;
 
 pub struct TardisUri;
 
 impl TardisUri {
+    /// Format Uri / 格式化Uri
+    ///
+    /// Return the standard, Query parameter sorted Uri.
+    ///
+    /// 返回标准的、Query参数排序后的Uri.
+    ///
+    /// # Arguments
+    ///
+    /// * `host` - Host
+    /// * `path_and_query` - Path and Query
     pub fn format_with_item(&self, host: &str, path_and_query: &str) -> TardisResult<String> {
         if path_and_query.is_empty() {
             self.format(host)
@@ -15,6 +26,21 @@ impl TardisUri {
         }
     }
 
+    /// Format Uri / 格式化Uri
+    ///
+    /// Return the standard, Query parameter sorted Uri.
+    ///
+    /// 返回标准的、Query参数排序后的Uri.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri_str` - Uri string
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// assert_eq!(TardisFuns::uri.format("api://a1.t1/e1?q2=2&q1=1&q3=3").unwrap(), "api://a1.t1/e1?q1=1&q2=2&q3=3");
+    /// ```
     pub fn format(&self, uri_str: &str) -> TardisResult<String> {
         let uri = url::Url::parse(uri_str)?;
         let host = match uri.host() {
@@ -45,6 +71,12 @@ impl TardisUri {
         Ok(formatted_uri)
     }
 
+    /// Get the Path and Query parts of the Uri / 获取Uri中的Path和Query部分
+    ///
+    /// # Arguments
+    ///
+    /// * `uri_str` - Uri string
+    ///
     pub fn get_path_and_query(&self, uri_str: &str) -> TardisResult<String> {
         let uri = url::Url::parse(uri_str)?;
         let path = if uri.path().is_empty() {

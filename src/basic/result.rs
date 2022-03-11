@@ -6,8 +6,12 @@ use derive_more::Display;
 use crate::basic::error::TardisError;
 use crate::basic::field::GENERAL_SPLIT;
 
+/// Tardis return object wrapper / Tardis返回对象封装
 pub type TardisResult<T> = Result<T, TardisError>;
 
+/// Common return type enumerations / 常用的返回类型枚举
+///
+/// Used for uniform error wrapper / 用于统一错误封装
 #[derive(Display, Debug)]
 pub enum StatusCodeKind {
     #[display(fmt = "200")]
@@ -46,6 +50,9 @@ impl StatusCodeKind {
     }
 }
 
+/// Commonly used enumerations of operation types / 常用的操作类型枚举
+///
+/// Used for uniform error wrapper / 用于统一错误封装
 #[derive(Display, Debug)]
 pub enum ActionKind {
     #[display(fmt = "01")]

@@ -38,7 +38,7 @@ async fn extract_context(req: &Request) -> TardisResult<TardisContext> {
         #[cfg(feature = "cache")]
         {
             let token = context.split(TOKEN_FLAG).nth(1).ok_or_else(|| TardisError::BadRequest("[Tardis.WebServer] Context header is not valid".to_string()))?;
-            let context = TardisFuns::cache().get(format!("{}{}", TardisFuns::fw_config().web_server.context_conf.token_redis_key, token).as_str()).await?;
+            let context = TardisFuns::cache().get(format!("{}{}", TardisFuns::fw_config().web_server.context_conf.token_cache_key, token).as_str()).await?;
             let context = context.ok_or_else(|| TardisError::BadRequest("[Tardis.WebServer] Token is not in cache".to_string()))?;
             let context = TardisFuns::json.str_to_obj(&context).map_err(|_| TardisError::BadRequest("[Tardis.WebServer] Context cache is not valid json".to_string()))?;
             Ok(context)
