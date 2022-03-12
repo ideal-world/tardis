@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::log::info;
-use crate::serde::de::DeserializeOwned;
-use crate::serde::Serialize;
 use reqwest::{Client, Method, Response};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::FrameworkConfig;
+use crate::log::info;
+use crate::serde::de::DeserializeOwned;
+use crate::serde::Serialize;
+use crate::{FrameworkConfig, TardisFuns};
 
 pub struct TardisWebClient {
+    default_headers: Vec<(String, String)>,
     client: Client,
 }
 
@@ -23,7 +24,14 @@ impl TardisWebClient {
         info!("[Tardis.WebClient] Initializing");
         let client = reqwest::Client::builder().danger_accept_invalid_certs(true).connect_timeout(Duration::from_secs(connect_timeout_sec)).https_only(false).build()?;
         info!("[Tardis.WebClient] Initialized");
-        TardisResult::Ok(TardisWebClient { client })
+        TardisResult::Ok(TardisWebClient {
+            client,
+            default_headers: Vec::new(),
+        })
+    }
+
+    pub fn set_default_header(&mut self, key: &str, value: &str) {
+        self.default_headers.push((key.to_string(), value.to_string()));
     }
 
     pub async fn get_to_str(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
@@ -114,7 +122,11 @@ impl TardisWebClient {
         body: Option<&B>,
         str_body: Option<&str>,
     ) -> TardisResult<(u16, HashMap<String, String>, Response)> {
-        let mut result = self.client.request(method, url);
+        let formatted_url = TardisFuns::uri.format(url)?;
+        let mut result = self.client.request(method, formatted_url);
+        for (key, value) in &self.default_headers {
+            result = result.header(key, value);
+        }
         if let Some(headers) = headers {
             for (key, value) in headers {
                 result = result.header(key, value);
