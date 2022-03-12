@@ -43,6 +43,13 @@ impl TardisUri {
     /// ```
     pub fn format(&self, uri_str: &str) -> TardisResult<String> {
         let uri = url::Url::parse(uri_str)?;
+        let authority = if let Some(password) = uri.password() {
+            format!("{}:{}@", uri.username(), password)
+        } else if !uri.username().is_empty() {
+            format!("{}@", uri.username())
+        } else {
+            String::new()
+        };
         let host = match uri.host() {
             Some(host) => host,
             None =>
@@ -67,7 +74,7 @@ impl TardisUri {
             Some(_) => format!("?{}", query),
             None => "".to_string(),
         };
-        let formatted_uri = format!("{}://{}{}{}{}", uri.scheme(), host, port, path, query);
+        let formatted_uri = format!("{}://{}{}{}{}{}", uri.scheme(), authority, host, port, path, query);
         Ok(formatted_uri)
     }
 
