@@ -82,10 +82,8 @@ impl TardisRelDBClient {
         let tx = self.con.begin().await?;
         let config_create_table_statement = tardis_db_config::ActiveModel::create_table_statement(self.con.get_database_backend());
         TardisRelDBClient::create_table_inner(&config_create_table_statement, &tx).await?;
-        let del_record_create_table_statement = tardis_db_del_record::ActiveModel::create_table_statement(self.con.get_database_backend());
-        TardisRelDBClient::create_table_inner(&del_record_create_table_statement, &tx).await?;
-        let del_record_create_index_statement = tardis_db_del_record::ActiveModel::create_index_statement();
-        TardisRelDBClient::create_index_inner(&del_record_create_index_statement, &tx).await?;
+        let del_record_create_statements = tardis_db_del_record::ActiveModel::create_table_and_index_statement(self.con.get_database_backend());
+        TardisRelDBClient::create_table_and_index_inner(&del_record_create_statements, &tx).await?;
         tx.commit().await?;
         Ok(())
     }
@@ -102,7 +100,15 @@ impl TardisRelDBClient {
         TardisRelDBClient::create_table_inner(table_create_statement, db).await
     }
 
-    pub(self) async fn create_table_inner<'a, C>(statement: &TableCreateStatement, db: &'a C) -> TardisResult<()>
+    pub(self) async fn create_table_and_index_inner<C>(statements: &(TableCreateStatement, Vec<IndexCreateStatement>), db: &C) -> TardisResult<()>
+    where
+        C: ConnectionTrait,
+    {
+        Self::create_table_inner(&statements.0, db).await?;
+        Self::create_index_inner(&statements.1, db).await
+    }
+
+    pub(self) async fn create_table_inner<C>(statement: &TableCreateStatement, db: &C) -> TardisResult<()>
     where
         C: ConnectionTrait,
     {
@@ -113,7 +119,7 @@ impl TardisRelDBClient {
         }
     }
 
-    pub(self) async fn create_index_inner<'a, C>(statements: &[IndexCreateStatement], db: &'a C) -> TardisResult<()>
+    pub(self) async fn create_index_inner<C>(statements: &[IndexCreateStatement], db: &C) -> TardisResult<()>
     where
         C: ConnectionTrait,
     {
@@ -137,7 +143,7 @@ impl TardisRelDBClient {
         }
     }
 
-    pub(self) async fn get_dto_inner<'a, C, D>(select_statement: &SelectStatement, db: &'a C) -> TardisResult<Option<D>>
+    pub(self) async fn get_dto_inner<C, D>(select_statement: &SelectStatement, db: &C) -> TardisResult<Option<D>>
     where
         C: ConnectionTrait,
         D: FromQueryResult,
@@ -149,7 +155,7 @@ impl TardisRelDBClient {
         }
     }
 
-    pub(self) async fn find_dtos_inner<'a, C, D>(select_statement: &SelectStatement, db: &'a C) -> TardisResult<Vec<D>>
+    pub(self) async fn find_dtos_inner<C, D>(select_statement: &SelectStatement, db: &C) -> TardisResult<Vec<D>>
     where
         C: ConnectionTrait,
         D: FromQueryResult,
@@ -161,7 +167,7 @@ impl TardisRelDBClient {
         }
     }
 
-    pub(self) async fn paginate_dtos_inner<'a, C, D>(select_statement: &SelectStatement, page_number: u64, page_size: u64, db: &'a C) -> TardisResult<(Vec<D>, u64)>
+    pub(self) async fn paginate_dtos_inner<C, D>(select_statement: &SelectStatement, page_number: u64, page_size: u64, db: &C) -> TardisResult<(Vec<D>, u64)>
     where
         C: ConnectionTrait,
         D: FromQueryResult,
@@ -178,7 +184,7 @@ impl TardisRelDBClient {
         Ok((query_result, count_result))
     }
 
-    pub(self) async fn count_inner<'a, C>(select_statement: &SelectStatement, db: &'a C) -> TardisResult<u64>
+    pub(self) async fn count_inner<C>(select_statement: &SelectStatement, db: &C) -> TardisResult<u64>
     where
         C: ConnectionTrait,
     {
@@ -203,7 +209,7 @@ impl TardisRelDBClient {
         }
     }
 
-    pub(self) async fn insert_one_inner<'a, T, C>(mut model: T, db: &'a C, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
+    pub(self) async fn insert_one_inner<T, C>(mut model: T, db: &C, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
     where
         C: ConnectionTrait,
         T: TardisActiveModel,
@@ -213,7 +219,7 @@ impl TardisRelDBClient {
         Ok(result)
     }
 
-    pub(self) async fn insert_many_inner<'a, T, C>(mut models: Vec<T>, db: &'a C, cxt: &TardisContext) -> TardisResult<()>
+    pub(self) async fn insert_many_inner<T, C>(mut models: Vec<T>, db: &C, cxt: &TardisContext) -> TardisResult<()>
     where
         C: ConnectionTrait,
         T: TardisActiveModel,
@@ -223,7 +229,7 @@ impl TardisRelDBClient {
         Ok(())
     }
 
-    pub(self) async fn update_one_inner<'a, T, C>(mut model: T, db: &'a C, cxt: &TardisContext) -> TardisResult<()>
+    pub(self) async fn update_one_inner<T, C>(mut model: T, db: &C, cxt: &TardisContext) -> TardisResult<()>
     where
         C: ConnectionTrait,
         T: TardisActiveModel,
@@ -234,7 +240,7 @@ impl TardisRelDBClient {
         Ok(())
     }
 
-    pub(self) async fn update_many_inner<'a, C>(update_statement: &UpdateStatement, db: &'a C) -> TardisResult<()>
+    pub(self) async fn update_many_inner<C>(update_statement: &UpdateStatement, db: &C) -> TardisResult<()>
     where
         C: ConnectionTrait,
     {
@@ -242,7 +248,7 @@ impl TardisRelDBClient {
         Ok(())
     }
 
-    pub(self) async fn soft_delete_inner<'a, E, C>(select: Select<E>, delete_user: &str, db: &'a C) -> TardisResult<u64>
+    pub(self) async fn soft_delete_inner<E, C>(select: Select<E>, delete_user: &str, db: &C) -> TardisResult<u64>
     where
         C: ConnectionTrait,
         E: EntityTrait,
@@ -305,6 +311,11 @@ impl<'a> TardisRelDBlConnection<'a> {
         } else {
             TardisRelDBClient::create_table_from_entity_inner(entity, self.conn).await
         }
+    }
+
+    pub async fn create_table_and_index(&self, statements: &(TableCreateStatement, Vec<IndexCreateStatement>)) -> TardisResult<()> {
+        self.create_table(&statements.0).await?;
+        self.create_index(&statements.1).await
     }
 
     pub async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()> {
@@ -537,6 +548,10 @@ where
 #[async_trait]
 pub trait TardisActiveModel: ActiveModelBehavior {
     fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool);
+
+    fn create_table_and_index_statement(db: DbBackend) -> (TableCreateStatement, Vec<IndexCreateStatement>) {
+        (Self::create_table_statement(db), Self::create_index_statement())
+    }
 
     fn create_table_statement(_: DbBackend) -> TableCreateStatement {
         TableCreateStatement::new()
