@@ -125,6 +125,10 @@ async fn test_cache_client() -> TardisResult<()> {
                     enabled: false,
                     ..Default::default()
                 },
+                search: SearchConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
                 adv: Default::default(),
             },
         })

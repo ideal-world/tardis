@@ -129,6 +129,10 @@ required-features = ["test", "cache"]
 name = "test_mq_client"
 required-features = ["test", "mq"]
 
+[[test]]
+name = "test_search_client"
+required-features = ["test", "web-client"]
+
 [[bench]]
 name = "json_benchmark"
 harness = false

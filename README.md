@@ -21,6 +21,7 @@ Do NOT use in production environment!**
 * Web service and web client for OpenAPI v3.x
 * Distributed cache client for Redis protocol
 * RabbitMQ client for AMQP protocol
+* Search client for Elasticsearch
 * Mainstream encryption algorithms and SM2/3/4 algorithms
 * Containerized unit testing of mainstream middleware
 * Multi-environment configuration

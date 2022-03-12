@@ -128,4 +128,28 @@ impl TardisTestContainer {
             )
         }
     }
+
+    pub async fn es<F, T>(fun: F) -> TardisResult<()>
+    where
+        F: Fn(String) -> T + Send + Sync + 'static,
+        T: Future<Output = TardisResult<()>> + Send + 'static,
+    {
+        if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
+            fun("https://127.0.0.1:9200".to_string()).await
+        } else {
+            let docker = clients::Cli::default();
+            let node = TardisTestContainer::es_custom(&docker);
+            let port = node.get_host_port(9200).expect("Test port acquisition error");
+            fun(format!("https://elastic:123456@127.0.0.1:{}", port)).await
+        }
+    }
+
+    pub fn es_custom(docker: &Cli) -> Container<Cli, GenericImage> {
+        docker.run(
+            images::generic::GenericImage::new("elasticsearch:8.1.0")
+                .with_env_var("ELASTIC_PASSWORD", "123456")
+                .with_env_var("discovery.type", "single-node")
+                .with_wait_for(WaitFor::message_on_stdout("successfully loaded geoip database file")),
+        )
+    }
 }

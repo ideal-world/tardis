@@ -42,6 +42,8 @@ pub struct FrameworkConfig {
     pub cache: CacheConfig,
     /// Message queue configuration / 消息队列配置
     pub mq: MQConfig,
+    /// Search configuration / 搜索配置
+    pub search: SearchConfig,
     /// Advanced configuration / 高级配置
     pub adv: AdvConfig,
 }
@@ -391,6 +393,41 @@ impl Default for MQConfig {
         MQConfig {
             enabled: true,
             url: "".to_string(),
+        }
+    }
+}
+
+/// Elasticsearch configuration / ES配置
+///
+/// Elasticsearch operation needs to be enabled ```#[cfg(feature = "web-client")]``` .
+///
+/// ES操作需要启用 ```#[cfg(feature = "web-client")]``` .
+///
+/// # Examples
+/// ```rust
+/// use tardis::basic::config::ESConfig;
+/// let config = ESConfig {
+///    url: "https://elastic:123456@127.0.0.1:9200".to_string(),
+///    ..Default::default()
+///};
+/// ```
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct SearchConfig {
+    /// Whether to enable the search function / 是否启用搜索操作功能
+    pub enabled: bool,
+    /// Search access Url, Url with permission information / 搜索访问Url，Url带权限信息
+    pub url: String,
+    /// Timeout / 操作超时时间
+    pub timeout_sec: u64,
+}
+
+impl Default for SearchConfig {
+    fn default() -> Self {
+        SearchConfig {
+            enabled: true,
+            url: "".to_string(),
+            timeout_sec: 60,
         }
     }
 }

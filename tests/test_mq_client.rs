@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
@@ -33,6 +33,10 @@ async fn test_mq_client() -> TardisResult<()> {
                     ..Default::default()
                 },
                 mq: MQConfig { enabled: true, url },
+                search: SearchConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
                 adv: Default::default(),
             },
         })

@@ -8,6 +8,7 @@
 //! * Web service and web client for OpenAPI v3.x
 //! * Distributed cache client for Redis protocol
 //! * RabbitMQ client for AMQP protocol
+//! * Search client for Elasticsearch
 //! * Mainstream encryption algorithms and SM2/3/4 algorithms
 //! * Containerized unit testing of mainstream middleware
 //! * Multi-environment configuration
@@ -118,6 +119,8 @@ use crate::cache::cache_client::TardisCacheClient;
 use crate::db::reldb_client::TardisRelDBClient;
 #[cfg(feature = "mq")]
 use crate::mq::mq_client::TardisMQClient;
+#[cfg(feature = "web-client")]
+use crate::search::search_client::TardisSearchClient;
 use crate::serde::Deserialize;
 #[cfg(feature = "web-client")]
 use crate::web::web_client::TardisWebClient;
@@ -232,6 +235,8 @@ pub struct TardisFuns {
     cache: Option<TardisCacheClient>,
     #[cfg(feature = "mq")]
     mq: Option<TardisMQClient>,
+    #[cfg(feature = "web-client")]
+    search: Option<TardisSearchClient>,
 }
 
 static mut TARDIS_INST: TardisFuns = TardisFuns {
@@ -247,6 +252,8 @@ static mut TARDIS_INST: TardisFuns = TardisFuns {
     cache: None,
     #[cfg(feature = "mq")]
     mq: None,
+    #[cfg(feature = "web-client")]
+    search: None,
 };
 
 #[allow(unsafe_code)]
@@ -295,7 +302,7 @@ impl TardisFuns {
     /// # Examples
     ///
     /// ```rust
-    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig, WebServerConfig};
+    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
     /// use tardis::TardisFuns;
     /// let result = TardisFuns::init_conf(TardisConfig {
     ///             ws: NoneConfig {},
@@ -314,6 +321,10 @@ impl TardisFuns {
     ///                 mq: MQConfig {
     ///                     enabled: false,
     ///                     ..Default::default()
+    ///                 },
+    ///                 search: SearchConfig{
+    ///                    enabled: false,
+    ///                    ..Default::default()
     ///                 },
     ///                 adv: Default::default(),
     ///             },
@@ -366,6 +377,15 @@ impl TardisFuns {
                 let mq_client = TardisMQClient::init_by_conf(TardisFuns::fw_config()).await?;
                 unsafe {
                     replace(&mut TARDIS_INST.mq, Some(mq_client));
+                };
+            }
+        }
+        #[cfg(feature = "web-client")]
+        {
+            if TardisFuns::fw_config().search.enabled {
+                let search_client = TardisSearchClient::init_by_conf(TardisFuns::fw_config())?;
+                unsafe {
+                    replace(&mut TARDIS_INST.search, Some(search_client));
                 };
             }
         }
@@ -587,6 +607,16 @@ impl TardisFuns {
         }
     }
 
+    #[cfg(feature = "web-client")]
+    pub fn search() -> &'static TardisSearchClient {
+        unsafe {
+            match &mut TARDIS_INST.search {
+                None => panic!("[Tardis.Config] Search default instance doesn't exist"),
+                Some(t) => t,
+            }
+        }
+    }
+
     pub async fn shutdown() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
         #[cfg(feature = "mq")]
@@ -605,6 +635,9 @@ pub mod db;
 #[cfg(feature = "mq")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mq")))]
 pub mod mq;
+#[cfg(feature = "web-client")]
+#[cfg_attr(docsrs, doc(cfg(feature = "web-client")))]
+pub mod search;
 #[cfg(feature = "test")]
 #[cfg_attr(docsrs, doc(cfg(feature = "test")))]
 pub mod test;

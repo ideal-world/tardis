@@ -2,7 +2,7 @@
 
 use reqwest::StatusCode;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, TardisConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig};
 use tardis::basic::result::TardisResult;
 use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
@@ -24,6 +24,10 @@ async fn test_web_client() -> TardisResult<()> {
                 ..Default::default()
             },
             mq: MQConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            search: SearchConfig {
                 enabled: false,
                 ..Default::default()
             },

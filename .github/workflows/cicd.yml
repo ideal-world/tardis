@@ -30,6 +30,11 @@ jobs:
           - 5672:5672
           - 4369:4369
         options: -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest
+      es:
+        image: elasticsearch:8.1.0
+        ports:
+          - 9200:9200
+        options: -e ELASTIC_PASSWORD=123456 -e discovery.type=single-node
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
