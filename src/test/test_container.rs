@@ -135,7 +135,7 @@ impl TardisTestContainer {
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
         if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
-            fun("https://127.0.0.1:9200".to_string()).await
+            fun("https://elastic:123456@127.0.0.1:9200".to_string()).await
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::es_custom(&docker);
