@@ -47,6 +47,22 @@ impl TardisError {
         (code.to_string(), message.to_string())
     }
 
+    pub fn new(code: u16, msg: &str) -> Option<Self> {
+        match code {
+            c if (200..300).contains(&c) => None,
+            500 => Some(Self::InternalError(msg.to_string())),
+            501 => Some(Self::NotImplemented(msg.to_string())),
+            503 => Some(Self::IOError(msg.to_string())),
+            400 => Some(Self::BadRequest(msg.to_string())),
+            401 => Some(Self::Unauthorized(msg.to_string())),
+            404 => Some(Self::NotFound(msg.to_string())),
+            406 => Some(Self::FormatError(msg.to_string())),
+            408 => Some(Self::Timeout(msg.to_string())),
+            409 => Some(Self::Conflict(msg.to_string())),
+            _ => Some(Self::Custom(code.to_string(), msg.to_string())),
+        }
+    }
+
     pub fn code(&self) -> String {
         let text = self.to_string();
         let split_idx = text.find(GENERAL_SPLIT).expect("Illegal error description format");
