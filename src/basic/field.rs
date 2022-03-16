@@ -166,7 +166,7 @@ impl TardisField {
 /// }
 /// ```
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub struct TrimString(String);
+pub struct TrimString(pub String);
 
 impl From<&str> for TrimString {
     fn from(str: &str) -> Self {

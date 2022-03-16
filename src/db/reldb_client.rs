@@ -567,6 +567,11 @@ struct CountResp {
     count: i64,
 }
 
+#[derive(Debug, FromQueryResult)]
+pub struct IdResp {
+    pub id: String,
+}
+
 impl From<DbErr> for TardisError {
     fn from(error: DbErr) -> Self {
         TardisError::Box(Box::new(error))

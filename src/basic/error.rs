@@ -125,3 +125,9 @@ impl From<hex::FromHexError> for TardisError {
         TardisError::FormatError(error.to_string())
     }
 }
+
+impl From<regex::Error> for TardisError {
+    fn from(error: regex::Error) -> Self {
+        TardisError::FormatError(error.to_string())
+    }
+}

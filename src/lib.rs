@@ -101,6 +101,8 @@ use std::ptr::replace;
 
 pub use chrono;
 pub use log;
+pub use rand;
+pub use regex;
 pub use serde;
 pub use serde_json;
 #[cfg(feature = "rt_tokio")]
