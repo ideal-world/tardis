@@ -33,10 +33,10 @@ async fn test_reldb_client() -> TardisResult<()> {
 
 async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
     let cxt = TardisContext {
-        app_id: "a1".to_string(),
-        tenant_id: "t1".to_string(),
+        app_code: "a1".to_string(),
+        tenant_code: "t1".to_string(),
         ak: "ak1".to_string(),
-        account_id: "acc1".to_string(),
+        account_code: "acc1".to_string(),
         token: "token1".to_string(),
         token_kind: "default".to_string(),
         roles: vec![],
@@ -111,10 +111,10 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
 
 async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
     let cxt = TardisContext {
-        app_id: "a1".to_string(),
-        tenant_id: "t1".to_string(),
+        app_code: "a1".to_string(),
+        tenant_code: "t1".to_string(),
         ak: "ak1".to_string(),
-        account_id: "acc1".to_string(),
+        account_code: "acc1".to_string(),
         token: "token1".to_string(),
         token_kind: "default".to_string(),
         roles: vec![],
@@ -331,10 +331,10 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
     let db = client.conn();
 
     let cxt = TardisContext {
-        app_id: "a1".to_string(),
-        tenant_id: "t1".to_string(),
+        app_code: "a1".to_string(),
+        tenant_code: "t1".to_string(),
         ak: "ak1".to_string(),
-        account_id: "acc1".to_string(),
+        account_code: "acc1".to_string(),
         token: "token1".to_string(),
         token_kind: "default".to_string(),
         roles: vec![],

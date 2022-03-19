@@ -25,6 +25,8 @@ async fn test_basic_field() -> TardisResult<()> {
     assert!(TardisFuns::field.is_code_ncs("adon2_43323tr"));
     assert!(!TardisFuns::field.is_code_ncs("adon2_43323tr "));
     assert!(!TardisFuns::field.is_code_ncs("Adw834_dfds"));
+    assert_eq!(TardisFuns::field.nanoid().len(), 21);
+    assert_eq!(TardisFuns::field.nanoid_len(4).len(), 4);
 
     Ok(())
 }

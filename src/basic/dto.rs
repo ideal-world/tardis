@@ -13,14 +13,14 @@ use crate::serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(default)]
 pub struct TardisContext {
-    /// The requested application Id / 请求的应用Id
-    pub app_id: String,
-    ///  The requested tenant Id / 请求的租户Id
-    pub tenant_id: String,
+    /// The requested application Code / 请求的应用编码
+    pub app_code: String,
+    ///  The requested tenant Code / 请求的租户编码
+    pub tenant_code: String,
     /// The requested Ak / 请求的Ak
     pub ak: String,
-    /// The requested account id / 请求的账号Id
-    pub account_id: String,
+    /// The requested account code / 请求的账号编码
+    pub account_code: String,
     /// The requested Token / 请求的Token
     pub token: String,
     /// The requested Token type / 请求的Token类型
@@ -34,10 +34,10 @@ pub struct TardisContext {
 impl Default for TardisContext {
     fn default() -> Self {
         TardisContext {
-            app_id: "".to_string(),
-            tenant_id: "".to_string(),
+            app_code: "".to_string(),
+            tenant_code: "".to_string(),
             ak: "".to_string(),
-            account_id: "".to_string(),
+            account_code: "".to_string(),
             token: "".to_string(),
             token_kind: "".to_string(),
             roles: vec![],

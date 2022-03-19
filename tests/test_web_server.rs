@@ -415,10 +415,10 @@ async fn test_context(url: &str) -> TardisResult<()> {
     assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
-        app_id: "app1".to_string(),
-        tenant_id: "tenant1".to_string(),
+        app_code: "app1".to_string(),
+        tenant_code: "tenant1".to_string(),
         ak: "ak1".to_string(),
-        account_id: "acc1".to_string(),
+        account_code: "acc1".to_string(),
         token: "token1".to_string(),
         token_kind: "测试".to_string(),
         roles: vec!["r1".to_string(), "管理员".to_string()],
@@ -468,10 +468,10 @@ async fn test_context(url: &str) -> TardisResult<()> {
     assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
-        app_id: "app1".to_string(),
-        tenant_id: "tenant1".to_string(),
+        app_code: "app1".to_string(),
+        tenant_code: "tenant1".to_string(),
         ak: "ak1".to_string(),
-        account_id: "acc1".to_string(),
+        account_code: "acc1".to_string(),
         token: "token1".to_string(),
         token_kind: "测试".to_string(),
         roles: vec!["r1".to_string(), "管理员".to_string()],
