@@ -11,6 +11,14 @@ use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::TardisFuns;
 
+/// Base64 handle / Base64处理
+///
+/// # Examples
+/// ```rust
+/// use tardis::TardisFuns;
+/// let b64_str = TardisFuns::crypto.base64.encode("测试");
+/// let str = TardisFuns::crypto.base64.decode(&b64_str).unwrap();
+/// ```
 pub struct TardisCrypto {
     pub base64: TardisCryptoBase64,
     pub aes: TardisCryptoAes,
@@ -40,14 +48,6 @@ pub struct TardisCryptoSm2PublicKey {
 pub struct TardisCryptoDigest;
 pub struct TardisCryptoKey;
 
-/// Base64 handle / Base64处理
-///
-/// # Examples
-/// ```rust
-/// use tardis::TardisFuns;
-/// let b64_str = TardisFuns::crypto.base64.encode("测试");
-/// let str = TardisFuns::crypto.base64.decode(&b64_str).unwrap();
-/// ```
 impl TardisCryptoBase64 {
     pub fn decode(&self, data: &str) -> TardisResult<String> {
         match base64::decode(data) {

@@ -1,6 +1,14 @@
-//! Uri handle / Uri处理
 use crate::basic::result::TardisResult;
 
+/// Uri handle / Uri处理
+///
+/// # Examples
+/// ```rust
+/// use tardis::TardisFuns;
+/// assert_eq!(TardisFuns::uri.format("http://idealwrold.group").unwrap(), "http://idealwrold.group");
+/// assert_eq!(TardisFuns::uri.format("jdbc:h2:men:iam").unwrap(), "jdbc:h2:men:iam");
+/// assert_eq!(TardisFuns::uri.format("api://a1.t1/e1?q2=2&q1=1&q3=3").unwrap(), "api://a1.t1/e1?q1=1&q2=2&q3=3");
+/// ```
 pub struct TardisUri;
 
 impl TardisUri {

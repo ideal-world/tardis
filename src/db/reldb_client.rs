@@ -20,11 +20,116 @@ use crate::db::domain::{tardis_db_config, tardis_db_del_record};
 use crate::log::info;
 use crate::{FrameworkConfig, TardisFuns};
 
+/// Relational database handle / 关系型数据库操作
+///
+/// Provides some common regular, Id generation and other functions.
+///
+/// Encapsulates common operations on MySQL and PostgreSQL. Two styles of operations are provided:
+///
+/// 1. Wrapper based on `sea-orm` for simple relational operations, see `examples/reldb` for examples
+/// 1. Wrapper based on `sea-query` for complex, custom processing operations, see `https://github.com/ideal-world/bios` for examples.
+///
+/// 封装了对MySQL、PostgreSQL的常用操作.提供了两种风格的操作:
+///
+/// 1. 基于 `sea-orm` 的封装，适用于简单的关系处理操作，操作示例见 `examples/reldb`
+/// 1. 基于 `sea-query` 的封装，适用复杂的、自定义的处理操作，操作示例见 `https://github.com/ideal-world/bios`
+///
+/// # Steps to use / 使用步骤
+///
+/// 1. Create the database configuration / 创建数据库配置, @see [DBConfig](crate::basic::config::DBConfig)
+///
+/// 2.  Create the `domain` object / 创建 `domain` 对象, E.g:
+/// ```rust
+/// use sea_orm::{DeriveRelation, EnumIter};
+/// mod tardis_db_config{
+///     use tardis::db::sea_orm::*;
+///     use tardis::db::sea_query::*;
+///     use tardis::basic::dto::TardisContext;
+/// use tardis::db::domain::tardis_db_config;
+///     use tardis::db::reldb_client::TardisActiveModel;
+///     use tardis::TardisFuns;
+///     // Reference DeriveEntityModel macro for skeleton code generation (sea-orm function)
+///     #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+///     // Define table name (sea-orm function)
+///     #[sea_orm(table_name = "tardis_config")]
+///     pub struct Model {
+///     // Define primary key (sea-orm function)
+///         #[sea_orm(primary_key, auto_increment = false)]
+///         pub id: String,
+///         #[sea_orm(indexed)]
+///         pub k: String,
+///         #[sea_orm(column_type = "Text")]
+///         pub v: String,
+///         pub creator: String,
+///         pub updater: String,
+///     }
+///    
+///     // Define extended information (Tardis function)
+///     impl TardisActiveModel for ActiveModel {
+///         fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool) {}
+///    
+///         fn create_table_statement(db_type: DbBackend) -> TableCreateStatement {
+///              Table::create()
+///                 .table(tardis_db_config::Entity.table_ref())
+///                 .if_not_exists()
+///                 .col(ColumnDef::new(tardis_db_config::Column::Id).not_null().string().primary_key())
+///                 .col(ColumnDef::new(tardis_db_config::Column::K).not_null().string().unique_key())
+///                 .col(ColumnDef::new(tardis_db_config::Column::V).not_null().text())
+///                 .col(ColumnDef::new(tardis_db_config::Column::Creator).not_null().string())
+///                 .col(ColumnDef::new(tardis_db_config::Column::Updater).not_null().string())
+///                 .to_owned()
+///         }
+///     }
+///    
+///     impl ActiveModelBehavior for ActiveModel {
+///         fn new() -> Self {
+///             Self {
+///                 id: Set(TardisFuns::field.nanoid()),
+///                 ..ActiveModelTrait::default()
+///             }
+///         }
+///     }
+/// }
+///
+/// // Define association relationships (sea-orm function)
+/// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+/// pub enum Relation {}
+/// ```
+///
+/// 3. Create TardisContext / 创建TardisContext [TardisContext](crate::basic::dto::TardisContext)
+///
+/// 4. Use `TardisRelDBClient` to operate database / 使用 `TardisRelDBClient` 操作数据库, E.g:
+/// ```rust
+/// use std::process::id;
+/// use tardis::basic::dto::TardisContext;
+/// use tardis::db::domain::tardis_db_config;
+/// use tardis::db::reldb_client::IdResp;
+/// use tardis::db::sea_query::*;
+/// use tardis::db::sea_orm::*;
+/// use tardis::TardisFuns;
+/// let cxt = TardisContext{
+/// // Define Context
+///   ..Default::default()
+/// };
+/// let conn = TardisFuns::reldb().conn();
+/// conn.insert_one(tardis_db_config::ActiveModel {
+///     k: Set("ke".to_string()),
+///     v: Set("ve".to_string()),
+///     ..Default::default()
+/// },&cxt).await.unwrap();
+///
+/// conn.paginate_dtos::<IdResp>(&Query::select()
+///     .column(tardis_db_config::Column::Id)
+///     .from(tardis_db_config::Entity),
+///     1,10
+/// ).await.unwrap();
+/// ```
 pub struct TardisRelDBClient {
     con: DatabaseConnection,
 }
 
 impl TardisRelDBClient {
+    /// Initialize configuration from the database configuration object / 从数据库配置对象中初始化配置
     pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisRelDBClient> {
         TardisRelDBClient::init(
             &conf.db.url,
@@ -36,6 +141,7 @@ impl TardisRelDBClient {
         .await
     }
 
+    /// Initialize configuration / 初始化配置
     pub async fn init(
         str_url: &str,
         max_connections: u32,
@@ -70,14 +176,19 @@ impl TardisRelDBClient {
         Ok(client)
     }
 
+    /// Get database instance implementation / 获取数据库实例的实现
     pub fn backend(&self) -> DbBackend {
         self.con.get_database_backend()
     }
 
+    /// Get database connection
+    ///
+    /// 获取数据库操作连接
     pub fn conn(&self) -> TardisRelDBlConnection {
         TardisRelDBlConnection { conn: &self.con, tx: None }
     }
 
+    /// Initialize basic tables / 初始化基础表
     async fn init_basic_tables(&self) -> TardisResult<()> {
         let tx = self.con.begin().await?;
         let config_create_table_statement = tardis_db_config::ActiveModel::create_table_statement(self.con.get_database_backend());
@@ -265,16 +376,31 @@ impl TardisRelDBClient {
     }
 }
 
+/// Database operation connection object / 数据库操作连接对象
 pub struct TardisRelDBlConnection<'a> {
     conn: &'a DatabaseConnection,
     tx: Option<DatabaseTransaction>,
 }
 
 impl<'a> TardisRelDBlConnection<'a> {
+    /// Get original connection (generally not recommended) / 获取原始连接(一般不推荐使用)
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// let raw_conn = TardisFuns::reldb().conn().raw_conn();
+    /// ```
     pub fn raw_conn(&self) -> &DatabaseConnection {
         self.conn
     }
 
+    /// Get original transaction (if a transaction exists for the current object) (generally not recommended) / 获取原始事务(如果当前对象存在事务的话）(一般不推荐使用)
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// let raw_tx = TardisFuns::reldb().conn().raw_tx().unwrap();
+    /// ```
     pub fn raw_tx(&self) -> TardisResult<&DatabaseTransaction> {
         if let Some(tx) = &self.tx {
             Ok(tx)
@@ -283,11 +409,28 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Open a transaction / 开启一个事务
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let tx = conn.begin().await.unwrap();
+    /// ```
     pub async fn begin(&mut self) -> TardisResult<()> {
         self.tx = Some(self.conn.begin().await?);
         Ok(())
     }
 
+    /// Commit current transaction / 提交当前事务
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let tx = conn.begin().await.unwrap();
+    /// tx.commit().await.unwrap();
+    /// ```
     pub async fn commit(self) -> TardisResult<()> {
         if let Some(tx) = self.tx {
             tx.commit().await?;
@@ -295,6 +438,15 @@ impl<'a> TardisRelDBlConnection<'a> {
         Ok(())
     }
 
+    /// Rollback current transaction / 回滚当前事务
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let tx = conn.begin().await.unwrap();
+    /// tx.rollback().await.unwrap();
+    /// ```
     pub async fn rollback(self) -> TardisResult<()> {
         if let Some(tx) = self.tx {
             tx.rollback().await?;
@@ -302,6 +454,19 @@ impl<'a> TardisRelDBlConnection<'a> {
         Ok(())
     }
 
+    /// Create a table from an entity / 从实体中创建表
+    ///
+    /// # Arguments
+    //
+    //  * `entity` - entity / 实体
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// conn.create_table_from_entity(tardis_db_config::Entity).await.unwrap();
+    /// ```
     pub async fn create_table_from_entity<E>(&self, entity: E) -> TardisResult<()>
     where
         E: EntityTrait,
@@ -313,11 +478,39 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Create table and index / 创建表和索引
+    ///
+    /// # Arguments
+    ///
+    ///  * `statements` -  Statement for creating table and creating index / 创建表和创建索引的Statement
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// conn.create_table_and_index(&tardis_db_config::ActiveModel::create_table_and_index_statement(TardisFuns::reldb().backend())).await.unwrap();
+    /// ```
     pub async fn create_table_and_index(&self, statements: &(TableCreateStatement, Vec<IndexCreateStatement>)) -> TardisResult<()> {
         self.create_table(&statements.0).await?;
         self.create_index(&statements.1).await
     }
 
+    /// Create table  / 创建表
+    ///
+    /// # Arguments
+    ///
+    ///  * `statement` -  Statement for creating a table / 创建表的Statement
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// conn.create_table(&tardis_db_config::ActiveModel::create_table_statement(TardisFuns::reldb().backend())).await.unwrap();
+    /// ```
     pub async fn create_table(&self, statement: &TableCreateStatement) -> TardisResult<()> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::create_table_inner(statement, tx).await
@@ -326,6 +519,20 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Create index / 创建索引
+    ///
+    /// # Arguments
+    ///
+    ///  * `statement` -  Statement for creating index / 创建索引的Statement
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// conn.create_index(&tardis_db_config::ActiveModel::create_index_statement()).await.unwrap();
+    /// ```
     pub async fn create_index(&self, statements: &[IndexCreateStatement]) -> TardisResult<()> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::create_index_inner(statements, tx).await
@@ -334,6 +541,26 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Get a record, return a custom structure / 获取一条记录，返回自定义结构体
+    ///
+    /// # Arguments
+    ///
+    ///  * `select_statement` - Statement of the query / 查询的Statement
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.get_dto(&Query::select()
+    ///     .column(tardis_db_config::Column::Id)
+    ///     .column(tardis_db_config::Column::Name)
+    ///     .from(tardis_db_config::Entity)
+    ///     .and_where(Expr::col(tardis_db_config::Column::Id).eq("xxx"))
+    /// ).await.unwrap();
+    /// ```
     pub async fn get_dto<D>(&self, select_statement: &SelectStatement) -> TardisResult<Option<D>>
     where
         D: FromQueryResult,
@@ -345,6 +572,25 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Get multiple rows and return a custom structure / 获取多条记录，返回自定义结构体
+    ///
+    /// # Arguments
+    ///
+    ///  * `select_statement` - Statement of the query / 查询的Statement
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.find_dtos(&Query::select()
+    ///     .column(tardis_db_config::Column::Id)
+    ///     .column(tardis_db_config::Column::Name)
+    ///     .from(tardis_db_config::Entity)
+    /// ).await.unwrap();
+    /// ```
     pub async fn find_dtos<D>(&self, select_statement: &SelectStatement) -> TardisResult<Vec<D>>
     where
         D: FromQueryResult,
@@ -356,6 +602,28 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Paging to get multiple records and the total number of records, returning a custom structure / 分页获取多条记录及总记录数，返回自定义结构体
+    ///
+    /// # Arguments
+    ///
+    ///  * `select_statement` - Statement of the query / 查询的Statement
+    ///  * `page_number` -  Current page number, starting from 1 / 当前页码，从1开始
+    ///  * `page_size` -  Number of records per page / 每页记录数
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.paginate_dtos(&Query::select()
+    ///     .column(tardis_db_config::Column::Id)
+    ///     .column(tardis_db_config::Column::Name)
+    ///     .from(tardis_db_config::Entity),
+    ///     1,10
+    /// ).await.unwrap();
+    /// ```
     pub async fn paginate_dtos<D>(&self, select_statement: &SelectStatement, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
     where
         D: FromQueryResult,
@@ -367,6 +635,25 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Get number of records / 获取记录数量
+    ///
+    /// # Arguments
+    ///
+    ///  * `select_statement` - Statement of the query / 查询的Statement
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.count(&Query::select()
+    ///     .column(tardis_db_config::Column::Id)
+    ///     .column(tardis_db_config::Column::Name)
+    ///     .from(tardis_db_config::Entity)
+    /// ).await.unwrap();
+    /// ```
     pub async fn count(&self, select_statement: &SelectStatement) -> TardisResult<u64> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::count_inner(select_statement, tx).await
@@ -375,6 +662,12 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Execute SQL operations (provide custom SQL processing capabilities) / 执行SQL操作（提供自定义SQL处理能力）
+    ///
+    /// # Arguments
+    ///
+    ///  * `statement` -  Custom statement / 自定义Statement
+    ///
     pub async fn execute(&self, statement: Statement) -> TardisResult<ExecResult> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::execute_inner(statement, tx).await
@@ -383,6 +676,27 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Insert a record and return primary key value / 插入一条记录，返回主键值
+    ///
+    /// # Arguments
+    ///
+    ///  * `model` -  Record to be inserted / 要插入的记录
+    ///  * `cxt` -  TardisContext
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.insert_one(tardis_db_config::ActiveModel {
+    ///     k: Set("ke".to_string()),
+    ///     v: Set("ve".to_string()),
+    ///     ..Default::default()
+    /// },&cxt).await.unwrap();
+    /// ```
     pub async fn insert_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
     where
         T: TardisActiveModel,
@@ -394,6 +708,29 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Insert multiple records / 插入多条记录
+    ///
+    /// # Arguments
+    ///
+    ///  * `models` -  Set of records to be inserted / 要插入的记录集
+    ///  * `cxt` -  TardisContext
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.insert_many(vec![
+    ///     tardis_db_config::ActiveModel {
+    ///          k: Set("ke".to_string()),
+    ///          v: Set("ve".to_string()),
+    ///          ..Default::default()
+    ///     }
+    ///  ],&cxt).await.unwrap();
+    /// ```
     pub async fn insert_many<T>(&self, models: Vec<T>, cxt: &TardisContext) -> TardisResult<()>
     where
         T: TardisActiveModel,
@@ -405,6 +742,28 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Update a record / 更新一条记录
+    ///
+    /// # Arguments
+    ///
+    ///  * `model` -  Records to be inserted / 要插入的记录
+    ///  * `cxt` -  TardisContext
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.update_one(tardis_db_config::ActiveModel {
+    ///     id: Set("111".to_string()),
+    ///     k: Set("ke".to_string()),
+    ///     v: Set("ve".to_string()),
+    ///     ..Default::default()
+    /// },&cxt).await.unwrap();
+    /// ```
     pub async fn update_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<()>
     where
         T: TardisActiveModel,
@@ -416,6 +775,27 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Update multiple records / 更新多条记录
+    ///
+    /// # Arguments
+    ///
+    ///  * `update_statement` -  Statement to be updated / 要更新的Statement
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.update_many(Query::update()
+    ///     .table(tardis_db_config::Entity)
+    ///     .values(vec![
+    ///       (tardis_db_config::Column::k, Set("ke".to_string())),
+    ///     ])
+    ///     .and_where(Expr::col(tardis_db_config::Column::id).eq("111"))).await.unwrap();
+    /// ```
     pub async fn update_many<T>(&self, update_statement: &UpdateStatement) -> TardisResult<()> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::update_many_inner(update_statement, tx).await
@@ -424,6 +804,23 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Soft delete record(s) (primary key is Id) / 软删除记录(主键为Id)
+    ///
+    /// # Arguments
+    ///
+    ///  * `select` -  Select object / Select对象
+    ///  * `delete_user` -  Delete user / 删除人
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.soft_delete(tardis_db_config::Entity::find().filter(Expr::col(tardis_db_config::Column::Id).eq("111")),"admin").await.unwrap();
+    /// ```
     pub async fn soft_delete<E>(&self, select: Select<E>, delete_user: &str) -> TardisResult<u64>
     where
         E: EntityTrait,
@@ -435,6 +832,24 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    /// Soft delete record(s) (custom primary key) / 软删除记录(自定义主键)
+    ///
+    /// # Arguments
+    ///
+    ///  * `select` -  Select object / Select对象
+    ///  * `custom_pk_field` -  Custom Primary Key / 自定义主键
+    ///  * `delete_user` -  Delete user / 删除人
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::*;
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::reldb_client::TardisActiveModel;
+    /// use tardis::TardisFuns;
+    /// let mut conn = TardisFuns::reldb().conn();
+    /// let resp = conn.soft_delete_custom(tardis_db_config::Entity::find().filter(Expr::col(tardis_db_config::Column::Id).eq("111")),"iam_id","admin").await.unwrap();
+    /// ```
     pub async fn soft_delete_custom<E>(&self, select: Select<E>, custom_pk_field: &str, delete_user: &str) -> TardisResult<u64>
     where
         E: EntityTrait,
@@ -545,18 +960,116 @@ where
     }
 }
 
+/// 对 `ActiveModelBehavior` 的扩展操作
 #[async_trait]
 pub trait TardisActiveModel: ActiveModelBehavior {
+    /// Fill TardisContext / 填充TardisContext
+    ///
+    /// # Arguments
+    ///
+    ///  * `cxt` -  TardisContext
+    ///  * `is_insert` -  whether to insert the operation / 是否插入操作
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::basic::dto::TardisContext;
+    /// use tardis::db::sea_orm::*;
+    ///
+    /// fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool) {
+    ///     if is_insert {
+    ///         self.rel_app_code = Set(cxt.app_code.to_string());
+    ///     }
+    ///     self.updater_code = Set(cxt.account_code.to_string());
+    /// }
+    /// ```
     fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool);
 
+    /// Create table and index / 创建表和索引
+    ///
+    /// # Arguments
+    ///
+    ///  * `db` -  database instance type / 数据库实例类型
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::*;
+    /// use tardis::basic::dto::TardisContext;
+    /// fn create_table_and_index_statement(db: DbBackend) -> (TableCreateStatement, Vec<IndexCreateStatement>) {
+    ///     (Self::create_table_statement(db), Self::create_index_statement())
+    /// }
+    /// ```
     fn create_table_and_index_statement(db: DbBackend) -> (TableCreateStatement, Vec<IndexCreateStatement>) {
         (Self::create_table_statement(db), Self::create_index_statement())
     }
 
+    /// Create table / 创建表
+    ///
+    /// # Arguments
+    ///
+    ///  * `db` -  database instance type / 数据库实例类型
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::*;
+    /// fn create_table_statement(db_type: DbBackend) -> TableCreateStatement {
+    ///     match db_type {
+    ///         DbBackend::MySql => Table::create()
+    ///             .table(tardis_db_config::Entity.table_ref())
+    ///             .if_not_exists()
+    ///             .col(ColumnDef::new(tardis_db_config::Column::Id).not_null().string().primary_key())
+    ///             .col(ColumnDef::new(tardis_db_config::Column::K).not_null().string().unique_key())
+    ///             .col(ColumnDef::new(tardis_db_config::Column::V).not_null().text())
+    ///             .col(ColumnDef::new(tardis_db_config::Column::Creator).not_null().string())
+    ///             .col(ColumnDef::new(tardis_db_config::Column::Updater).not_null().string())
+    ///             .to_owned(),
+    ///         DbBackend::Postgres => {
+    ///             Table::create()
+    ///                 .table(tardis_db_config::Entity.table_ref())
+    ///                 .if_not_exists()
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::Id).not_null().string().primary_key())
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::K).not_null().string().unique_key())
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::V).not_null().text())
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::Creator).not_null().string())
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::Updater).not_null().string())
+    ///                 .to_owned()
+    ///         }
+    ///         DbBackend::Sqlite =>{
+    ///             Table::create()
+    ///                 .table(tardis_db_config::Entity.table_ref())
+    ///                 .if_not_exists()
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::Id).not_null().string().primary_key())
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::K).not_null().string().unique_key())
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::V).not_null().text())
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::Creator).not_null().string())
+    ///                 .col(ColumnDef::new(tardis_db_config::Column::Updater).not_null().string())
+    ///                 .to_owned()
+    ///         }
+    ///     }
+    /// }
+    /// ```
     fn create_table_statement(_: DbBackend) -> TableCreateStatement {
         TableCreateStatement::new()
     }
 
+    /// Create index / 创建索引
+    ///
+    /// # Examples
+    /// ```rust
+    /// use tardis::db::domain::tardis_db_config;
+    /// use tardis::db::sea_orm::*;
+    /// use tardis::db::sea_query::*;
+    /// fn create_index_statement() -> Vec<IndexCreateStatement> {
+    ///         vec![
+    ///             Index::create()
+    ///                 .name(&format!("idx-{}-{}", tardis_db_config::Entity.table_name(),tardis_db_config::Column::K.to_string()))
+    ///                 .table(tardis_db_config::Entity)
+    ///                 .col(tardis_db_config::Column::K)
+    ///                 .to_owned(),
+    ///         ]
+    ///     }
     fn create_index_statement() -> Vec<IndexCreateStatement> {
         vec![IndexCreateStatement::new()]
     }

@@ -1,8 +1,3 @@
-//! Field handle / 字段处理
-//!
-//! Provides some common regular, Id generation and other functions.
-//!
-//! 提供了一些常用的正则判断、Id生成等功能.
 use std::fmt::{Display, Formatter};
 
 use regex::Regex;
@@ -21,6 +16,28 @@ static BASE36: &str = "abcdefghijklmnopqrstuvwxyz0123456789";
 
 pub static GENERAL_SPLIT: &str = "##";
 
+/// Field handle / 字段处理
+///
+/// Provides some common regular, Id generation and other functions.
+///
+/// 提供了一些常用的正则判断、Id生成等功能.
+/// # Examples
+/// ```rust
+/// use tardis::TardisFuns;
+/// assert!(TardisFuns::field.is_phone("18657120202"));
+/// assert_eq!(TardisFuns::field.incr_by_base62("abcd1").unwrap(), "abcd2");
+/// assert!(TardisFuns::field.incr_by_base62("999").is_none());
+/// assert_eq!(TardisFuns::field.incr_by_base36("abcd1").unwrap(), "abcd2");
+/// assert!(TardisFuns::field.incr_by_base36("999").is_none());
+/// assert!(TardisFuns::field.is_code_cs("Adw834_dfds"));
+/// assert!(!TardisFuns::field.is_code_cs(" Adw834_dfds"));
+/// assert!(!TardisFuns::field.is_code_cs("Adw834_d-fds"));
+/// assert!(TardisFuns::field.is_code_ncs("adon2_43323tr"));
+/// assert!(!TardisFuns::field.is_code_ncs("adon2_43323tr "));
+/// assert!(!TardisFuns::field.is_code_ncs("Adw834_dfds"));
+/// assert_eq!(TardisFuns::field.nanoid().len(), 21);
+/// assert_eq!(TardisFuns::field.nanoid_len(4).len(), 4);
+/// ```
 pub struct TardisField;
 
 impl TardisField {
