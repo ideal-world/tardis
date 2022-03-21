@@ -27,7 +27,7 @@ impl Related<super::tenant::Entity> for super::tenant_conf::Entity {
 impl TardisActiveModel for ActiveModel {
     fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
         if is_insert {
-            self.id = Set(TardisFuns::field.uuid_str());
+            self.id = Set(TardisFuns::field.nanoid());
         }
     }
 }
