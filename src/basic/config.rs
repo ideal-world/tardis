@@ -104,7 +104,7 @@ impl Default for AppConfig {
             version: "0.0.1".to_string(),
             url: "".to_string(),
             email: "".to_string(),
-            inst: format!("inst_{}", TardisFuns::field.uuid()),
+            inst: format!("inst_{}", TardisFuns::field.nanoid()),
         }
     }
 }

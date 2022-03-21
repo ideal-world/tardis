@@ -450,15 +450,15 @@ impl TardisCryptoKey {
     }
 
     pub fn generate_token(&self) -> TardisResult<String> {
-        Ok(format!("tk{}", TardisFuns::field.uuid()))
+        Ok(format!("tk{}", TardisFuns::field.nanoid()))
     }
 
     pub fn generate_ak(&self) -> TardisResult<String> {
-        Ok(format!("ak{}", TardisFuns::field.uuid()))
+        Ok(format!("ak{}", TardisFuns::field.nanoid()))
     }
 
     pub fn generate_sk(&self, ak: &str) -> TardisResult<String> {
-        let sk = TardisFuns::crypto.digest.sha1(format!("{}{}", ak, TardisFuns::field.uuid()).as_str());
+        let sk = TardisFuns::crypto.digest.sha1(format!("{}{}", ak, TardisFuns::field.nanoid()).as_str());
         match sk {
             Ok(sk) => Ok(sk),
             Err(e) => Err(e),

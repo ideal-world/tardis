@@ -73,7 +73,7 @@ impl TardisActiveModel for ActiveModel {
 impl ActiveModelBehavior for ActiveModel {
     fn new() -> Self {
         Self {
-            id: Set(TardisFuns::field.uuid_str()),
+            id: Set(TardisFuns::field.nanoid()),
             ..ActiveModelTrait::default()
         }
     }

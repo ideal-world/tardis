@@ -7,7 +7,6 @@ use std::fmt::{Display, Formatter};
 
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use uuid::Uuid;
 
 lazy_static! {
     static ref R_PHONE: Regex = Regex::new(r"^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$").expect("Regular parsing error");
@@ -45,16 +44,6 @@ impl TardisField {
     /// 判断是否只包含数字、大小写字母及下划线
     pub fn is_code_ncs(&self, str: &str) -> bool {
         R_CODE_NCS.is_match(str)
-    }
-
-    /// Generate UUID / 生成UUID
-    pub fn uuid(&self) -> Uuid {
-        uuid::Uuid::new_v4()
-    }
-
-    /// Generate UUID as a string / 生成字符串形式的UUID
-    pub fn uuid_str(&self) -> String {
-        uuid::Uuid::new_v4().to_simple().to_string()
     }
 
     /// Generate NanoId / 生成NanoId
@@ -187,6 +176,12 @@ impl From<&str> for TrimString {
 impl From<String> for TrimString {
     fn from(str: String) -> Self {
         TrimString(str)
+    }
+}
+
+impl Clone for TrimString {
+    fn clone(&self) -> Self {
+        TrimString(self.0.clone())
     }
 }
 
