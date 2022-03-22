@@ -9,15 +9,36 @@ use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::log::info;
 
+/// Distributed cache handle / 分布式缓存操作
+///
+/// Encapsulates common Redis operations.
+///
+/// 封装了Redis的常用操作.
+///
+/// # Steps to use / 使用步骤
+///
+/// 1. Create the cache configuration / 创建缓存配置, @see [CacheConfig](crate::basic::config::CacheConfig)
+///
+/// 4. Use `TardisCacheClient` to operate cache / 使用 `TardisCacheClient` 操作缓存, E.g:
+/// ```rust
+/// use tardis::TardisFuns;
+/// assert_eq!(TardisFuns::cache().get("test_key").await.unwrap(), None);
+/// client.set("test_key", "测试").await.unwrap();
+/// assert_eq!(TardisFuns::cache().get("test_key").await.unwrap(), "测试");
+/// assert!(TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
+/// assert!(!TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
+/// ```
 pub struct TardisCacheClient {
     con: Connection,
 }
 
 impl TardisCacheClient {
+    /// Initialize configuration from the cache configuration object / 从缓存配置对象中初始化配置
     pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisCacheClient> {
         TardisCacheClient::init(&conf.cache.url).await
     }
 
+    /// Initialize configuration / 初始化配置
     pub async fn init(str_url: &str) -> TardisResult<TardisCacheClient> {
         let url = Url::parse(str_url).unwrap_or_else(|_| panic!("[Tardis.CacheClient] Invalid url {}", str_url));
         info!(
@@ -36,8 +57,6 @@ impl TardisCacheClient {
         );
         Ok(TardisCacheClient { con })
     }
-
-    // basic operations
 
     pub async fn set(&mut self, key: &str, value: &str) -> RedisResult<()> {
         self.con.set(key, value).await

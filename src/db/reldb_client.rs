@@ -22,9 +22,7 @@ use crate::{FrameworkConfig, TardisFuns};
 
 /// Relational database handle / 关系型数据库操作
 ///
-/// Provides some common regular, Id generation and other functions.
-///
-/// Encapsulates common operations on MySQL and PostgreSQL. Two styles of operations are provided:
+/// Encapsulates common operations of MySQL and PostgreSQL. Two styles of operations are provided:
 ///
 /// 1. Wrapper based on `sea-orm` for simple relational operations, see `examples/reldb` for examples
 /// 1. Wrapper based on `sea-query` for complex, custom processing operations, see `https://github.com/ideal-world/bios` for examples.
@@ -457,8 +455,8 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// Create a table from an entity / 从实体中创建表
     ///
     /// # Arguments
-    //
-    //  * `entity` - entity / 实体
+    ///
+    ///  * `entity` - entity / 实体
     ///
     /// # Examples
     /// ```rust

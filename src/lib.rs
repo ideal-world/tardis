@@ -528,7 +528,6 @@ impl TardisFuns {
     /// ```
     /// 3. Call this function to complete various data processing operations / 调用本函数完成各种数据处理操作 E.g.
     /// ```rust
-    /// use std::process::id;
     /// use tardis::basic::error::TardisError;
     /// use tardis::TardisFuns;
     /// use tardis::db::sea_orm::*;
@@ -589,6 +588,25 @@ impl TardisFuns {
         }
     }
 
+    /// Use the distributed cache feature / 使用分布式缓存功能
+    ///
+    /// This feature needs to be enabled #[cfg(feature = "cache")] .
+    ///
+    /// 本功能需要启用 #[cfg(feature = "cache")] .
+    ///
+    /// # Steps to use / 使用步骤
+    ///
+    /// 1. Initialize the cache configuration / 初始化缓存配置 @see [init](Self::init)
+    /// 2. Call this function to complete various cache processing operations / 调用本函数完成各种缓存处理操作
+    /// E.g.
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// assert_eq!(TardisFuns::cache().get("test_key").await.unwrap(), None);
+    /// client.set("test_key", "测试").await.unwrap();
+    /// assert_eq!(TardisFuns::cache().get("test_key").await.unwrap(), "测试");
+    /// assert!(TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
+    /// assert!(!TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
+    /// ```
     #[cfg(feature = "cache")]
     pub fn cache() -> &'static mut TardisCacheClient {
         unsafe {
@@ -609,6 +627,24 @@ impl TardisFuns {
         }
     }
 
+    /// Use the distributed search feature / 使用分布式搜索功能
+    ///
+    /// This feature needs to be enabled #[cfg(feature = "web-client")] .
+    ///
+    /// 本功能需要启用 #[cfg(feature = "web-client")] .
+    ///
+    /// # Steps to use / 使用步骤
+    ///
+    /// 1. Initialize the web client configuration / 初始化web客户端配置 @see [init](Self::init)
+    /// 2. Call this function to complete various search processing operations / 调用本函数完成各种搜索处理操作
+    /// E.g.
+    /// ```rust
+    /// use tardis::TardisFuns;
+    /// TardisFuns::search().create_index("test_index").await.unwrap();
+    /// let id = TardisFuns::search().create_record("test_index", r#"{"user":{"id":1,"name":"张三","open":false}}"#).await.unwrap();
+    /// assert_eq!(TardisFuns::search().get_record("test_index", &id).await.unwrap(), r#"{"user":{"id":4,"name":"Tom","open":true}}"#);
+    /// TardisFuns::search().simple_search("test_index", "张三").await.unwrap();
+    /// ```
     #[cfg(feature = "web-client")]
     pub fn search() -> &'static TardisSearchClient {
         unsafe {
