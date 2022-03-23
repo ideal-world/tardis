@@ -64,19 +64,22 @@
 //!
 //! Startup class configuration
 //!```rust
+//! use tardis::basic::config::NoneConfig;
 //! use tardis::basic::result::TardisResult;
+//! use tardis::TardisFuns;
+//! 
+//! use tardis::basic::config::NoneConfig;
+//! use tardis::TardisFuns;
 //! #[tokio::main]
 //! async fn main() -> TardisResult<()> {
-//!     use tardis::basic::config::NoneConfig;
-//! // Initial configuration
-//!     use tardis::basic::result::TardisResult;
-//! use tardis::TardisFuns;TardisFuns::init::<NoneConfig>("config").await?;
+//!     // Initial configuration
+//!     TardisFuns::init::<NoneConfig>("config").await?;
 //!     // Register the processor and start the web service
 //!     TardisFuns::web_server().add_module("", Api).start().await
 //! }
 //! ```
 //!
-//! ### More examples
+//! ### use sqlparser::ast::Action::Usage;More examples
 //!
 //!> |-- examples  
 //!>   |-- reldb         Relational database usage example  
@@ -86,8 +89,7 @@
 //!>   |-- cache         Cache Usage Example  
 //!>   |-- mq            Message Queue Usage Example  
 //!>   |-- todo          A complete project usage example  
-//!>   |-- perf-test     Performance test case  
-//!
+//!>   |-- perf-test     Performance test case  //!
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-wrold/tardis/main/logo.png")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -210,7 +212,7 @@ use crate::web::web_server::TardisWebServer;
 ///
 /// # 使用
 ///
-/// ```rust
+/// ```no_run
 /// use tardis::TardisFuns;
 /// TardisFuns::ws_config();  
 /// TardisFuns::fw_config();
@@ -474,7 +476,7 @@ impl TardisFuns {
     /// # Examples
     /// ```rust
     /// use tardis::TardisFuns;
-    /// TardisFuns::crypto.base64.decode(&b64_str);
+    /// TardisFuns::crypto.base64.decode("测试");
     /// TardisFuns::crypto.digest.sha256("测试");
     /// TardisFuns::crypto.digest.sm3("测试");
     /// ```

@@ -7,7 +7,7 @@ use crate::serde_json::Value;
 /// Json handle / Json处理
 ///
 /// # Examples
-/// ```rust
+/// ```no_run
 /// use tardis::TardisFuns;
 /// let test_config = TestConfig {
 ///     project_name: "测试".to_string(),
@@ -48,7 +48,7 @@ impl TardisJson {
     /// * `str` - Json string / Json字符串
     ///
     /// # Examples
-    /// ```rust
+    /// ```no_run
     /// use tardis::TardisFuns;
     /// TardisFuns::json.str_to_obj::<TestConfig<DatabaseConfig>>(&json_str);
     /// ```
@@ -67,7 +67,7 @@ impl TardisJson {
     /// * `str` - Json string / Json字符串
     ///
     /// # Examples
-    /// ```rust
+    /// ```no_run
     /// use tardis::TardisFuns;
     /// TardisFuns::json.str_to_json(&json_str);
     /// ```
@@ -86,7 +86,7 @@ impl TardisJson {
     /// * `value` - Json object / Json对象
     ///
     /// # Examples
-    /// ```rust
+    /// ```no_run
     /// use tardis::TardisFuns;
     /// TardisFuns::json.json_to_obj::<TestConfig<DatabaseConfig>>(json_value);
     /// ```
@@ -105,7 +105,7 @@ impl TardisJson {
     /// * `obj` - Rust object  / Rust对象
     ///
     /// # Examples
-    /// ```rust
+    /// ```no_run
     /// use tardis::TardisFuns;
     /// TardisFuns::json.obj_to_string(&rust_obj);
     /// ```
@@ -124,7 +124,7 @@ impl TardisJson {
     /// * `obj` - Rust object  / Rust对象
     ///
     /// # Examples
-    /// ```rust
+    /// ```no_run
     /// use tardis::TardisFuns;
     /// TardisFuns::json.obj_to_json(&rust_obj);
     /// ```
@@ -143,7 +143,7 @@ impl TardisJson {
     /// * `value` - Json object / Json对象
     ///
     /// # Examples
-    /// ```rust
+    /// ```no_run
     /// use tardis::TardisFuns;
     /// TardisFuns::json.json_to_string(json_value);
     /// ```
