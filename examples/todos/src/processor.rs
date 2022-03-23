@@ -44,7 +44,7 @@ impl TodoApi {
     // curl -X POST "http://127.0.0.1:8089/todo" \
     //  -H "Accept: application/json" \
     //  -H "Content-Type: application/json" \
-    //  -H "Tardis-Context: eyJzY29wZV9pZHMiOiAiIjogIiIsImFrIjogIiIsImFjY291bnRfaWQiOiAiIiwidG9rZW4iOiAiIiwidG9rZW5fa2luZCI6ICIiLCJyb2xlcyI6IFtdLCJncm91cHMiOiBbXX0=" \
+    //  -H "Tardis-Context: eyJzY29wZV9wYXRocyI6ICIiOiAiIiwiYWsiOiAiIiwiYWNjb3VudF9pZCI6ICIiLCJ0b2tlbiI6ICIiLCJ0b2tlbl9raW5kIjogIiIsInJvbGVzIjogW10sImdyb3VwcyI6IFtdfQ==" \
     //  -d '{"code":"  测试2  ","description":"AA","done":false}'
     #[oai(path = "/", method = "post")]
     async fn add(&self, todo_add_req: Json<TodoAddReq>, cxt: TardisContextExtractor) -> TardisApiResult<i32> {
@@ -107,7 +107,7 @@ impl TodoApi {
 
     // curl -X PUT "http://localhost:8089/todo/1" \
     //  -H "Accept: application/json" \
-    //  -H "Tardis-Context: eyJzY29wZV9pZHMiOiAiIjogIiIsImFrIjogIiIsImFjY291bnRfaWQiOiAiIiwidG9rZW4iOiAiIiwidG9rZW5fa2luZCI6ICIiLCJyb2xlcyI6IFtdLCJncm91cHMiOiBbXX0=" \
+    //  -H "Tardis-Context: eyJzY29wZV9wYXRocyI6ICIiOiAiIiwiYWsiOiAiIiwiYWNjb3VudF9pZCI6ICIiLCJ0b2tlbiI6ICIiLCJ0b2tlbl9raW5kIjogIiIsInJvbGVzIjogW10sImdyb3VwcyI6IFtdfQ==" \
     //  -H "Content-Type: application/json" \
     //  -d '{"description":"AAAAAAAA","done":false}'
     #[oai(path = "/:id", method = "put")]

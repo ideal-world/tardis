@@ -14,7 +14,7 @@ use crate::serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct TardisContext {
     /// The requested scope ids / 请求的作用域Ids
-    pub scope_ids: String,
+    pub scope_paths: String,
     /// The requested Ak / 请求的Ak
     pub ak: String,
     /// The requested account id / 请求的账号Id
@@ -32,7 +32,7 @@ pub struct TardisContext {
 impl Default for TardisContext {
     fn default() -> Self {
         TardisContext {
-            scope_ids: "".to_string(),
+            scope_paths: "".to_string(),
             ak: "".to_string(),
             account_id: "".to_string(),
             token: "".to_string(),

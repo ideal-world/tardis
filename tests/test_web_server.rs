@@ -415,7 +415,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
-        scope_ids: "tenant1app1".to_string(),
+        scope_paths: "tenant1/app1".to_string(),
         ak: "ak1".to_string(),
         token: "token1".to_string(),
         token_kind: "测试".to_string(),
@@ -467,7 +467,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
-        scope_ids: "tenant1app1".to_string(),
+        scope_paths: "tenant1/app1".to_string(),
         ak: "ak1".to_string(),
         token: "token1".to_string(),
         token_kind: "测试".to_string(),
