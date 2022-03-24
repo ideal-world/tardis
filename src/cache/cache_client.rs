@@ -20,7 +20,7 @@ use crate::log::info;
 /// 1. Create the cache configuration / 创建缓存配置, @see [CacheConfig](crate::basic::config::CacheConfig)
 ///
 /// 4. Use `TardisCacheClient` to operate cache / 使用 `TardisCacheClient` 操作缓存, E.g:
-/// ```no_run
+/// ```ignore
 /// use tardis::TardisFuns;
 /// assert_eq!(TardisFuns::cache().get("test_key").await.unwrap(), None);
 /// client.set("test_key", "测试").await.unwrap();

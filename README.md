@@ -61,7 +61,7 @@ poem-openapi = { version = "^1"}
 ```
 
 Processor Configuration
-```rust
+```ignore
 pub struct Api;
 
 #[OpenApi]
@@ -77,7 +77,7 @@ impl Api {
 ```
 
 Startup class configuration
-```rust
+```ignore
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     // Initial configuration

@@ -16,7 +16,7 @@ use crate::{FrameworkConfig, TardisFuns, TardisWebClient};
 /// 1. Create the search configuration / 创建搜索配置, @see [SearchConfig](crate::basic::config::SearchConfig)
 ///
 /// 2. Use `TardisSearchClient` to operate search / 使用 `TardisSearchClient` 操作搜索, E.g:
-/// ```no_run
+/// ```ignore
 /// use tardis::TardisFuns;
 /// TardisFuns::search().create_index("test_index").await.unwrap();
 /// let id = TardisFuns::search().create_record("test_index", r#"{"user":{"id":1,"name":"张三","open":false}}"#).await.unwrap();
@@ -53,7 +53,7 @@ impl TardisSearchClient {
     ///  * `index_name` -  index name / 索引名称
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// TardisFuns::search().create_index("test_index").await.unwrap();
     /// ```
@@ -76,7 +76,7 @@ impl TardisSearchClient {
     ///  * `data` -  record content / 记录内容
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// let id = TardisFuns::search().create_record("test_index", r#"{"user":{"id":1,"name":"张三","open":false}}"#).await.unwrap();
     /// ```
@@ -100,7 +100,7 @@ impl TardisSearchClient {
     ///  * `id` -  record primary key value / 记录主键值
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// TardisFuns::search().get_record("test_index", "xxxx").await.unwrap();
     /// ```
@@ -123,7 +123,7 @@ impl TardisSearchClient {
     ///  * `q` -  keyword / 搜索关键字
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// TardisFuns::search().simple_search("test_index", "张三").await.unwrap();
     /// ```
@@ -149,7 +149,7 @@ impl TardisSearchClient {
     /// 搜索字段的格式: key = 字段名 , value = 字段值，精确匹配，key支持Json的多级操作.
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use std::collections::HashMap;
     /// use tardis::TardisFuns;
     /// TardisFuns::search().multi_search(index_name, HashMap::from([("user.id", "1"), ("user.name", "李四")])).await.unwrap();

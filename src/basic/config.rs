@@ -55,7 +55,7 @@ pub struct FrameworkConfig {
 /// 所谓应用指的就是当前的服务
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::basic::config::AppConfig;
 /// AppConfig{
 ///     id: "todo".to_string(),
@@ -116,7 +116,7 @@ impl Default for AppConfig {
 /// 数据库的操作需要启用 ```#[cfg(feature = "reldb")]``` .
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::basic::config::DBConfig;
 /// let config = DBConfig{
 ///    url: "mysql://root:123456@localhost:3306/test".to_string(),
@@ -160,7 +160,7 @@ impl Default for DBConfig {
 /// Web服务操作需要启用 ```#[cfg(feature = "web-server")]``` .
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::basic::config::{WebServerConfig, WebServerModuleConfig};
 /// let config = WebServerConfig {
 ///    modules: vec![
@@ -213,7 +213,7 @@ pub struct WebServerConfig {
 /// 一个应用可以包含多个Web模块，每个模块可以有自己独立的请求根路径及API文档.
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::basic::config::WebServerModuleConfig;
 /// let config = WebServerModuleConfig {
 ///     code: "todo".to_string(),
@@ -340,7 +340,7 @@ impl Default for WebClientConfig {
 /// 分布式缓存操作需要启用 ```#[cfg(feature = "cache")]``` .
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::basic::config::CacheConfig;
 /// let config = CacheConfig {
 ///    url: "redis://123456@127.0.0.1:6379".to_string(),
@@ -372,7 +372,7 @@ impl Default for CacheConfig {
 /// 消息队列操作需要启用 ```#[cfg(feature = "mq")]``` .
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::basic::config::MQConfig;
 /// let config = MQConfig {
 ///    url: "amqp://guest:guest@127.0.0.1:5672/%2f".to_string(),
@@ -404,7 +404,7 @@ impl Default for MQConfig {
 /// ES操作需要启用 ```#[cfg(feature = "web-client")]``` .
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::basic::config::ESConfig;
 /// let config = ESConfig {
 ///    url: "https://elastic:123456@127.0.0.1:9200".to_string(),

@@ -37,7 +37,7 @@ use crate::{FrameworkConfig, TardisFuns};
 /// 1. Create the database configuration / 创建数据库配置, @see [DBConfig](crate::basic::config::DBConfig)
 ///
 /// 2.  Create the `domain` object / 创建 `domain` 对象, E.g:
-/// ```no_run
+/// ```ignore
 /// use sea_orm::{DeriveRelation, EnumIter};
 /// mod tardis_db_config{
 ///     use tardis::db::sea_orm::*;
@@ -97,7 +97,7 @@ use crate::{FrameworkConfig, TardisFuns};
 /// 3. Create TardisContext / 创建TardisContext [TardisContext](crate::basic::dto::TardisContext)
 ///
 /// 4. Use `TardisRelDBClient` to operate database / 使用 `TardisRelDBClient` 操作数据库, E.g:
-/// ```no_run
+/// ```ignore
 /// use std::process::id;
 /// use tardis::basic::dto::TardisContext;
 /// use tardis::db::domain::tardis_db_config;
@@ -384,7 +384,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// Get original connection (generally not recommended) / 获取原始连接(一般不推荐使用)
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// let raw_conn = TardisFuns::reldb().conn().raw_conn();
     /// ```
@@ -395,7 +395,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// Get original transaction (if a transaction exists for the current object) (generally not recommended) / 获取原始事务(如果当前对象存在事务的话）(一般不推荐使用)
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// let raw_tx = TardisFuns::reldb().conn().raw_tx().unwrap();
     /// ```
@@ -410,7 +410,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// Open a transaction / 开启一个事务
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// let mut conn = TardisFuns::reldb().conn();
     /// let tx = conn.begin().await.unwrap();
@@ -423,7 +423,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// Commit current transaction / 提交当前事务
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// let mut conn = TardisFuns::reldb().conn();
     /// let tx = conn.begin().await.unwrap();
@@ -439,7 +439,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// Rollback current transaction / 回滚当前事务
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// let mut conn = TardisFuns::reldb().conn();
     /// let tx = conn.begin().await.unwrap();
@@ -459,7 +459,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `entity` - entity / 实体
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::TardisFuns;
     /// let mut conn = TardisFuns::reldb().conn();
@@ -483,7 +483,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `statements` -  Statement for creating table and creating index / 创建表和创建索引的Statement
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -502,7 +502,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `statement` -  Statement for creating a table / 创建表的Statement
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -524,7 +524,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `statement` -  Statement for creating index / 创建索引的Statement
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -546,7 +546,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `select_statement` - Statement of the query / 查询的Statement
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
@@ -577,7 +577,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `select_statement` - Statement of the query / 查询的Statement
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
@@ -609,7 +609,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `page_size` -  Number of records per page / 每页记录数
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
@@ -640,7 +640,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `select_statement` - Statement of the query / 查询的Statement
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
@@ -682,7 +682,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `cxt` -  TardisContext
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_orm::*;
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
@@ -714,7 +714,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `cxt` -  TardisContext
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_orm::*;
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
@@ -748,7 +748,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `cxt` -  TardisContext
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_orm::*;
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
@@ -780,7 +780,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `update_statement` -  Statement to be updated / 要更新的Statement
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_orm::*;
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
@@ -810,7 +810,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `delete_user` -  Delete user / 删除人
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_orm::*;
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
@@ -839,7 +839,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///  * `delete_user` -  Delete user / 删除人
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_orm::*;
     /// use tardis::db::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
@@ -969,7 +969,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///  * `is_insert` -  whether to insert the operation / 是否插入操作
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::basic::dto::TardisContext;
     /// use tardis::db::sea_orm::*;
     ///
@@ -989,7 +989,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///  * `db` -  database instance type / 数据库实例类型
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::sea_orm::*;
     /// use tardis::db::sea_query::*;
     /// use tardis::basic::dto::TardisContext;
@@ -1008,7 +1008,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///  * `db` -  database instance type / 数据库实例类型
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::sea_orm::*;
     /// use tardis::db::sea_query::*;
@@ -1055,7 +1055,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     /// Create index / 创建索引
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::sea_orm::*;
     /// use tardis::db::sea_query::*;

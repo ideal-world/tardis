@@ -46,7 +46,7 @@
 //! ```
 //!
 //! Processor Configuration
-//!```rust
+//!```ignore
 //! use tardis::web::poem_openapi::OpenApi;
 //! pub struct Api;
 //!
@@ -63,11 +63,16 @@
 //! ```
 //!
 //! Startup class configuration
-//!```rust
+//!```ignore
+//! use tardis::basic::config::NoneConfig;
 //! use tardis::basic::config::NoneConfig;
 //! use tardis::basic::result::TardisResult;
 //! use tardis::TardisFuns;
-//! 
+//! use tardis::TardisFuns;
+//!
+//! use tardis::basic::result::TardisResult;
+//! use tardis::TardisFuns;
+//!
 //! use tardis::basic::config::NoneConfig;
 //! use tardis::TardisFuns;
 //! #[tokio::main]
@@ -137,7 +142,7 @@ use crate::web::web_server::TardisWebServer;
 ///
 /// ## Define project-level configuration object / 定义项目级配置对象
 ///
-/// ```rust
+/// ```ignore
 /// use serde::{Serialize,Deserialize};
 /// #[derive(Debug, Serialize, Deserialize)]
 /// #[serde(default)]
@@ -201,7 +206,7 @@ use crate::web::web_server::TardisWebServer;
 ///
 /// ## Perform initialization operation / 执行初始化操作
 ///
-/// ```rust
+/// ```ignore
 /// use tardis::TardisFuns;
 /// TardisFuns::init::<ExampleConfig>("proj/config").await?;
 /// ```
@@ -212,7 +217,7 @@ use crate::web::web_server::TardisWebServer;
 ///
 /// # 使用
 ///
-/// ```no_run
+/// ```ignore
 /// use tardis::TardisFuns;
 /// TardisFuns::ws_config();  
 /// TardisFuns::fw_config();
@@ -271,7 +276,7 @@ impl TardisFuns {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use std::env;
     /// use tardis::TardisFuns;
     /// env::set_var("PROFILE", "test");
@@ -305,7 +310,7 @@ impl TardisFuns {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
     /// use tardis::TardisFuns;
     /// let result = TardisFuns::init_conf(TardisConfig {
@@ -317,7 +322,7 @@ impl TardisFuns {
     ///                     ..Default::default()
     ///                 },
     ///                 web_client: Default::default(),
-    ///                 cache: CacheConfig { enabled: true, url },
+    ///                 cache: CacheConfig { enabled: true, url:"".to_string() },
     ///                 db: DBConfig {
     ///                     enabled: false,
     ///                     ..Default::default()
@@ -422,7 +427,7 @@ impl TardisFuns {
     /// Using the field feature / 使用字段功能
     ///
     /// # Examples
-    /// ```rust
+    /// ```ignore
     ///
     /// use tardis::TardisFuns;
     /// TardisFuns::field.is_phone("18657120202");
@@ -435,7 +440,7 @@ impl TardisFuns {
     /// Using the json feature / 使用Json功能
     ///
     /// # Examples
-    /// ```rust
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// let test_config = TestConfig {
     ///         project_name: "测试".to_string(),
@@ -455,7 +460,7 @@ impl TardisFuns {
     /// Using the uri feature / 使用Url功能
     ///
     /// # Examples
-    /// ```rust
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// // Query sort
     /// assert_eq!(TardisFuns::uri.format("api://a1.t1/e1?q2=2&q1=1&q3=3").unwrap(), "api://a1.t1/e1?q1=1&q2=2&q3=3");
@@ -474,7 +479,7 @@ impl TardisFuns {
     /// 本功能需要启用 #[cfg(feature = "crypto")] .
     ///
     /// # Examples
-    /// ```rust
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// TardisFuns::crypto.base64.decode("测试");
     /// TardisFuns::crypto.digest.sha256("测试");
@@ -502,7 +507,7 @@ impl TardisFuns {
     ///
     /// 1. Initialize the database configuration / 初始化数据库配置 @see [init](Self::init)
     /// 2. Add the database / 添加数据库 E.g.
-    /// ```rust
+    /// ```ignore
     /// mod todos{
     ///     use tardis::basic::dto::TardisContext;
     ///     use tardis::db::reldb_client::TardisActiveModel;
@@ -529,7 +534,7 @@ impl TardisFuns {
     /// }
     /// ```
     /// 3. Call this function to complete various data processing operations / 调用本函数完成各种数据处理操作 E.g.
-    /// ```rust
+    /// ```ignore
     /// use tardis::basic::error::TardisError;
     /// use tardis::TardisFuns;
     /// use tardis::db::sea_orm::*;
@@ -601,7 +606,7 @@ impl TardisFuns {
     /// 1. Initialize the cache configuration / 初始化缓存配置 @see [init](Self::init)
     /// 2. Call this function to complete various cache processing operations / 调用本函数完成各种缓存处理操作
     /// E.g.
-    /// ```rust
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// assert_eq!(TardisFuns::cache().get("test_key").await.unwrap(), None);
     /// client.set("test_key", "测试").await.unwrap();
@@ -640,7 +645,7 @@ impl TardisFuns {
     /// 1. Initialize the web client configuration / 初始化web客户端配置 @see [init](Self::init)
     /// 2. Call this function to complete various search processing operations / 调用本函数完成各种搜索处理操作
     /// E.g.
-    /// ```rust
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// TardisFuns::search().create_index("test_index").await.unwrap();
     /// let id = TardisFuns::search().create_record("test_index", r#"{"user":{"id":1,"name":"张三","open":false}}"#).await.unwrap();

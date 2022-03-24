@@ -14,7 +14,7 @@ use crate::TardisFuns;
 /// Base64 handle / Base64处理
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::TardisFuns;
 /// let b64_str = TardisFuns::crypto.base64.encode("测试");
 /// let str = TardisFuns::crypto.base64.decode(&b64_str).unwrap();
@@ -64,7 +64,7 @@ impl TardisCryptoBase64 {
 /// AES handle / AES处理
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::TardisFuns;
 /// let key = TardisFuns::crypto.key.rand_16_hex().unwrap();
 /// let iv = TardisFuns::crypto.key.rand_16_hex().unwrap();
@@ -130,7 +130,7 @@ impl TardisCryptoAes {
 /// SM4 handle / SM4处理
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::TardisFuns;
 /// let key = TardisFuns::crypto.key.rand_16_hex().unwrap();
 /// let iv = TardisFuns::crypto.key.rand_16_hex().unwrap();
@@ -154,7 +154,7 @@ impl TardisCryptoSm4 {
 /// RSA handle / RSA处理
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::TardisFuns;
 /// let private_key = TardisFuns::crypto.rsa.new_private_key(2048).unwrap();
 /// let public_key = TardisFuns::crypto.rsa.new_public_key(&private_key).unwrap();
@@ -281,7 +281,7 @@ impl TardisCryptoRsaPublicKey {
 /// SM2 handle / SM2处理
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::TardisFuns;
 /// let private_key = TardisFuns::crypto.sm2.new_private_key().unwrap();
 /// let private_key_str = private_key.to_private_key().unwrap();
@@ -360,7 +360,7 @@ impl TardisCryptoSm2PublicKey {
 /// Digest handle / 摘要处理
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::TardisFuns;
 /// TardisFuns::crypto.digest.md5("测试").unwrap();
 /// TardisFuns::crypto.digest.sha1("测试").unwrap();

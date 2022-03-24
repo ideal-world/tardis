@@ -22,7 +22,7 @@ pub static GENERAL_SPLIT: &str = "##";
 ///
 /// 提供了一些常用的正则判断、Id生成等功能.
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::TardisFuns;
 /// assert!(TardisFuns::field.is_phone("18657120202"));
 /// assert_eq!(TardisFuns::field.incr_by_base62("abcd1").unwrap(), "abcd2");
@@ -86,7 +86,7 @@ impl TardisField {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// assert_eq!(TardisFuns::field.incr_by_base62("abcd1").unwrap(), "abcd2");
     /// assert_eq!(TardisFuns::field.incr_by_base62("abcd12").unwrap(), "abcd13");
@@ -113,7 +113,7 @@ impl TardisField {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// assert_eq!(TardisFuns::field.incr_by_base36("abcd1").unwrap(), "abcd2");
     /// assert_eq!(TardisFuns::field.incr_by_base36("abcd12").unwrap(), "abcd13");
@@ -170,7 +170,7 @@ impl TardisField {
 ///
 /// 当启用 `web-server` feature时，在请求体转Rust对象时有效.
 ///
-/// ```rust
+/// ```ignore
 /// use serde::{Serialize,Deserialize};
 /// use serde_json::Value::Object;
 /// use tardis::basic::field::TrimString;

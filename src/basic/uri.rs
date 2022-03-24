@@ -3,7 +3,7 @@ use crate::basic::result::TardisResult;
 /// Uri handle / Uri处理
 ///
 /// # Examples
-/// ```rust
+/// ```ignore
 /// use tardis::TardisFuns;
 /// assert_eq!(TardisFuns::uri.format("http://idealwrold.group").unwrap(), "http://idealwrold.group");
 /// assert_eq!(TardisFuns::uri.format("jdbc:h2:men:iam").unwrap(), "jdbc:h2:men:iam");
@@ -45,7 +45,7 @@ impl TardisUri {
     /// * `uri_str` - Uri string
     ///
     /// # Examples
-    /// ```rust
+    /// ```ignore
     /// use tardis::TardisFuns;
     /// assert_eq!(TardisFuns::uri.format("api://a1.t1/e1?q2=2&q1=1&q3=3").unwrap(), "api://a1.t1/e1?q1=1&q2=2&q3=3");
     /// ```
