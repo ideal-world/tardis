@@ -3,7 +3,7 @@ use std::future::Future;
 
 use amq_protocol_types::{AMQPValue, LongString, ShortString};
 use futures_util::stream::StreamExt;
-use lapin::{BasicProperties, Channel, Connection, ConnectionProperties, Consumer, ExchangeKind, options::*, types::FieldTable};
+use lapin::{options::*, types::FieldTable, BasicProperties, Channel, Connection, ConnectionProperties, Consumer, ExchangeKind};
 use url::Url;
 
 use crate::basic::config::FrameworkConfig;

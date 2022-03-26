@@ -5,8 +5,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MQModuleConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
-use tardis::TardisFuns;
 use tardis::test::test_container::TardisTestContainer;
+use tardis::TardisFuns;
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 

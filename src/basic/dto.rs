@@ -1,5 +1,7 @@
 //! Common DTOs / 常用的DTO
+use crate::db::reldb_client::TardisRelDBlConnection;
 use crate::serde::{Deserialize, Serialize};
+use crate::{TardisCacheClient, TardisFuns, TardisMQClient, TardisRelDBClient, TardisResult, TardisSearchClient, TardisWebClient};
 
 /// ardis context / Tardis上下文
 ///
@@ -40,5 +42,75 @@ impl Default for TardisContext {
             roles: vec![],
             groups: vec![],
         }
+    }
+}
+
+pub struct TardisFunsInst<'a> {
+    module_code: String,
+    #[cfg(feature = "reldb")]
+    db: Option<TardisRelDBlConnection<'a>>,
+}
+
+impl<'a> TardisFunsInst<'a> {
+    pub fn new(code: &str) -> Self {
+        Self {
+            module_code: code.to_string(),
+            #[cfg(feature = "reldb")]
+            db: None,
+        }
+    }
+
+    #[cfg(feature = "reldb")]
+    pub fn conn(code: &str) -> Self {
+        let reldb = TardisFuns::reldb_by_module_or_default(code);
+        Self {
+            module_code: code.to_string(),
+            db: Some(reldb.conn()),
+        }
+    }
+
+    #[cfg(feature = "reldb")]
+    pub fn reldb(&self) -> &'static TardisRelDBClient {
+        TardisFuns::reldb_by_module_or_default(&self.module_code)
+    }
+
+    #[cfg(feature = "reldb")]
+    pub fn db(&self) -> &TardisRelDBlConnection<'a> {
+        self.db.as_ref().expect("db is not initialized")
+    }
+
+    #[cfg(feature = "reldb")]
+    pub async fn begin(&mut self) -> TardisResult<()> {
+        self.db.as_mut().expect("db is not initialized").begin().await
+    }
+
+    #[cfg(feature = "reldb")]
+    pub async fn commit(self) -> TardisResult<()> {
+        self.db.expect("db is not initialized").commit().await
+    }
+
+    #[cfg(feature = "reldb")]
+    pub async fn rollback(self) -> TardisResult<()> {
+        self.db.expect("db is not initialized").rollback().await
+    }
+
+    #[cfg(feature = "cache")]
+    pub fn cache(&self) -> &'static mut TardisCacheClient {
+        TardisFuns::cache_by_module_or_default(&self.module_code)
+    }
+
+    #[cfg(feature = "mq")]
+    pub fn mq(&self) -> &'static mut TardisMQClient {
+        TardisFuns::mq_by_module_or_default(&self.module_code)
+    }
+
+    #[cfg(feature = "web-client")]
+    pub fn web_client(&self) -> &'static TardisWebClient {
+        TardisFuns::web_client_by_module_or_default(&self.module_code)
+    }
+
+    #[cfg(feature = "web-client")]
+    pub fn search(&self) -> &'static TardisSearchClient {
+        TardisFuns::search_by_module_or_default(&self.module_code)
     }
 }

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
-use tardis::TardisFuns;
 use tardis::test::test_container::TardisTestContainer;
+use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_search_client() -> TardisResult<()> {

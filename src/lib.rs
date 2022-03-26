@@ -323,7 +323,7 @@ impl TardisFuns {
     ///                     ..Default::default()
     ///                 },
     ///                 web_client: Default::default(),
-    ///                 cache: CacheConfig { enabled: true, url:"".to_string() },
+    ///                 cache: CacheConfig { enabled: true, url:"".to_string(),..Default::default() },
     ///                 db: DBConfig {
     ///                     enabled: false,
     ///                     ..Default::default()
@@ -584,6 +584,19 @@ impl TardisFuns {
         }
     }
 
+    #[cfg(feature = "reldb")]
+    pub fn reldb_by_module_or_default(code: &str) -> &'static TardisRelDBClient {
+        unsafe {
+            match &TARDIS_INST.reldb {
+                None => panic!("[Tardis.Config] RelDB instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => Self::reldb(),
+                    Some(t) => t,
+                },
+            }
+        }
+    }
+
     #[cfg(feature = "web-server")]
     pub fn web_server() -> &'static mut TardisWebServer {
         unsafe {
@@ -606,6 +619,19 @@ impl TardisFuns {
                 None => panic!("[Tardis.Config] Web Client instance doesn't exist"),
                 Some(t) => match t.get(code) {
                     None => panic!("[Tardis.Config] Web Client {} instance doesn't exist", code),
+                    Some(t) => t,
+                },
+            }
+        }
+    }
+
+    #[cfg(feature = "web-client")]
+    pub fn web_client_by_module_or_default(code: &str) -> &'static TardisWebClient {
+        unsafe {
+            match &TARDIS_INST.web_client {
+                None => panic!("[Tardis.Config] Web Client instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => Self::web_client(),
                     Some(t) => t,
                 },
             }
@@ -649,6 +675,19 @@ impl TardisFuns {
         }
     }
 
+    #[cfg(feature = "cache")]
+    pub fn cache_by_module_or_default(code: &str) -> &'static mut TardisCacheClient {
+        unsafe {
+            match &mut TARDIS_INST.cache {
+                None => panic!("[Tardis.Config] Cache instance doesn't exist"),
+                Some(t) => match t.get_mut(code) {
+                    None => Self::cache(),
+                    Some(t) => t,
+                },
+            }
+        }
+    }
+
     #[cfg(feature = "mq")]
     pub fn mq() -> &'static mut TardisMQClient {
         Self::mq_by_module("")
@@ -661,6 +700,19 @@ impl TardisFuns {
                 None => panic!("[Tardis.Config] MQ instance doesn't exist"),
                 Some(t) => match t.get_mut(code) {
                     None => panic!("[Tardis.Config] MQ {} instance doesn't exist", code),
+                    Some(t) => t,
+                },
+            }
+        }
+    }
+
+    #[cfg(feature = "mq")]
+    pub fn mq_by_module_or_default(code: &str) -> &'static mut TardisMQClient {
+        unsafe {
+            match &mut TARDIS_INST.mq {
+                None => panic!("[Tardis.Config] MQ instance doesn't exist"),
+                Some(t) => match t.get_mut(code) {
+                    None => Self::mq(),
                     Some(t) => t,
                 },
             }
@@ -703,12 +755,25 @@ impl TardisFuns {
         }
     }
 
+    #[cfg(feature = "web-client")]
+    pub fn search_by_module_or_default(code: &str) -> &'static TardisSearchClient {
+        unsafe {
+            match &TARDIS_INST.search {
+                None => panic!("[Tardis.Config] Search instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => Self::search(),
+                    Some(t) => t,
+                },
+            }
+        }
+    }
+
     pub async fn shutdown() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
         #[cfg(feature = "mq")]
         unsafe {
             if let Some(t) = &TARDIS_INST.mq {
-                for (_, v) in t {
+                for v in t.values() {
                     v.close().await?;
                 }
             }
