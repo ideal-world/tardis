@@ -1,9 +1,11 @@
 // https://github.com/mitsuhiko/redis-rs
 
+use std::collections::HashMap;
+
 use redis::AsyncCommands;
 use tokio::time::{sleep, Duration};
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, CacheModuleConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::cache::cache_client::TardisCacheClient;
 use tardis::test::test_container::TardisTestContainer;
@@ -116,7 +118,11 @@ async fn test_cache_client() -> TardisResult<()> {
                     ..Default::default()
                 },
                 web_client: Default::default(),
-                cache: CacheConfig { enabled: true, url },
+                cache: CacheConfig {
+                    enabled: true,
+                    url: url.clone(),
+                    modules: HashMap::from([("m1".to_string(), CacheModuleConfig { url: url.clone() })]),
+                },
                 db: DBConfig {
                     enabled: false,
                     ..Default::default()
@@ -135,6 +141,12 @@ async fn test_cache_client() -> TardisResult<()> {
         .await?;
 
         let map_result = TardisFuns::cache().hgetall("h").await?;
+        assert_eq!(map_result.len(), 3);
+        assert_eq!(map_result.get("f2").unwrap(), "v2");
+        assert_eq!(map_result.get("f0").unwrap(), "v0");
+        assert_eq!(map_result.get("f3").unwrap(), "1");
+
+        let map_result = TardisFuns::cache_by_module("m1").hgetall("h").await?;
         assert_eq!(map_result.len(), 3);
         assert_eq!(map_result.get("f2").unwrap(), "v2");
         assert_eq!(map_result.get("f0").unwrap(), "v0");

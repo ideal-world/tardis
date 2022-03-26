@@ -2,12 +2,12 @@ use std::env;
 use std::time::Duration;
 
 use testcontainers::clients;
-use tokio::time::sleep;
 
 use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::tokio;
+use tardis::tokio::time::sleep;
 use tardis::TardisFuns;
 
 #[tokio::main]
@@ -17,7 +17,8 @@ async fn main() -> TardisResult<()> {
     let redis_container = TardisTestContainer::redis_custom(&docker);
     let port = redis_container.get_host_port(6379).expect("Test port acquisition error");
     let url = format!("redis://127.0.0.1:{}/0", port);
-    env::set_var("TARDIS_CACHE.URL", url);
+    env::set_var("TARDIS_CACHE.URL", url.clone());
+    env::set_var("TARDIS_CACHE.MODULES.M1.URL", url.clone());
 
     env::set_var("RUST_LOG", "debug");
     env::set_var("PROFILE", "default");
@@ -26,6 +27,7 @@ async fn main() -> TardisResult<()> {
     TardisFuns::init::<NoneConfig>("config").await?;
 
     let client = TardisFuns::cache();
+    let client_m1 = TardisFuns::cache_by_module("m1");
 
     // --------------------------------------------------
 
@@ -111,6 +113,10 @@ async fn main() -> TardisResult<()> {
     assert_eq!(map_result.get("f2").unwrap(), "v2");
     assert_eq!(map_result.get("f0").unwrap(), "v0");
     assert_eq!(map_result.get("f3").unwrap(), "1");
+
+    // module 1 operations
+    client_m1.set("test_key_m1", "测试").await?;
+    assert_eq!(client_m1.get("test_key_m1").await?.unwrap(), "测试");
 
     Ok(())
 }

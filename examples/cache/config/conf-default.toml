@@ -6,3 +6,6 @@ version = "1.0.0"
 
 [cache]
 url = "redis://127.0.0.1:6379"
+
+[cache.modules.m1]
+url = "redis://127.0.0.1:6379"

@@ -43,7 +43,7 @@ test = ["testcontainers"]
 serde = { version = "^1", features = ["derive"] }
 serde_json = { version = "^1" }
 derive_more = { version = "^0" }
-nanoid ={version = "^0"}
+nanoid = { version = "^0" }
 base64 = { version = "^0" }
 hex = { version = "^0" }
 lazy_static = { version = "^1" }
@@ -57,7 +57,7 @@ regex = { version = "^1" }
 url = { version = "^2" }
 
 # Tokio
-tokio = { version = "^1.17", features = ["macros", "rt-multi-thread", "signal"], optional = true }
+tokio = { version = "^1.17", features = ["macros", "rt-multi-thread", "signal", "time"], optional = true }
 
 # Crypto
 rust-crypto = { version = "^0", optional = true }

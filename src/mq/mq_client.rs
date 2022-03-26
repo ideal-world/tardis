@@ -3,7 +3,7 @@ use std::future::Future;
 
 use amq_protocol_types::{AMQPValue, LongString, ShortString};
 use futures_util::stream::StreamExt;
-use lapin::{options::*, types::FieldTable, BasicProperties, Channel, Connection, ConnectionProperties, Consumer, ExchangeKind};
+use lapin::{BasicProperties, Channel, Connection, ConnectionProperties, Consumer, ExchangeKind, options::*, types::FieldTable};
 use url::Url;
 
 use crate::basic::config::FrameworkConfig;
@@ -14,12 +14,16 @@ use crate::log::{error, info, trace};
 pub struct TardisMQClient {
     con: Connection,
     channels: Vec<Channel>,
-    shutdown_flag: bool,
 }
 
 impl TardisMQClient {
-    pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisMQClient> {
-        TardisMQClient::init(&conf.mq.url).await
+    pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisMQClient>> {
+        let mut clients = HashMap::new();
+        clients.insert("".to_string(), TardisMQClient::init(&conf.mq.url).await?);
+        for (k, v) in &conf.mq.modules {
+            clients.insert(k.to_string(), TardisMQClient::init(&v.url).await?);
+        }
+        Ok(clients)
     }
 
     pub async fn init(str_url: &str) -> TardisResult<TardisMQClient> {
@@ -27,16 +31,11 @@ impl TardisMQClient {
         info!("[Tardis.MQClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
         let con = Connection::connect(str_url, ConnectionProperties::default().with_connection_name("tardis".into())).await?;
         info!("[Tardis.MQClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
-        Ok(TardisMQClient {
-            con,
-            channels: Vec::new(),
-            shutdown_flag: false,
-        })
+        Ok(TardisMQClient { con, channels: Vec::new() })
     }
 
-    pub async fn close(&mut self) -> TardisResult<()> {
+    pub async fn close(&self) -> TardisResult<()> {
         info!("[Tardis.MQClient] Shutdown...");
-        self.shutdown_flag = true;
         for channel in self.channels.iter() {
             channel.close(0u16, "Shutdown AMQP Channel").await?;
         }

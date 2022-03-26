@@ -34,8 +34,13 @@ pub struct TardisCacheClient {
 
 impl TardisCacheClient {
     /// Initialize configuration from the cache configuration object / 从缓存配置对象中初始化配置
-    pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisCacheClient> {
-        TardisCacheClient::init(&conf.cache.url).await
+    pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisCacheClient>> {
+        let mut clients = HashMap::new();
+        clients.insert("".to_string(), TardisCacheClient::init(&conf.cache.url).await?);
+        for (k, v) in &conf.cache.modules {
+            clients.insert(k.to_string(), TardisCacheClient::init(&v.url).await?);
+        }
+        Ok(clients)
     }
 
     /// Initialize configuration / 初始化配置

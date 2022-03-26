@@ -124,6 +124,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
             cache: CacheConfig {
                 enabled: true,
                 url: redis_url.to_string(),
+                modules: Default::default(),
             },
             db: DBConfig {
                 enabled: false,

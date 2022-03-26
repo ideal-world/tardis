@@ -104,6 +104,7 @@ extern crate core;
 extern crate lazy_static;
 
 use std::any::Any;
+use std::collections::HashMap;
 use std::ptr::replace;
 
 pub use chrono;
@@ -235,17 +236,17 @@ pub struct TardisFuns {
     workspace_config: Option<Box<dyn Any>>,
     framework_config: Option<FrameworkConfig>,
     #[cfg(feature = "reldb")]
-    reldb: Option<TardisRelDBClient>,
+    reldb: Option<HashMap<String, TardisRelDBClient>>,
     #[cfg(feature = "web-server")]
     web_server: Option<TardisWebServer>,
     #[cfg(feature = "web-client")]
-    web_client: Option<TardisWebClient>,
+    web_client: Option<HashMap<String, TardisWebClient>>,
     #[cfg(feature = "cache")]
-    cache: Option<TardisCacheClient>,
+    cache: Option<HashMap<String, TardisCacheClient>>,
     #[cfg(feature = "mq")]
-    mq: Option<TardisMQClient>,
+    mq: Option<HashMap<String, TardisMQClient>>,
     #[cfg(feature = "web-client")]
-    search: Option<TardisSearchClient>,
+    search: Option<HashMap<String, TardisSearchClient>>,
 }
 
 static mut TARDIS_INST: TardisFuns = TardisFuns {
@@ -349,9 +350,9 @@ impl TardisFuns {
         #[cfg(feature = "reldb")]
         {
             if TardisFuns::fw_config().db.enabled {
-                let reldb_client = TardisRelDBClient::init_by_conf(TardisFuns::fw_config()).await?;
+                let reldb_clients = TardisRelDBClient::init_by_conf(TardisFuns::fw_config()).await?;
                 unsafe {
-                    replace(&mut TARDIS_INST.reldb, Some(reldb_client));
+                    replace(&mut TARDIS_INST.reldb, Some(reldb_clients));
                 };
             }
         }
@@ -366,35 +367,35 @@ impl TardisFuns {
         }
         #[cfg(feature = "web-client")]
         {
-            let web_client = TardisWebClient::init_by_conf(TardisFuns::fw_config())?;
+            let web_clients = TardisWebClient::init_by_conf(TardisFuns::fw_config())?;
             unsafe {
-                replace(&mut TARDIS_INST.web_client, Some(web_client));
+                replace(&mut TARDIS_INST.web_client, Some(web_clients));
             };
         }
         #[cfg(feature = "cache")]
         {
             if TardisFuns::fw_config().cache.enabled {
-                let cache_client = TardisCacheClient::init_by_conf(TardisFuns::fw_config()).await?;
+                let cache_clients = TardisCacheClient::init_by_conf(TardisFuns::fw_config()).await?;
                 unsafe {
-                    replace(&mut TARDIS_INST.cache, Some(cache_client));
+                    replace(&mut TARDIS_INST.cache, Some(cache_clients));
                 };
             }
         }
         #[cfg(feature = "mq")]
         {
             if TardisFuns::fw_config().mq.enabled {
-                let mq_client = TardisMQClient::init_by_conf(TardisFuns::fw_config()).await?;
+                let mq_clients = TardisMQClient::init_by_conf(TardisFuns::fw_config()).await?;
                 unsafe {
-                    replace(&mut TARDIS_INST.mq, Some(mq_client));
+                    replace(&mut TARDIS_INST.mq, Some(mq_clients));
                 };
             }
         }
         #[cfg(feature = "web-client")]
         {
             if TardisFuns::fw_config().search.enabled {
-                let search_client = TardisSearchClient::init_by_conf(TardisFuns::fw_config())?;
+                let search_clients = TardisSearchClient::init_by_conf(TardisFuns::fw_config())?;
                 unsafe {
-                    replace(&mut TARDIS_INST.search, Some(search_client));
+                    replace(&mut TARDIS_INST.search, Some(search_clients));
                 };
             }
         }
@@ -567,10 +568,18 @@ impl TardisFuns {
     /// ```
     #[cfg(feature = "reldb")]
     pub fn reldb() -> &'static TardisRelDBClient {
+        Self::reldb_by_module("")
+    }
+
+    #[cfg(feature = "reldb")]
+    pub fn reldb_by_module(code: &str) -> &'static TardisRelDBClient {
         unsafe {
             match &TARDIS_INST.reldb {
-                None => panic!("[Tardis.Config] RelDB default instance doesn't exist"),
-                Some(t) => t,
+                None => panic!("[Tardis.Config] RelDB instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => panic!("[Tardis.Config] RelDB {} instance doesn't exist", code),
+                    Some(t) => t,
+                },
             }
         }
     }
@@ -587,10 +596,18 @@ impl TardisFuns {
 
     #[cfg(feature = "web-client")]
     pub fn web_client() -> &'static TardisWebClient {
+        Self::web_client_by_module("")
+    }
+
+    #[cfg(feature = "web-client")]
+    pub fn web_client_by_module(code: &str) -> &'static TardisWebClient {
         unsafe {
             match &TARDIS_INST.web_client {
-                None => panic!("[Tardis.Config] Web Client default instance doesn't exist"),
-                Some(t) => t,
+                None => panic!("[Tardis.Config] Web Client instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => panic!("[Tardis.Config] Web Client {} instance doesn't exist", code),
+                    Some(t) => t,
+                },
             }
         }
     }
@@ -616,20 +633,36 @@ impl TardisFuns {
     /// ```
     #[cfg(feature = "cache")]
     pub fn cache() -> &'static mut TardisCacheClient {
+        Self::cache_by_module("")
+    }
+
+    #[cfg(feature = "cache")]
+    pub fn cache_by_module(code: &str) -> &'static mut TardisCacheClient {
         unsafe {
             match &mut TARDIS_INST.cache {
-                None => panic!("[Tardis.Config] Cache default instance doesn't exist"),
-                Some(t) => t,
+                None => panic!("[Tardis.Config] Cache instance doesn't exist"),
+                Some(t) => match t.get_mut(code) {
+                    None => panic!("[Tardis.Config] Cache {} instance doesn't exist", code),
+                    Some(t) => t,
+                },
             }
         }
     }
 
     #[cfg(feature = "mq")]
     pub fn mq() -> &'static mut TardisMQClient {
+        Self::mq_by_module("")
+    }
+
+    #[cfg(feature = "mq")]
+    pub fn mq_by_module(code: &str) -> &'static mut TardisMQClient {
         unsafe {
             match &mut TARDIS_INST.mq {
-                None => panic!("[Tardis.Config] MQ default instance doesn't exist"),
-                Some(t) => t,
+                None => panic!("[Tardis.Config] MQ instance doesn't exist"),
+                Some(t) => match t.get_mut(code) {
+                    None => panic!("[Tardis.Config] MQ {} instance doesn't exist", code),
+                    Some(t) => t,
+                },
             }
         }
     }
@@ -654,10 +687,18 @@ impl TardisFuns {
     /// ```
     #[cfg(feature = "web-client")]
     pub fn search() -> &'static TardisSearchClient {
+        Self::search_by_module("")
+    }
+
+    #[cfg(feature = "web-client")]
+    pub fn search_by_module(code: &str) -> &'static TardisSearchClient {
         unsafe {
-            match &mut TARDIS_INST.search {
-                None => panic!("[Tardis.Config] Search default instance doesn't exist"),
-                Some(t) => t,
+            match &TARDIS_INST.search {
+                None => panic!("[Tardis.Config] Search instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => panic!("[Tardis.Config] Search {} instance doesn't exist", code),
+                    Some(t) => t,
+                },
             }
         }
     }
@@ -665,7 +706,13 @@ impl TardisFuns {
     pub async fn shutdown() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
         #[cfg(feature = "mq")]
-        TardisFuns::mq().close().await?;
+        unsafe {
+            if let Some(t) = &TARDIS_INST.mq {
+                for (_, v) in t {
+                    v.close().await?;
+                }
+            }
+        }
         Ok(())
     }
 }

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
-use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
+use tardis::test::test_container::TardisTestContainer;
 
 #[tokio::test]
 async fn test_search_client() -> TardisResult<()> {
@@ -32,7 +32,14 @@ async fn test_search_client() -> TardisResult<()> {
                 },
                 search: SearchConfig {
                     enabled: true,
-                    url,
+                    url: url.clone(),
+                    modules: HashMap::from([(
+                        "m1".to_string(),
+                        SearchModuleConfig {
+                            url: url.clone(),
+                            ..Default::default()
+                        },
+                    )]),
                     ..Default::default()
                 },
                 adv: Default::default(),
@@ -40,7 +47,8 @@ async fn test_search_client() -> TardisResult<()> {
         })
         .await?;
 
-        let client = TardisFuns::search();
+        TardisFuns::search();
+        let client = TardisFuns::search_by_module("m1");
 
         let index_name = "test_index";
 

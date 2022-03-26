@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 /// Configuration handle / 配置处理
 ///
 /// Organizing Configuration Management with Tardis Best Practices
@@ -16,7 +17,7 @@ use crate::log::{debug, info};
 use crate::serde::{Deserialize, Serialize};
 use crate::TardisFuns;
 
-/// Configuration of Tarids / Tarids的配置
+/// Configuration of Tardis / Tardis的配置
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct TardisConfig<T> {
@@ -138,12 +139,42 @@ pub struct DBConfig {
     pub connect_timeout_sec: Option<u64>,
     /// Idle connection timeout / 空闲连接超时时间
     pub idle_timeout_sec: Option<u64>,
+    /// Database module configuration / 数据库模块配置
+    pub modules: HashMap<String, DBModuleConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct DBModuleConfig {
+    /// Database access Url, Url with permission information / 数据库访问Url，Url带权限信息
+    pub url: String,
+    /// Maximum number of connections, default 20 / 最大连接数，默认 20
+    pub max_connections: u32,
+    /// Minimum number of connections, default 5 / 最小连接数，默认 5
+    pub min_connections: u32,
+    /// Connection timeout / 连接超时时间
+    pub connect_timeout_sec: Option<u64>,
+    /// Idle connection timeout / 空闲连接超时时间
+    pub idle_timeout_sec: Option<u64>,
 }
 
 impl Default for DBConfig {
     fn default() -> Self {
         DBConfig {
             enabled: true,
+            url: "".to_string(),
+            max_connections: 20,
+            min_connections: 5,
+            connect_timeout_sec: None,
+            idle_timeout_sec: None,
+            modules: Default::default(),
+        }
+    }
+}
+
+impl Default for DBModuleConfig {
+    fn default() -> Self {
+        DBModuleConfig {
             url: "".to_string(),
             max_connections: 20,
             min_connections: 5,
@@ -197,12 +228,40 @@ pub struct WebServerConfig {
     pub tls_key: Option<String>,
     /// TLS certificate / TLS 证书
     pub tls_cert: Option<String>,
-    /// Web module configuration / Web模块配置
-    pub modules: Vec<WebServerModuleConfig>,
     /// Whether to hide detailed error messages in the return message / 返回信息中是否隐藏详细错误信息
     pub security_hide_err_msg: bool,
     /// Tardis context configuration / Tardis上下文配置
     pub context_conf: WebServerContextConfig,
+    /// Web module configuration / Web模块配置
+    pub modules: Vec<WebServerModuleConfig>,
+}
+
+/// Tardis context configuration / Tardis上下文配置
+///
+/// `Tardis Context` [TardisContext](crate::basic::dto::TardisContext) is used to bring in some
+/// authentication information when a web request is received.
+///
+/// `Tardis上下文` [TardisContext](crate::basic::dto::TardisContext) 用于Web请求时带入一些认证信息.
+///
+/// This configuration specifies the source of the [TardisContext](crate::basic::dto::TardisContext).
+///
+/// 该配置用于指明 [TardisContext](crate::basic::dto::TardisContext) 的生成来源.
+///
+/// First it will try to get [context_header_name](Self::context_header_name) from the request header,
+/// and if it is not specified or has no value it will try to get it from the cache.
+///
+/// 首先会尝试从请求头信息中获取 [context_header_name](Self::context_header_name) ,如果没指定或是没有值时会尝试从缓存中获取.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct WebServerContextConfig {
+    /// Tardis context identifier, used to specify the request header name, default is `Tardis-Context`
+    ///
+    /// Tardis上下文标识，用于指定请求头名，默认为 `Tardis-Context`
+    pub context_header_name: String,
+    /// Tardis context identifier, used to specify the `key` of the cache, default is `tardis::ident::token::`
+    ///
+    /// Tardis上下文标识，用于指定缓存的 `key`，默认为 `tardis::ident::token::`
+    pub token_cache_key: String,
 }
 
 /// Web module configuration / Web模块配置
@@ -244,46 +303,13 @@ pub struct WebServerModuleConfig {
     pub spec_path: Option<String>,
 }
 
-/// Tardis context configuration / Tardis上下文配置
-///
-/// `Tardis Context` [TardisContext](crate::basic::dto::TardisContext) is used to bring in some
-/// authentication information when a web request is received.
-///
-/// `Tardis上下文` [TardisContext](crate::basic::dto::TardisContext) 用于Web请求时带入一些认证信息.
-///
-/// This configuration specifies the source of the [TardisContext](crate::basic::dto::TardisContext).
-///
-/// 该配置用于指明 [TardisContext](crate::basic::dto::TardisContext) 的生成来源.
-///
-/// First it will try to get [context_header_name](Self::context_header_name) from the request header,
-/// and if it is not specified or has no value it will try to get it from the cache.
-///
-/// 首先会尝试从请求头信息中获取 [context_header_name](Self::context_header_name) ,如果没指定或是没有值时会尝试从缓存中获取.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(default)]
-pub struct WebServerContextConfig {
-    /// Tardis context identifier, used to specify the request header name, default is `Tardis-Context`
-    ///
-    /// Tardis上下文标识，用于指定请求头名，默认为 `Tardis-Context`
-    pub context_header_name: String,
-    /// Tardis context identifier, used to specify the `key` of the cache, default is `tardis::ident::token::`
-    ///
-    /// Tardis上下文标识，用于指定缓存的 `key`，默认为 `tardis::ident::token::`
-    pub token_cache_key: String,
-}
-
-/// Web client configuration / Web客户端配置
-///
-/// Web client operation needs to be enabled ```#[cfg(feature = "web-client")]``` .
-///
-/// Web客户端操作需要启用 ```#[cfg(feature = "web-client")]``` .
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(default)]
-pub struct WebClientConfig {
-    /// Connection timeout / 连接超时时间
-    pub connect_timeout_sec: u64,
-    /// Request timeout / 请求超时时间
-    pub request_timeout_sec: u64,
+impl Default for WebServerContextConfig {
+    fn default() -> Self {
+        WebServerContextConfig {
+            context_header_name: "Tardis-Context".to_string(),
+            token_cache_key: "tardis::ident::token::".to_string(),
+        }
+    }
 }
 
 impl Default for WebServerConfig {
@@ -295,9 +321,9 @@ impl Default for WebServerConfig {
             allowed_origin: "*".to_string(),
             tls_key: None,
             tls_cert: None,
-            modules: [WebServerModuleConfig::default()].to_vec(),
             security_hide_err_msg: false,
             context_conf: WebServerContextConfig::default(),
+            modules: Default::default(),
         }
     }
 }
@@ -315,18 +341,44 @@ impl Default for WebServerModuleConfig {
     }
 }
 
-impl Default for WebServerContextConfig {
-    fn default() -> Self {
-        WebServerContextConfig {
-            context_header_name: "Tardis-Context".to_string(),
-            token_cache_key: "tardis::ident::token::".to_string(),
-        }
-    }
+/// Web client configuration / Web客户端配置
+///
+/// Web client operation needs to be enabled ```#[cfg(feature = "web-client")]``` .
+///
+/// Web客户端操作需要启用 ```#[cfg(feature = "web-client")]``` .
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct WebClientConfig {
+    /// Connection timeout / 连接超时时间
+    pub connect_timeout_sec: u64,
+    /// Request timeout / 请求超时时间
+    pub request_timeout_sec: u64,
+    /// Web client module configuration / Web客户端模块配置
+    pub modules: HashMap<String, WebClientModuleConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct WebClientModuleConfig {
+    /// Connection timeout / 连接超时时间
+    pub connect_timeout_sec: u64,
+    /// Request timeout / 请求超时时间
+    pub request_timeout_sec: u64,
 }
 
 impl Default for WebClientConfig {
     fn default() -> Self {
         WebClientConfig {
+            connect_timeout_sec: 60,
+            request_timeout_sec: 60,
+            modules: Default::default(),
+        }
+    }
+}
+
+impl Default for WebClientModuleConfig {
+    fn default() -> Self {
+        WebClientModuleConfig {
             connect_timeout_sec: 60,
             request_timeout_sec: 60,
         }
@@ -354,6 +406,15 @@ pub struct CacheConfig {
     pub enabled: bool,
     /// Cache access Url, Url with permission information / 缓存访问Url，Url带权限信息
     pub url: String,
+    /// Distributed cache module configuration / 分布式缓存模块配置
+    pub modules: HashMap<String, CacheModuleConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct CacheModuleConfig {
+    /// Cache access Url, Url with permission information / 缓存访问Url，Url带权限信息
+    pub url: String,
 }
 
 impl Default for CacheConfig {
@@ -361,7 +422,14 @@ impl Default for CacheConfig {
         CacheConfig {
             enabled: true,
             url: "".to_string(),
+            modules: Default::default(),
         }
+    }
+}
+
+impl Default for CacheModuleConfig {
+    fn default() -> Self {
+        CacheModuleConfig { url: "".to_string() }
     }
 }
 
@@ -386,6 +454,15 @@ pub struct MQConfig {
     pub enabled: bool,
     /// Message queue access Url, Url with permission information / 消息队列访问Url，Url带权限信息
     pub url: String,
+    /// Message queue module configuration / MQ模块配置
+    pub modules: HashMap<String, MQModuleConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct MQModuleConfig {
+    /// Message queue access Url, Url with permission information / 消息队列访问Url，Url带权限信息
+    pub url: String,
 }
 
 impl Default for MQConfig {
@@ -393,15 +470,22 @@ impl Default for MQConfig {
         MQConfig {
             enabled: true,
             url: "".to_string(),
+            modules: Default::default(),
         }
     }
 }
 
-/// Elasticsearch configuration / ES配置
+impl Default for MQModuleConfig {
+    fn default() -> Self {
+        MQModuleConfig { url: "".to_string() }
+    }
+}
+
+/// Search configuration / 搜索配置
 ///
-/// Elasticsearch operation needs to be enabled ```#[cfg(feature = "web-client")]``` .
+/// Search operation needs to be enabled ```#[cfg(feature = "web-client")]``` .
 ///
-/// ES操作需要启用 ```#[cfg(feature = "web-client")]``` .
+/// 搜索操作需要启用 ```#[cfg(feature = "web-client")]``` .
 ///
 /// # Examples
 /// ```ignore
@@ -420,12 +504,33 @@ pub struct SearchConfig {
     pub url: String,
     /// Timeout / 操作超时时间
     pub timeout_sec: u64,
+    /// Search module configuration / 搜索模块配置
+    pub modules: HashMap<String, SearchModuleConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct SearchModuleConfig {
+    /// Search access Url, Url with permission information / 搜索访问Url，Url带权限信息
+    pub url: String,
+    /// Timeout / 操作超时时间
+    pub timeout_sec: u64,
 }
 
 impl Default for SearchConfig {
     fn default() -> Self {
         SearchConfig {
             enabled: true,
+            url: "".to_string(),
+            timeout_sec: 60,
+            modules: Default::default(),
+        }
+    }
+}
+
+impl Default for SearchModuleConfig {
+    fn default() -> Self {
+        SearchModuleConfig {
             url: "".to_string(),
             timeout_sec: 60,
         }

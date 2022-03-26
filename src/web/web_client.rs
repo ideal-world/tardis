@@ -16,8 +16,13 @@ pub struct TardisWebClient {
 }
 
 impl TardisWebClient {
-    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebClient> {
-        TardisWebClient::init(conf.web_client.connect_timeout_sec)
+    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisWebClient>> {
+        let mut clients = HashMap::new();
+        clients.insert("".to_string(), TardisWebClient::init(conf.web_client.connect_timeout_sec)?);
+        for (k, v) in &conf.web_client.modules {
+            clients.insert(k.to_string(), TardisWebClient::init(v.connect_timeout_sec)?);
+        }
+        Ok(clients)
     }
 
     pub fn init(connect_timeout_sec: u64) -> TardisResult<TardisWebClient> {

@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MQModuleConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
-use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
+use tardis::test::test_container::TardisTestContainer;
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -32,7 +32,11 @@ async fn test_mq_client() -> TardisResult<()> {
                     enabled: false,
                     ..Default::default()
                 },
-                mq: MQConfig { enabled: true, url },
+                mq: MQConfig {
+                    enabled: true,
+                    url: url.clone(),
+                    modules: HashMap::from([("m1".to_string(), MQModuleConfig { url: url.clone() })]),
+                },
                 search: SearchConfig {
                     enabled: false,
                     ..Default::default()
@@ -42,7 +46,8 @@ async fn test_mq_client() -> TardisResult<()> {
         })
         .await?;
 
-        let client = TardisFuns::mq();
+        TardisFuns::mq();
+        let client = TardisFuns::mq_by_module("m1");
 
         client
             .response("test-addr", |(header, msg)| async move {
@@ -103,7 +108,7 @@ async fn test_mq_client() -> TardisResult<()> {
             }
         }
 
-        TardisFuns::shutdown().await?;
+        client.close().await?;
         Ok(())
     })
     .await

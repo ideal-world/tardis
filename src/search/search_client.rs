@@ -30,8 +30,13 @@ pub struct TardisSearchClient {
 
 impl TardisSearchClient {
     /// Initialize configuration from the search configuration object / 从搜索配置对象中初始化配置
-    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisSearchClient> {
-        TardisSearchClient::init(&conf.search.url, conf.search.timeout_sec)
+    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisSearchClient>> {
+        let mut clients = HashMap::new();
+        clients.insert("".to_string(), TardisSearchClient::init(&conf.search.url, conf.search.timeout_sec)?);
+        for (k, v) in &conf.search.modules {
+            clients.insert(k.to_string(), TardisSearchClient::init(&v.url, v.timeout_sec)?);
+        }
+        Ok(clients)
     }
 
     /// Initialize configuration / 初始化配置
