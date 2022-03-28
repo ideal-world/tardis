@@ -254,13 +254,6 @@ impl TardisMQClient {
     }
 }
 
-// impl Drop for TardisMQClient {
-//     fn drop(&mut self) {
-//         #[allow(unused)]
-//         self.close();
-//     }
-// }
-
 impl From<lapin::Error> for TardisError {
     fn from(error: lapin::Error) -> Self {
         TardisError::Box(Box::new(error))
