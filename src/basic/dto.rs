@@ -1,7 +1,6 @@
 //! Common DTOs / 常用的DTO
-use crate::db::reldb_client::TardisRelDBlConnection;
 use crate::serde::{Deserialize, Serialize};
-use crate::{TardisCacheClient, TardisFuns, TardisMQClient, TardisRelDBClient, TardisResult, TardisSearchClient, TardisWebClient};
+use crate::{TardisFuns, TardisResult};
 
 /// ardis context / Tardis上下文
 ///
@@ -46,36 +45,36 @@ impl Default for TardisContext {
 }
 
 pub struct TardisFunsInst<'a> {
-    module_code: String,
+    module_code: &'a str,
     #[cfg(feature = "reldb")]
-    db: Option<TardisRelDBlConnection<'a>>,
+    db: Option<crate::db::reldb_client::TardisRelDBlConnection<'a>>,
 }
 
 impl<'a> TardisFunsInst<'a> {
-    pub fn new(code: &str) -> Self {
+    pub fn new(code: &'a str) -> Self {
         Self {
-            module_code: code.to_string(),
+            module_code: code,
             #[cfg(feature = "reldb")]
             db: None,
         }
     }
 
     #[cfg(feature = "reldb")]
-    pub fn conn(code: &str) -> Self {
+    pub fn conn(code: &'a str) -> Self {
         let reldb = TardisFuns::reldb_by_module_or_default(code);
         Self {
-            module_code: code.to_string(),
+            module_code: code,
             db: Some(reldb.conn()),
         }
     }
 
     #[cfg(feature = "reldb")]
-    pub fn reldb(&self) -> &'static TardisRelDBClient {
+    pub fn reldb(&self) -> &'static crate::TardisRelDBClient {
         TardisFuns::reldb_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "reldb")]
-    pub fn db(&self) -> &TardisRelDBlConnection<'a> {
+    pub fn db(&self) -> &crate::db::reldb_client::TardisRelDBlConnection<'a> {
         self.db.as_ref().expect("db is not initialized")
     }
 
@@ -95,22 +94,22 @@ impl<'a> TardisFunsInst<'a> {
     }
 
     #[cfg(feature = "cache")]
-    pub fn cache(&self) -> &'static mut TardisCacheClient {
+    pub fn cache(&self) -> &'static mut crate::TardisCacheClient {
         TardisFuns::cache_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "mq")]
-    pub fn mq(&self) -> &'static mut TardisMQClient {
+    pub fn mq(&self) -> &'static crate::TardisMQClient {
         TardisFuns::mq_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "web-client")]
-    pub fn web_client(&self) -> &'static TardisWebClient {
+    pub fn web_client(&self) -> &'static crate::TardisWebClient {
         TardisFuns::web_client_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "web-client")]
-    pub fn search(&self) -> &'static TardisSearchClient {
+    pub fn search(&self) -> &'static crate::TardisSearchClient {
         TardisFuns::search_by_module_or_default(&self.module_code)
     }
 }

@@ -689,16 +689,16 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "mq")]
-    pub fn mq() -> &'static mut TardisMQClient {
+    pub fn mq() -> &'static TardisMQClient {
         Self::mq_by_module("")
     }
 
     #[cfg(feature = "mq")]
-    pub fn mq_by_module(code: &str) -> &'static mut TardisMQClient {
+    pub fn mq_by_module(code: &str) -> &'static TardisMQClient {
         unsafe {
-            match &mut TARDIS_INST.mq {
+            match &TARDIS_INST.mq {
                 None => panic!("[Tardis.Config] MQ instance doesn't exist"),
-                Some(t) => match t.get_mut(code) {
+                Some(t) => match t.get(code) {
                     None => panic!("[Tardis.Config] MQ {} instance doesn't exist", code),
                     Some(t) => t,
                 },
@@ -707,11 +707,11 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "mq")]
-    pub fn mq_by_module_or_default(code: &str) -> &'static mut TardisMQClient {
+    pub fn mq_by_module_or_default(code: &str) -> &'static TardisMQClient {
         unsafe {
-            match &mut TARDIS_INST.mq {
+            match &TARDIS_INST.mq {
                 None => panic!("[Tardis.Config] MQ instance doesn't exist"),
-                Some(t) => match t.get_mut(code) {
+                Some(t) => match t.get(code) {
                     None => Self::mq(),
                     Some(t) => t,
                 },
