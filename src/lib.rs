@@ -658,16 +658,16 @@ impl TardisFuns {
     /// assert!(!TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
     /// ```
     #[cfg(feature = "cache")]
-    pub fn cache() -> &'static mut TardisCacheClient {
+    pub fn cache() -> &'static TardisCacheClient {
         Self::cache_by_module("")
     }
 
     #[cfg(feature = "cache")]
-    pub fn cache_by_module(code: &str) -> &'static mut TardisCacheClient {
+    pub fn cache_by_module(code: &str) -> &'static TardisCacheClient {
         unsafe {
-            match &mut TARDIS_INST.cache {
+            match &TARDIS_INST.cache {
                 None => panic!("[Tardis.Config] Cache instance doesn't exist"),
-                Some(t) => match t.get_mut(code) {
+                Some(t) => match t.get(code) {
                     None => panic!("[Tardis.Config] Cache {} instance doesn't exist", code),
                     Some(t) => t,
                 },
@@ -676,11 +676,11 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "cache")]
-    pub fn cache_by_module_or_default(code: &str) -> &'static mut TardisCacheClient {
+    pub fn cache_by_module_or_default(code: &str) -> &'static TardisCacheClient {
         unsafe {
-            match &mut TARDIS_INST.cache {
+            match &TARDIS_INST.cache {
                 None => panic!("[Tardis.Config] Cache instance doesn't exist"),
-                Some(t) => match t.get_mut(code) {
+                Some(t) => match t.get(code) {
                     None => Self::cache(),
                     Some(t) => t,
                 },

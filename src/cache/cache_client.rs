@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use futures_util::lock::{Mutex, MutexGuard};
 use redis::aio::Connection;
 use redis::{AsyncCommands, RedisError, RedisResult};
 use url::Url;
@@ -29,7 +30,7 @@ use crate::log::info;
 /// assert!(!TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
 /// ```
 pub struct TardisCacheClient {
-    con: Connection,
+    con: Mutex<Connection>,
 }
 
 impl TardisCacheClient {
@@ -60,99 +61,99 @@ impl TardisCacheClient {
             url.port().unwrap_or(0),
             if url.path().is_empty() { "" } else { &url.path()[1..] },
         );
-        Ok(TardisCacheClient { con })
+        Ok(TardisCacheClient { con: Mutex::new(con) })
     }
 
-    pub async fn set(&mut self, key: &str, value: &str) -> RedisResult<()> {
-        self.con.set(key, value).await
+    pub async fn set(&self, key: &str, value: &str) -> RedisResult<()> {
+        (*self.con.lock().await).set(key, value).await
     }
 
-    pub async fn set_ex(&mut self, key: &str, value: &str, ex_sec: usize) -> RedisResult<()> {
-        self.con.set_ex(key, value, ex_sec).await
+    pub async fn set_ex(&self, key: &str, value: &str, ex_sec: usize) -> RedisResult<()> {
+        (*self.con.lock().await).set_ex(key, value, ex_sec).await
     }
 
-    pub async fn set_nx(&mut self, key: &str, value: &str) -> RedisResult<bool> {
-        self.con.set_nx(key, value).await
+    pub async fn set_nx(&self, key: &str, value: &str) -> RedisResult<bool> {
+        (*self.con.lock().await).set_nx(key, value).await
     }
 
-    pub async fn get(&mut self, key: &str) -> RedisResult<Option<String>> {
-        self.con.get(key).await
+    pub async fn get(&self, key: &str) -> RedisResult<Option<String>> {
+        (*self.con.lock().await).get(key).await
     }
 
-    pub async fn getset(&mut self, key: &str, value: &str) -> RedisResult<Option<String>> {
-        self.con.getset(key, value).await
+    pub async fn getset(&self, key: &str, value: &str) -> RedisResult<Option<String>> {
+        (*self.con.lock().await).getset(key, value).await
     }
 
-    pub async fn incr(&mut self, key: &str, delta: isize) -> RedisResult<usize> {
-        self.con.incr(key, delta).await
+    pub async fn incr(&self, key: &str, delta: isize) -> RedisResult<usize> {
+        (*self.con.lock().await).incr(key, delta).await
     }
 
-    pub async fn del(&mut self, key: &str) -> RedisResult<()> {
-        self.con.del(key).await
+    pub async fn del(&self, key: &str) -> RedisResult<()> {
+        (*self.con.lock().await).del(key).await
     }
 
-    pub async fn exists(&mut self, key: &str) -> RedisResult<bool> {
-        self.con.exists(key).await
+    pub async fn exists(&self, key: &str) -> RedisResult<bool> {
+        (*self.con.lock().await).exists(key).await
     }
 
-    pub async fn expire(&mut self, key: &str, ex_sec: usize) -> RedisResult<()> {
-        self.con.expire(key, ex_sec).await
+    pub async fn expire(&self, key: &str, ex_sec: usize) -> RedisResult<()> {
+        (*self.con.lock().await).expire(key, ex_sec).await
     }
 
-    pub async fn expire_at(&mut self, key: &str, timestamp_sec: usize) -> RedisResult<()> {
-        self.con.expire_at(key, timestamp_sec).await
+    pub async fn expire_at(&self, key: &str, timestamp_sec: usize) -> RedisResult<()> {
+        (*self.con.lock().await).expire_at(key, timestamp_sec).await
     }
 
-    pub async fn ttl(&mut self, key: &str) -> RedisResult<usize> {
-        self.con.ttl(key).await
+    pub async fn ttl(&self, key: &str) -> RedisResult<usize> {
+        (*self.con.lock().await).ttl(key).await
     }
 
     // hash operations
 
-    pub async fn hget(&mut self, key: &str, field: &str) -> RedisResult<Option<String>> {
-        self.con.hget(key, field).await
+    pub async fn hget(&self, key: &str, field: &str) -> RedisResult<Option<String>> {
+        (*self.con.lock().await).hget(key, field).await
     }
 
-    pub async fn hset(&mut self, key: &str, field: &str, value: &str) -> RedisResult<()> {
-        self.con.hset(key, field, value).await
+    pub async fn hset(&self, key: &str, field: &str, value: &str) -> RedisResult<()> {
+        (*self.con.lock().await).hset(key, field, value).await
     }
 
-    pub async fn hset_nx(&mut self, key: &str, field: &str, value: &str) -> RedisResult<bool> {
-        self.con.hset_nx(key, field, value).await
+    pub async fn hset_nx(&self, key: &str, field: &str, value: &str) -> RedisResult<bool> {
+        (*self.con.lock().await).hset_nx(key, field, value).await
     }
 
-    pub async fn hdel(&mut self, key: &str, field: &str) -> RedisResult<()> {
-        self.con.hdel(key, field).await
+    pub async fn hdel(&self, key: &str, field: &str) -> RedisResult<()> {
+        (*self.con.lock().await).hdel(key, field).await
     }
 
-    pub async fn hincr(&mut self, key: &str, field: &str, delta: isize) -> RedisResult<usize> {
-        self.con.hincr(key, field, delta).await
+    pub async fn hincr(&self, key: &str, field: &str, delta: isize) -> RedisResult<usize> {
+        (*self.con.lock().await).hincr(key, field, delta).await
     }
 
-    pub async fn hexists(&mut self, key: &str, field: &str) -> RedisResult<bool> {
-        self.con.hexists(key, field).await
+    pub async fn hexists(&self, key: &str, field: &str) -> RedisResult<bool> {
+        (*self.con.lock().await).hexists(key, field).await
     }
 
-    pub async fn hkeys(&mut self, key: &str) -> RedisResult<Vec<String>> {
-        self.con.hkeys(key).await
+    pub async fn hkeys(&self, key: &str) -> RedisResult<Vec<String>> {
+        (*self.con.lock().await).hkeys(key).await
     }
 
-    pub async fn hvals(&mut self, key: &str) -> RedisResult<Vec<String>> {
-        self.con.hvals(key).await
+    pub async fn hvals(&self, key: &str) -> RedisResult<Vec<String>> {
+        (*self.con.lock().await).hvals(key).await
     }
 
-    pub async fn hgetall(&mut self, key: &str) -> RedisResult<HashMap<String, String>> {
-        self.con.hgetall(key).await
+    pub async fn hgetall(&self, key: &str) -> RedisResult<HashMap<String, String>> {
+        (*self.con.lock().await).hgetall(key).await
     }
 
-    pub async fn hlen(&mut self, key: &str) -> RedisResult<usize> {
-        self.con.hlen(key).await
+    pub async fn hlen(&self, key: &str) -> RedisResult<usize> {
+        (*self.con.lock().await).hlen(key).await
     }
 
     // custom
 
-    pub fn cmd(&mut self) -> &mut Connection {
-        &mut self.con
+    pub async fn cmd<'a>(&'a self) -> MutexGuard<'a, Connection> {
+        self.con.lock().await
     }
 }
 

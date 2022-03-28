@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use log::info;
 use redis::AsyncCommands;
 use tokio::time::{sleep, Duration};
 
@@ -15,7 +16,7 @@ use tardis::TardisFuns;
 async fn test_cache_client() -> TardisResult<()> {
     TardisFuns::init_log()?;
     TardisTestContainer::redis(|url| async move {
-        let mut client = TardisCacheClient::init(&url).await?;
+        let client = TardisCacheClient::init(&url).await?;
         // basic operations
 
         let mut opt_value = client.get("test_key").await?;
@@ -101,9 +102,9 @@ async fn test_cache_client() -> TardisResult<()> {
 
         // custom
 
-        let mut _s: bool = client.cmd().sadd("s1", "m1").await?;
-        _s = client.cmd().sadd("s1", "m2").await?;
-        let mem: Vec<String> = client.cmd().smembers("s1").await?;
+        let mut _s: bool = client.cmd().await.sadd("s1", "m1").await?;
+        _s = client.cmd().await.sadd("s1", "m2").await?;
+        let mem: Vec<String> = client.cmd().await.smembers("s1").await?;
         assert!(mem.contains(&"m1".to_string()));
         assert!(mem.contains(&"m2".to_string()));
         assert!(!mem.contains(&"m3".to_string()));
@@ -151,6 +152,17 @@ async fn test_cache_client() -> TardisResult<()> {
         assert_eq!(map_result.get("f2").unwrap(), "v2");
         assert_eq!(map_result.get("f0").unwrap(), "v0");
         assert_eq!(map_result.get("f3").unwrap(), "1");
+
+        tokio::spawn(async {
+            let map_result = TardisFuns::cache_by_module("m1").hgetall("h").await.unwrap();
+            assert_eq!(map_result.len(), 3);
+            assert_eq!(map_result.get("f2").unwrap(), "v2");
+            assert_eq!(map_result.get("f0").unwrap(), "v0");
+            assert_eq!(map_result.get("f3").unwrap(), "1");
+            info!("cache_by_module m1 hgetall done");
+        })
+        .await
+        .unwrap();
 
         Ok(())
     })

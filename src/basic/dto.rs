@@ -94,7 +94,7 @@ impl<'a> TardisFunsInst<'a> {
     }
 
     #[cfg(feature = "cache")]
-    pub fn cache(&self) -> &'static mut crate::TardisCacheClient {
+    pub fn cache(&self) -> &'static crate::TardisCacheClient {
         TardisFuns::cache_by_module_or_default(self.module_code)
     }
 

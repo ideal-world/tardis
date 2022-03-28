@@ -34,7 +34,7 @@ future = ["rt_tokio", "futures", "async-stream", "futures-util", "async-trait"]
 reldb = ["future", "sqlparser", "sea-orm", "sea-query"]
 web-server = ["trace", "future", "poem", "poem-openapi", "poem-openapi-derive"]
 web-client = ["rt_tokio", "reqwest"]
-cache = ["redis"]
+cache = ["futures-util", "redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 test = ["testcontainers"]
 
