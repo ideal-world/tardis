@@ -142,7 +142,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
         },
     })
     .await?;
-    TardisFuns::web_server().add_module("todo", (TodosApi)).add_module_with_data::<_, String>("other", OtherApi, None).start().await
+    TardisFuns::web_server().add_module("todo", (TodosApi)).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
 }
 
 async fn test_basic(url: &str) -> TardisResult<()> {
@@ -550,7 +550,7 @@ async fn test_security() -> TardisResult<()> {
             },
         })
         .await?;
-        TardisFuns::web_server().add_module("todo", (TodosApi)).add_module_with_data::<_, String>("other", OtherApi, None).start().await
+        TardisFuns::web_server().add_module("todo", (TodosApi)).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
     });
     sleep(Duration::from_millis(500)).await;
 

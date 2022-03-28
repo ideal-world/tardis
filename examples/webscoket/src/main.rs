@@ -25,5 +25,5 @@ async fn main() -> TardisResult<()> {
 
     let mut ws_route = Route::new();
     ws_route = ws_route.at("/broadcast/:name", get(ws_broadcast.data(tokio::sync::broadcast::channel::<String>(32).0))).at("/p2p/:name", get(ws_p2p));
-    TardisFuns::web_server().add_module("", Page).add_module_raw("ws", ws_route).start().await
+    TardisFuns::web_server().add_module("", Page).await.add_module_raw("ws", ws_route).await.start().await
 }

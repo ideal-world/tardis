@@ -19,5 +19,5 @@ async fn main() -> TardisResult<()> {
     // Initial configuration
     TardisFuns::init::<NoneConfig>("config").await?;
     // Register the processor and start the web service
-    TardisFuns::web_server().add_module("", Api).start().await
+    TardisFuns::web_server().add_module("", Api).await.start().await
 }

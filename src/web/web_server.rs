@@ -1,3 +1,4 @@
+use futures_util::lock::Mutex;
 use poem::listener::{Listener, RustlsConfig, TcpListener};
 use poem::middleware::Cors;
 use poem::{EndpointExt, Route};
@@ -12,7 +13,7 @@ use crate::web::uniform_error_mw::UniformError;
 pub struct TardisWebServer {
     app_name: String,
     config: WebServerConfig,
-    rotue: Route,
+    route: Mutex<Route>,
 }
 
 impl TardisWebServer {
@@ -20,18 +21,18 @@ impl TardisWebServer {
         Ok(TardisWebServer {
             app_name: conf.app.name.clone(),
             config: conf.web_server.clone(),
-            rotue: Route::new(),
+            route: Mutex::new(Route::new()),
         })
     }
 
-    pub fn add_module<T>(&mut self, code: &str, apis: T) -> &mut Self
+    pub async fn add_module<T>(&self, code: &str, apis: T) -> &Self
     where
         T: OpenApi + 'static,
     {
-        self.add_module_with_data::<_, String>(code, apis, None)
+        self.add_module_with_data::<_, String>(code, apis, None).await
     }
 
-    pub fn add_module_with_data<T, D>(&mut self, code: &str, apis: T, data: Option<D>) -> &mut Self
+    pub async fn add_module_with_data<T, D>(&self, code: &str, apis: T, data: Option<D>) -> &Self
     where
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
@@ -67,8 +68,8 @@ impl TardisWebServer {
         // Solved:  Cannot move out of *** which is behind a mutable reference
         // https://stackoverflow.com/questions/63353762/cannot-move-out-of-which-is-behind-a-mutable-reference
         let mut swap_route = Route::new();
-        std::mem::swap(&mut swap_route, &mut self.rotue);
-        self.rotue = if let Some(data) = data {
+        std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
+        *self.route.lock().await = if let Some(data) = data {
             swap_route.nest(format!("/{}", code), route.data(data))
         } else {
             swap_route.nest(format!("/{}", code), route)
@@ -76,10 +77,10 @@ impl TardisWebServer {
         self
     }
 
-    pub fn add_module_raw(&mut self, code: &str, route: Route) -> &mut Self {
+    pub async fn add_module_raw(&self, code: &str, route: Route) -> &Self {
         let mut swap_route = Route::new();
-        std::mem::swap(&mut swap_route, &mut self.rotue);
-        self.rotue = swap_route.nest(format!("/{}", code), route);
+        std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
+        *self.route.lock().await = swap_route.nest(format!("/{}", code), route);
         self
     }
 
@@ -95,19 +96,27 @@ impl TardisWebServer {
             protocol = if self.config.tls_key.is_some() { "https" } else { "http" }
         );
 
+        let mut swap_route = Route::new();
+        std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
         if self.config.tls_key.is_some() {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port)).rustls(
                 RustlsConfig::new()
                     .key(self.config.tls_key.clone().expect("[Tardis.WebServer] TLS key clone error"))
                     .cert(self.config.tls_cert.clone().expect("[Tardis.WebServer] TLS cert clone error")),
             );
-            let server = poem::Server::new(bind).run(&self.rotue);
+            let server = poem::Server::new(bind).run_with_graceful_shutdown(
+                swap_route,
+                async move {
+                    let _ = tokio::signal::ctrl_c().await;
+                },
+                Some(Duration::from_secs(5)),
+            );
             info!("{}", output_info);
             server.await?;
         } else {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port));
             let server = poem::Server::new(bind).run_with_graceful_shutdown(
-                &self.rotue,
+                swap_route,
                 async move {
                     let _ = tokio::signal::ctrl_c().await;
                 },

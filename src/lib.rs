@@ -598,7 +598,7 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "web-server")]
-    pub fn web_server() -> &'static mut TardisWebServer {
+    pub fn web_server() -> &'static TardisWebServer {
         unsafe {
             match &mut TARDIS_INST.web_server {
                 None => panic!("[Tardis.Config] Web Server default instance doesn't exist"),
