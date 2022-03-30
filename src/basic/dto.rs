@@ -112,4 +112,9 @@ impl<'a> TardisFunsInst<'a> {
     pub fn search(&self) -> &'static crate::TardisSearchClient {
         TardisFuns::search_by_module_or_default(self.module_code)
     }
+
+    #[cfg(feature = "mail")]
+    pub fn mail(&self) -> &'static crate::TardisMailClient {
+        TardisFuns::mail_by_module_or_default(self.module_code)
+    }
 }

@@ -7,7 +7,7 @@ use std::time::Duration;
 use testcontainers::clients;
 use tokio::time::sleep;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};
 use tardis::basic::dto::TardisContext;
 use tardis::basic::error::TardisError;
 use tardis::basic::field::TrimString;
@@ -135,6 +135,10 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
                 ..Default::default()
             },
             search: SearchConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            mail: MailConfig {
                 enabled: false,
                 ..Default::default()
             },
@@ -543,6 +547,10 @@ async fn test_security() -> TardisResult<()> {
                     ..Default::default()
                 },
                 search: SearchConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                mail: MailConfig {
                     enabled: false,
                     ..Default::default()
                 },

@@ -9,6 +9,7 @@
 //! * Distributed cache client for Redis protocol
 //! * RabbitMQ client for AMQP protocol
 //! * Search client for Elasticsearch
+//! * Mail client for SMTP protocol
 //! * Mainstream encryption algorithms and SM2/3/4 algorithms
 //! * Containerized unit testing of mainstream middleware
 //! * Multi-environment configuration
@@ -24,6 +25,7 @@
 //! * ``web-client`` web client operations
 //! * ``cache`` cache operations
 //! * ``mq`` message queue operations
+//! * ``mail`` mail send operations
 //! * ``test`` unit test operations
 //!
 //! ## 🚀 Quick start
@@ -127,6 +129,8 @@ use crate::basic::uri::TardisUri;
 use crate::cache::cache_client::TardisCacheClient;
 #[cfg(feature = "reldb")]
 use crate::db::reldb_client::TardisRelDBClient;
+#[cfg(feature = "mail")]
+use crate::mail::mail_client::TardisMailClient;
 #[cfg(feature = "mq")]
 use crate::mq::mq_client::TardisMQClient;
 #[cfg(feature = "web-client")]
@@ -247,6 +251,8 @@ pub struct TardisFuns {
     mq: Option<HashMap<String, TardisMQClient>>,
     #[cfg(feature = "web-client")]
     search: Option<HashMap<String, TardisSearchClient>>,
+    #[cfg(feature = "mail")]
+    mail: Option<HashMap<String, TardisMailClient>>,
 }
 
 static mut TARDIS_INST: TardisFuns = TardisFuns {
@@ -264,6 +270,8 @@ static mut TARDIS_INST: TardisFuns = TardisFuns {
     mq: None,
     #[cfg(feature = "web-client")]
     search: None,
+    #[cfg(feature = "mail")]
+    mail: None,
 };
 
 #[allow(unsafe_code)]
@@ -312,7 +320,7 @@ impl TardisFuns {
     /// # Examples
     ///
     /// ```ignore
-    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
+    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, MailConfig, TardisConfig, WebServerConfig};
     /// use tardis::TardisFuns;
     /// let result = TardisFuns::init_conf(TardisConfig {
     ///             ws: NoneConfig {},
@@ -333,6 +341,10 @@ impl TardisFuns {
     ///                     ..Default::default()
     ///                 },
     ///                 search: SearchConfig{
+    ///                    enabled: false,
+    ///                    ..Default::default()
+    ///                 },
+    ///                 mail: MailConfig{
     ///                    enabled: false,
     ///                    ..Default::default()
     ///                 },
@@ -396,6 +408,15 @@ impl TardisFuns {
                 let search_clients = TardisSearchClient::init_by_conf(TardisFuns::fw_config())?;
                 unsafe {
                     replace(&mut TARDIS_INST.search, Some(search_clients));
+                };
+            }
+        }
+        #[cfg(feature = "mail")]
+        {
+            if TardisFuns::fw_config().mail.enabled {
+                let mail_clients = TardisMailClient::init_by_conf(TardisFuns::fw_config())?;
+                unsafe {
+                    replace(&mut TARDIS_INST.mail, Some(mail_clients));
                 };
             }
         }
@@ -768,6 +789,37 @@ impl TardisFuns {
         }
     }
 
+    #[cfg(feature = "mail")]
+    pub fn mail() -> &'static TardisMailClient {
+        Self::mail_by_module("")
+    }
+
+    #[cfg(feature = "mail")]
+    pub fn mail_by_module(code: &str) -> &'static TardisMailClient {
+        unsafe {
+            match &TARDIS_INST.mail {
+                None => panic!("[Tardis.Config] Mail instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => panic!("[Tardis.Config] Mail {} instance doesn't exist", code),
+                    Some(t) => t,
+                },
+            }
+        }
+    }
+
+    #[cfg(feature = "mail")]
+    pub fn mail_by_module_or_default(code: &str) -> &'static TardisMailClient {
+        unsafe {
+            match &TARDIS_INST.mail {
+                None => panic!("[Tardis.Config] Mail instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => Self::mail(),
+                    Some(t) => t,
+                },
+            }
+        }
+    }
+
     pub async fn shutdown() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
         #[cfg(feature = "mq")]
@@ -789,6 +841,8 @@ pub mod cache;
 #[cfg(feature = "reldb")]
 #[cfg_attr(docsrs, doc(cfg(feature = "reldb")))]
 pub mod db;
+#[cfg(feature = "mail")]
+pub mod mail;
 #[cfg(feature = "mq")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mq")))]
 pub mod mq;

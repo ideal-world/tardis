@@ -45,6 +45,8 @@ pub struct FrameworkConfig {
     pub mq: MQConfig,
     /// Search configuration / 搜索配置
     pub search: SearchConfig,
+    /// Mail configuration / 邮件配置
+    pub mail: MailConfig,
     /// Advanced configuration / 高级配置
     pub adv: AdvConfig,
 }
@@ -533,6 +535,56 @@ impl Default for SearchModuleConfig {
         SearchModuleConfig {
             url: "".to_string(),
             timeout_sec: 60,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct MailConfig {
+    /// Whether to enable the mail function / 是否启用邮件操作功能
+    pub enabled: bool,
+    pub smtp_host: String,
+    pub smtp_port: u16,
+    pub smtp_username: String,
+    pub smtp_password: String,
+    pub default_from: String,
+    /// Mail module configuration / 邮件模块配置
+    pub modules: HashMap<String, MailModuleConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct MailModuleConfig {
+    pub smtp_host: String,
+    pub smtp_port: u16,
+    pub smtp_username: String,
+    pub smtp_password: String,
+    pub default_from: String,
+}
+
+impl Default for MailConfig {
+    fn default() -> Self {
+        MailConfig {
+            enabled: true,
+            smtp_host: "".to_string(),
+            smtp_port: 0,
+            smtp_username: "".to_string(),
+            smtp_password: "".to_string(),
+            default_from: "".to_string(),
+            modules: Default::default(),
+        }
+    }
+}
+
+impl Default for MailModuleConfig {
+    fn default() -> Self {
+        MailModuleConfig {
+            smtp_host: "".to_string(),
+            smtp_port: 0,
+            smtp_username: "".to_string(),
+            smtp_password: "".to_string(),
+            default_from: "".to_string(),
         }
     }
 }

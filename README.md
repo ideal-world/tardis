@@ -22,6 +22,7 @@ Do NOT use in production environment!**
 * Distributed cache client for Redis protocol
 * RabbitMQ client for AMQP protocol
 * Search client for Elasticsearch
+* Mail client for SMTP protocol
 * Mainstream encryption algorithms and SM2/3/4 algorithms
 * Containerized unit testing of mainstream middleware
 * Multi-environment configuration
@@ -37,6 +38,7 @@ Do NOT use in production environment!**
 * ``web-client`` web client operations
 * ``cache`` cache operations
 * ``mq`` message queue operations
+* ``mail`` mail send operations
 * ``test`` unit test operations
 
 ## 🚀 Quick start
