@@ -159,7 +159,7 @@ impl TardisRelDBClient {
         connect_timeout_sec: Option<u64>,
         idle_timeout_sec: Option<u64>,
     ) -> TardisResult<TardisRelDBClient> {
-        let url = Url::parse(str_url).unwrap_or_else(|_| panic!("[Tardis.RelDBClient] Invalid url {}", str_url));
+        let url = Url::parse(str_url).map_err(|_| TardisError::BadRequest(format!("[Tardis.RelDBClient] Invalid url {}", str_url)))?;
         info!(
             "[Tardis.RelDBClient] Initializing, host:{}, port:{}, max_connections:{}",
             url.host_str().unwrap_or(""),
@@ -916,9 +916,7 @@ where
         }
         if table_name.is_empty() {
             return TardisResult::Err(TardisError::Conflict(
-                "sql parsing error, the name of the table \
-            to be soft deleted was not found"
-                    .to_string(),
+                "sql parsing error, the name of the table to be soft deleted was not found".to_string(),
             ));
         }
 
@@ -932,12 +930,16 @@ where
                 ids.push(
                     id.as_str()
                         .as_ref()
-                        .unwrap_or_else(|| panic!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a character type", id))
+                        .ok_or_else(|| TardisError::InternalError(format!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a character type", id)))?
                         .to_string()
                         .into(),
                 );
             } else {
-                ids.push(id.as_u64().unwrap_or_else(|| panic!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a number type", id)).into());
+                ids.push(
+                    id.as_u64()
+                        .ok_or_else(|| TardisError::InternalError(format!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a number type", id)))?
+                        .into(),
+                );
             }
             tardis_db_del_record::ActiveModel {
                 entity_name: Set(table_name.to_string()),

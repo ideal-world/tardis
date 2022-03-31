@@ -46,7 +46,7 @@ impl TardisCacheClient {
 
     /// Initialize configuration / 初始化配置
     pub async fn init(str_url: &str) -> TardisResult<TardisCacheClient> {
-        let url = Url::parse(str_url).unwrap_or_else(|_| panic!("[Tardis.CacheClient] Invalid url {}", str_url));
+        let url = Url::parse(str_url).map_err(|_| TardisError::BadRequest(format!("[Tardis.CacheClient] Invalid url {}", str_url)))?;
         info!(
             "[Tardis.CacheClient] Initializing, host:{}, port:{}, db:{}",
             url.host_str().unwrap_or(""),

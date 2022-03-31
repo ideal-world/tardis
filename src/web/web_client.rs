@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use futures_util::TryFutureExt;
 use reqwest::{Client, Method, Response};
 
 use crate::basic::error::TardisError;
@@ -151,7 +152,7 @@ impl TardisWebClient {
             .map(|(k, v)| {
                 (
                     k.to_string(),
-                    v.to_str().unwrap_or_else(|_| panic!("[Tardis.WebClient] Http head {:?} parsing error", v)).to_string(),
+                    v.to_str().map_err(|_| TardisError::FormatError(format!("[Tardis.WebClient] Http head {:?} parsing error", v)))?,
                 )
             })
             .collect();

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use lettre::message::{header, MultiPart, SinglePart};
 use lettre::{address, error, transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
-use tracing::info;
+use log::info;
 
 use crate::basic::error::TardisError;
 use crate::{FrameworkConfig, TardisResult};
@@ -38,7 +38,7 @@ impl TardisMailClient {
         info!("[Tardis.MailClient] Initializing");
         let creds = Credentials::new(smtp_username.to_string(), smtp_password.to_string());
         let client = AsyncSmtpTransport::<Tokio1Executor>::relay(smtp_host)
-            .unwrap_or_else(|_| panic!("[Tardis.MailClient] Failed to create SMTP client: {}", smtp_host))
+            .map_err(|_| TardisError::InternalError(format!("[Tardis.MailClient] Failed to create SMTP client: {}", smtp_host)))?
             .credentials(creds)
             .port(smtp_port)
             .build();
