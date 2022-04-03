@@ -10,6 +10,7 @@
 //! * RabbitMQ client for AMQP protocol
 //! * Search client for Elasticsearch
 //! * Mail client for SMTP protocol
+//! * Object Storage client for arbitrary S3 compatible APIs
 //! * Mainstream encryption algorithms and SM2/3/4 algorithms
 //! * Containerized unit testing of mainstream middleware
 //! * Multi-environment configuration
@@ -18,7 +19,7 @@
 //! ## ⚙️Feature description
 //!
 //! * ``trace`` tracing operation
-//! * ``crypto`` Encryption, decryption and digest operations
+//! * ``crypto`` encryption, decryption and digest operations
 //! * ``future`` asynchronous operations
 //! * ``reldb`` relational database operations(based on [SeaORM](https://github.com/SeaQL/sea-orm))
 //! * ``web-server`` web service operations(based on [Poem](https://github.com/poem-web/poem))
@@ -26,6 +27,7 @@
 //! * ``cache`` cache operations
 //! * ``mq`` message queue operations
 //! * ``mail`` mail send operations
+//! * ``os`` object Storage operations
 //! * ``test`` unit test operations
 //!
 //! ## 🚀 Quick start
@@ -133,6 +135,8 @@ use crate::db::reldb_client::TardisRelDBClient;
 use crate::mail::mail_client::TardisMailClient;
 #[cfg(feature = "mq")]
 use crate::mq::mq_client::TardisMQClient;
+#[cfg(feature = "os")]
+use crate::os::os_client::TardisOSClient;
 #[cfg(feature = "web-client")]
 use crate::search::search_client::TardisSearchClient;
 use crate::serde::Deserialize;
@@ -253,6 +257,8 @@ pub struct TardisFuns {
     search: Option<HashMap<String, TardisSearchClient>>,
     #[cfg(feature = "mail")]
     mail: Option<HashMap<String, TardisMailClient>>,
+    #[cfg(feature = "os")]
+    os: Option<HashMap<String, TardisOSClient>>,
 }
 
 static mut TARDIS_INST: TardisFuns = TardisFuns {
@@ -272,6 +278,8 @@ static mut TARDIS_INST: TardisFuns = TardisFuns {
     search: None,
     #[cfg(feature = "mail")]
     mail: None,
+    #[cfg(feature = "os")]
+    os: None,
 };
 
 #[allow(unsafe_code)]
@@ -320,7 +328,8 @@ impl TardisFuns {
     /// # Examples
     ///
     /// ```ignore
-    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig, SearchConfig, MailConfig, TardisConfig, WebServerConfig};
+    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig,
+    /// SearchConfig, MailConfig, OSConfig, TardisConfig, WebServerConfig};
     /// use tardis::TardisFuns;
     /// let result = TardisFuns::init_conf(TardisConfig {
     ///             ws: NoneConfig {},
@@ -345,6 +354,10 @@ impl TardisFuns {
     ///                    ..Default::default()
     ///                 },
     ///                 mail: MailConfig{
+    ///                    enabled: false,
+    ///                    ..Default::default()
+    ///                 },
+    ///                 os: OSConfig{
     ///                    enabled: false,
     ///                    ..Default::default()
     ///                 },
@@ -417,6 +430,15 @@ impl TardisFuns {
                 let mail_clients = TardisMailClient::init_by_conf(TardisFuns::fw_config())?;
                 unsafe {
                     replace(&mut TARDIS_INST.mail, Some(mail_clients));
+                };
+            }
+        }
+        #[cfg(feature = "os")]
+        {
+            if TardisFuns::fw_config().os.enabled {
+                let os_clients = TardisOSClient::init_by_conf(TardisFuns::fw_config())?;
+                unsafe {
+                    replace(&mut TARDIS_INST.os, Some(os_clients));
                 };
             }
         }
@@ -820,6 +842,37 @@ impl TardisFuns {
         }
     }
 
+    #[cfg(feature = "os")]
+    pub fn os() -> &'static TardisOSClient {
+        Self::os_by_module("")
+    }
+
+    #[cfg(feature = "os")]
+    pub fn os_by_module(code: &str) -> &'static TardisOSClient {
+        unsafe {
+            match &TARDIS_INST.os {
+                None => panic!("[Tardis.Config] Object Storage instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => panic!("[Tardis.Config] Object Storage {} instance doesn't exist", code),
+                    Some(t) => t,
+                },
+            }
+        }
+    }
+
+    #[cfg(feature = "os")]
+    pub fn os_by_module_or_default(code: &str) -> &'static TardisOSClient {
+        unsafe {
+            match &TARDIS_INST.os {
+                None => panic!("[Tardis.Config] Object Storage instance doesn't exist"),
+                Some(t) => match t.get(code) {
+                    None => Self::os(),
+                    Some(t) => t,
+                },
+            }
+        }
+    }
+
     pub async fn shutdown() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
         #[cfg(feature = "mq")]
@@ -842,10 +895,14 @@ pub mod cache;
 #[cfg_attr(docsrs, doc(cfg(feature = "reldb")))]
 pub mod db;
 #[cfg(feature = "mail")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mail")))]
 pub mod mail;
 #[cfg(feature = "mq")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mq")))]
 pub mod mq;
+#[cfg(feature = "os")]
+#[cfg_attr(docsrs, doc(cfg(feature = "os")))]
+pub mod os;
 #[cfg(feature = "web-client")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-client")))]
 pub mod search;

@@ -6,7 +6,7 @@ use log::info;
 use redis::AsyncCommands;
 use tokio::time::{sleep, Duration};
 
-use tardis::basic::config::{CacheConfig, CacheModuleConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, CacheModuleConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::cache::cache_client::TardisCacheClient;
 use tardis::test::test_container::TardisTestContainer;
@@ -137,6 +137,10 @@ async fn test_cache_client() -> TardisResult<()> {
                     ..Default::default()
                 },
                 mail: MailConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                os: OSConfig {
                     enabled: false,
                     ..Default::default()
                 },

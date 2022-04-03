@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, OSConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
@@ -43,6 +43,10 @@ async fn test_search_client() -> TardisResult<()> {
                     ..Default::default()
                 },
                 mail: MailConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                os: OSConfig {
                     enabled: false,
                     ..Default::default()
                 },

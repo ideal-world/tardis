@@ -1,4 +1,4 @@
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::mail::mail_client::TardisMailSendReq;
 use tardis::TardisFuns;
@@ -40,6 +40,10 @@ async fn test_mail_client() -> TardisResult<()> {
                 smtp_password: "<password>".to_string(),
                 default_from: "<username>@163.com".to_string(),
                 modules: Default::default(),
+            },
+            os: OSConfig {
+                enabled: false,
+                ..Default::default()
             },
             adv: Default::default(),
         },

@@ -117,4 +117,9 @@ impl<'a> TardisFunsInst<'a> {
     pub fn mail(&self) -> &'static crate::TardisMailClient {
         TardisFuns::mail_by_module_or_default(self.module_code)
     }
+
+    #[cfg(feature = "os")]
+    pub fn os(&self) -> &'static crate::TardisOSClient {
+        TardisFuns::os_by_module_or_default(self.module_code)
+    }
 }

@@ -47,6 +47,8 @@ pub struct FrameworkConfig {
     pub search: SearchConfig,
     /// Mail configuration / 邮件配置
     pub mail: MailConfig,
+    /// Object Storage configuration / 对象存储配置
+    pub os: OSConfig,
     /// Advanced configuration / 高级配置
     pub adv: AdvConfig,
 }
@@ -585,6 +587,62 @@ impl Default for MailModuleConfig {
             smtp_username: "".to_string(),
             smtp_password: "".to_string(),
             default_from: "".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct OSConfig {
+    /// Whether to enable the object storage function / 是否启用对象存储操作功能
+    pub enabled: bool,
+    /// s3/oss/obs, Support amazon s3 / aliyun oss / huaweicloud obs
+    pub kind: String,
+    pub endpoint: String,
+    pub ak: String,
+    pub sk: String,
+    pub region: String,
+    pub default_bucket: String,
+    /// Object Storage module configuration / 对象存储模块配置
+    pub modules: HashMap<String, OSModuleConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct OSModuleConfig {
+    /// s3/oss/obs, Support amazon s3 / aliyun oss / huaweicloud obs
+    pub kind: String,
+    pub endpoint: String,
+    pub ak: String,
+    pub sk: String,
+    pub region: String,
+    pub default_bucket: String,
+}
+
+impl Default for OSConfig {
+    fn default() -> Self {
+        OSConfig {
+            enabled: true,
+            kind: "s3".to_string(),
+            endpoint: "".to_string(),
+            ak: "".to_string(),
+            sk: "".to_string(),
+            region: "".to_string(),
+            default_bucket: "".to_string(),
+            modules: Default::default(),
+        }
+    }
+}
+
+impl Default for OSModuleConfig {
+    fn default() -> Self {
+        OSModuleConfig {
+            kind: "s3".to_string(),
+            endpoint: "".to_string(),
+            ak: "".to_string(),
+            sk: "".to_string(),
+            region: "".to_string(),
+            default_bucket: "".to_string(),
         }
     }
 }

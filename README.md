@@ -23,6 +23,7 @@ Do NOT use in production environment!**
 * RabbitMQ client for AMQP protocol
 * Search client for Elasticsearch
 * Mail client for SMTP protocol
+* Object Storage client for arbitrary S3 compatible APIs
 * Mainstream encryption algorithms and SM2/3/4 algorithms
 * Containerized unit testing of mainstream middleware
 * Multi-environment configuration
@@ -31,7 +32,7 @@ Do NOT use in production environment!**
 ## ⚙️Feature description
 
 * ``trace`` tracing operation
-* ``crypto`` Encryption, decryption and digest operations
+* ``crypto`` encryption, decryption and digest operations
 * ``future`` asynchronous operations
 * ``reldb`` relational database operations(based on [SeaORM](https://github.com/SeaQL/sea-orm))
 * ``web-server`` web service operations(based on [Poem](https://github.com/poem-web/poem))
@@ -39,6 +40,7 @@ Do NOT use in production environment!**
 * ``cache`` cache operations
 * ``mq`` message queue operations
 * ``mail`` mail send operations
+* ``os`` object Storage operations
 * ``test`` unit test operations
 
 ## 🚀 Quick start
