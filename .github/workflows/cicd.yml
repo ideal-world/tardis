@@ -93,6 +93,6 @@ jobs:
       - name: cargo login
         run: cargo login ${{ secrets.CRATES_TOKEN }}
       - name: cargo package
-        run: cargo package
+        run: cargo package --all-features
       - name: cargo publish
-        run: cargo publish
+        run: cargo publish --all-features
