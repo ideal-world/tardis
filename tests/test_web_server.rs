@@ -144,6 +144,10 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
                 enabled: false,
                 ..Default::default()
             },
+            os: OSConfig {
+                enabled: false,
+                ..Default::default()
+            },
             adv: Default::default(),
         },
     })

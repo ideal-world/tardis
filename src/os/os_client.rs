@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 
 use async_trait::async_trait;
 use log::info;
@@ -66,9 +67,8 @@ impl TardisOSClient {
         }
     }
 
-    // TODO
-    fn get_client(&self) -> &Box<dyn TardisOSOperations + Sync + Send> {
-        &self.client
+    fn get_client(&self) -> &(dyn TardisOSOperations + Sync + Send) {
+        self.client.deref()
     }
 
     pub async fn bucket_create_simple(&self, bucket_name: &str, is_private: bool) -> TardisResult<()> {
