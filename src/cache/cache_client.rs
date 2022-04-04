@@ -151,8 +151,7 @@ impl TardisCacheClient {
     }
 
     // custom
-
-    pub async fn cmd<'a>(&'a self) -> MutexGuard<'a, Connection> {
+    pub async fn cmd(&self) -> MutexGuard<'_, Connection> {
         self.con.lock().await
     }
 }
