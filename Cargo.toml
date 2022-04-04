@@ -42,46 +42,46 @@ test = ["testcontainers"]
 
 [dependencies]
 # Basic
-serde = { version = "^1", features = ["derive"] }
-serde_json = { version = "^1" }
-derive_more = { version = "^0" }
-nanoid = { version = "^0" }
-base64 = { version = "^0" }
-hex = { version = "^0" }
-lazy_static = { version = "^1" }
-log = { version = "^0" }
+serde = { version = "^1.0", features = ["derive"] }
+serde_json = { version = "^1.0" }
+derive_more = { version = "^0.99" }
+nanoid = { version = "^0.4" }
+base64 = { version = "^0.13" }
+hex = { version = "^0.4" }
+lazy_static = { version = "^1.4" }
+log = { version = "^0.4" }
 rand = { version = "^0.8" }
 rand_core = { version = "^0.6" }
 chrono = { version = "^0.4" }
-env_logger = { version = "^0" }
-config = { version = "^0" }
-regex = { version = "^1" }
-url = { version = "^2" }
+env_logger = { version = "^0.9" }
+config = { version = "^0.13" }
+regex = { version = "^1.5" }
+url = { version = "^2.2" }
 
 # Tokio
 tokio = { version = "^1.17", features = ["macros", "rt-multi-thread", "signal", "time"], optional = true }
 
 # Crypto
-rust-crypto = { version = "^0", optional = true }
-rsa = { version = "^0", optional = true }
-pkcs8 = { version = "^0.7", optional = true }
-gmsm = { version = "^0", optional = true }
-num = { version = "^0", optional = true }
+rust-crypto = { version = "^0.2", optional = true }
+rsa = { version = "^0.5", optional = true }
+pkcs8 = { version = "^0.8", optional = true }
+gmsm = { version = "^0.1", optional = true }
+num = { version = "^0.4", optional = true }
 
 # Future
 futures = { version = "^0.3", optional = true }
 async-stream = { version = "^0.3", optional = true }
 futures-util = { version = "^0.3", optional = true }
-async-trait = { version = "^0", optional = true }
+async-trait = { version = "^0.1", optional = true }
 
 # Tracing
 tracing = { version = "^0.1", optional = true }
 tracing-subscriber = { version = "^0.3", features = ["env-filter"], optional = true }
 
 # RelDB
-sea-orm = { version = "^0.6", features = ["sqlx-all", "macros", "runtime-tokio-rustls", "debug-print"], optional = true }
-sea-query = { version = "^0.21", optional = true }
-sqlparser = { version = "^0.14", optional = true }
+sea-orm = { version = "^0.7", features = ["sqlx-all", "macros", "runtime-tokio-rustls", "debug-print"], optional = true }
+sea-query = { version = "^0.23", optional = true }
+sqlparser = { version = "^0.16", optional = true }
 
 # Web Server
 poem-openapi = { version = "^1.3", features = ["rapidoc", "chrono"], optional = true }
@@ -96,23 +96,23 @@ redis = { version = "^0.21", features = ["tokio-comp"], optional = true }
 
 # Rabbit
 lapin = { version = "^2.0", optional = true }
-amq-protocol-types = { version = "^7", optional = true }
-async-global-executor = { version = "^2", optional = true }
+amq-protocol-types = { version = "^7.0", optional = true }
+async-global-executor = { version = "^2.0", optional = true }
 
 #Mail
-lettre = { version = "0.10.0-rc.4", features = ["smtp-transport", "tokio1", "tokio1-native-tls", "builder"], optional = true }
+lettre = { version = "0.10.0-rc.5", features = ["smtp-transport", "tokio1", "tokio1-native-tls", "builder"], optional = true }
 
 #Object Storage
-rust-s3 = { verison = "^0", optional = true }
-anyhow = { version = "^1", optional = true }
+rust-s3 = { verison = "^0.30", optional = true }
+anyhow = { version = "^1.0", optional = true }
 
 # Test
-testcontainers = { version = "^0", optional = true }
+testcontainers = { version = "^0.13", optional = true }
 
 [dev-dependencies]
 # Common
-tokio = { version = "^1", features = ["time", "rt", "macros"] }
-criterion = { version = "0.3" }
+tokio = { version = "^1.17", features = ["time", "rt", "macros"] }
+criterion = { version = "^0.3" }
 
 [[test]]
 name = "test_basic_crypto"
