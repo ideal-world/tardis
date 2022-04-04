@@ -95,4 +95,4 @@ jobs:
       - name: cargo package
         run: cargo package
       - name: cargo publish
-        run: cargo publish --no-verify
+        run: cargo publish
