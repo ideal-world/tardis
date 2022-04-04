@@ -5,7 +5,6 @@ use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
 #[tokio::test]
-#[ignore]
 async fn test_os_client() -> TardisResult<()> {
     TardisFuns::init_log()?;
     TardisFuns::init_conf(TardisConfig {

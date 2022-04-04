@@ -84,7 +84,7 @@ async fn test_web_server() -> TardisResult<()> {
 
     let docker = clients::Cli::default();
     let redis_container = TardisTestContainer::redis_custom(&docker);
-    let redis_port = redis_container.get_host_port(6379).expect("Test port acquisition error");
+    let redis_port = redis_container.get_host_port(6379);
     let redis_url = format!("redis://127.0.0.1:{}/0", redis_port);
 
     tokio::spawn(async move { start_serv(web_url, &redis_url).await });

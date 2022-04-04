@@ -2,9 +2,11 @@ use std::env;
 use std::future::Future;
 
 use testcontainers::clients::Cli;
-use testcontainers::images::generic::{GenericImage, WaitFor};
+use testcontainers::core::Container;
+use testcontainers::core::WaitFor;
+use testcontainers::images::generic::GenericImage;
 use testcontainers::images::redis::Redis;
-use testcontainers::{clients, images, Container, Docker, Image};
+use testcontainers::{clients, images};
 
 use crate::basic::result::TardisResult;
 
@@ -21,12 +23,12 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::redis_custom(&docker);
-            let port = node.get_host_port(6379).expect("Test port acquisition error");
+            let port = node.get_host_port(6379);
             fun(format!("redis://127.0.0.1:{}/0", port)).await
         }
     }
 
-    pub fn redis_custom(docker: &Cli) -> Container<Cli, Redis> {
+    pub fn redis_custom(docker: &Cli) -> Container<Redis> {
         docker.run(images::redis::Redis::default())
     }
 
@@ -40,13 +42,13 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::rabbit_custom(&docker);
-            let port = node.get_host_port(5672).expect("Test port acquisition error");
+            let port = node.get_host_port(5672);
             fun(format!("amqp://guest:guest@127.0.0.1:{}/%2f", port)).await
         }
     }
 
-    pub fn rabbit_custom(docker: &Cli) -> Container<Cli, GenericImage> {
-        docker.run(images::generic::GenericImage::new("rabbitmq:management").with_wait_for(WaitFor::message_on_stdout("Server startup complete")))
+    pub fn rabbit_custom(docker: &Cli) -> Container<GenericImage> {
+        docker.run(images::generic::GenericImage::new("rabbitmq", "management").with_wait_for(WaitFor::message_on_stdout("Server startup complete")))
     }
 
     pub async fn mysql<F, T>(init_script_path: Option<&str>, fun: F) -> TardisResult<()>
@@ -59,12 +61,12 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::mysql_custom(init_script_path, &docker);
-            let port = node.get_host_port(3306).expect("Test port acquisition error");
+            let port = node.get_host_port(3306);
             fun(format!("mysql://root:123456@localhost:{}/test", port)).await
         }
     }
 
-    pub fn mysql_custom<'a>(init_script_path: Option<&str>, docker: &'a Cli) -> Container<'a, Cli, GenericImage> {
+    pub fn mysql_custom<'a>(init_script_path: Option<&str>, docker: &'a Cli) -> Container<'a, GenericImage> {
         if let Some(init_script_path) = init_script_path {
             let path = env::current_dir()
                 .expect("[Tardis.Test_Container] Current path get error")
@@ -73,7 +75,7 @@ impl TardisTestContainer {
                 .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{}] get error", init_script_path))
                 .to_string();
             docker.run(
-                images::generic::GenericImage::new("mysql")
+                images::generic::GenericImage::new("mysql", "8")
                     .with_env_var("MYSQL_ROOT_PASSWORD", "123456")
                     .with_env_var("MYSQL_DATABASE", "test")
                     .with_volume(path, "/docker-entrypoint-initdb.d/")
@@ -81,7 +83,7 @@ impl TardisTestContainer {
             )
         } else {
             docker.run(
-                images::generic::GenericImage::new("mysql")
+                images::generic::GenericImage::new("mysql", "8")
                     .with_env_var("MYSQL_ROOT_PASSWORD", "123456")
                     .with_env_var("MYSQL_DATABASE", "test")
                     .with_wait_for(WaitFor::message_on_stderr("port: 3306  MySQL Community Server - GPL")),
@@ -99,12 +101,12 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::postgres_custom(init_script_path, &docker);
-            let port = node.get_host_port(5432).expect("Test port acquisition error");
+            let port = node.get_host_port(5432);
             fun(format!("postgres://postgres:123456@localhost:{}/test", port)).await
         }
     }
 
-    pub fn postgres_custom<'a>(init_script_path: Option<&str>, docker: &'a Cli) -> Container<'a, Cli, GenericImage> {
+    pub fn postgres_custom<'a>(init_script_path: Option<&str>, docker: &'a Cli) -> Container<'a, GenericImage> {
         if let Some(init_script_path) = init_script_path {
             let path = env::current_dir()
                 .expect("[Tardis.Test_Container] Current path get error")
@@ -113,7 +115,7 @@ impl TardisTestContainer {
                 .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{}] get error", init_script_path))
                 .to_string();
             docker.run(
-                images::generic::GenericImage::new("postgres:alpine")
+                images::generic::GenericImage::new("postgres", "alpine")
                     .with_env_var("POSTGRES_PASSWORD", "123456")
                     .with_env_var("POSTGRES_DB", "test")
                     .with_volume(path, "/docker-entrypoint-initdb.d/")
@@ -121,7 +123,7 @@ impl TardisTestContainer {
             )
         } else {
             docker.run(
-                images::generic::GenericImage::new("postgres")
+                images::generic::GenericImage::new("postgres", "alpine")
                     .with_env_var("POSTGRES_PASSWORD", "123456")
                     .with_env_var("POSTGRES_DB", "test")
                     .with_wait_for(WaitFor::message_on_stderr("database system is ready to accept connections")),
@@ -139,42 +141,17 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::es_custom(&docker);
-            let port = node.get_host_port(9200).expect("Test port acquisition error");
+            let port = node.get_host_port(9200);
             fun(format!("https://elastic:123456@127.0.0.1:{}", port)).await
         }
     }
 
-    pub fn es_custom(docker: &Cli) -> Container<Cli, GenericImage> {
+    pub fn es_custom(docker: &Cli) -> Container<GenericImage> {
         docker.run(
-            images::generic::GenericImage::new("elasticsearch:8.1.0")
+            images::generic::GenericImage::new("elasticsearch", "8.1.0")
                 .with_env_var("ELASTIC_PASSWORD", "123456")
                 .with_env_var("discovery.type", "single-node")
                 .with_wait_for(WaitFor::message_on_stdout("successfully loaded geoip database file")),
-        )
-    }
-
-    pub async fn minio<F, T>(fun: F) -> TardisResult<()>
-    where
-        F: Fn(String) -> T + Send + Sync + 'static,
-        T: Future<Output = TardisResult<()>> + Send + 'static,
-    {
-        if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
-            fun("http://127.0.0.1:9000".to_string()).await
-        } else {
-            let docker = clients::Cli::default();
-            let node = TardisTestContainer::minio_custom(&docker);
-            let port = node.get_host_port(9000).expect("Test port acquisition error");
-            fun(format!("http://127.0.0.1:{}", port)).await
-        }
-    }
-
-    pub fn minio_custom(docker: &Cli) -> Container<Cli, GenericImage> {
-        docker.run(
-            images::generic::GenericImage::new("minio/minio:RELEASE.2022-03-26T06-49-28Z")
-                .with_env_var("MINIO_ROOT_USER", "AKIAIOSFODNN7EXAMPLE")
-                .with_env_var("MINIO_ROOT_PASSWORD", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
-                .with_args(vec!["server".to_string(), "/data".to_string(), "--console-address".to_string(), ":9001".to_string()])
-                .with_wait_for(WaitFor::message_on_stdout("API:")),
         )
     }
 }

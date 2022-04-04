@@ -15,7 +15,7 @@ async fn main() -> TardisResult<()> {
     // Here is a demonstration of using docker to start a mysql simulation scenario.
     let docker = clients::Cli::default();
     let redis_container = TardisTestContainer::redis_custom(&docker);
-    let port = redis_container.get_host_port(6379).expect("Test port acquisition error");
+    let port = redis_container.get_host_port(6379);
     let url = format!("redis://127.0.0.1:{}/0", port);
     env::set_var("TARDIS_CACHE.URL", url.clone());
     env::set_var("TARDIS_CACHE.MODULES.M1.URL", url.clone());

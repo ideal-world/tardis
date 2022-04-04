@@ -1,6 +1,6 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha7"
+version = "0.1.0-alpha8"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -64,7 +64,7 @@ tokio = { version = "^1.17", features = ["macros", "rt-multi-thread", "signal", 
 # Crypto
 rust-crypto = { version = "^0.2", optional = true }
 rsa = { version = "^0.5", optional = true }
-pkcs8 = { version = "^0.8", optional = true }
+pkcs8 = { version = "^0.7", optional = true }
 gmsm = { version = "^0.1", optional = true }
 num = { version = "^0.4", optional = true }
 

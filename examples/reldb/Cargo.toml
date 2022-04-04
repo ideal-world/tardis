@@ -8,7 +8,7 @@ edition = "2021"
 tardis = { path = "../..", features = ["reldb", "test"] }
 sea-orm = { version = "^0.7", features = ["macros"] }
 # Example only
-testcontainers = { version = "^0" }
+testcontainers = { version = "^0.13" }
 
 
 
