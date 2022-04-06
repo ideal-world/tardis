@@ -5,7 +5,6 @@ use std::time::Duration;
 use testcontainers::clients;
 use tokio::time::sleep;
 
-use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::tokio;
@@ -18,13 +17,13 @@ async fn main() -> TardisResult<()> {
     let rabbit_container = TardisTestContainer::rabbit_custom(&docker);
     let port = rabbit_container.get_host_port(5672);
     let url = format!("amqp://guest:guest@127.0.0.1:{}/%2f", port);
-    env::set_var("TARDIS_MQ.URL", url);
+    env::set_var("TARDIS_FW.MQ.URL", url);
 
     env::set_var("RUST_LOG", "debug");
     env::set_var("PROFILE", "default");
 
     // Initial configuration
-    TardisFuns::init::<NoneConfig>("config").await?;
+    TardisFuns::init("config").await?;
 
     let client = TardisFuns::mq();
 

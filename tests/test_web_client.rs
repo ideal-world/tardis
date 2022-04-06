@@ -2,7 +2,7 @@
 
 use reqwest::StatusCode;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, OSConfig, SearchConfig, TardisConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig};
 use tardis::basic::result::TardisResult;
 use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
@@ -10,7 +10,7 @@ use tardis::TardisFuns;
 #[tokio::test]
 async fn test_web_client() -> TardisResult<()> {
     TardisFuns::init_conf(TardisConfig {
-        ws: NoneConfig {},
+        cs: Default::default(),
         fw: FrameworkConfig {
             app: Default::default(),
             web_server: Default::default(),

@@ -1,11 +1,11 @@
-[app]
+[fw.app]
 id = "cache"
 name = "分布式缓存基础示例"
 desc = "分布式缓存基础示例"
 version = "1.0.0"
 
-[cache]
+[fw.cache]
 url = "redis://127.0.0.1:6379"
 
-[cache.modules.m1]
+[fw.cache.modules.m1]
 url = "redis://127.0.0.1:6379"

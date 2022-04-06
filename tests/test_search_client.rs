@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, OSConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
@@ -10,7 +10,7 @@ async fn test_search_client() -> TardisResult<()> {
     TardisFuns::init_log()?;
     TardisTestContainer::es(|url| async move {
         TardisFuns::init_conf(TardisConfig {
-            ws: NoneConfig {},
+            cs: Default::default(),
             fw: FrameworkConfig {
                 app: Default::default(),
                 web_server: WebServerConfig {

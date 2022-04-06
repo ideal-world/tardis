@@ -1,4 +1,3 @@
-use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::serde::{self, Deserialize, Serialize};
 use tardis::serde_json;
@@ -8,7 +7,7 @@ use tardis::TardisFuns;
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     // Initial configuration
-    TardisFuns::init::<NoneConfig>("").await?;
+    TardisFuns::init("").await?;
 
     // Simple get request
     let response = TardisFuns::web_client().get_to_str("http://httpbin.org/get", None).await?;

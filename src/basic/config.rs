@@ -9,6 +9,7 @@ use std::fmt::Debug;
 use std::path::Path;
 
 use config::{Config, ConfigError, Environment, File};
+use serde_json::Value;
 
 use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
 use crate::basic::fetch_profile;
@@ -18,11 +19,11 @@ use crate::serde::{Deserialize, Serialize};
 use crate::TardisFuns;
 
 /// Configuration of Tardis / Tardis的配置
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Serialize, Clone)]
 #[serde(default)]
-pub struct TardisConfig<T> {
+pub struct TardisConfig {
     /// Project custom configuration / 项目自定义的配置
-    pub ws: T,
+    pub cs: HashMap<String, Value>,
     /// Tardis framework configuration / Tardis框架的各功能配置
     pub fw: FrameworkConfig,
 }
@@ -94,9 +95,9 @@ pub struct AppConfig {
     pub email: String,
     /// Application instance identification / 应用实例标识
     ///
-    /// An application can have multiple instances, each with its own identity, using the UUID by default.
+    /// An application can have multiple instances, each with its own identity, using the nanoid by default.
     ///
-    /// 一个应用可以有多个实例，每个实例都有自己的标识，默认使用UUID.
+    /// 一个应用可以有多个实例，每个实例都有自己的标识，默认使用nanoid.
     pub inst: String,
 }
 
@@ -659,20 +660,8 @@ pub struct AdvConfig {
     pub backtrace: bool,
 }
 
-/// Empty configuration / 空配置
-///
-/// For cases where project-level configuration is not needed.
-///
-/// 用于不需要项目级配置的情况.
-#[derive(Default, Debug, Serialize, Deserialize)]
-#[serde(default)]
-pub struct NoneConfig {}
-
-impl<'a, T> TardisConfig<T>
-where
-    T: Deserialize<'a>,
-{
-    pub(crate) fn init(relative_path: &str) -> TardisResult<TardisConfig<T>> {
+impl TardisConfig {
+    pub(crate) fn init(relative_path: &str) -> TardisResult<TardisConfig> {
         let profile = fetch_profile();
         let path = Path::new(relative_path);
 
@@ -691,8 +680,30 @@ where
         }
         conf = conf.add_source(Environment::with_prefix("TARDIS"));
         let conf = conf.build()?;
-        let workspace_config = conf.clone().try_deserialize::<T>()?;
-        let framework_config = conf.try_deserialize::<FrameworkConfig>()?;
+        let mut workspace_config: HashMap<String, Value> = Default::default();
+        match conf.get::<Value>("cs") {
+            Ok(c) => {
+                workspace_config.insert("".to_string(), c);
+            }
+            Err(e) => match e {
+                ConfigError::NotFound(_) => {
+                    info!("[Tardis.Config] No [cs] configuration found");
+                }
+                _ => return Err(e.into()),
+            },
+        }
+        match conf.get::<HashMap<String, Value>>("csm") {
+            Ok(c) => {
+                workspace_config.extend(c);
+            }
+            Err(e) => match e {
+                ConfigError::NotFound(_) => {
+                    info!("[Tardis.Config] No [csm] configuration found");
+                }
+                _ => return Err(e.into()),
+            },
+        }
+        let framework_config = conf.get::<FrameworkConfig>("fw")?;
 
         env::set_var("RUST_BACKTRACE", if framework_config.adv.backtrace { "1" } else { "0" });
 
@@ -703,7 +714,7 @@ where
         debug!("=====[Tardis.Config] Content=====\n{:#?}\n=====", framework_config);
 
         Ok(TardisConfig {
-            ws: workspace_config,
+            cs: workspace_config,
             fw: framework_config,
         })
     }

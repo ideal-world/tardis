@@ -1,12 +1,12 @@
-[app]
+[fw.app]
 id = "web-basic"
 name = "web基础示例"
 desc = "web基础示例"
 version = "1.0.0"
 
-[web_server]
+[fw.web_server]
 port = 8089
-[[web_server.modules]]
+[[fw.web_server.modules]]
 code = ""
 title = "default app"
 doc_urls = [["test env", "http://localhost:8089/"]]

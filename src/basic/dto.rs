@@ -1,4 +1,6 @@
 //! Common DTOs / 常用的DTO
+use serde::de::DeserializeOwned;
+
 use crate::serde::{Deserialize, Serialize};
 use crate::{TardisFuns, TardisResult};
 
@@ -57,6 +59,10 @@ impl<'a> TardisFunsInst<'a> {
             #[cfg(feature = "reldb")]
             db: None,
         }
+    }
+
+    pub fn conf<T: 'static + DeserializeOwned>(code: &'a str) -> &T {
+        TardisFuns::cs_config(code)
     }
 
     #[cfg(feature = "reldb")]

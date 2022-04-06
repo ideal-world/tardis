@@ -1,6 +1,7 @@
 use log::info;
+use tracing::enabled;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, NoneConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
@@ -8,7 +9,7 @@ use tardis::TardisFuns;
 async fn test_os_client() -> TardisResult<()> {
     TardisFuns::init_log()?;
     TardisFuns::init_conf(TardisConfig {
-        ws: NoneConfig {},
+        cs: Default::default(),
         fw: FrameworkConfig {
             app: Default::default(),
             web_server: WebServerConfig {

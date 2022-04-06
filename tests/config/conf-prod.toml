@@ -1,5 +1,10 @@
-[db_proj]
+[cs]
+[cs.db_proj]
 url = "postgres://postgres@prod.proj"
+[csm.m1]
+[csm.m1.db_proj]
+url = "postgres://postgres@m1.proj"
 
-[db]
+[fw]
+[fw.db]
 url = "postgres://postgres@prod"

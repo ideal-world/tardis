@@ -1,6 +1,5 @@
 use std::env;
 
-use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::tokio;
 use tardis::TardisFuns;
@@ -17,7 +16,7 @@ async fn main() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug");
     env::set_var("PROFILE", "default");
     // Initial configuration
-    TardisFuns::init::<NoneConfig>("config").await?;
+    TardisFuns::init("config").await?;
     // Register the processor and start the web service
     TardisFuns::web_server().add_module("", Api).await.start().await
 }

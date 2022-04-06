@@ -85,7 +85,7 @@ Startup class configuration
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     // Initial configuration
-    TardisFuns::init::<NoneConfig>("config").await?;
+    TardisFuns::init("config").await?;
     // Register the processor and start the web service
     TardisFuns::web_server().add_module("", Api).start().await
 }

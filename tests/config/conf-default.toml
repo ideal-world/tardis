@@ -1,15 +1,17 @@
+[cs]
 project_name = "测试"
 level_num = 2
 
-[db]
+[fw]
+[fw.db]
 enabled = false
 port = 8089
 
-[web_server]
+[fw.web_server]
 enabled = false
 
-[cache]
+[fw.cache]
 enabled = false
 
-[mq]
+[fw.mq]
 enabled = false

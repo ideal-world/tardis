@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use testcontainers::clients;
 
-use tardis::basic::config::NoneConfig;
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::tokio;
@@ -17,14 +16,14 @@ async fn main() -> TardisResult<()> {
     let redis_container = TardisTestContainer::redis_custom(&docker);
     let port = redis_container.get_host_port(6379);
     let url = format!("redis://127.0.0.1:{}/0", port);
-    env::set_var("TARDIS_CACHE.URL", url.clone());
-    env::set_var("TARDIS_CACHE.MODULES.M1.URL", url.clone());
+    env::set_var("TARDIS_FW.CACHE.URL", url.clone());
+    env::set_var("TARDIS_FW.CACHE.MODULES.M1.URL", url.clone());
 
     env::set_var("RUST_LOG", "debug");
     env::set_var("PROFILE", "default");
 
     // Initial configuration
-    TardisFuns::init::<NoneConfig>("config").await?;
+    TardisFuns::init("config").await?;
 
     let client = TardisFuns::cache();
     let client_m1 = TardisFuns::cache_by_module("m1");

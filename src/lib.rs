@@ -77,12 +77,11 @@
 //! use tardis::basic::result::TardisResult;
 //! use tardis::TardisFuns;
 //!
-//! use tardis::basic::config::NoneConfig;
 //! use tardis::TardisFuns;
 //! #[tokio::main]
 //! async fn main() -> TardisResult<()> {
 //!     // Initial configuration
-//!     TardisFuns::init::<NoneConfig>("config").await?;
+//!     TardisFuns::init("config").await?;
 //!     // Register the processor and start the web service
 //!     TardisFuns::web_server().add_module("", Api).start().await
 //! }
@@ -98,9 +97,9 @@
 //!>   |-- cache         Cache Usage Example  
 //!>   |-- mq            Message Queue Usage Example  
 //!>   |-- todo          A complete project usage example  
-//!>   |-- perf-test     Performance test case  //!
+//!>   |-- perf-test     Performance test case
 
-#![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-wrold/tardis/main/logo.png")]
+#![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-world/tardis/main/logo.png")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 extern crate core;
@@ -116,7 +115,9 @@ pub use log;
 pub use rand;
 pub use regex;
 pub use serde;
+use serde::de::DeserializeOwned;
 pub use serde_json;
+use serde_json::Value;
 #[cfg(feature = "rt_tokio")]
 pub use tokio;
 
@@ -139,7 +140,6 @@ use crate::mq::mq_client::TardisMQClient;
 use crate::os::os_client::TardisOSClient;
 #[cfg(feature = "web-client")]
 use crate::search::search_client::TardisSearchClient;
-use crate::serde::Deserialize;
 #[cfg(feature = "web-client")]
 use crate::web::web_client::TardisWebClient;
 #[cfg(feature = "web-server")]
@@ -217,7 +217,7 @@ use crate::web::web_server::TardisWebServer;
 ///
 /// ```ignore
 /// use tardis::TardisFuns;
-/// TardisFuns::init::<ExampleConfig>("proj/config").await?;
+/// TardisFuns::init("proj/config").await?;
 /// ```
 ///
 /// More examples of initialization can be found in: `test_basic_config.rs` .
@@ -241,7 +241,8 @@ use crate::web::web_server::TardisWebServer;
 /// TardisFuns::mq();
 /// ```
 pub struct TardisFuns {
-    workspace_config: Option<Box<dyn Any>>,
+    custom_config: Option<HashMap<String, Value>>,
+    _custom_config_cached: Option<HashMap<String, Box<dyn Any>>>,
     framework_config: Option<FrameworkConfig>,
     #[cfg(feature = "reldb")]
     reldb: Option<HashMap<String, TardisRelDBClient>>,
@@ -262,7 +263,8 @@ pub struct TardisFuns {
 }
 
 static mut TARDIS_INST: TardisFuns = TardisFuns {
-    workspace_config: None,
+    custom_config: None,
+    _custom_config_cached: None,
     framework_config: None,
     #[cfg(feature = "reldb")]
     reldb: None,
@@ -297,12 +299,12 @@ impl TardisFuns {
     /// use std::env;
     /// use tardis::TardisFuns;
     /// env::set_var("PROFILE", "test");
-    /// TardisFuns::init::<ExampleConfig>("proj/config").await;
+    /// TardisFuns::init("proj/config").await;
     /// ```
-    pub async fn init<T: 'static + Deserialize<'static>>(relative_path: &str) -> TardisResult<()> {
+    pub async fn init(relative_path: &str) -> TardisResult<()> {
         TardisLogger::init()?;
-        let config = TardisConfig::<T>::init(relative_path)?;
-        TardisFuns::init_conf::<T>(config).await
+        let config = TardisConfig::init(relative_path)?;
+        TardisFuns::init_conf(config).await
     }
 
     /// Initialize log / 初始化日志
@@ -328,11 +330,10 @@ impl TardisFuns {
     /// # Examples
     ///
     /// ```ignore
-    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, NoneConfig,
-    /// SearchConfig, MailConfig, OSConfig, TardisConfig, WebServerConfig};
+    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, SearchConfig, MailConfig, OSConfig, TardisConfig, WebServerConfig};
     /// use tardis::TardisFuns;
     /// let result = TardisFuns::init_conf(TardisConfig {
-    ///             ws: NoneConfig {},
+    ///             cs: Default::default(),
     ///             fw: FrameworkConfig {
     ///                 app: Default::default(),
     ///                 web_server: WebServerConfig {
@@ -366,10 +367,11 @@ impl TardisFuns {
     ///         })
     ///         .await;
     /// ```
-    pub async fn init_conf<T: 'static>(conf: TardisConfig<T>) -> TardisResult<()> {
+    pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
         TardisLogger::init()?;
         unsafe {
-            replace(&mut TARDIS_INST.workspace_config, Some(Box::new(conf.ws)));
+            replace(&mut TARDIS_INST.custom_config, Some(conf.cs));
+            replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
             replace(&mut TARDIS_INST.framework_config, Some(conf.fw));
         };
         #[cfg(feature = "reldb")]
@@ -445,16 +447,27 @@ impl TardisFuns {
         TardisResult::Ok(())
     }
 
-    /// Get the project-level configuration object / 获取项目级配置对象
-    pub fn ws_config<T>() -> &'static T {
+    /// Get the custom configuration object / 获取自定义配置对象
+    pub fn cs_config<T: 'static + DeserializeOwned>(code: &str) -> &T {
         unsafe {
-            match &TARDIS_INST.workspace_config {
-                None => panic!("[Tardis.Config] Raw Workspace Config doesn't exist"),
-                Some(conf) => match conf.downcast_ref::<T>() {
-                    None => panic!("[Tardis.Config] Workspace Config doesn't exist"),
-                    Some(t) => t,
-                },
+            let conf = TARDIS_INST.custom_config.as_ref().expect("[Tardis.Config] Custom Config doesn't exist");
+            let cached_conf = TARDIS_INST._custom_config_cached.as_ref().expect("[Tardis.Config] Custom Config doesn't exist");
+            if let Some(t) = conf.get(code) {
+                if let Some(cached_t) = cached_conf.get(code) {
+                    return cached_t.downcast_ref::<T>().unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{}] type error", code));
+                }
+                let t: T = TardisFuns::json.json_to_obj(t.clone()).unwrap_or_else(|_| panic!("[Tardis.Config] Custom Config [{}] type conversion error", code));
+                TARDIS_INST._custom_config_cached.as_mut().expect("[Tardis.Config] Custom Config doesn't exist").insert(code.to_string(), Box::new(t));
+                return cached_conf
+                    .get(code)
+                    .unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{}] doesn't exist", code))
+                    .downcast_ref::<T>()
+                    .unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{}] type error", code));
             }
+            if !code.is_empty() {
+                return Self::cs_config("");
+            }
+            panic!("[Tardis.Config] Custom Config [{}] or [] doesn't exist", code);
         }
     }
 
