@@ -33,13 +33,13 @@ async fn test_reldb_client() -> TardisResult<()> {
 
 async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
     let cxt = TardisContext {
-        scope_paths: "t1/a1".to_string(),
+        own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
         token: "token1".to_string(),
         token_kind: "default".to_string(),
         roles: vec![],
         groups: vec![],
-        account_id: "acc1".to_string(),
+        owner: "acc1".to_string(),
     };
 
     let db = client.conn();
@@ -110,13 +110,13 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
 
 async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
     let cxt = TardisContext {
-        scope_paths: "t1/a1".to_string(),
+        own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
         token: "token1".to_string(),
         token_kind: "default".to_string(),
         roles: vec![],
         groups: vec![],
-        account_id: "acc1".to_string(),
+        owner: "acc1".to_string(),
     };
 
     let db = client.conn();
@@ -329,13 +329,13 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
     let db = client.conn();
 
     let cxt = TardisContext {
-        scope_paths: "t1/a1".to_string(),
+        own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
         token: "token1".to_string(),
         token_kind: "default".to_string(),
         roles: vec![],
         groups: vec![],
-        account_id: "acc1".to_string(),
+        owner: "acc1".to_string(),
     };
 
     db.insert_one(

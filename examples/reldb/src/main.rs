@@ -32,9 +32,9 @@ async fn main() -> TardisResult<()> {
     // --------------------------------------------------
 
     let cxt = TardisContext {
-        scope_paths: "".to_string(),
+        own_paths: "".to_string(),
         ak: "".to_string(),
-        account_id: "".to_string(),
+        owner: "".to_string(),
         token: "".to_string(),
         token_kind: "".to_string(),
         roles: vec![],

@@ -1,0 +1,44 @@
+use std::env;
+
+use testcontainers::clients;
+
+use tardis::basic::result::TardisResult;
+use tardis::test::test_container::TardisTestContainer;
+use tardis::tokio;
+use tardis::TardisFuns;
+
+mod initializer;
+
+///
+/// ### Multi-application aggregation example
+///
+/// This example has two applications: tardis-example-multi-apps-doc / tardis-example-multi-apps-tag
+///
+/// Each application has its own configuration: DocConfig / TagConfig
+///
+/// Each application can also specify special features, such as web, database
+///
+/// ### Visit
+///
+/// http://127.0.0.1:8089/doc/ui / http://127.0.0.1:8089/tag/ui
+///
+/// Authentication: eyJvd25fcGF0aHMiOiAiIiwiYWsiOiAiIiwib3duZXIiOiAiIiwidG9rZW4iOiAiIiwidG9rZW5fa2luZCI6ICIiLCJyb2xlcyI6IFtdLCJncm91cHMiOiBbXX0=
+///
+#[tokio::main]
+async fn main() -> TardisResult<()> {
+    // Here is a demonstration of using docker to start a mysql simulation scenario.
+    let docker = clients::Cli::default();
+    let mysql_container = TardisTestContainer::mysql_custom(None, &docker);
+    let port = mysql_container.get_host_port(3306);
+    let url = format!("mysql://root:123456@localhost:{}/test", port);
+    env::set_var("TARDIS_FW.DB.URL", url.clone());
+    env::set_var("TARDIS_FW.DB.MODULES.TAG.URL", url);
+
+    env::set_var("RUST_LOG", "debug");
+    env::set_var("PROFILE", "default");
+
+    TardisFuns::init("config").await?;
+    let web_server = TardisFuns::web_server();
+    initializer::init(web_server).await?;
+    web_server.start().await
+}

@@ -16,12 +16,12 @@ use crate::{TardisFuns, TardisResult};
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(default)]
 pub struct TardisContext {
-    /// The requested scope ids / 请求的作用域Ids
-    pub scope_paths: String,
+    /// The requested own paths / 请求的所属路径
+    pub own_paths: String,
     /// The requested Ak / 请求的Ak
     pub ak: String,
-    /// The requested account id / 请求的账号Id
-    pub account_id: String,
+    /// The requested owner/ 请求的所属者
+    pub owner: String,
     /// The requested Token / 请求的Token
     pub token: String,
     /// The requested Token type / 请求的Token类型
@@ -35,9 +35,9 @@ pub struct TardisContext {
 impl Default for TardisContext {
     fn default() -> Self {
         TardisContext {
-            scope_paths: "".to_string(),
+            own_paths: "".to_string(),
             ak: "".to_string(),
-            account_id: "".to_string(),
+            owner: "".to_string(),
             token: "".to_string(),
             token_kind: "".to_string(),
             roles: vec![],
@@ -61,8 +61,8 @@ impl<'a> TardisFunsInst<'a> {
         }
     }
 
-    pub fn conf<T: 'static + DeserializeOwned>(code: &'a str) -> &T {
-        TardisFuns::cs_config(code)
+    pub fn conf<T: 'static + DeserializeOwned>(&self) -> &T {
+        TardisFuns::cs_config(self.module_code)
     }
 
     #[cfg(feature = "reldb")]

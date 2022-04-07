@@ -1,0 +1,16 @@
+[package]
+name = "tardis-example-multi-apps"
+version = "0.1.0"
+authors = ["gudaoxuri"]
+edition = "2021"
+
+[dependencies]
+tardis-example-multi-apps-doc = { path = "doc"}
+tardis-example-multi-apps-tag = { path = "tag"}
+
+serde = { version = "^1", features = ["derive"] }
+# Tardis Functions
+tardis = { path = "../..", features = ["web-server", "test"] }
+# Example only
+testcontainers = { version = "^0.13" }
+

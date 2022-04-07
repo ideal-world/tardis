@@ -27,6 +27,7 @@ Do NOT use in production environment!**
 * Mainstream encryption algorithms and SM2/3/4 algorithms
 * Containerized unit testing of mainstream middleware
 * Multi-environment configuration
+* Multi-application aggregation
 * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
 
 ## ⚙️Feature description
@@ -102,6 +103,7 @@ async fn main() -> TardisResult<()> {
   |-- cache         Cache Usage Example
   |-- mq            Message Queue Usage Example
   |-- todo          A complete project usage example
+  |-- multi-apps    Multi-application aggregation example
   |-- perf-test     Performance test case
 ```
 

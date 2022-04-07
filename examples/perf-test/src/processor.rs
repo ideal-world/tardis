@@ -40,9 +40,9 @@ impl TodoApi {
     #[oai(path = "/todo", method = "post")]
     async fn add(&self, todo_add_req: Json<TodoAddReq>) -> TardisApiResult<i32> {
         let cxt = TardisContext {
-            scope_paths: "".to_string(),
+            own_paths: "".to_string(),
             ak: "".to_string(),
-            account_id: "".to_string(),
+            owner: "".to_string(),
             token: "".to_string(),
             token_kind: "".to_string(),
             roles: vec![],
@@ -100,9 +100,9 @@ impl TodoApi {
     #[oai(path = "/todo/:id", method = "put")]
     async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>) -> TardisApiResult<u64> {
         let cxt = TardisContext {
-            scope_paths: "".to_string(),
+            own_paths: "".to_string(),
             ak: "".to_string(),
-            account_id: "".to_string(),
+            owner: "".to_string(),
             token: "".to_string(),
             token_kind: "".to_string(),
             roles: vec![],

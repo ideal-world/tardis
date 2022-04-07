@@ -150,7 +150,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
         },
     })
     .await?;
-    TardisFuns::web_server().add_module("todo", (TodosApi)).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
+    TardisFuns::web_server().add_module("todo", TodosApi).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
 }
 
 async fn test_basic(url: &str) -> TardisResult<()> {
@@ -424,13 +424,13 @@ async fn test_context(url: &str) -> TardisResult<()> {
     assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
-        scope_paths: "tenant1/app1".to_string(),
+        own_paths: "tenant1/app1".to_string(),
         ak: "ak1".to_string(),
         token: "token1".to_string(),
         token_kind: "测试".to_string(),
         roles: vec!["r1".to_string(), "管理员".to_string()],
         groups: vec!["g1".to_string()],
-        account_id: "acc1".to_string(),
+        owner: "acc1".to_string(),
     };
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
@@ -476,13 +476,13 @@ async fn test_context(url: &str) -> TardisResult<()> {
     assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
-        scope_paths: "tenant1/app1".to_string(),
+        own_paths: "tenant1/app1".to_string(),
         ak: "ak1".to_string(),
         token: "token1".to_string(),
         token_kind: "测试".to_string(),
         roles: vec!["r1".to_string(), "管理员".to_string()],
         groups: vec!["g1".to_string()],
-        account_id: "acc1".to_string(),
+        owner: "acc1".to_string(),
     };
     TardisFuns::cache()
         .set(
@@ -566,7 +566,7 @@ async fn test_security() -> TardisResult<()> {
             },
         })
         .await?;
-        TardisFuns::web_server().add_module("todo", (TodosApi)).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
+        TardisFuns::web_server().add_module("todo", TodosApi).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
     });
     sleep(Duration::from_millis(500)).await;
 

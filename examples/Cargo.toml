@@ -9,4 +9,5 @@ members = [
     "mq",
     "todos",
     "perf-test",
+    "multi-apps",
 ]

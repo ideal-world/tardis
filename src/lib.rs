@@ -14,6 +14,7 @@
 //! * Mainstream encryption algorithms and SM2/3/4 algorithms
 //! * Containerized unit testing of mainstream middleware
 //! * Multi-environment configuration
+//! * Multi-application aggregation
 //! * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
 //!
 //! ## ⚙️Feature description
@@ -97,6 +98,7 @@
 //!>   |-- cache         Cache Usage Example  
 //!>   |-- mq            Message Queue Usage Example  
 //!>   |-- todo          A complete project usage example  
+//!>   |-- multi-apps    Multi-application aggregation example
 //!>   |-- perf-test     Performance test case
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-world/tardis/main/logo.png")]
