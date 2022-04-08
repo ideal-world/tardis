@@ -2,6 +2,7 @@
 
 extern crate core;
 
+use std::collections::HashMap;
 use std::time::Duration;
 
 use testcontainers::clients;
@@ -103,19 +104,23 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
             app: Default::default(),
             web_server: WebServerConfig {
                 enabled: true,
-                modules: vec![
-                    WebServerModuleConfig {
-                        code: "todo".to_string(),
-                        title: "todo app".to_string(),
-                        doc_urls: [("test env".to_string(), web_url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
-                        ..Default::default()
-                    },
-                    WebServerModuleConfig {
-                        code: "other".to_string(),
-                        title: "other app".to_string(),
-                        ..Default::default()
-                    },
-                ],
+                modules: HashMap::from([
+                    (
+                        "todo".to_string(),
+                        WebServerModuleConfig {
+                            name: "todo app".to_string(),
+                            doc_urls: [("test env".to_string(), web_url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        "other".to_string(),
+                        WebServerModuleConfig {
+                            name: "other app".to_string(),
+                            ..Default::default()
+                        },
+                    ),
+                ]),
                 tls_key: Some(TLS_KEY.to_string()),
                 tls_cert: Some(TLS_CERT.to_string()),
                 ..Default::default()
@@ -519,19 +524,23 @@ async fn test_security() -> TardisResult<()> {
                 web_server: WebServerConfig {
                     enabled: true,
                     port: 8081,
-                    modules: vec![
-                        WebServerModuleConfig {
-                            code: "todo".to_string(),
-                            title: "todo app".to_string(),
-                            doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
-                            ..Default::default()
-                        },
-                        WebServerModuleConfig {
-                            code: "other".to_string(),
-                            title: "other app".to_string(),
-                            ..Default::default()
-                        },
-                    ],
+                    modules: HashMap::from([
+                        (
+                            "todo".to_string(),
+                            WebServerModuleConfig {
+                                name: "todo app".to_string(),
+                                doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
+                                ..Default::default()
+                            },
+                        ),
+                        (
+                            "other".to_string(),
+                            WebServerModuleConfig {
+                                name: "other app".to_string(),
+                                ..Default::default()
+                            },
+                        ),
+                    ]),
                     tls_key: Some(TLS_KEY.to_string()),
                     tls_cert: Some(TLS_CERT.to_string()),
                     security_hide_err_msg: true,

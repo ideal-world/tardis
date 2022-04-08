@@ -6,7 +6,4 @@ version = "1.0.0"
 
 [web_server]
 port = 8089
-[[web_server.modules]]
-code = ""
-title = "default app"
 doc_urls = [["test env", "http://localhost:8089/"]]

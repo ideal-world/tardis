@@ -5,13 +5,15 @@ use poem::{EndpointExt, Route};
 use poem_openapi::{OpenApi, OpenApiService, ServerObject};
 use tokio::time::Duration;
 
-use crate::basic::config::{FrameworkConfig, WebServerConfig};
+use crate::basic::config::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
 use crate::basic::result::TardisResult;
 use crate::log::info;
 use crate::web::uniform_error_mw::UniformError;
+use crate::TardisFuns;
 
 pub struct TardisWebServer {
     app_name: String,
+    version: String,
     config: WebServerConfig,
     route: Mutex<Route>,
 }
@@ -20,9 +22,32 @@ impl TardisWebServer {
     pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServer> {
         Ok(TardisWebServer {
             app_name: conf.app.name.clone(),
+            version: conf.app.version.clone(),
             config: conf.web_server.clone(),
             route: Mutex::new(Route::new()),
         })
+    }
+
+    pub async fn add_route<T>(&self, apis: T) -> &Self
+    where
+        T: OpenApi + 'static,
+    {
+        self.add_route_with_data::<_, String>(apis, None).await
+    }
+
+    pub async fn add_route_with_data<T, D>(&self, apis: T, data: Option<D>) -> &Self
+    where
+        T: OpenApi + 'static,
+        D: Clone + Send + Sync + 'static,
+    {
+        let module = WebServerModuleConfig {
+            name: self.app_name.clone(),
+            version: self.version.clone(),
+            doc_urls: self.config.doc_urls.clone(),
+            ui_path: self.config.ui_path.clone(),
+            spec_path: self.config.spec_path.clone(),
+        };
+        self.do_add_module_with_data("", &module, apis, data).await
     }
 
     pub async fn add_module<T>(&self, code: &str, apis: T) -> &Self
@@ -37,15 +62,19 @@ impl TardisWebServer {
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
     {
-        let module = self.config.modules.iter().find(|m| m.code == code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {} not found", code));
-        info!("[Tardis.WebServer] Add module {}", module.code);
-        let mut api_serv = OpenApiService::new(apis, &module.title, &module.version);
+        let module = self.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {} not found", code));
+        self.do_add_module_with_data(code, module, apis, data).await
+    }
+
+    async fn do_add_module_with_data<T, D>(&self, code: &str, module: &WebServerModuleConfig, apis: T, data: Option<D>) -> &Self
+    where
+        T: OpenApi + 'static,
+        D: Clone + Send + Sync + 'static,
+    {
+        info!("[Tardis.WebServer] Add module {}", code);
+        let mut api_serv = OpenApiService::new(apis, &module.name, &module.version);
         for (env, url) in &module.doc_urls {
-            let url = if !url.ends_with('/') {
-                format!("{}/{}", url, module.code)
-            } else {
-                format!("{}{}", url, module.code)
-            };
+            let url = if !url.ends_with('/') { format!("{}/{}", url, code) } else { format!("{}{}", url, code) };
             api_serv = api_serv.server(ServerObject::new(url).description(env));
         }
         let ui_serv = api_serv.rapidoc();

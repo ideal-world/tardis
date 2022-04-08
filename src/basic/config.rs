@@ -237,8 +237,16 @@ pub struct WebServerConfig {
     pub security_hide_err_msg: bool,
     /// Tardis context configuration / Tardis上下文配置
     pub context_conf: WebServerContextConfig,
+    /// API request path for ``OpenAPI`` / API请求路径，用于 ``OpenAPI``
+    ///
+    /// Formatted as ``[(environment identifier, request path)]`` / 格式为 ``[（环境标识，请求路径）]``
+    pub doc_urls: Vec<(String, String)>,
+    /// ``OpenAPI`` UI path / 模``OpenAPI`` UI路径
+    pub ui_path: Option<String>,
+    /// ``OpenAPI`` information path / ``OpenAPI`` 信息路径
+    pub spec_path: Option<String>,
     /// Web module configuration / Web模块配置
-    pub modules: Vec<WebServerModuleConfig>,
+    pub modules: HashMap<String, WebServerModuleConfig>,
 }
 
 /// Tardis context configuration / Tardis上下文配置
@@ -292,10 +300,8 @@ pub struct WebServerContextConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct WebServerModuleConfig {
-    /// Module code / 模块编码
-    pub code: String,
-    /// Module title for ``OpenAPI`` / 模块标题，用于 ``OpenAPI``
-    pub title: String,
+    /// Module name for ``OpenAPI`` / 模块名称，用于 ``OpenAPI``
+    pub name: String,
     /// Module version for ``OpenAPI`` / 模块版本，用于 ``OpenAPI``
     pub version: String,
     /// Module API request path for ``OpenAPI`` / 模块API请求路径，用于 ``OpenAPI``
@@ -328,6 +334,9 @@ impl Default for WebServerConfig {
             tls_cert: None,
             security_hide_err_msg: false,
             context_conf: WebServerContextConfig::default(),
+            doc_urls: [("test env".to_string(), "http://localhost:8080/".to_string())].to_vec(),
+            ui_path: Some("ui".to_string()),
+            spec_path: Some("spec".to_string()),
             modules: Default::default(),
         }
     }
@@ -336,8 +345,7 @@ impl Default for WebServerConfig {
 impl Default for WebServerModuleConfig {
     fn default() -> Self {
         WebServerModuleConfig {
-            code: "".to_string(),
-            title: "Tardis-based application".to_string(),
+            name: "Tardis-based application".to_string(),
             version: "1.0.0".to_string(),
             doc_urls: [("test env".to_string(), "http://localhost:8080/".to_string())].to_vec(),
             ui_path: Some("ui".to_string()),

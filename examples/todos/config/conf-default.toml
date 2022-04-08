@@ -6,9 +6,6 @@ version = "1.0.0"
 
 [fw.web_server]
 port = 8089
-[[fw.web_server.modules]]
-code = ""
-title = "Todo示例"
 doc_urls = [["test env", "http://localhost:8089/"]]
 
 [fw.db]
