@@ -1,12 +1,11 @@
 use std::env;
 
-use testcontainers::clients;
-
 use tardis::basic::dto::TardisContext;
 use tardis::basic::result::TardisResult;
 use tardis::db::sea_orm::*;
 use tardis::log::info;
 use tardis::test::test_container::TardisTestContainer;
+use tardis::testcontainers::clients;
 use tardis::tokio;
 use tardis::TardisFuns;
 

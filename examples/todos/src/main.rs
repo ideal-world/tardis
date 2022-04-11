@@ -1,9 +1,8 @@
 use std::env;
 
-use testcontainers::clients;
-
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
+use tardis::testcontainers::clients;
 use tardis::tokio;
 use tardis::TardisFuns;
 

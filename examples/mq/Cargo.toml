@@ -6,8 +6,6 @@ edition = "2021"
 
 [dependencies]
 tardis = { path = "../..", features = ["mq", "test"] }
-# Example only
-testcontainers = { version = "^0.13" }
 
 
 

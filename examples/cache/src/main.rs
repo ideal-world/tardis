@@ -1,10 +1,9 @@
 use std::env;
 use std::time::Duration;
 
-use testcontainers::clients;
-
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
+use tardis::testcontainers::clients;
 use tardis::tokio;
 use tardis::tokio::time::sleep;
 use tardis::TardisFuns;

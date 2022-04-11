@@ -9,7 +9,6 @@ use crate::basic::config::{FrameworkConfig, WebServerConfig, WebServerModuleConf
 use crate::basic::result::TardisResult;
 use crate::log::info;
 use crate::web::uniform_error_mw::UniformError;
-use crate::TardisFuns;
 
 pub struct TardisWebServer {
     app_name: String,

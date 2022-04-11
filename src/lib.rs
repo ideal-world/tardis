@@ -120,12 +120,15 @@ pub use serde;
 use serde::de::DeserializeOwned;
 pub use serde_json;
 use serde_json::Value;
+#[cfg(feature = "test")]
+pub use testcontainers;
 #[cfg(feature = "rt_tokio")]
 pub use tokio;
 
 use basic::result::TardisResult;
 
 use crate::basic::config::{FrameworkConfig, TardisConfig};
+use crate::basic::dto::TardisFunsInst;
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;
 use crate::basic::logger::TardisLogger;
@@ -447,6 +450,15 @@ impl TardisFuns {
             }
         }
         TardisResult::Ok(())
+    }
+
+    pub fn inst(code: &str) -> TardisFunsInst {
+        TardisFunsInst::new(code)
+    }
+
+    #[cfg(feature = "reldb")]
+    pub fn inst_with_db_conn(code: &str) -> TardisFunsInst {
+        TardisFunsInst::new_with_db_conn(code)
     }
 
     /// Get the custom configuration object / 获取自定义配置对象
