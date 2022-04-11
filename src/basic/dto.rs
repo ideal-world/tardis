@@ -53,7 +53,7 @@ pub struct TardisFunsInst<'a> {
 }
 
 impl<'a> TardisFunsInst<'a> {
-    pub fn new(code: &'a str) -> Self {
+    pub(crate) fn new(code: &'a str) -> Self {
         Self {
             module_code: code,
             #[cfg(feature = "reldb")]
@@ -61,17 +61,17 @@ impl<'a> TardisFunsInst<'a> {
         }
     }
 
-    pub fn conf<T: 'static + DeserializeOwned>(&self) -> &T {
-        TardisFuns::cs_config(self.module_code)
-    }
-
     #[cfg(feature = "reldb")]
-    pub fn conn(code: &'a str) -> Self {
+    pub(crate) fn new_with_db_conn(code: &'a str) -> Self {
         let reldb = TardisFuns::reldb_by_module_or_default(code);
         Self {
             module_code: code,
             db: Some(reldb.conn()),
         }
+    }
+
+    pub fn conf<T: 'static + DeserializeOwned>(&self) -> &T {
+        TardisFuns::cs_config(self.module_code)
     }
 
     #[cfg(feature = "reldb")]

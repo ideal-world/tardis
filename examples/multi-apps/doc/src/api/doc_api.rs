@@ -1,7 +1,7 @@
-use tardis::basic::dto::TardisFunsInst;
 use tardis::web::context_extractor::TardisContextExtractor;
 use tardis::web::poem_openapi::{payload::Json, OpenApi};
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
+use tardis::TardisFuns;
 
 use crate::dto::doc_dto::DocAddReq;
 use crate::serv::doc_serv::DocServ;
@@ -13,7 +13,7 @@ impl DocApi {
     /// Add
     #[oai(path = "/", method = "post")]
     async fn add(&self, add_req: Json<DocAddReq>, cxt: TardisContextExtractor) -> TardisApiResult<i32> {
-        let mut funs = TardisFunsInst::conn("doc");
+        let mut funs = TardisFuns::inst_with_db_conn("doc");
         funs.begin().await?;
         let result = DocServ::add_doc(&add_req.0, &funs, &cxt.0).await?;
         funs.commit().await?;
