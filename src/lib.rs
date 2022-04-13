@@ -452,12 +452,12 @@ impl TardisFuns {
         TardisResult::Ok(())
     }
 
-    pub fn inst(code: &str) -> TardisFunsInst {
+    pub fn inst<'a>(code: String) -> TardisFunsInst<'a> {
         TardisFunsInst::new(code)
     }
 
     #[cfg(feature = "reldb")]
-    pub fn inst_with_db_conn(code: &str) -> TardisFunsInst {
+    pub fn inst_with_db_conn<'a>(code: String) -> TardisFunsInst<'a> {
         TardisFunsInst::new_with_db_conn(code)
     }
 

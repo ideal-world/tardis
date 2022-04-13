@@ -47,13 +47,13 @@ impl Default for TardisContext {
 }
 
 pub struct TardisFunsInst<'a> {
-    module_code: &'a str,
+    module_code: String,
     #[cfg(feature = "reldb")]
     db: Option<crate::db::reldb_client::TardisRelDBlConnection<'a>>,
 }
 
 impl<'a> TardisFunsInst<'a> {
-    pub(crate) fn new(code: &'a str) -> Self {
+    pub(crate) fn new(code: String) -> Self {
         Self {
             module_code: code,
             #[cfg(feature = "reldb")]
@@ -62,8 +62,8 @@ impl<'a> TardisFunsInst<'a> {
     }
 
     #[cfg(feature = "reldb")]
-    pub(crate) fn new_with_db_conn(code: &'a str) -> Self {
-        let reldb = TardisFuns::reldb_by_module_or_default(code);
+    pub(crate) fn new_with_db_conn(code: String) -> Self {
+        let reldb = TardisFuns::reldb_by_module_or_default(&code);
         Self {
             module_code: code,
             db: Some(reldb.conn()),
@@ -71,12 +71,12 @@ impl<'a> TardisFunsInst<'a> {
     }
 
     pub fn conf<T: 'static + DeserializeOwned>(&self) -> &T {
-        TardisFuns::cs_config(self.module_code)
+        TardisFuns::cs_config(&self.module_code)
     }
 
     #[cfg(feature = "reldb")]
     pub fn reldb(&self) -> &'static crate::TardisRelDBClient {
-        TardisFuns::reldb_by_module_or_default(self.module_code)
+        TardisFuns::reldb_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "reldb")]
@@ -101,31 +101,31 @@ impl<'a> TardisFunsInst<'a> {
 
     #[cfg(feature = "cache")]
     pub fn cache(&self) -> &'static crate::TardisCacheClient {
-        TardisFuns::cache_by_module_or_default(self.module_code)
+        TardisFuns::cache_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "mq")]
     pub fn mq(&self) -> &'static crate::TardisMQClient {
-        TardisFuns::mq_by_module_or_default(self.module_code)
+        TardisFuns::mq_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "web-client")]
     pub fn web_client(&self) -> &'static crate::TardisWebClient {
-        TardisFuns::web_client_by_module_or_default(self.module_code)
+        TardisFuns::web_client_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "web-client")]
     pub fn search(&self) -> &'static crate::TardisSearchClient {
-        TardisFuns::search_by_module_or_default(self.module_code)
+        TardisFuns::search_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "mail")]
     pub fn mail(&self) -> &'static crate::TardisMailClient {
-        TardisFuns::mail_by_module_or_default(self.module_code)
+        TardisFuns::mail_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "os")]
     pub fn os(&self) -> &'static crate::TardisOSClient {
-        TardisFuns::os_by_module_or_default(self.module_code)
+        TardisFuns::os_by_module_or_default(&self.module_code)
     }
 }
