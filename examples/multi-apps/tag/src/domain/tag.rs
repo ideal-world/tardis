@@ -8,6 +8,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
+    pub create_id: String,
 }
 
 impl TardisActiveModel for ActiveModel {
