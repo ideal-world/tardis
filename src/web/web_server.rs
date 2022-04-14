@@ -61,6 +61,8 @@ impl TardisWebServer {
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
     {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         let module = self.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {} not found", code));
         self.do_add_module_with_data(code, module, apis, data).await
     }

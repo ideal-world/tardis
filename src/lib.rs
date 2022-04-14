@@ -463,6 +463,8 @@ impl TardisFuns {
 
     /// Get the custom configuration object / 获取自定义配置对象
     pub fn cs_config<T: 'static + DeserializeOwned>(code: &str) -> &T {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             let conf = TARDIS_INST.custom_config.as_ref().expect("[Tardis.Config] Custom Config doesn't exist");
             let cached_conf = TARDIS_INST._custom_config_cached.as_ref().expect("[Tardis.Config] Custom Config doesn't exist");
@@ -643,6 +645,8 @@ impl TardisFuns {
 
     #[cfg(feature = "reldb")]
     pub fn reldb_by_module(code: &str) -> &'static TardisRelDBClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.reldb {
                 None => panic!("[Tardis.Config] RelDB instance doesn't exist"),
@@ -656,6 +660,8 @@ impl TardisFuns {
 
     #[cfg(feature = "reldb")]
     pub fn reldb_by_module_or_default(code: &str) -> &'static TardisRelDBClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.reldb {
                 None => panic!("[Tardis.Config] RelDB instance doesn't exist"),
@@ -684,6 +690,8 @@ impl TardisFuns {
 
     #[cfg(feature = "web-client")]
     pub fn web_client_by_module(code: &str) -> &'static TardisWebClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.web_client {
                 None => panic!("[Tardis.Config] Web Client instance doesn't exist"),
@@ -697,6 +705,8 @@ impl TardisFuns {
 
     #[cfg(feature = "web-client")]
     pub fn web_client_by_module_or_default(code: &str) -> &'static TardisWebClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.web_client {
                 None => panic!("[Tardis.Config] Web Client instance doesn't exist"),
@@ -734,6 +744,8 @@ impl TardisFuns {
 
     #[cfg(feature = "cache")]
     pub fn cache_by_module(code: &str) -> &'static TardisCacheClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.cache {
                 None => panic!("[Tardis.Config] Cache instance doesn't exist"),
@@ -747,6 +759,8 @@ impl TardisFuns {
 
     #[cfg(feature = "cache")]
     pub fn cache_by_module_or_default(code: &str) -> &'static TardisCacheClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.cache {
                 None => panic!("[Tardis.Config] Cache instance doesn't exist"),
@@ -765,6 +779,8 @@ impl TardisFuns {
 
     #[cfg(feature = "mq")]
     pub fn mq_by_module(code: &str) -> &'static TardisMQClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.mq {
                 None => panic!("[Tardis.Config] MQ instance doesn't exist"),
@@ -778,6 +794,8 @@ impl TardisFuns {
 
     #[cfg(feature = "mq")]
     pub fn mq_by_module_or_default(code: &str) -> &'static TardisMQClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.mq {
                 None => panic!("[Tardis.Config] MQ instance doesn't exist"),
@@ -814,6 +832,8 @@ impl TardisFuns {
 
     #[cfg(feature = "web-client")]
     pub fn search_by_module(code: &str) -> &'static TardisSearchClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.search {
                 None => panic!("[Tardis.Config] Search instance doesn't exist"),
@@ -827,6 +847,8 @@ impl TardisFuns {
 
     #[cfg(feature = "web-client")]
     pub fn search_by_module_or_default(code: &str) -> &'static TardisSearchClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.search {
                 None => panic!("[Tardis.Config] Search instance doesn't exist"),
@@ -845,6 +867,8 @@ impl TardisFuns {
 
     #[cfg(feature = "mail")]
     pub fn mail_by_module(code: &str) -> &'static TardisMailClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.mail {
                 None => panic!("[Tardis.Config] Mail instance doesn't exist"),
@@ -858,6 +882,8 @@ impl TardisFuns {
 
     #[cfg(feature = "mail")]
     pub fn mail_by_module_or_default(code: &str) -> &'static TardisMailClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.mail {
                 None => panic!("[Tardis.Config] Mail instance doesn't exist"),
@@ -876,6 +902,8 @@ impl TardisFuns {
 
     #[cfg(feature = "os")]
     pub fn os_by_module(code: &str) -> &'static TardisOSClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.os {
                 None => panic!("[Tardis.Config] Object Storage instance doesn't exist"),
@@ -889,6 +917,8 @@ impl TardisFuns {
 
     #[cfg(feature = "os")]
     pub fn os_by_module_or_default(code: &str) -> &'static TardisOSClient {
+        let code = code.to_lowercase();
+        let code = code.as_str();
         unsafe {
             match &TARDIS_INST.os {
                 None => panic!("[Tardis.Config] Object Storage instance doesn't exist"),
