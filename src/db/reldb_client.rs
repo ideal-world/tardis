@@ -19,6 +19,7 @@ use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
 use crate::log::info;
+use crate::serde::{Deserialize, Serialize};
 use crate::{FrameworkConfig, TardisFuns};
 
 /// Relational database handle / 关系型数据库操作
@@ -377,12 +378,12 @@ impl TardisRelDBClient {
         select.soft_delete(delete_user, db).await
     }
 
-    pub(self) async fn soft_delete_custom_inner<'a, E, C>(select: Select<E>, custom_pk_field: &str, delete_user: &str, db: &'a C) -> TardisResult<u64>
+    pub(self) async fn soft_delete_custom_inner<'a, E, C>(select: Select<E>, custom_pk_field: &str, db: &'a C) -> TardisResult<Vec<DeleteEntity>>
     where
         C: ConnectionTrait,
         E: EntityTrait,
     {
-        select.soft_delete_custom(custom_pk_field, delete_user, db).await
+        select.soft_delete_custom(custom_pk_field, db).await
     }
 }
 
@@ -858,16 +859,16 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
     /// let mut conn = TardisFuns::reldb().conn();
-    /// let resp = conn.soft_delete_custom(tardis_db_config::Entity::find().filter(Expr::col(tardis_db_config::Column::Id).eq("111")),"iam_id","admin").await.unwrap();
+    /// let resp = conn.soft_delete_custom(tardis_db_config::Entity::find().filter(Expr::col(tardis_db_config::Column::Id).eq("111")),"iam_id").await.unwrap();
     /// ```
-    pub async fn soft_delete_custom<E>(&self, select: Select<E>, custom_pk_field: &str, delete_user: &str) -> TardisResult<u64>
+    pub async fn soft_delete_custom<E>(&self, select: Select<E>, custom_pk_field: &str) -> TardisResult<Vec<DeleteEntity>>
     where
         E: EntityTrait,
     {
         if let Some(tx) = &self.tx {
-            TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, delete_user, tx).await
+            TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, tx).await
         } else {
-            TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, delete_user, self.conn).await
+            TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, self.conn).await
         }
     }
 }
@@ -878,7 +879,7 @@ pub trait TardisSeaORMExtend {
     where
         C: ConnectionTrait;
 
-    async fn soft_delete_custom<C>(self, custom_pk_field: &str, delete_user: &str, db: &C) -> TardisResult<u64>
+    async fn soft_delete_custom<C>(self, custom_pk_field: &str, db: &C) -> TardisResult<Vec<DeleteEntity>>
     where
         C: ConnectionTrait;
 }
@@ -892,10 +893,23 @@ where
     where
         C: ConnectionTrait,
     {
-        self.soft_delete_custom("id", delete_user, db).await
+        let delete_entities = self.soft_delete_custom("id", db).await?;
+        let count = delete_entities.len() as u64;
+        for delete_entity in delete_entities {
+            tardis_db_del_record::ActiveModel {
+                entity_name: Set(delete_entity.entity_name.to_string()),
+                record_id: Set(delete_entity.record_id.to_string()),
+                content: Set(delete_entity.content),
+                creator: Set(delete_user.to_string()),
+                ..Default::default()
+            }
+            .insert(db)
+            .await?;
+        }
+        Ok(count)
     }
 
-    async fn soft_delete_custom<C>(self, custom_pk_field: &str, delete_user: &str, db: &C) -> TardisResult<u64>
+    async fn soft_delete_custom<C>(self, custom_pk_field: &str, db: &C) -> TardisResult<Vec<DeleteEntity>>
     where
         C: ConnectionTrait,
     {
@@ -920,9 +934,12 @@ where
             ));
         }
 
-        let mut ids: Vec<Value> = Vec::new();
-
         let rows = self.into_json().all(db).await?;
+        if rows.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut ids: Vec<Value> = Vec::new();
+        let mut delete_entities = Vec::with_capacity(ids.len());
         for row in rows {
             let id = row[custom_pk_field].clone();
             let json = TardisFuns::json.obj_to_string(&row)?;
@@ -941,19 +958,11 @@ where
                         .into(),
                 );
             }
-            tardis_db_del_record::ActiveModel {
-                entity_name: Set(table_name.to_string()),
-                record_id: Set(id.to_string()),
-                content: Set(json),
-                creator: Set(delete_user.to_string()),
-                ..Default::default()
-            }
-            .insert(db)
-            .await?;
-        }
-        let delete_num = ids.len();
-        if delete_num == 0 {
-            return Ok(0);
+            delete_entities.push(DeleteEntity {
+                entity_name: table_name.to_string(),
+                record_id: id.to_string(),
+                content: json,
+            });
         }
         let statement = Statement::from_sql_and_values(
             db_backend,
@@ -966,8 +975,8 @@ where
         );
         let result = db.execute(statement).await;
         match result {
-            Ok(_) => TardisResult::Ok(delete_num as u64),
-            Err(err) => TardisResult::Err(TardisError::from(err)),
+            Ok(_) => Ok(delete_entities),
+            Err(err) => Err(TardisError::from(err)),
         }
     }
 }
@@ -1090,6 +1099,13 @@ pub trait TardisActiveModel: ActiveModelBehavior {
 #[derive(Debug, FromQueryResult)]
 struct CountResp {
     count: i64,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct DeleteEntity {
+    pub entity_name: String,
+    pub record_id: String,
+    pub content: String,
 }
 
 #[derive(Debug, FromQueryResult)]
