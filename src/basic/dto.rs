@@ -50,6 +50,9 @@ pub struct TardisFunsInst<'a> {
     module_code: String,
     #[cfg(feature = "reldb")]
     db: Option<crate::db::reldb_client::TardisRelDBlConnection<'a>>,
+    // Solve the 'a not used issue when the reldb feature is not enabled
+    #[cfg(not(feature = "reldb"))]
+    _t: Option<&'a str>,
 }
 
 impl<'a> TardisFunsInst<'a> {
@@ -58,6 +61,8 @@ impl<'a> TardisFunsInst<'a> {
             module_code: code.to_lowercase(),
             #[cfg(feature = "reldb")]
             db: None,
+            #[cfg(not(feature = "reldb"))]
+            _t: None,
         }
     }
 
