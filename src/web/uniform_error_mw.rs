@@ -40,8 +40,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
 
                 let http_code = if resp.status().as_u16() >= 500 {
                     warn!(
-                        "[Tardis.WebServer] Process error,request method:{}, url:{}, response\
-                             code:{}, message:{}",
+                        "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
                         method,
                         url,
                         resp.status().as_u16(),
