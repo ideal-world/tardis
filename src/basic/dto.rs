@@ -14,6 +14,7 @@ use crate::{TardisFuns, TardisResult};
 ///
 /// 该信息需要与 IAM 服务对应.
 #[derive(Deserialize, Serialize, Clone, Debug)]
+#[cfg_attr(feature = "web-server", derive(crate::web::poem_openapi::Object))]
 #[serde(default)]
 pub struct TardisContext {
     /// The requested own paths / 请求的所属路径
