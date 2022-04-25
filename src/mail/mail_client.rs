@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use lettre::message::{header, MultiPart, SinglePart};
 use lettre::{address, error, transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
-use log::info;
+use log::{info, warn};
 
 use crate::basic::error::TardisError;
-use crate::{FrameworkConfig, TardisResult};
+use crate::{FrameworkConfig, TardisFuns, TardisResult};
 
 pub struct TardisMailClient {
     client: AsyncSmtpTransport<Tokio1Executor>,
@@ -88,6 +88,17 @@ impl TardisMailClient {
             Ok(_) => Ok(()),
             Err(e) => Err(TardisError::InternalError(format!("[Tardis.MailClient] Could not send email: {}", e))),
         }
+    }
+
+    pub fn send_quiet(module_code: String, req: TardisMailSendReq) -> TardisResult<()> {
+        tokio::spawn(async move {
+            let client = TardisFuns::mail_by_module_or_default(&module_code);
+            match client.send(&req).await {
+                Ok(_) => (),
+                Err(e) => warn!("{:?} | send data: {:?}", e, req),
+            }
+        });
+        Ok(())
     }
 }
 
