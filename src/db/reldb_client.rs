@@ -679,7 +679,11 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///
     ///  * `statement` -  Custom statement / 自定义Statement
     ///
-    pub async fn execute(&self, statement: Statement) -> TardisResult<ExecResult> {
+    pub async fn execute<S>(&self, statement: &S) -> TardisResult<ExecResult>
+    where
+        S: StatementBuilder,
+    {
+        let statement = self.conn.get_database_backend().build(statement);
         if let Some(tx) = &self.tx {
             TardisRelDBClient::execute_inner(statement, tx).await
         } else {
