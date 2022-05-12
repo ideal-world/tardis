@@ -136,6 +136,8 @@ use crate::basic::uri::TardisUri;
 #[cfg(feature = "cache")]
 use crate::cache::cache_client::TardisCacheClient;
 #[cfg(feature = "reldb")]
+use crate::db::domain::tardis_db_config::TardisDataDict;
+#[cfg(feature = "reldb")]
 use crate::db::reldb_client::TardisRelDBClient;
 #[cfg(feature = "mail")]
 use crate::mail::mail_client::TardisMailClient;
@@ -672,6 +674,10 @@ impl TardisFuns {
             }
         }
     }
+
+    #[allow(non_upper_case_globals)]
+    #[cfg(feature = "reldb")]
+    pub const dict: TardisDataDict = TardisDataDict {};
 
     #[cfg(feature = "web-server")]
     pub fn web_server() -> &'static TardisWebServer {

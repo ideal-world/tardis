@@ -109,7 +109,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
                         "todo".to_string(),
                         WebServerModuleConfig {
                             name: "todo app".to_string(),
-                            doc_urls: [("test env".to_string(), web_url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
+                            doc_urls: [("test env".to_string(), web_url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].to_vec(),
                             ..Default::default()
                         },
                     ),

@@ -420,6 +420,10 @@ impl<'a> TardisRelDBlConnection<'a> {
         }
     }
 
+    pub fn has_tx(&self) -> bool {
+        self.tx.is_some()
+    }
+
     /// Open a transaction / 开启一个事务
     ///
     /// # Examples
@@ -883,6 +887,10 @@ pub trait TardisSeaORMExtend {
     where
         C: ConnectionTrait;
 
+    async fn soft_delete_with_pk<C>(self, custom_pk_field: &str, delete_user: &str, db: &C) -> TardisResult<u64>
+    where
+        C: ConnectionTrait;
+
     async fn soft_delete_custom<C>(self, custom_pk_field: &str, db: &C) -> TardisResult<Vec<DeleteEntity>>
     where
         C: ConnectionTrait;
@@ -897,7 +905,14 @@ where
     where
         C: ConnectionTrait,
     {
-        let delete_entities = self.soft_delete_custom("id", db).await?;
+        self.soft_delete_with_pk("id", delete_user, db).await
+    }
+
+    async fn soft_delete_with_pk<C>(self, custom_pk_field: &str, delete_user: &str, db: &C) -> TardisResult<u64>
+    where
+        C: ConnectionTrait,
+    {
+        let delete_entities = self.soft_delete_custom(custom_pk_field, db).await?;
         let count = delete_entities.len() as u64;
         for delete_entity in delete_entities {
             tardis_db_del_record::ActiveModel {
@@ -971,8 +986,8 @@ where
         let statement = Statement::from_sql_and_values(
             db_backend,
             match db_backend {
-                DbBackend::Postgres => format!("DELETE FROM {} WHERE id in ($1)", table_name),
-                _ => format!("DELETE FROM {} WHERE id in (?)", table_name),
+                DbBackend::Postgres => format!("DELETE FROM {} WHERE {} in ($1)", table_name, custom_pk_field),
+                _ => format!("DELETE FROM {} WHERE {} in (?)", table_name, custom_pk_field),
             }
             .as_str(),
             ids,

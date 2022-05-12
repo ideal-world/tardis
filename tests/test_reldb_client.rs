@@ -26,6 +26,7 @@ async fn test_reldb_client() -> TardisResult<()> {
         test_transaction(&client).await?;
         test_advanced_query(&client).await?;
         test_raw_query(&client).await?;
+        test_data_dict(&client).await?;
         Ok(())
     })
     .await
@@ -283,14 +284,14 @@ async fn test_transaction(client: &TardisRelDBClient) -> TardisResult<()> {
     .insert(db.raw_tx().unwrap())
     .await?;
 
-    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(db.raw_conn()).await?;
+    let conf = tardis_db_config::Entity::find_by_id(config.k.clone()).one(db.raw_conn()).await?;
     assert_eq!(conf, None);
-    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(db.raw_tx().unwrap()).await?.unwrap();
+    let conf = tardis_db_config::Entity::find_by_id(config.k.clone()).one(db.raw_tx().unwrap()).await?.unwrap();
     assert_eq!(conf.k, "kn");
 
     db.commit().await?;
 
-    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(client.conn().raw_conn()).await?.unwrap();
+    let conf = tardis_db_config::Entity::find_by_id(config.k.clone()).one(client.conn().raw_conn()).await?.unwrap();
     assert_eq!(conf.k, "kn");
 
     // Rollback transaction
@@ -310,7 +311,7 @@ async fn test_transaction(client: &TardisRelDBClient) -> TardisResult<()> {
 
     db.rollback().await?;
 
-    let conf = tardis_db_config::Entity::find_by_id(config.id.clone()).one(client.conn().raw_conn()).await?;
+    let conf = tardis_db_config::Entity::find_by_id(config.k.clone()).one(client.conn().raw_conn()).await?;
     assert_eq!(conf, None);
 
     Ok(())
@@ -461,7 +462,7 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
     // Update Many
     tardis_db_config::Entity::update_many()
         .col_expr(tardis_db_config::Column::V, Expr::value("v1更新"))
-        .filter(tardis_db_config::Column::Id.ne(insert_result.last_insert_id))
+        .filter(tardis_db_config::Column::K.ne(insert_result.last_insert_id))
         .exec(db.raw_conn())
         .await?;
 
@@ -485,7 +486,7 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
     // Exists TODO https://github.com/SeaQL/sea-orm/issues/408
 
     // Soft Delete
-    tardis_db_config::Entity::find().soft_delete("admin", db.raw_conn()).await?;
+    tardis_db_config::Entity::find().soft_delete_with_pk("k", "admin", db.raw_conn()).await?;
     let dels = tardis_db_del_record::Entity::find().all(db.raw_conn()).await?;
     assert_eq!(dels.len(), 2);
     assert_eq!(dels[0].entity_name, "tardis_config");
@@ -497,6 +498,36 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
     // Count
     let count = tardis_db_del_record::Entity::find().count(db.raw_conn()).await?;
     assert_eq!(count, 1);
+
+    Ok(())
+}
+
+async fn test_data_dict(client: &TardisRelDBClient) -> TardisResult<()> {
+    let db = client.conn();
+    assert!(TardisFuns::dict.get("xxx", &db).await?.is_none());
+
+    TardisFuns::dict.add("xxx", "yyyy", "admin", &db).await?;
+    assert_eq!(TardisFuns::dict.get("xxx", &db).await?.unwrap().v, "yyyy");
+
+    TardisFuns::dict.update("xxx", "zzzz", "admin", &db).await?;
+    assert_eq!(TardisFuns::dict.get("xxx", &db).await?.unwrap().v, "zzzz");
+
+    TardisFuns::dict.delete("xxx", &db).await?;
+    assert!(TardisFuns::dict.get("xxx", &db).await?.is_none());
+
+    assert!(TardisFuns::dict.update("xxx111", "zzzz", "admin", &db).await.is_err());
+
+    TardisFuns::dict.add("t1:xx", "1", "", &db).await?;
+    TardisFuns::dict.add("t1:yy", "2", "", &db).await?;
+    TardisFuns::dict.add("t2:zz", "3", "", &db).await?;
+    let vals = TardisFuns::dict.find_all(&db).await?;
+    assert_eq!(vals.len(), 6);
+    let vals = TardisFuns::dict.find_like("t1", &db).await?;
+    assert_eq!(vals.len(), 2);
+    assert_eq!(vals[0].k, "t1:xx");
+    assert_eq!(vals[0].v, "1");
+    assert_eq!(vals[1].k, "t1:yy");
+    assert_eq!(vals[1].v, "2");
 
     Ok(())
 }
