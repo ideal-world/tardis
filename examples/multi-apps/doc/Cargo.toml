@@ -8,5 +8,5 @@ edition = "2021"
 serde = { version = "^1", features = ["derive"] }
 
 tardis = { path = "../../..", features = ["reldb", "web-server"] }
-sea-orm = { version = "^0.7", features = ["macros"] }
+sea-orm = { version = "^0.8", features = ["macros"] }
 poem-openapi = { version = "^1.3" }

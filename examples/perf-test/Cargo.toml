@@ -10,4 +10,4 @@ tardis = { path = "../..", features = ["web-server", "reldb"] }
 # Web server dependencies
 poem-openapi = { version = "^1.3" }
 # Reldb dependencies
-sea-orm = { version = "^0.7", features = ["macros"] }
+sea-orm = { version = "^0.8", features = ["macros"] }

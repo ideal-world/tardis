@@ -1,5 +1,5 @@
 use futures_util::lock::Mutex;
-use poem::listener::{Listener, RustlsConfig, TcpListener};
+use poem::listener::{Listener, RustlsCertificate, RustlsConfig, TcpListener};
 use poem::middleware::Cors;
 use poem::{EndpointExt, Route};
 use poem_openapi::{OpenApi, OpenApiService, ServerObject};
@@ -130,9 +130,11 @@ impl TardisWebServer {
         std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
         if self.config.tls_key.is_some() {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port)).rustls(
-                RustlsConfig::new()
-                    .key(self.config.tls_key.clone().expect("[Tardis.WebServer] TLS key clone error"))
-                    .cert(self.config.tls_cert.clone().expect("[Tardis.WebServer] TLS cert clone error")),
+                RustlsConfig::new().fallback(
+                    RustlsCertificate::new()
+                        .key(self.config.tls_key.clone().expect("[Tardis.WebServer] TLS key clone error"))
+                        .cert(self.config.tls_cert.clone().expect("[Tardis.WebServer] TLS cert clone error")),
+                ),
             );
             let server = poem::Server::new(bind).run_with_graceful_shutdown(
                 swap_route,

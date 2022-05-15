@@ -51,7 +51,7 @@ impl TardisOSClient {
                     session_token: None,
                 };
                 let default_bucket = if !default_bucket.is_empty() {
-                    Some(Bucket::new_with_path_style(default_bucket, region.clone(), credentials.clone())?)
+                    Some(Bucket::new(default_bucket, region.clone(), credentials.clone())?.with_path_style())
                 } else {
                     None
                 };
@@ -144,7 +144,7 @@ impl TardisOSOperations for TardisOSS3Client {
     }
 
     async fn bucket_delete(&self, bucket_name: &str) -> TardisResult<()> {
-        let code = Bucket::new_with_path_style(bucket_name, self.region.clone(), self.credentials.clone())?.delete().await?;
+        let code = Bucket::new(bucket_name, self.region.clone(), self.credentials.clone())?.with_path_style().delete().await?;
         if code == 200 || code == 204 {
             Ok(())
         } else {
@@ -203,7 +203,7 @@ impl TardisOSOperations for TardisOSS3Client {
     }
 
     fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
-        Ok(self.get_bucket(bucket_name)?.presign_get(path, expire_sec)?)
+        Ok(self.get_bucket(bucket_name)?.presign_get(path, expire_sec, None)?)
     }
 
     fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
@@ -214,7 +214,7 @@ impl TardisOSOperations for TardisOSS3Client {
 impl TardisOSS3Client {
     fn get_bucket(&self, bucket_name: Option<&str>) -> TardisResult<Bucket> {
         if let Some(bucket_name) = bucket_name {
-            Ok(Bucket::new_with_path_style(bucket_name, self.region.clone(), self.credentials.clone())?)
+            Ok(Bucket::new(bucket_name, self.region.clone(), self.credentials.clone())?.with_path_style())
         } else {
             let bucket = self.default_bucket.as_ref().ok_or_else(|| TardisError::BadRequest("[Tardis.OSClient] No default bucket configured".to_string()))?;
             Ok(bucket.clone())
@@ -308,8 +308,8 @@ impl TardisOSS3Client {
 //     }
 // }
 
-impl From<anyhow::Error> for TardisError {
-    fn from(error: anyhow::Error) -> Self {
+impl From<s3::error::S3Error> for TardisError {
+    fn from(error: s3::error::S3Error) -> Self {
         TardisError::_Inner(error.to_string())
     }
 }

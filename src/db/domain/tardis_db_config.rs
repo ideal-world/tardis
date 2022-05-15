@@ -3,9 +3,9 @@ use sea_orm::*;
 use crate::basic::dto::TardisContext;
 use crate::db::domain::tardis_db_config;
 use crate::db::reldb_client::{TardisActiveModel, TardisRelDBlConnection};
-use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
-use crate::db::sea_orm::ActiveValue::Set;
 use crate::db::sea_orm::entity::prelude::*;
+use crate::db::sea_orm::ActiveValue::Set;
+use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
 use crate::db::sea_query::{ColumnDef, Table, TableCreateStatement};
 use crate::TardisResult;
 

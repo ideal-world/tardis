@@ -1,7 +1,6 @@
 use tardis::basic::dto::{TardisContext, TardisFunsInst};
 use tardis::basic::error::TardisError;
 use tardis::basic::result::TardisResult;
-use tardis::db::domain::tardis_db_config;
 use tardis::db::sea_orm::*;
 use tardis::db::sea_query::{Expr, Query};
 
@@ -26,12 +25,12 @@ impl<'a> TagServ {
         let resp = funs
             .db()
             .get_dto(
-                &Query::select()
+                Query::select()
                     .column(tag::Column::Id)
                     .column(tag::Column::Name)
                     .column(tag::Column::CreateId)
                     .from(tag::Entity)
-                    .and_where(Expr::col(tardis_db_config::Column::Id).eq(result.last_insert_id)),
+                    .and_where(Expr::col(tag::Column::Id).eq(result.last_insert_id)),
             )
             .await?
             .unwrap();
