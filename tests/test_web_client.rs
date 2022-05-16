@@ -56,7 +56,7 @@ async fn test_web_client() -> TardisResult<()> {
     assert!(response.body.unwrap().contains("Tardis"));
 
     let response = TardisFuns::web_client()
-        .delete(
+        .delete_to_void(
             "https://httpbin.org/delete",
             Some([("User-Agent".to_string(), "Tardis".to_string())].iter().cloned().collect()),
         )

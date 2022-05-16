@@ -49,14 +49,24 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn head(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<()>> {
-        let (code, headers, _) = self.request::<()>(Method::HEAD, url, headers, None, None).await?;
+    pub async fn head_to_void(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<()>> {
+        let (code, headers, response) = self.request::<()>(Method::HEAD, url, headers, None, None).await?;
         Ok(TardisHttpResponse { code, headers, body: None })
     }
 
-    pub async fn delete(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<()>> {
-        let (code, headers, _) = self.request::<()>(Method::DELETE, url, headers, None, None).await?;
+    pub async fn head<T: DeserializeOwned>(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request::<()>(Method::HEAD, url, headers, None, None).await?;
+        self.to_json::<T>(code, headers, response).await
+    }
+
+    pub async fn delete_to_void(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<()>> {
+        let (code, headers, response) = self.request::<()>(Method::DELETE, url, headers, None, None).await?;
         Ok(TardisHttpResponse { code, headers, body: None })
+    }
+
+    pub async fn delete<T: DeserializeOwned>(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request::<()>(Method::DELETE, url, headers, None, None).await?;
+        self.to_json::<T>(code, headers, response).await
     }
 
     pub async fn post_str_to_str(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
