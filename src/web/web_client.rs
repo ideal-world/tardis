@@ -3,12 +3,12 @@ use std::time::Duration;
 
 use reqwest::{Client, Method, Response};
 
+use crate::{FrameworkConfig, TardisFuns};
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::log::info;
 use crate::serde::de::DeserializeOwned;
 use crate::serde::Serialize;
-use crate::{FrameworkConfig, TardisFuns};
 
 pub struct TardisWebClient {
     default_headers: Vec<(String, String)>,
@@ -39,6 +39,10 @@ impl TardisWebClient {
         self.default_headers.push((key.to_string(), value.to_string()));
     }
 
+    pub fn remove_default_header(&mut self, key: &str) {
+        self.default_headers.retain(|(k, _)| k != key);
+    }
+
     pub async fn get_to_str(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
         let (code, headers, response) = self.request::<()>(Method::GET, url, headers, None, None).await?;
         self.to_text(code, headers, response).await
@@ -50,7 +54,7 @@ impl TardisWebClient {
     }
 
     pub async fn head_to_void(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<()>> {
-        let (code, headers, response) = self.request::<()>(Method::HEAD, url, headers, None, None).await?;
+        let (code, headers, _) = self.request::<()>(Method::HEAD, url, headers, None, None).await?;
         Ok(TardisHttpResponse { code, headers, body: None })
     }
 
@@ -60,7 +64,8 @@ impl TardisWebClient {
     }
 
     pub async fn delete_to_void(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<()>> {
-        let (code, headers, response) = self.request::<()>(Method::DELETE, url, headers, None, None).await?;
+        let (code, headers, _) = self.request::<()>(Method::DELETE, url, headers, None, None)
+            .await?;
         Ok(TardisHttpResponse { code, headers, body: None })
     }
 
