@@ -23,10 +23,6 @@ pub struct TardisContext {
     pub ak: String,
     /// The requested owner/ 请求的所属者
     pub owner: String,
-    /// The requested Token / 请求的Token
-    pub token: String,
-    /// The requested Token type / 请求的Token类型
-    pub token_kind: String,
     /// List of requested role ids / 请求的角色Id列表
     pub roles: Vec<String>,
     /// List of requested group ids / 请求的群组Id列表
@@ -39,8 +35,6 @@ impl Default for TardisContext {
             own_paths: "".to_string(),
             ak: "".to_string(),
             owner: "".to_string(),
-            token: "".to_string(),
-            token_kind: "".to_string(),
             roles: vec![],
             groups: vec![],
         }
