@@ -43,8 +43,6 @@ impl TodoApi {
             own_paths: "".to_string(),
             ak: "".to_string(),
             owner: "".to_string(),
-            token: "".to_string(),
-            token_kind: "".to_string(),
             roles: vec![],
             groups: vec![],
         };
@@ -103,8 +101,6 @@ impl TodoApi {
             own_paths: "".to_string(),
             ak: "".to_string(),
             owner: "".to_string(),
-            token: "".to_string(),
-            token_kind: "".to_string(),
             roles: vec![],
             groups: vec![],
         };

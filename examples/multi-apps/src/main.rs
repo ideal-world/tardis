@@ -21,7 +21,7 @@ mod initializer;
 ///
 /// http://127.0.0.1:8089/doc/ui / http://127.0.0.1:8089/tag/ui
 ///
-/// Authentication: eyJvd25fcGF0aHMiOiAiIiwiYWsiOiAiIiwib3duZXIiOiAiIiwidG9rZW4iOiAiIiwidG9rZW5fa2luZCI6ICIiLCJyb2xlcyI6IFtdLCJncm91cHMiOiBbXX0=
+/// Authentication: eyJvd25fcGF0aHMiOiAiIiwiYWsiOiAiIiwib3duZXIiOiAiIiwicm9sZXMiOiBbXSwiZ3JvdXBzIjogW119
 ///
 #[tokio::main]
 async fn main() -> TardisResult<()> {

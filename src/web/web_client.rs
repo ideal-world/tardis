@@ -3,12 +3,12 @@ use std::time::Duration;
 
 use reqwest::{Client, Method, Response};
 
-use crate::{FrameworkConfig, TardisFuns};
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::log::info;
 use crate::serde::de::DeserializeOwned;
 use crate::serde::Serialize;
+use crate::{FrameworkConfig, TardisFuns};
 
 pub struct TardisWebClient {
     default_headers: Vec<(String, String)>,
@@ -64,8 +64,7 @@ impl TardisWebClient {
     }
 
     pub async fn delete_to_void(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<()>> {
-        let (code, headers, _) = self.request::<()>(Method::DELETE, url, headers, None, None)
-            .await?;
+        let (code, headers, _) = self.request::<()>(Method::DELETE, url, headers, None, None).await?;
         Ok(TardisHttpResponse { code, headers, body: None })
     }
 

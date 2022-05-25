@@ -11,6 +11,10 @@ pub const TOKEN_FLAG: &str = "__";
 #[oai(type = "api_key", key_name = "Tardis-Context", in = "header", checker = "context_checker")]
 pub struct TardisContextExtractor(pub TardisContext);
 
+pub trait TardisContextExtractFun {
+    fn extract_context(&self, req: &Request) -> TardisResult<TardisContext>;
+}
+
 async fn context_checker(req: &Request, _: ApiKey) -> Option<TardisContext> {
     match extract_context(req).await {
         Ok(context) => Some(context),
@@ -30,7 +34,7 @@ async fn extract_context(req: &Request) -> TardisResult<TardisContext> {
         .to_str()
         .map_err(|_| TardisError::BadRequest("[Tardis.WebServer] Context header is not string".to_string()))?;
     if !context.starts_with(TOKEN_FLAG) {
-        let context = base64::decode(context).map_err(|_| TardisError::BadRequest("[Tardis.WebServer]Context header is not base64".to_string()))?;
+        let context = base64::decode(context).map_err(|_| TardisError::BadRequest("[Tardis.WebServer] Context header is not base64".to_string()))?;
         let context = String::from_utf8(context).map_err(|_| TardisError::BadRequest("[Tardis.WebServer] Context header is not utf8".to_string()))?;
         let context = TardisFuns::json.str_to_obj(&context).map_err(|_| TardisError::BadRequest("[Tardis.WebServer] Context header is not valid json".to_string()))?;
         Ok(context)

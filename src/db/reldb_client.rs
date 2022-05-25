@@ -934,7 +934,7 @@ where
     {
         let db_backend: DbBackend = db.get_database_backend();
 
-        let sql = self.build(db_backend).sql.replace("?", "''");
+        let sql = self.build(db_backend).sql.replace('?', "''");
         let ast = match Parser::parse_sql(&MySqlDialect {}, &sql)?.pop() {
             Some(ast) => ast,
             None => return Err(TardisError::BadRequest("[Tardis.RelDBClient] Sql parsing error, no valid Statement found".to_string())),
