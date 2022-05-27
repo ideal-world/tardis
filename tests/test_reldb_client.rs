@@ -36,8 +36,6 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
     let cxt = TardisContext {
         own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
-        token: "token1".to_string(),
-        token_kind: "default".to_string(),
         roles: vec![],
         groups: vec![],
         owner: "acc1".to_string(),
@@ -113,8 +111,6 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
     let cxt = TardisContext {
         own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
-        token: "token1".to_string(),
-        token_kind: "default".to_string(),
         roles: vec![],
         groups: vec![],
         owner: "acc1".to_string(),
@@ -332,8 +328,6 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
     let cxt = TardisContext {
         own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
-        token: "token1".to_string(),
-        token_kind: "default".to_string(),
         roles: vec![],
         groups: vec![],
         owner: "acc1".to_string(),

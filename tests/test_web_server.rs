@@ -431,8 +431,6 @@ async fn test_context(url: &str) -> TardisResult<()> {
     let context = TardisContext {
         own_paths: "tenant1/app1".to_string(),
         ak: "ak1".to_string(),
-        token: "token1".to_string(),
-        token_kind: "测试".to_string(),
         roles: vec!["r1".to_string(), "管理员".to_string()],
         groups: vec!["g1".to_string()],
         owner: "acc1".to_string(),
@@ -483,8 +481,6 @@ async fn test_context(url: &str) -> TardisResult<()> {
     let context = TardisContext {
         own_paths: "tenant1/app1".to_string(),
         ak: "ak1".to_string(),
-        token: "token1".to_string(),
-        token_kind: "测试".to_string(),
         roles: vec!["r1".to_string(), "管理员".to_string()],
         groups: vec!["g1".to_string()],
         owner: "acc1".to_string(),
