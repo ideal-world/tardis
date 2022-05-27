@@ -108,6 +108,20 @@ impl TardisCacheClient {
         (*self.con.lock().await).ttl(key).await
     }
 
+    // list operations
+
+    pub async fn lpush(&self, key: &str, value: &str) -> RedisResult<()> {
+        (*self.con.lock().await).lpush(key, value).await
+    }
+
+    pub async fn lrangeall(&self, key: &str) -> RedisResult<Vec<String>> {
+        (*self.con.lock().await).lrange(key, 0, -1).await
+    }
+
+    pub async fn llen(&self, key: &str) -> RedisResult<usize> {
+        (*self.con.lock().await).llen(key).await
+    }
+
     // hash operations
 
     pub async fn hget(&self, key: &str, field: &str) -> RedisResult<Option<String>> {

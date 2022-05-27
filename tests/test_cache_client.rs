@@ -100,6 +100,15 @@ async fn test_cache_client() -> TardisResult<()> {
         assert_eq!(map_result.get("f0").unwrap(), "v0");
         assert_eq!(map_result.get("f3").unwrap(), "1");
 
+        // list operations
+        client.lpush("l", "v1").await?;
+        client.lpush("l", "v2").await?;
+        assert_eq!(client.llen("l").await?, 2);
+        let list_result = client.lrangeall("l").await?;
+        assert_eq!(list_result.len(), 2);
+        assert_eq!(list_result.get(0).unwrap(), "v2");
+        assert_eq!(list_result.get(1).unwrap(), "v1");
+
         // custom
 
         let mut _s: bool = client.cmd().await.sadd("s1", "m1").await?;
