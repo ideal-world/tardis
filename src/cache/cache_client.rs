@@ -92,6 +92,26 @@ impl TardisCacheClient {
         (*self.con.lock().await).del(key).await
     }
 
+    pub async fn del_confirm(&self, key: &str) -> RedisResult<()> {
+        match self.del(key).await {
+            Err(e) => {
+                return Err(e);
+            }
+            _ => {}
+        }
+        loop {
+            match self.exists(key).await {
+                Ok(false) => {
+                    return Ok(());
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+                _ => {}
+            }
+        }
+    }
+
     pub async fn exists(&self, key: &str) -> RedisResult<bool> {
         (*self.con.lock().await).exists(key).await
     }
@@ -138,6 +158,26 @@ impl TardisCacheClient {
 
     pub async fn hdel(&self, key: &str, field: &str) -> RedisResult<()> {
         (*self.con.lock().await).hdel(key, field).await
+    }
+
+    pub async fn hdel_confirm(&self, key: &str, field: &str) -> RedisResult<()> {
+        match self.hdel(key, field).await {
+            Err(e) => {
+                return Err(e);
+            }
+            _ => {}
+        }
+        loop {
+            match self.hexists(key, field).await {
+                Ok(false) => {
+                    return Ok(());
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+                _ => {}
+            }
+        }
     }
 
     pub async fn hincr(&self, key: &str, field: &str, delta: isize) -> RedisResult<usize> {
