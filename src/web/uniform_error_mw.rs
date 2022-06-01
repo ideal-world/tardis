@@ -1,14 +1,14 @@
 use async_trait::async_trait;
-use poem::error::{CorsError, MethodNotAllowedError, NotFoundError, ParsePathError};
 use poem::http::StatusCode;
 use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
-use poem_openapi::error::{AuthorizationError, ContentTypeError, ParseMultipartError, ParseParamError, ParseRequestPayloadError};
 use tracing::{trace, warn};
 
 use crate::basic::error::TardisError;
-use crate::basic::result::StatusCodeKind;
+use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
 use crate::serde_json::json;
-use crate::{web, TardisFuns};
+use crate::TardisFuns;
+
+use super::web_resp::mapping_http_code_to_error;
 
 pub struct UniformError;
 
@@ -64,11 +64,10 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                     "application/json; charset=utf8".parse().expect("[Tardis.WebServer] Http head parsing error"),
                 );
 
-                let (bus_code, msg) = if msg.starts_with(web::web_resp::TARDIS_ERROR_FLAG) {
-                    let msg = msg.split_at(web::web_resp::TARDIS_ERROR_FLAG.len()).1.to_string();
-                    TardisError::parse(msg)
+                let (bus_code, msg) = if let Some(error) = mapping_http_code_to_error(http_code, &msg) {
+                    error.parse()
                 } else {
-                    (mapping_code(http_code).into_unified_code(), msg)
+                    (TARDIS_RESULT_SUCCESS_CODE.to_string(), "".to_string())
                 };
                 resp.set_body(
                     json!({
@@ -79,60 +78,19 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                 );
                 Ok(resp)
             }
-            Err(err) => Ok(error_handler(err)),
+            Err(err) => {
+                let error: TardisError = err.into();
+                let (bus_code, msg) = error.parse();
+                Ok(Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(
+                    json!({
+                        "code": bus_code,
+                        "msg": process_err_msg(bus_code.as_str(),msg),
+                    })
+                    .to_string(),
+                ))
+            }
         }
     }
-}
-
-fn mapping_code(http_code: StatusCode) -> StatusCodeKind {
-    match http_code {
-        StatusCode::OK => StatusCodeKind::Success,
-        StatusCode::BAD_REQUEST => StatusCodeKind::BadRequest,
-        StatusCode::UNAUTHORIZED => StatusCodeKind::Unauthorized,
-        StatusCode::FORBIDDEN => StatusCodeKind::NotFound,
-        StatusCode::NOT_FOUND => StatusCodeKind::NotFound,
-        StatusCode::METHOD_NOT_ALLOWED => StatusCodeKind::NotFound,
-        StatusCode::INTERNAL_SERVER_ERROR => StatusCodeKind::InternalError,
-        StatusCode::SERVICE_UNAVAILABLE => StatusCodeKind::InternalError,
-        _ => StatusCodeKind::UnKnown,
-    }
-}
-
-fn error_handler(err: poem::Error) -> Response {
-    let msg = err.to_string();
-    let (bus_code, msg) = if msg.starts_with(web::web_resp::TARDIS_ERROR_FLAG) {
-        let msg = msg.split_at(web::web_resp::TARDIS_ERROR_FLAG.len()).1.to_string();
-        TardisError::parse(msg)
-    } else if err.is::<ParseParamError>()
-        || err.is::<ParseRequestPayloadError>()
-        || err.is::<ParseMultipartError>()
-        || err.is::<ContentTypeError>()
-        || err.is::<ParsePathError>()
-        || err.is::<MethodNotAllowedError>()
-    {
-        (StatusCodeKind::BadRequest.into_unified_code(), err.to_string())
-    } else if err.is::<NotFoundError>() {
-        (StatusCodeKind::NotFound.into_unified_code(), err.to_string())
-    } else if err.is::<AuthorizationError>() || err.is::<CorsError>() {
-        (StatusCodeKind::Unauthorized.into_unified_code(), err.to_string())
-    } else {
-        warn!("[Tardis.WebServer] Process error kind: {:?}", err);
-        (StatusCodeKind::UnKnown.into_unified_code(), err.to_string())
-    };
-    // TODO
-    // let http_code = if bus_code.starts_with('5') {
-    //
-    //     StatusCode::INTERNAL_SERVER_ERROR
-    // } else {
-    //     StatusCode::OK
-    // };
-    Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(
-        json!({
-            "code": bus_code,
-            "msg": process_err_msg(bus_code.as_str(),msg),
-        })
-        .to_string(),
-    )
 }
 
 fn process_err_msg(code: &str, msg: String) -> String {

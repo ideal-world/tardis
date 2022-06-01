@@ -1,7 +1,8 @@
-use tardis::basic::dto::{TardisContext, TardisFunsInst};
+use tardis::basic::dto::TardisContext;
 use tardis::basic::error::TardisError;
 use tardis::basic::result::TardisResult;
 use tardis::db::sea_orm::*;
+use tardis::TardisFunsInst;
 
 use crate::domain::doc;
 use crate::dto::conf::DocConfig;

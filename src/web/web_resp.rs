@@ -9,10 +9,10 @@ use poem_openapi::{
 use tracing::warn;
 
 use crate::basic::error::TardisError;
-use crate::basic::result::StatusCodeKind;
+use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
 use crate::serde::{Deserialize, Serialize};
 
-pub const TARDIS_ERROR_FLAG: &str = "__TARDIS_ERROR__";
+const TARDIS_ERROR_FLAG: &str = "__TARDIS_ERROR__";
 
 pub type TardisApiResult<T> = poem::Result<Json<TardisResp<T>>>;
 
@@ -41,6 +41,11 @@ impl From<TardisError> for poem::Error {
 
 impl From<poem::Error> for TardisError {
     fn from(error: poem::Error) -> Self {
+        let msg = error.to_string();
+        if msg.starts_with(TARDIS_ERROR_FLAG) {
+            let msg = msg.split_at(TARDIS_ERROR_FLAG.len()).1.to_string();
+            return TardisError::form(&msg);
+        }
         if error.is::<ParseParamError>()
             || error.is::<ParseRequestPayloadError>()
             || error.is::<ParseMultipartError>()
@@ -57,6 +62,22 @@ impl From<poem::Error> for TardisError {
             warn!("[Tardis.WebServer] Process error kind: {:?}", error);
             TardisError::_Inner(error.to_string())
         }
+    }
+}
+
+pub fn mapping_http_code_to_error(http_code: StatusCode, msg: &str) -> Option<TardisError> {
+    if msg.starts_with(TARDIS_ERROR_FLAG) {
+        let msg = msg.split_at(TARDIS_ERROR_FLAG.len()).1.to_string();
+        return Some(TardisError::form(&msg));
+    }
+    match http_code {
+        StatusCode::OK => None,
+        StatusCode::BAD_REQUEST => Some(TardisError::BadRequest(msg.to_string())),
+        StatusCode::UNAUTHORIZED => Some(TardisError::Unauthorized(msg.to_string())),
+        StatusCode::NOT_FOUND => Some(TardisError::NotFound(msg.to_string())),
+        StatusCode::INTERNAL_SERVER_ERROR => Some(TardisError::InternalError(msg.to_string())),
+        StatusCode::SERVICE_UNAVAILABLE => Some(TardisError::InternalError(msg.to_string())),
+        _ => Some(TardisError::BadRequest(msg.to_string())),
     }
 }
 
@@ -77,7 +98,7 @@ where
 {
     pub fn ok(data: T) -> TardisApiResult<T> {
         TardisApiResult::Ok(Json(TardisResp {
-            code: StatusCodeKind::Success.into_unified_code(),
+            code: TARDIS_RESULT_SUCCESS_CODE.to_string(),
             msg: "".to_string(),
             data: Some(data),
         }))

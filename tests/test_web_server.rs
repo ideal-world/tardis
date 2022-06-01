@@ -12,7 +12,7 @@ use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, Ma
 use tardis::basic::dto::TardisContext;
 use tardis::basic::error::TardisError;
 use tardis::basic::field::TrimString;
-use tardis::basic::result::{StatusCodeKind, TardisResult};
+use tardis::basic::result::{TardisResult, TARDIS_RESULT_SUCCESS_CODE};
 use tardis::serde::{Deserialize, Serialize};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::web::context_extractor::{TardisContextExtractor, TOKEN_FLAG};
@@ -161,7 +161,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
 async fn test_basic(url: &str) -> TardisResult<()> {
     // Normal
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
     assert_eq!(response.data.unwrap().code.to_string(), "code1");
 
     // Business Error
@@ -171,7 +171,7 @@ async fn test_basic(url: &str) -> TardisResult<()> {
 
     // Not Found
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/ss", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, StatusCodeKind::NotFound.into_unified_code());
+    assert_eq!(response.code, TardisError::NotFound("".to_string()).code());
     assert_eq!(response.msg, "not found");
 
     Ok(())
@@ -179,7 +179,7 @@ async fn test_basic(url: &str) -> TardisResult<()> {
 
 async fn test_validate(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/ss", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(
         response.msg,
         r#"failed to parse parameter `id`: failed to parse "integer(int64)": invalid digit found in string"#
@@ -203,7 +203,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(
         response.msg,
         r#"parse request payload error: failed to parse "ValidateReq": field `len` verification failed. minLength(1)"#
@@ -227,7 +227,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(
         response.msg,
         r#"parse request payload error: failed to parse "ValidateReq": field `eq` verification failed. minLength(5)"#
@@ -251,7 +251,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(
         response.msg,
         r#"parse request payload error: failed to parse "ValidateReq": field `range` verification failed. minimum(1, exclusive: false)"#
@@ -275,7 +275,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(
         response.msg,
         r#"parse request payload error: failed to parse "ValidateReq": field `mail` verification failed. Invalid mail format"#
@@ -299,7 +299,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(
         response.msg,
         r#"parse request payload error: failed to parse "ValidateReq": field `contain` verification failed. pattern(".*gmail.*")"#
@@ -323,7 +323,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(
         response.msg,
         r#"parse request payload error: failed to parse "ValidateReq": field `phone` verification failed. Invalid phone number format"#
@@ -347,7 +347,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(
         response.msg,
         r#"parse request payload error: failed to parse "ValidateReq": field `item_len` verification failed. minItems(1)"#
@@ -371,7 +371,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(
         response.msg,
         r#"parse request payload error: failed to parse "ValidateReq": field `item_unique` verification failed. uniqueItems()"#
@@ -395,14 +395,14 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
 
     Ok(())
 }
 
 async fn test_context(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client().get::<TardisResp<String>>(format!("{}/other/context_in_header", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
     assert_eq!(response.msg, "authorization error");
 
     // from header
@@ -414,7 +414,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
     assert_eq!(response.msg, "authorization error");
 
     let response = TardisFuns::web_client()
@@ -425,7 +425,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
     assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
@@ -446,7 +446,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
     assert_eq!(response.msg, "authorization error");
 
     let response = TardisFuns::web_client()
@@ -460,7 +460,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
     assert_eq!(response.data.unwrap(), "管理员");
 
     // from cache
@@ -475,7 +475,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::Unauthorized.into_unified_code());
+    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
     assert_eq!(response.msg, "authorization error");
 
     let context = TardisContext {
@@ -503,7 +503,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
     assert_eq!(response.data.unwrap(), "管理员");
 
     Ok(())
@@ -589,11 +589,11 @@ async fn test_security() -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
     assert_eq!(response.data.unwrap(), "编码1");
 
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, StatusCodeKind::Success.into_unified_code());
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
     assert_eq!(response.data.unwrap().description, "测试");
 
     // Business Error
@@ -603,7 +603,7 @@ async fn test_security() -> TardisResult<()> {
 
     // Not Found
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/ss", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, StatusCodeKind::NotFound.into_unified_code());
+    assert_eq!(response.code, TardisError::NotFound("".to_string()).code());
     assert_eq!(response.msg, "Security is enabled, detailed errors are hidden, please check the server logs");
 
     let response = TardisFuns::web_client()
@@ -624,7 +624,7 @@ async fn test_security() -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, StatusCodeKind::BadRequest.into_unified_code());
+    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
     assert_eq!(response.msg, "Security is enabled, detailed errors are hidden, please check the server logs");
 
     Ok(())

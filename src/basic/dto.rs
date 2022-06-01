@@ -1,8 +1,5 @@
 //! Common DTOs / 常用的DTO
-use serde::de::DeserializeOwned;
-
 use crate::serde::{Deserialize, Serialize};
-use crate::{TardisFuns, TardisResult};
 
 /// ardis context / Tardis上下文
 ///
@@ -38,98 +35,5 @@ impl Default for TardisContext {
             roles: vec![],
             groups: vec![],
         }
-    }
-}
-
-pub struct TardisFunsInst<'a> {
-    module_code: String,
-    #[cfg(feature = "reldb")]
-    db: Option<crate::db::reldb_client::TardisRelDBlConnection<'a>>,
-    // Solve the 'a not used issue when the reldb feature is not enabled
-    #[cfg(not(feature = "reldb"))]
-    _t: Option<&'a str>,
-}
-
-impl<'a> TardisFunsInst<'a> {
-    pub(crate) fn new(code: String) -> Self {
-        Self {
-            module_code: code.to_lowercase(),
-            #[cfg(feature = "reldb")]
-            db: None,
-            #[cfg(not(feature = "reldb"))]
-            _t: None,
-        }
-    }
-
-    #[cfg(feature = "reldb")]
-    pub(crate) fn new_with_db_conn(code: String) -> Self {
-        let reldb = TardisFuns::reldb_by_module_or_default(&code);
-        Self {
-            module_code: code.to_lowercase(),
-            db: Some(reldb.conn()),
-        }
-    }
-
-    pub fn module_code(&self) -> &str {
-        &self.module_code
-    }
-
-    pub fn conf<T: 'static + DeserializeOwned>(&self) -> &T {
-        TardisFuns::cs_config(&self.module_code)
-    }
-
-    #[cfg(feature = "reldb")]
-    pub fn reldb(&self) -> &'static crate::TardisRelDBClient {
-        TardisFuns::reldb_by_module_or_default(&self.module_code)
-    }
-
-    #[cfg(feature = "reldb")]
-    pub fn db(&self) -> &crate::db::reldb_client::TardisRelDBlConnection<'a> {
-        self.db.as_ref().expect("db is not initialized")
-    }
-
-    #[cfg(feature = "reldb")]
-    pub async fn begin(&mut self) -> TardisResult<()> {
-        self.db.as_mut().expect("db is not initialized").begin().await
-    }
-
-    #[cfg(feature = "reldb")]
-    pub async fn commit(self) -> TardisResult<()> {
-        self.db.expect("db is not initialized").commit().await
-    }
-
-    #[cfg(feature = "reldb")]
-    pub async fn rollback(self) -> TardisResult<()> {
-        self.db.expect("db is not initialized").rollback().await
-    }
-
-    #[cfg(feature = "cache")]
-    pub fn cache(&self) -> &'static crate::TardisCacheClient {
-        TardisFuns::cache_by_module_or_default(&self.module_code)
-    }
-
-    #[cfg(feature = "mq")]
-    pub fn mq(&self) -> &'static crate::TardisMQClient {
-        TardisFuns::mq_by_module_or_default(&self.module_code)
-    }
-
-    #[cfg(feature = "web-client")]
-    pub fn web_client(&self) -> &'static crate::TardisWebClient {
-        TardisFuns::web_client_by_module_or_default(&self.module_code)
-    }
-
-    #[cfg(feature = "web-client")]
-    pub fn search(&self) -> &'static crate::TardisSearchClient {
-        TardisFuns::search_by_module_or_default(&self.module_code)
-    }
-
-    #[cfg(feature = "mail")]
-    pub fn mail(&self) -> &'static crate::TardisMailClient {
-        TardisFuns::mail_by_module_or_default(&self.module_code)
-    }
-
-    #[cfg(feature = "os")]
-    pub fn os(&self) -> &'static crate::TardisOSClient {
-        TardisFuns::os_by_module_or_default(&self.module_code)
     }
 }

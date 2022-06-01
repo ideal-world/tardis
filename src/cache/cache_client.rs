@@ -93,11 +93,8 @@ impl TardisCacheClient {
     }
 
     pub async fn del_confirm(&self, key: &str) -> RedisResult<()> {
-        match self.del(key).await {
-            Err(e) => {
-                return Err(e);
-            }
-            _ => {}
+        if let Err(e) = self.del(key).await {
+            return Err(e);
         }
         loop {
             match self.exists(key).await {
@@ -161,11 +158,8 @@ impl TardisCacheClient {
     }
 
     pub async fn hdel_confirm(&self, key: &str, field: &str) -> RedisResult<()> {
-        match self.hdel(key, field).await {
-            Err(e) => {
-                return Err(e);
-            }
-            _ => {}
+        if let Err(e) = self.hdel(key, field).await {
+            return Err(e);
         }
         loop {
             match self.hexists(key, field).await {

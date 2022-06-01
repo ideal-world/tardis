@@ -15,36 +15,45 @@ pub static ERROR_DEFAULT_CODE: &str = "-1";
 pub enum TardisError {
     #[display(fmt = "{}##{}", _0, _1)]
     Custom(String, String),
-    #[display(fmt = "000000000000##{:?}", _0)]
+    #[display(fmt = "000##{:?}", _0)]
     Box(Box<dyn Error + Send + Sync>),
-    #[display(fmt = "500000000000##{}", _0)]
+    #[display(fmt = "500##{}", _0)]
     InternalError(String),
-    #[display(fmt = "501000000000##{}", _0)]
+    #[display(fmt = "501##{}", _0)]
     NotImplemented(String),
-    #[display(fmt = "503000000000##{}", _0)]
+    #[display(fmt = "503##{}", _0)]
     IOError(String),
-    #[display(fmt = "400000000000##{}", _0)]
+    #[display(fmt = "400##{}", _0)]
     BadRequest(String),
-    #[display(fmt = "401000000000##{}", _0)]
+    #[display(fmt = "401##{}", _0)]
     Unauthorized(String),
-    #[display(fmt = "404000000000##{}", _0)]
+    #[display(fmt = "404##{}", _0)]
     NotFound(String),
-    #[display(fmt = "406000000000##{}", _0)]
+    #[display(fmt = "406##{}", _0)]
     FormatError(String),
-    #[display(fmt = "408000000000##{}", _0)]
+    #[display(fmt = "408##{}", _0)]
     Timeout(String),
-    #[display(fmt = "409000000000##{}", _0)]
+    #[display(fmt = "409##{}", _0)]
     Conflict(String),
     #[display(fmt = "{}", _0)]
     _Inner(String),
 }
 
 impl TardisError {
-    pub fn parse(msg: String) -> (String, String) {
+    pub fn form(msg: &str) -> TardisError {
+        let (code, message) = Self::to_tuple(msg.to_string());
+        TardisError::Custom(code, message)
+    }
+
+    pub fn to_tuple(msg: String) -> (String, String) {
         let split_idx = msg.find(GENERAL_SPLIT).expect("Illegal error description format");
         let code = &msg[..split_idx];
         let message = &msg[split_idx + 2..];
         (code.to_string(), message.to_string())
+    }
+
+    pub fn parse(&self) -> (String, String) {
+        Self::to_tuple(self.to_string())
     }
 
     pub fn new(code: u16, msg: &str) -> Option<Self> {
@@ -75,6 +84,48 @@ impl TardisError {
         let split_idx = text.find(GENERAL_SPLIT).expect("Illegal error description format");
         let message = &text[split_idx + 2..];
         message.to_string()
+    }
+}
+
+pub struct TardisErrorWithExt {
+    pub ext: String,
+}
+
+impl TardisErrorWithExt {
+    pub fn internal_error(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+        TardisError::Custom(format!("500-{}-{}-{}", self.ext, obj_name, obj_opt), msg.to_string())
+    }
+
+    pub fn not_implemented(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+        TardisError::Custom(format!("501-{}-{}-{}", self.ext, obj_name, obj_opt), msg.to_string())
+    }
+
+    pub fn io_error(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+        TardisError::Custom(format!("503-{}-{}-{}", self.ext, obj_name, obj_opt), msg.to_string())
+    }
+
+    pub fn bad_request(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+        TardisError::Custom(format!("400-{}-{}-{}", self.ext, obj_name, obj_opt), msg.to_string())
+    }
+
+    pub fn unauthorized(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+        TardisError::Custom(format!("401-{}-{}-{}", self.ext, obj_name, obj_opt), msg.to_string())
+    }
+
+    pub fn not_found(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+        TardisError::Custom(format!("404-{}-{}-{}", self.ext, obj_name, obj_opt), msg.to_string())
+    }
+
+    pub fn format_error(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+        TardisError::Custom(format!("406-{}-{}-{}", self.ext, obj_name, obj_opt), msg.to_string())
+    }
+
+    pub fn timeout(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+        TardisError::Custom(format!("408-{}-{}-{}", self.ext, obj_name, obj_opt), msg.to_string())
+    }
+
+    pub fn conflict(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+        TardisError::Custom(format!("409-{}-{}-{}", self.ext, obj_name, obj_opt), msg.to_string())
     }
 }
 
