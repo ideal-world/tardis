@@ -83,7 +83,7 @@ async fn test_web_server() -> TardisResult<()> {
 
     let docker = clients::Cli::default();
     let redis_container = TardisTestContainer::redis_custom(&docker);
-    let redis_port = redis_container.get_host_port(6379);
+    let redis_port = redis_container.get_host_port_ipv4(6379);
     let redis_url = format!("redis://127.0.0.1:{}/0", redis_port);
 
     tokio::spawn(async move { start_serv(web_url, &redis_url).await });
@@ -179,10 +179,10 @@ async fn test_basic(url: &str) -> TardisResult<()> {
 
 async fn test_validate(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/ss", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
+    assert_eq!(response.code, TardisError::NotFound("".to_string()).code());
     assert_eq!(
         response.msg,
-        r#"failed to parse parameter `id`: failed to parse "integer(int64)": invalid digit found in string"#
+        r#"failed to parse path `id`: failed to parse "integer(int64)": invalid digit found in string"#
     );
 
     let response = TardisFuns::web_client()

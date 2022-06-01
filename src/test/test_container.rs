@@ -23,7 +23,7 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::redis_custom(&docker);
-            let port = node.get_host_port(6379);
+            let port = node.get_host_port_ipv4(6379);
             fun(format!("redis://127.0.0.1:{}/0", port)).await
         }
     }
@@ -42,7 +42,7 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::rabbit_custom(&docker);
-            let port = node.get_host_port(5672);
+            let port = node.get_host_port_ipv4(5672);
             fun(format!("amqp://guest:guest@127.0.0.1:{}/%2f", port)).await
         }
     }
@@ -61,7 +61,7 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::mysql_custom(init_script_path, &docker);
-            let port = node.get_host_port(3306);
+            let port = node.get_host_port_ipv4(3306);
             fun(format!("mysql://root:123456@localhost:{}/test", port)).await
         }
     }
@@ -101,7 +101,7 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::postgres_custom(init_script_path, &docker);
-            let port = node.get_host_port(5432);
+            let port = node.get_host_port_ipv4(5432);
             fun(format!("postgres://postgres:123456@localhost:{}/test", port)).await
         }
     }
@@ -141,7 +141,7 @@ impl TardisTestContainer {
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::es_custom(&docker);
-            let port = node.get_host_port(9200);
+            let port = node.get_host_port_ipv4(9200);
             fun(format!("https://elastic:123456@127.0.0.1:{}", port)).await
         }
     }

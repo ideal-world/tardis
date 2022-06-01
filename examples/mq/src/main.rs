@@ -15,7 +15,7 @@ async fn main() -> TardisResult<()> {
     // Here is a demonstration of using docker to start a mysql simulation scenario.
     let docker = clients::Cli::default();
     let rabbit_container = TardisTestContainer::rabbit_custom(&docker);
-    let port = rabbit_container.get_host_port(5672);
+    let port = rabbit_container.get_host_port_ipv4(5672);
     let url = format!("amqp://guest:guest@127.0.0.1:{}/%2f", port);
     env::set_var("TARDIS_FW.MQ.URL", url);
 

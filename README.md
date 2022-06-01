@@ -62,7 +62,7 @@ Dependency Configuration
 ```toml
 [dependencies]
 tardis = { version = "^0", features = ["web-server"] }
-poem-openapi = { version = "^1"}
+poem-openapi = { version = "^2"}
 ```
 
 Processor Configuration
