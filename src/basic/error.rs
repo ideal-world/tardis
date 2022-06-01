@@ -35,7 +35,7 @@ pub enum TardisError {
     Timeout(String),
     #[display(fmt = "409##{}", _0)]
     Conflict(String),
-    #[display(fmt = "{}", _0)]
+    #[display(fmt = "000##{}", _0)]
     _Inner(String),
 }
 
@@ -45,7 +45,7 @@ impl TardisError {
         TardisError::Custom(code, message)
     }
 
-    pub fn to_tuple(msg: String) -> (String, String) {
+    fn to_tuple(msg: String) -> (String, String) {
         let split_idx = msg.find(GENERAL_SPLIT).expect("Illegal error description format");
         let code = &msg[..split_idx];
         let message = &msg[split_idx + 2..];

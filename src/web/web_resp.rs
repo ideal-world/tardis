@@ -1,16 +1,12 @@
-use poem::error::{CorsError, MethodNotAllowedError, NotFoundError, ParsePathError};
+use crate::basic::error::TardisError;
+use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
+use crate::serde::{Deserialize, Serialize};
 use poem::http::StatusCode;
-use poem_openapi::error::{AuthorizationError, ContentTypeError, ParseMultipartError, ParseParamError, ParseRequestPayloadError};
 use poem_openapi::payload::Json;
 use poem_openapi::{
     types::{ParseFromJSON, ToJSON},
     Object,
 };
-use tracing::warn;
-
-use crate::basic::error::TardisError;
-use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
-use crate::serde::{Deserialize, Serialize};
 
 const TARDIS_ERROR_FLAG: &str = "__TARDIS_ERROR__";
 
@@ -22,6 +18,8 @@ impl From<TardisError> for poem::Error {
             // TODO
             TardisError::Custom(_, _) => StatusCode::BAD_REQUEST,
             // TODO
+            TardisError::_Inner(_) => StatusCode::BAD_REQUEST,
+            // TODO
             TardisError::Box(_) => StatusCode::BAD_REQUEST,
             TardisError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             TardisError::NotImplemented(_) => StatusCode::NOT_IMPLEMENTED,
@@ -32,8 +30,6 @@ impl From<TardisError> for poem::Error {
             TardisError::FormatError(_) => StatusCode::BAD_REQUEST,
             TardisError::Timeout(_) => StatusCode::REQUEST_TIMEOUT,
             TardisError::Conflict(_) => StatusCode::CONFLICT,
-            // TODO
-            TardisError::_Inner(_) => StatusCode::BAD_REQUEST,
         };
         poem::Error::from_string(format!("{}{}", TARDIS_ERROR_FLAG, error), status_code)
     }
@@ -46,22 +42,9 @@ impl From<poem::Error> for TardisError {
             let msg = msg.split_at(TARDIS_ERROR_FLAG.len()).1.to_string();
             return TardisError::form(&msg);
         }
-        if error.is::<ParseParamError>()
-            || error.is::<ParseRequestPayloadError>()
-            || error.is::<ParseMultipartError>()
-            || error.is::<ContentTypeError>()
-            || error.is::<ParsePathError>()
-            || error.is::<MethodNotAllowedError>()
-        {
-            TardisError::BadRequest(error.to_string())
-        } else if error.is::<NotFoundError>() {
-            TardisError::NotFound(error.to_string())
-        } else if error.is::<AuthorizationError>() || error.is::<CorsError>() {
-            TardisError::Unauthorized(error.to_string())
-        } else {
-            warn!("[Tardis.WebServer] Process error kind: {:?}", error);
-            TardisError::_Inner(error.to_string())
-        }
+        let msg = &error.to_string();
+        let http_code = error.into_response().status();
+        mapping_http_code_to_error(http_code, msg).unwrap()
     }
 }
 
@@ -82,7 +65,6 @@ pub fn mapping_http_code_to_error(http_code: StatusCode, msg: &str) -> Option<Ta
 }
 
 #[derive(Object, Deserialize, Serialize, Clone, Debug)]
-#[oai(inline)]
 pub struct TardisResp<T>
 where
     T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
@@ -110,7 +92,6 @@ where
 }
 
 #[derive(Object, Deserialize, Serialize, Clone, Debug)]
-#[oai(inline)]
 pub struct TardisPage<T>
 where
     T: ParseFromJSON + ToJSON + Serialize + Send + Sync,
@@ -122,5 +103,4 @@ where
 }
 
 #[derive(Object, Deserialize, Serialize, Clone, Debug)]
-#[oai(inline)]
 pub struct Void {}
