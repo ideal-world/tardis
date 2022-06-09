@@ -1,6 +1,6 @@
-on: [ push ]
-
 name: CICD
+
+on: [ push ]
 
 env:
   TARDIS_TEST_DISABLED_DOCKER: true
@@ -8,8 +8,6 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
     services:
       mysql:
         image: mysql
@@ -36,26 +34,35 @@ jobs:
           - 9200:9200
         options: -e ELASTIC_PASSWORD=123456 -e discovery.type=single-node
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - name: Init rust envrionment
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           components: rustfmt, clippy
+
+      - name: Cache rust
+        uses: Swatinem/rust-cache@v1
+
       - name: Check format
         run: cargo fmt --all -- --check
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v1
+
       - name: Check with clippy
         run: cargo clippy --all-features
+
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
           version: '0.19.1'
           args: '--all-features'
+
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
           token: ${{secrets.CODECOV_TOKEN}}
+
       - name: Archive code coverage results
         uses: actions/upload-artifact@v2
         with:
@@ -65,16 +72,22 @@ jobs:
   check-examples:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - name: Init rust envrionment
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           components: rustfmt, clippy
+
+      - name: Cache rust
+        uses: Swatinem/rust-cache@v1
+
       - name: Check format
         run: cargo fmt --all -- --check
         working-directory: examples
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v1
+
       - name: Check with clippy
         run: cargo clippy
         working-directory: examples
@@ -83,16 +96,20 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [check, check-examples]
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Check out the repo
+        uses: actions/checkout@v3
+
+      - name: Init rust envrionment
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: cargo login
+
+      - name: Cargo login
         run: cargo login ${{ secrets.CRATES_TOKEN }}
-      - name: cargo package
+
+      - name: Cargo package
         run: cargo package
-      - name: cargo publish
+
+      - name: Cargo publish
         run: cargo publish
