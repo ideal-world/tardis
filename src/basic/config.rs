@@ -228,8 +228,7 @@ pub struct WebServerConfig {
     pub port: u16,
     /// Allowed cross-domain sources, default is `*` / 允许的跨域来源，默认为 `*`
     pub allowed_origin: String,
-    /// TLS Key, if this configuration is included then the protocol is HTTPS / TLS Key，如果包含此配置则协议为
-    /// HTTPS
+    /// TLS Key, if this configuration is included then the protocol is HTTPS / TLS Key，如果包含此配置则协议为HTTPS
     pub tls_key: Option<String>,
     /// TLS certificate / TLS 证书
     pub tls_cert: Option<String>,
