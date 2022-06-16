@@ -181,6 +181,13 @@ async fn test_cache_client() -> TardisResult<()> {
         .await
         .unwrap();
 
+        // flush
+
+        client.set("flush_test", "测试").await?;
+        assert!(client.exists("flush_test").await?);
+        client.flushdb().await?;
+        assert!(!client.exists("flush_test").await?);
+
         Ok(())
     })
     .await

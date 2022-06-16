@@ -198,6 +198,20 @@ impl TardisCacheClient {
         (*self.con.lock().await).hlen(key).await
     }
 
+    pub async fn flushdb(&self) -> RedisResult<()> {
+        match redis::cmd("FLUSHDB").query_async(&mut (*self.con.lock().await)).await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn flushall(&self) -> RedisResult<()> {
+        match redis::cmd("FLUSHALL").query_async(&mut (*self.con.lock().await)).await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
     // custom
     pub async fn cmd(&self) -> MutexGuard<'_, Connection> {
         self.con.lock().await
