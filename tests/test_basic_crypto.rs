@@ -52,23 +52,19 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
     // RSA
 
     let private_key = TardisFuns::crypto.rsa.new_private_key(2048)?;
-    let private_key_pem = private_key.to_private_key_pem()?;
-    let private_key_pem_copy = TardisFuns::crypto.rsa.new_private_key_from_pem(private_key_pem.as_str())?.to_private_key_pem()?;
+    let private_key_pem = private_key.serialize()?;
+    let private_key_pem_copy = TardisFuns::crypto.rsa.new_private_key_from_str(private_key_pem.as_str())?.serialize()?;
     assert_eq!(private_key_pem_copy, private_key_pem);
 
     let public_key1 = TardisFuns::crypto.rsa.new_public_key(&private_key)?;
-    let public_key2 = TardisFuns::crypto.rsa.new_public_key_from_public_key_pem(public_key1.to_public_key_pem()?.as_str())?;
-    let public_key3 = TardisFuns::crypto.rsa.new_public_key_from_private_key_pem(private_key_pem.as_str())?;
+    let public_key2 = TardisFuns::crypto.rsa.new_public_key_from_public_key(public_key1.serialize()?.as_str())?;
+    let public_key3 = TardisFuns::crypto.rsa.new_public_key_from_private_key(private_key_pem.as_str())?;
 
     let signed_data = private_key.sign("测试")?;
-    assert!(private_key.verify("测试", &signed_data)?);
     assert!(public_key1.verify("测试", &signed_data)?);
     assert!(public_key2.verify("测试", &signed_data)?);
     assert!(public_key3.verify("测试", &signed_data)?);
     assert!(!public_key3.verify("测试1", &signed_data)?);
-
-    let encrypted_data = private_key.encrypt("测试")?;
-    assert_eq!(private_key.decrypt(&encrypted_data)?, "测试");
 
     let encrypted_data = public_key1.encrypt("测试")?;
     assert_eq!(private_key.decrypt(&encrypted_data)?, "测试");
@@ -99,18 +95,33 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
     // SM2
 
     let private_key = TardisFuns::crypto.sm2.new_private_key()?;
-    let private_key_str = private_key.to_private_key()?;
-    let private_key_str_copy = TardisFuns::crypto.sm2.new_private_key_from_str(private_key_str.as_str())?.to_private_key()?;
-    assert_eq!(private_key_str_copy, private_key_str);
+    let private_key_pem = private_key.serialize()?;
+    let private_key_pem_copy = TardisFuns::crypto.sm2.new_private_key_from_str(private_key_pem.as_str())?.serialize()?;
+    assert_eq!(private_key_pem_copy, private_key_pem);
 
-    let public_key1 = TardisFuns::crypto.sm2.new_public_key_from_private_key(&private_key_str)?;
-    let public_key2 = TardisFuns::crypto.sm2.new_public_key_from_public_key(public_key1.to_public_key()?.as_str())?;
+    let public_key1 = TardisFuns::crypto.sm2.new_public_key(&private_key)?;
+    let public_key2 = TardisFuns::crypto.sm2.new_public_key_from_public_key(public_key1.serialize()?.as_str())?;
+    let public_key3 = TardisFuns::crypto.sm2.new_public_key_from_private_key(private_key_pem.as_str())?;
+
+    let signed_data = private_key.sign("测试")?;
+    assert!(public_key1.verify("测试", &signed_data)?);
+    assert!(public_key2.verify("测试", &signed_data)?);
+    assert!(public_key3.verify("测试", &signed_data)?);
+    assert!(!public_key3.verify("测试1", &signed_data)?);
 
     let encrypted_data = public_key1.encrypt("测试")?;
     assert_eq!(private_key.decrypt(&encrypted_data)?, "测试");
 
     let encrypted_data = public_key2.encrypt("测试")?;
     assert_eq!(private_key.decrypt(&encrypted_data)?, "测试");
+
+    let encrypted_data = public_key3.encrypt("测试")?;
+    assert_eq!(private_key.decrypt(&encrypted_data)?, "测试");
+
+    let signed_data = private_key.sign(large_text)?;
+    assert!(public_key1.verify(large_text, &signed_data)?);
+    let encrypted_data = public_key1.encrypt(large_text)?;
+    assert_eq!(private_key.decrypt(&encrypted_data)?, large_text);
 
     Ok(())
 }

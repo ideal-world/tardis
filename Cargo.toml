@@ -1,6 +1,6 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha11"
+version = "0.1.0-alpha12"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -28,7 +28,8 @@ path = "src/lib.rs"
 [features]
 default = ["trace", "rt_tokio"]
 trace = ["tracing", "tracing-subscriber"]
-crypto = ["rust-crypto", "rsa", "pkcs8", "gmsm", "num"]
+crypto = ["rust-crypto", "rsa"]
+crypto_with_sm = ["libsm", "num-bigint"]
 rt_tokio = ["tokio"]
 future = ["rt_tokio", "futures", "async-stream", "futures-util", "async-trait"]
 reldb = ["future", "sqlparser", "sea-orm", "sea-query"]
@@ -65,9 +66,8 @@ tokio = { version = "^1.18", features = ["macros", "rt-multi-thread", "signal", 
 # Crypto
 rust-crypto = { version = "^0.2", optional = true }
 rsa = { version = "^0.5", optional = true }
-pkcs8 = { version = "^0.7", optional = true }
-gmsm = { version = "^0.1", optional = true }
-num = { version = "^0.4", optional = true }
+libsm = { version = "^0.5", optional = true }
+num-bigint = { version = "^0.4.3", optional = true }
 
 # Future
 futures = { version = "^0.3", optional = true }
@@ -117,7 +117,7 @@ criterion = { version = "^0.3" }
 
 [[test]]
 name = "test_basic_crypto"
-required-features = ["crypto"]
+required-features = ["crypto", "crypto_with_sm"]
 
 [[test]]
 name = "test_reldb_client"
@@ -162,7 +162,7 @@ harness = false
 [[bench]]
 name = "crypto_benchmark"
 harness = false
-required-features = ["crypto"]
+required-features = ["crypto", "crypto_with_sm"]
 
 [package.metadata.docs.rs]
 all-features = true

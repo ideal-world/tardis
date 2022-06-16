@@ -93,7 +93,7 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
 
     // SM2
     let private_key = TardisFuns::crypto.sm2.new_private_key().unwrap();
-    let public_key = TardisFuns::crypto.sm2.new_public_key_from_private_key(private_key.to_private_key().unwrap().as_str()).unwrap();
+    let public_key = TardisFuns::crypto.sm2.new_public_key_from_private_key(private_key.serialize().unwrap().as_str()).unwrap();
     let encrypted_data = public_key.encrypt("测试").unwrap();
     c.bench_function("CRYPTO: sm2_encrypt", |b| {
         b.iter(|| {

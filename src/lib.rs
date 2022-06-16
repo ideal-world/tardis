@@ -549,9 +549,9 @@ impl TardisFuns {
     ///
     /// 支持的算法： base64/md5/sha/hmac/aes/rsa/sm2/sm3/sm4.
     ///
-    /// This feature needs to be enabled #[cfg(feature = "crypto")] .
+    /// This feature needs to be enabled #[cfg(feature = "crypto")] and #[cfg(feature = "crypto_with_sm")] .
     ///
-    /// 本功能需要启用 #[cfg(feature = "crypto")] .
+    /// 本功能需要启用 #[cfg(feature = "crypto")] 和 #[cfg(feature = "crypto_with_sm")] .
     ///
     /// # Examples
     /// ```ignore
@@ -565,8 +565,10 @@ impl TardisFuns {
     pub const crypto: crate::basic::crypto::TardisCrypto = crate::basic::crypto::TardisCrypto {
         base64: crate::basic::crypto::TardisCryptoBase64 {},
         aes: crate::basic::crypto::TardisCryptoAes {},
-        sm4: crate::basic::crypto::TardisCryptoSm4 {},
         rsa: crate::basic::crypto::TardisCryptoRsa {},
+        #[cfg(feature = "crypto_with_sm")]
+        sm4: crate::basic::crypto::TardisCryptoSm4 {},
+        #[cfg(feature = "crypto_with_sm")]
         sm2: crate::basic::crypto::TardisCryptoSm2 {},
         digest: crate::basic::crypto::TardisCryptoDigest {},
         key: crate::basic::crypto::TardisCryptoKey {},
