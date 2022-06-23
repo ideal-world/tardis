@@ -40,33 +40,27 @@ impl TardisActiveModel for ActiveModel {
                 .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
                 .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).date_time())
                 .to_owned(),
-            DbBackend::Postgres => {
-                Table::create()
-                    .table(Entity.table_ref())
-                    .if_not_exists()
-                    .col(ColumnDef::new(Column::K).not_null().string().primary_key())
-                    .col(ColumnDef::new(Column::V).not_null().text())
-                    .col(ColumnDef::new(Column::Creator).not_null().string())
-                    .col(ColumnDef::new(Column::Updater).not_null().string())
-                    .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-                    // TODO update time
-                    .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-                    .to_owned()
-            }
-            DbBackend::Sqlite =>
-            // TODO
-            {
-                Table::create()
-                    .table(Entity.table_ref())
-                    .if_not_exists()
-                    .col(ColumnDef::new(Column::K).not_null().string().primary_key())
-                    .col(ColumnDef::new(Column::V).not_null().text())
-                    .col(ColumnDef::new(Column::Creator).not_null().string())
-                    .col(ColumnDef::new(Column::Updater).not_null().string())
-                    .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-                    .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).date_time())
-                    .to_owned()
-            }
+            DbBackend::Postgres => Table::create()
+                .table(Entity.table_ref())
+                .if_not_exists()
+                .col(ColumnDef::new(Column::K).not_null().string().primary_key())
+                .col(ColumnDef::new(Column::V).not_null().text())
+                .col(ColumnDef::new(Column::Creator).not_null().string())
+                .col(ColumnDef::new(Column::Updater).not_null().string())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                // TODO update time
+                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                .to_owned(),
+            DbBackend::Sqlite => Table::create()
+                .table(Entity.table_ref())
+                .if_not_exists()
+                .col(ColumnDef::new(Column::K).not_null().string().primary_key())
+                .col(ColumnDef::new(Column::V).not_null().text())
+                .col(ColumnDef::new(Column::Creator).not_null().string())
+                .col(ColumnDef::new(Column::Updater).not_null().string())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).date_time())
+                .to_owned(),
         }
     }
 }
