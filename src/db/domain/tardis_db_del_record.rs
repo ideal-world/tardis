@@ -1,8 +1,8 @@
 use crate::basic::dto::TardisContext;
 use crate::db::reldb_client::TardisActiveModel;
-use crate::db::sea_orm::entity::prelude::*;
-use crate::db::sea_orm::ActiveValue::Set;
 use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
+use crate::db::sea_orm::ActiveValue::Set;
+use crate::db::sea_orm::entity::prelude::*;
 use crate::db::sea_query::{ColumnDef, Table, TableCreateStatement};
 use crate::TardisFuns;
 
@@ -24,17 +24,35 @@ pub struct Model {
 impl TardisActiveModel for ActiveModel {
     fn fill_cxt(&mut self, _: &TardisContext, _: bool) {}
 
-    fn create_table_statement(_: DbBackend) -> TableCreateStatement {
-        Table::create()
-            .table(Entity.table_ref())
-            .if_not_exists()
-            .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
-            .col(ColumnDef::new(Column::EntityName).not_null().string())
-            .col(ColumnDef::new(Column::RecordId).not_null().string())
-            .col(ColumnDef::new(Column::Content).not_null().text())
-            .col(ColumnDef::new(Column::Creator).not_null().string())
-            .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-            .to_owned()
+    fn create_table_statement(db_type: DbBackend) -> TableCreateStatement {
+        match db_type {
+            DbBackend::MySql => Table::create()
+                .table(Entity.table_ref())
+                .if_not_exists()
+                .engine("InnoDB")
+                .character_set("utf8mb4")
+                .collate("utf8mb4_0900_as_cs")
+                .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
+                .col(ColumnDef::new(Column::EntityName).not_null().string())
+                .col(ColumnDef::new(Column::RecordId).not_null().string())
+                .col(ColumnDef::new(Column::Content).not_null().text())
+                .col(ColumnDef::new(Column::Creator).not_null().string())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                .to_owned()
+        }
+            _ =>
+                {
+                    Table::create()
+                        .table(Entity.table_ref())
+                        .if_not_exists()
+                        .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
+                        .col(ColumnDef::new(Column::EntityName).not_null().string())
+                        .col(ColumnDef::new(Column::RecordId).not_null().string())
+                        .col(ColumnDef::new(Column::Content).not_null().text())
+                        .col(ColumnDef::new(Column::Creator).not_null().string())
+                        .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                        .to_owned()
+                }
     }
 }
 
