@@ -1,4 +1,4 @@
-**Preview version, will not guarantee the stability of the API!
+`**Preview version, will not guarantee the stability of the API!
 Do NOT use in production environment!**
 
 ---
@@ -109,3 +109,17 @@ async fn main() -> TardisResult<()> {
 
 ----
 Thanks to `Jetbrains` for the [Open Source License](https://www.jetbrains.com/community/opensource/)
+
+
+### FAQ
+
+* An `` failed to run custom build command for openssl-sys`` error occurs when running under Windows.The solution is as follows( @see https://github.
+  com/sfackler/rust-openssl/issues/1062 ): 
+  ```shell
+  git clone https://github.com/Microsoft/vcpkg --depth=1
+  vcpkg/bootstrap-vcpkg.bat
+  vcpkg/vcpkg.exe integrate install
+  vcpkg/vcpkg.exe install openssl:x64-windows-static
+  set OPENSSL_NO_VENDOR=1
+  ```
+
