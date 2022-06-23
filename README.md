@@ -107,10 +107,6 @@ async fn main() -> TardisResult<()> {
   |-- perf-test     Performance test case
 ```
 
-----
-Thanks to `Jetbrains` for the [Open Source License](https://www.jetbrains.com/community/opensource/)
-
-
 ### FAQ
 
 * An `` failed to run custom build command for openssl-sys`` error occurs when running under Windows.The solution is as follows( @see https://github.
@@ -122,4 +118,7 @@ Thanks to `Jetbrains` for the [Open Source License](https://www.jetbrains.com/co
   vcpkg/vcpkg.exe install openssl:x64-windows-static
   set OPENSSL_NO_VENDOR=1
   ```
+
+----
+Thanks to `Jetbrains` for the [Open Source License](https://www.jetbrains.com/community/opensource/)
 
