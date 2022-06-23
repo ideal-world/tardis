@@ -109,8 +109,7 @@ async fn main() -> TardisResult<()> {
 
 ### FAQ
 
-* An `` failed to run custom build command for openssl-sys`` error occurs when running under Windows.The solution is as follows( @see https://github.
-  com/sfackler/rust-openssl/issues/1062 ): 
+* An `` failed to run custom build command for openssl-sys`` error occurs when running under Windows.The solution is as follows( @see https://github.com/sfackler/rust-openssl/issues/1062 ): 
   ```shell
   git clone https://github.com/Microsoft/vcpkg --depth=1
   vcpkg/bootstrap-vcpkg.bat
