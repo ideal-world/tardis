@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use futures_util::lock::{Mutex, MutexGuard};
+use log::error;
 use redis::aio::Connection;
 use redis::{AsyncCommands, RedisError, RedisResult};
 use url::Url;
@@ -220,6 +221,7 @@ impl TardisCacheClient {
 
 impl From<RedisError> for TardisError {
     fn from(error: RedisError) -> Self {
+        error!("[Tardis.CacheClient] [{}]{},", error.code().unwrap_or(""), error.detail().unwrap_or(""));
         TardisError::Box(Box::new(error))
     }
 }
