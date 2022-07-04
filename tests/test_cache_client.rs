@@ -1,9 +1,11 @@
 // https://github.com/mitsuhiko/redis-rs
 
 use std::collections::HashMap;
+use std::env;
 
 use log::info;
 use redis::AsyncCommands;
+use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
 use tardis::basic::config::{CacheConfig, CacheModuleConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
@@ -14,7 +16,9 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_cache_client() -> TardisResult<()> {
+    env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
+    // let url = "redis://:123456@127.0.0.1:6379/1".to_lowercase();
     TardisTestContainer::redis(|url| async move {
         let client = TardisCacheClient::init(&url).await?;
         // basic operations
@@ -188,7 +192,34 @@ async fn test_cache_client() -> TardisResult<()> {
         client.flushdb().await?;
         assert!(!client.exists("flush_test").await?);
 
+        // test_concurrent().await?;
+
         Ok(())
     })
     .await
+}
+
+async fn test_concurrent() -> TardisResult<()> {
+    let threads: Vec<i32> = (0..100).collect();
+
+    let _ = threads
+        .into_iter()
+        .map(|i| {
+            tokio::task::spawn(async {
+                let client = TardisFuns::cache_by_module("m1");
+                let id = TardisFuns::field.nanoid();
+                loop {
+                    info!("--------##{}", id);
+                    client.set_ex("con_str", &TardisFuns::field.nanoid(), 10).await.unwrap();
+                    client.get("con_str").await.unwrap();
+                    client.get("con_str_none").await.unwrap();
+                    client.hset("con_map", &TardisFuns::field.nanoid(), r#"{"user":{"id":1,"name":"张三","open":false}}"#).await.unwrap();
+                    client.hgetall("con_map").await.unwrap();
+                    sleep(Duration::from_millis(100)).await;
+                }
+            })
+        })
+        .collect::<Vec<JoinHandle<()>>>();
+    sleep(Duration::from_secs(10000)).await;
+    Ok(())
 }

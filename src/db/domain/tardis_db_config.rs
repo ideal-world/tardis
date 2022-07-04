@@ -1,3 +1,4 @@
+use log::trace;
 use sea_orm::*;
 
 use crate::basic::dto::TardisContext;
@@ -92,6 +93,7 @@ impl<'a> TardisDataDict {
     }
 
     pub async fn add(&self, key: &str, value: &str, creator: &str, db: &TardisRelDBlConnection<'a>) -> TardisResult<()> {
+        trace!("[Tardis.RelDBClient] [db_config] add key: {}, value: {}", key, value);
         let model = tardis_db_config::ActiveModel {
             k: Set(key.to_string()),
             v: Set(value.to_string()),
@@ -108,6 +110,7 @@ impl<'a> TardisDataDict {
     }
 
     pub async fn update(&self, key: &str, value: &str, updater: &str, db: &TardisRelDBlConnection<'a>) -> TardisResult<()> {
+        trace!("[Tardis.RelDBClient] [db_config] update key: {}, value: {}", key, value);
         let model = tardis_db_config::ActiveModel {
             k: Set(key.to_string()),
             v: Set(value.to_string()),
@@ -123,6 +126,7 @@ impl<'a> TardisDataDict {
     }
 
     pub async fn delete(&self, key: &str, db: &TardisRelDBlConnection<'a>) -> TardisResult<()> {
+        trace!("[Tardis.RelDBClient] [db_config] delete key: {}", key);
         let model = tardis_db_config::Entity::delete_many().filter(tardis_db_config::Column::K.eq(key.to_string()));
         if db.has_tx() {
             model.exec(db.raw_tx()?).await?;

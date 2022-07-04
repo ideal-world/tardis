@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
@@ -7,6 +8,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_search_client() -> TardisResult<()> {
+    env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
     TardisTestContainer::es(|url| async move {
         TardisFuns::init_conf(TardisConfig {

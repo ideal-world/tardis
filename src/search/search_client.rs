@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
+use log::trace;
+
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::log::{debug, info};
+use crate::log::info;
 use crate::{FrameworkConfig, TardisFuns, TardisWebClient};
 
 /// Distributed search handle / 分布式搜索操作
@@ -63,7 +65,7 @@ impl TardisSearchClient {
     /// TardisFuns::search().create_index("test_index").await.unwrap();
     /// ```
     pub async fn create_index(&self, index_name: &str) -> TardisResult<()> {
-        info!("[Tardis.SearchClient] Create index {}", index_name);
+        trace!("[Tardis.SearchClient] Creating index: {}", index_name);
         let url = format!("{}/{}", self.server_url, index_name);
         let resp = self.client.put_str_to_str(&url, "", None).await?;
         if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {
@@ -86,7 +88,7 @@ impl TardisSearchClient {
     /// let id = TardisFuns::search().create_record("test_index", r#"{"user":{"id":1,"name":"张三","open":false}}"#).await.unwrap();
     /// ```
     pub async fn create_record(&self, index_name: &str, data: &str) -> TardisResult<String> {
-        debug!("[Tardis.SearchClient] Create index {}", index_name);
+        trace!("[Tardis.SearchClient] Creating record: {}, data:{}", index_name, data);
         let url = format!("{}/{}/_doc/", self.server_url, index_name);
         let resp = self.client.post_str_to_str(&url, data, None).await?;
         if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {
@@ -110,6 +112,7 @@ impl TardisSearchClient {
     /// TardisFuns::search().get_record("test_index", "xxxx").await.unwrap();
     /// ```
     pub async fn get_record(&self, index_name: &str, id: &str) -> TardisResult<String> {
+        trace!("[Tardis.SearchClient] Getting record: {}, id:{}", index_name, id);
         let url = format!("{}/{}/_doc/{}", self.server_url, index_name, id);
         let resp = self.client.get_to_str(&url, None).await?;
         if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {
@@ -133,6 +136,7 @@ impl TardisSearchClient {
     /// TardisFuns::search().simple_search("test_index", "张三").await.unwrap();
     /// ```
     pub async fn simple_search(&self, index_name: &str, q: &str) -> TardisResult<Vec<String>> {
+        trace!("[Tardis.SearchClient] Simple search: {}, q:{}", index_name, q);
         let url = format!("{}/{}/_search?q={}", self.server_url, index_name, q);
         let resp = self.client.get_to_str(&url, None).await?;
         if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {
@@ -160,6 +164,7 @@ impl TardisSearchClient {
     /// TardisFuns::search().multi_search(index_name, HashMap::from([("user.id", "1"), ("user.name", "李四")])).await.unwrap();
     /// ```
     pub async fn multi_search(&self, index_name: &str, q: HashMap<&str, &str>) -> TardisResult<Vec<String>> {
+        trace!("[Tardis.SearchClient] Multi search: {}, q:{:?}", index_name, q);
         let q = q.into_iter().map(|(k, v)| format!(r#"{{"match": {{"{}": "{}"}}}}"#, k, v)).collect::<Vec<String>>().join(",");
         let q = format!(r#"{{ "query": {{ "bool": {{ "must": [{}]}}}}}}"#, q);
         self.raw_search(index_name, &q).await
@@ -173,6 +178,7 @@ impl TardisSearchClient {
     ///  * `q` -  native format / 原生格式
     ///
     pub async fn raw_search(&self, index_name: &str, q: &str) -> TardisResult<Vec<String>> {
+        trace!("[Tardis.SearchClient] Raw search: {}, q:{}", index_name, q);
         let url = format!("{}/{}/_search", self.server_url, index_name);
         let resp = self.client.post_str_to_str(&url, q, None).await?;
         if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {

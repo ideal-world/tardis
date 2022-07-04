@@ -1,3 +1,5 @@
+use std::env;
+
 use log::info;
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
@@ -6,6 +8,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_os_client() -> TardisResult<()> {
+    env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
     TardisFuns::init_conf(TardisConfig {
         cs: Default::default(),

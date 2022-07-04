@@ -3,6 +3,7 @@
 extern crate core;
 
 use std::collections::HashMap;
+use std::env;
 use std::time::Duration;
 
 use testcontainers::clients;
@@ -79,6 +80,7 @@ FZygs8miAhWPzqnpmgTj1cPiU1M=
 
 #[tokio::test]
 async fn test_web_server() -> TardisResult<()> {
+    env::set_var("RUST_LOG", "info,tardis=trace");
     let web_url = "https://localhost:8080";
 
     let docker = clients::Cli::default();

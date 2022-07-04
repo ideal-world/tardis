@@ -1,5 +1,6 @@
 // https://github.com/SeaQL/sea-orm
 
+use std::env;
 use std::time::Duration;
 
 use tokio::time::sleep;
@@ -17,6 +18,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_reldb_client() -> TardisResult<()> {
+    env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
     TardisTestContainer::mysql(None, |url| async move {
         let client = TardisRelDBClient::init(&url, 10, 5, None, None).await?;

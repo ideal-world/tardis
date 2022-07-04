@@ -1,6 +1,7 @@
 // https://github.com/CleverCloud/lapin
 
 use std::collections::HashMap;
+use std::env;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MQModuleConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
@@ -12,6 +13,7 @@ static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 #[tokio::test]
 async fn test_mq_client() -> TardisResult<()> {
+    env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
     TardisTestContainer::rabbit(|url| async move {
         // Default test

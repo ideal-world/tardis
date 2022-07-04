@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use log::{error, trace};
 use reqwest::{Client, Method, Response};
 
 use crate::basic::error::TardisError;
@@ -36,10 +37,12 @@ impl TardisWebClient {
     }
 
     pub fn set_default_header(&mut self, key: &str, value: &str) {
+        trace!("[Tardis.WebClient] Set default header: {}={}", key, value);
         self.default_headers.push((key.to_string(), value.to_string()));
     }
 
     pub fn remove_default_header(&mut self, key: &str) {
+        trace!("[Tardis.WebClient] Remove default header: {}", key);
         self.default_headers.retain(|(k, _)| k != key);
     }
 
@@ -142,7 +145,9 @@ impl TardisWebClient {
         str_body: Option<&str>,
     ) -> TardisResult<(u16, HashMap<String, String>, Response)> {
         let formatted_url = TardisFuns::uri.format(url)?;
-        let mut result = self.client.request(method, formatted_url);
+        let method_str = method.to_string();
+        trace!("[Tardis.WebClient] Request {}:{}", method_str, &formatted_url);
+        let mut result = self.client.request(method, formatted_url.clone());
         for (key, value) in &self.default_headers {
             result = result.header(key, value);
         }
@@ -169,6 +174,7 @@ impl TardisWebClient {
                 )
             })
             .collect();
+        trace!("[Tardis.WebClient] Request {}:{}, Response {}", method_str, formatted_url, code);
         Ok((code, headers, response))
     }
 
@@ -200,6 +206,7 @@ pub struct TardisHttpResponse<T> {
 
 impl From<reqwest::Error> for TardisError {
     fn from(error: reqwest::Error) -> Self {
+        error!("[Tardis.WebClient] Error: {}", error.to_string());
         TardisError::Box(Box::new(error))
     }
 }

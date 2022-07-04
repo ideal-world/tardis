@@ -1,5 +1,7 @@
 // https://github.com/seanmonstar/reqwest
 
+use std::env;
+
 use reqwest::StatusCode;
 
 use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig};
@@ -9,6 +11,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_web_client() -> TardisResult<()> {
+    env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_conf(TardisConfig {
         cs: Default::default(),
         fw: FrameworkConfig {

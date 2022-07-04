@@ -256,6 +256,7 @@ impl TardisMQClient {
 
 impl From<lapin::Error> for TardisError {
     fn from(error: lapin::Error) -> Self {
+        error!("[Tardis.MQClient] Error: {}", error.to_string());
         TardisError::Box(Box::new(error))
     }
 }

@@ -3,6 +3,7 @@ use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
+use log::{error, trace};
 use sea_orm::sea_query::TableCreateStatement;
 use sea_orm::ActiveValue::Set;
 use sea_orm::*;
@@ -201,6 +202,7 @@ impl TardisRelDBClient {
 
     /// Initialize basic tables / 初始化基础表
     async fn init_basic_tables(&self) -> TardisResult<()> {
+        trace!("[Tardis.RelDBClient] Initializing basic tables");
         let tx = self.con.begin().await?;
         let config_create_table_statements = tardis_db_config::ActiveModel::create_table_and_index_statement(self.con.get_database_backend());
         TardisRelDBClient::create_table_and_index_inner(&config_create_table_statements, &tx).await?;
@@ -216,6 +218,7 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         E: EntityTrait,
     {
+        trace!("[Tardis.RelDBClient] Creating table from entity {}", entity.table_name());
         let builder = db.get_database_backend();
         let schema = Schema::new(builder);
         let table_create_statement = &schema.create_table_from_entity(entity);
@@ -226,6 +229,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
+        trace!("[Tardis.RelDBClient] Creating table and index from statements");
         Self::create_table_inner(&statements.0, db).await?;
         Self::create_index_inner(&statements.1, db).await
     }
@@ -234,6 +238,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
+        trace!("[Tardis.RelDBClient] Creating table");
         let statement = db.get_database_backend().build(statement);
         match TardisRelDBClient::execute_inner(statement, db).await {
             Ok(_) => Ok(()),
@@ -245,6 +250,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
+        trace!("[Tardis.RelDBClient] Creating index from statements");
         for statement in statements {
             let statement = db.get_database_backend().build(statement);
             if let Err(e) = TardisRelDBClient::execute_inner(statement, db).await {
@@ -258,6 +264,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
+        trace!("[Tardis.RelDBClient] Executing statement {}", statement);
         let result = db.execute(statement).await;
         match result {
             Ok(ok) => TardisResult::Ok(ok),
@@ -336,6 +343,7 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         T: TardisActiveModel,
     {
+        trace!("[Tardis.RelDBClient] Inserting one model");
         model.fill_cxt(cxt, true);
         let result = EntityTrait::insert(model).exec(db).await?;
         Ok(result)
@@ -346,6 +354,7 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         T: TardisActiveModel,
     {
+        trace!("[Tardis.RelDBClient] Inserting many models");
         models.iter_mut().for_each(|m| m.fill_cxt(cxt, true));
         EntityTrait::insert_many(models).exec(db).await?;
         Ok(())
@@ -356,6 +365,7 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         T: TardisActiveModel,
     {
+        trace!("[Tardis.RelDBClient] Updating one model");
         model.fill_cxt(cxt, false);
         let update = EntityTrait::update(model);
         TardisRelDBClient::execute_inner(db.get_database_backend().build(update.as_query()), db).await?;
@@ -366,6 +376,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
+        trace!("[Tardis.RelDBClient] Updating many models");
         TardisRelDBClient::execute_inner(db.get_database_backend().build(update_statement), db).await?;
         Ok(())
     }
@@ -375,6 +386,7 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         E: EntityTrait,
     {
+        trace!("[Tardis.RelDBClient] Soft deleting");
         select.soft_delete(delete_user, db).await
     }
 
@@ -383,6 +395,7 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         E: EntityTrait,
     {
+        trace!("[Tardis.RelDBClient] Soft deleting custom");
         select.soft_delete_custom(custom_pk_field, db).await
     }
 }
@@ -1134,12 +1147,14 @@ pub struct IdResp {
 
 impl From<DbErr> for TardisError {
     fn from(error: DbErr) -> Self {
+        error!("[Tardis.RelDBClient] DbErr: {}", error.to_string());
         TardisError::Box(Box::new(error))
     }
 }
 
 impl From<ParserError> for TardisError {
     fn from(error: ParserError) -> Self {
+        error!("[Tardis.RelDBClient] ParserError: {}", error.to_string());
         TardisError::Box(Box::new(error))
     }
 }

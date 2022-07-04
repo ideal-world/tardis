@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use async_trait::async_trait;
-use log::info;
+use log::{error, info, trace};
 use s3::creds::Credentials;
 use s3::{Bucket, BucketConfiguration, Region};
 
@@ -72,34 +72,42 @@ impl TardisOSClient {
     }
 
     pub async fn bucket_create_simple(&self, bucket_name: &str, is_private: bool) -> TardisResult<()> {
+        trace!("[Tardis.OSClient] Creating bucket {}", bucket_name);
         self.get_client().bucket_create_simple(bucket_name, is_private).await
     }
 
     pub async fn bucket_delete(&self, bucket_name: &str) -> TardisResult<()> {
+        trace!("[Tardis.OSClient] Deleting bucket {}", bucket_name);
         self.get_client().bucket_delete(bucket_name).await
     }
 
     pub async fn object_create(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
+        trace!("[Tardis.OSClient] Creating object {}", path);
         self.get_client().object_create(path, content, content_type, bucket_name).await
     }
 
     pub async fn object_get(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<Vec<u8>> {
+        trace!("[Tardis.OSClient] Getting object {}", path);
         self.get_client().object_get(path, bucket_name).await
     }
 
     pub async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()> {
+        trace!("[Tardis.OSClient] Deleting object {}", path);
         self.get_client().object_delete(path, bucket_name).await
     }
 
     pub fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+        trace!("[Tardis.OSClient] Creating object url {}", path);
         self.get_client().object_create_url(path, expire_sec, bucket_name)
     }
 
     pub fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+        trace!("[Tardis.OSClient] Getting object url {}", path);
         self.get_client().object_get_url(path, expire_sec, bucket_name)
     }
 
     pub fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+        trace!("[Tardis.OSClient] Deleting object url {}", path);
         self.get_client().object_delete_url(path, expire_sec, bucket_name)
     }
 }
@@ -310,6 +318,7 @@ impl TardisOSS3Client {
 
 impl From<s3::error::S3Error> for TardisError {
     fn from(error: s3::error::S3Error) -> Self {
+        error!("[Tardis.OSClient] Error: {}", error.to_string());
         TardisError::_Inner(error.to_string())
     }
 }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use lettre::message::{header, MultiPart, SinglePart};
 use lettre::{address, error, transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
-use log::{info, warn};
+use log::{error, info, trace, warn};
 
 use crate::basic::error::TardisError;
 use crate::{FrameworkConfig, TardisFuns, TardisResult};
@@ -84,6 +84,12 @@ impl TardisMailClient {
         } else {
             email.body(req.txt_body.clone())?
         };
+        trace!(
+            "[Tardis.MailClient] Sending email:{}, from: {}, to: {}",
+            req.subject,
+            req.from.as_ref().unwrap_or(&self.default_from.clone()),
+            req.to.join(",")
+        );
         match self.client.send(email).await {
             Ok(_) => Ok(()),
             Err(e) => Err(TardisError::InternalError(format!("[Tardis.MailClient] Could not send email: {}", e))),
@@ -116,12 +122,14 @@ pub struct TardisMailSendReq {
 
 impl From<address::AddressError> for TardisError {
     fn from(error: address::AddressError) -> Self {
+        error!("[Tardis.MailClient] AddressError: {}", error.to_string());
         TardisError::Box(Box::new(error))
     }
 }
 
 impl From<error::Error> for TardisError {
     fn from(error: error::Error) -> Self {
+        error!("[Tardis.MailClient] Error: {}", error.to_string());
         TardisError::Box(Box::new(error))
     }
 }
