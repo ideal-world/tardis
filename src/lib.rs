@@ -112,7 +112,6 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::ptr::replace;
 
-use basic::error::TardisErrorWithExt;
 pub use chrono;
 pub use log;
 pub use rand;
@@ -126,6 +125,7 @@ pub use testcontainers;
 #[cfg(feature = "rt_tokio")]
 pub use tokio;
 
+use basic::error::TardisErrorWithExt;
 use basic::result::TardisResult;
 
 use crate::basic::config::{FrameworkConfig, TardisConfig};
@@ -563,6 +563,8 @@ impl TardisFuns {
     #[allow(non_upper_case_globals)]
     #[cfg(feature = "crypto")]
     pub const crypto: crate::basic::crypto::TardisCrypto = crate::basic::crypto::TardisCrypto {
+        key: crate::basic::crypto::TardisCryptoKey {},
+        hex: crate::basic::crypto::TardisCryptoHex {},
         base64: crate::basic::crypto::TardisCryptoBase64 {},
         aes: crate::basic::crypto::TardisCryptoAes {},
         rsa: crate::basic::crypto::TardisCryptoRsa {},
@@ -571,7 +573,6 @@ impl TardisFuns {
         #[cfg(feature = "crypto_with_sm")]
         sm2: crate::basic::crypto::TardisCryptoSm2 {},
         digest: crate::basic::crypto::TardisCryptoDigest {},
-        key: crate::basic::crypto::TardisCryptoKey {},
     };
 
     /// Use the relational database feature / 使用关系型数据库功能
