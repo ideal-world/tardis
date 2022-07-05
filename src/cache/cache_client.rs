@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use futures_util::lock::{Mutex, MutexGuard};
 use log::{error, trace};
-use redis::aio::Connection;
+use redis::aio::MultiplexedConnection;
 use redis::{AsyncCommands, RedisError, RedisResult};
 use url::Url;
 
@@ -31,7 +31,7 @@ use crate::log::info;
 /// assert!(!TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
 /// ```
 pub struct TardisCacheClient {
-    con: Mutex<Connection>,
+    con: Mutex<MultiplexedConnection>,
 }
 
 impl TardisCacheClient {
@@ -55,7 +55,7 @@ impl TardisCacheClient {
             if url.path().is_empty() { "" } else { &url.path()[1..] },
         );
         let client = redis::Client::open(str_url)?;
-        let con = client.get_tokio_connection().await?;
+        let con = client.get_multiplexed_tokio_connection().await?;
         info!(
             "[Tardis.CacheClient] Initialized, host:{}, port:{}, db:{}",
             url.host_str().unwrap_or(""),
@@ -242,7 +242,7 @@ impl TardisCacheClient {
     }
 
     // custom
-    pub async fn cmd(&self) -> MutexGuard<'_, Connection> {
+    pub async fn cmd(&self) -> MutexGuard<'_, MultiplexedConnection> {
         self.con.lock().await
     }
 }
