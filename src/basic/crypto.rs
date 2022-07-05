@@ -30,6 +30,7 @@ use crate::TardisFuns;
 /// ```
 pub struct TardisCrypto {
     pub key: TardisCryptoKey,
+    pub hex: TardisCryptoHex,
     pub base64: TardisCryptoBase64,
     pub aes: TardisCryptoAes,
     pub rsa: TardisCryptoRsa,
@@ -39,6 +40,7 @@ pub struct TardisCrypto {
     #[cfg(feature = "crypto_with_sm")]
     pub sm2: TardisCryptoSm2,
 }
+pub struct TardisCryptoHex;
 pub struct TardisCryptoBase64;
 pub struct TardisCryptoAes;
 pub struct TardisCryptoRsa;
@@ -62,6 +64,19 @@ pub struct TardisCryptoSm2PublicKey {
 }
 pub struct TardisCryptoDigest;
 pub struct TardisCryptoKey;
+
+impl TardisCryptoHex {
+    pub fn decode<T: AsRef<[u8]>>(&self, data: T) -> TardisResult<Vec<u8>> {
+        match hex::decode(data) {
+            Ok(result) => Ok(result),
+            Err(e) => Err(TardisError::FormatError(format!("[Tardis.Crypto] Hex decode error:{}", e))),
+        }
+    }
+
+    pub fn encode<T: AsRef<[u8]>>(&self, data: T) -> String {
+        hex::encode(data)
+    }
+}
 
 impl TardisCryptoBase64 {
     pub fn decode(&self, data: &str) -> TardisResult<String> {
@@ -88,14 +103,27 @@ impl TardisCryptoBase64 {
 /// let data = TardisFuns::crypto.aes.decrypt_cbc(&encrypted_data, &key, &iv).unwrap();
 /// ```
 impl TardisCryptoAes {
+    pub fn encrypt_ecb(&self, data: &str, hex_key: &str) -> TardisResult<String> {
+        self.encrypt(data, hex_key, "", false)
+    }
+
     pub fn encrypt_cbc(&self, data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
+        self.encrypt(data, hex_key, hex_iv, true)
+    }
+
+    fn encrypt(&self, data: &str, hex_key: &str, hex_iv: &str, cbc_mode: bool) -> TardisResult<String> {
         let key_size = match hex_key.len() {
-            32 => crypto::aes::KeySize::KeySize128,
-            64 => crypto::aes::KeySize::KeySize256,
+            16 => crypto::aes::KeySize::KeySize128,
+            24 => crypto::aes::KeySize::KeySize192,
+            32 => crypto::aes::KeySize::KeySize256,
             _ => return Err(TardisError::BadRequest("[Tardis.Crypto] AES error, invalid key size".to_string())),
         };
 
-        let mut encryptor = crypto::aes::cbc_encryptor(key_size, hex::decode(hex_key)?.as_slice(), hex::decode(hex_iv)?.as_slice(), crypto::blockmodes::PkcsPadding);
+        let mut encryptor = if cbc_mode {
+            crypto::aes::cbc_encryptor(key_size, hex_key.as_bytes(), hex_iv.as_bytes(), crypto::blockmodes::PkcsPadding)
+        } else {
+            crypto::aes::ecb_encryptor(key_size, hex_key.as_bytes(), crypto::blockmodes::PkcsPadding)
+        };
 
         let mut final_result = Vec::<u8>::new();
         let mut read_buffer = crypto::buffer::RefReadBuffer::new(data.as_bytes());
@@ -103,26 +131,39 @@ impl TardisCryptoAes {
         let mut write_buffer = crypto::buffer::RefWriteBuffer::new(&mut buffer);
 
         loop {
-            let result = encryptor.encrypt(&mut read_buffer, &mut write_buffer, true).unwrap();
+            let result = encryptor.encrypt(&mut read_buffer, &mut write_buffer, true)?;
             final_result.extend(write_buffer.take_read_buffer().take_remaining().iter().copied());
             match result {
                 crypto::buffer::BufferResult::BufferUnderflow => break,
                 crypto::buffer::BufferResult::BufferOverflow => {}
             }
         }
-        Ok(base64::encode(&final_result))
+        Ok(hex::encode(final_result))
+    }
+
+    pub fn decrypt_ecb(&self, encrypted_data: &str, hex_key: &str) -> TardisResult<String> {
+        self.decrypt(encrypted_data, hex_key, "", false)
     }
 
     pub fn decrypt_cbc(&self, encrypted_data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
+        self.decrypt(encrypted_data, hex_key, hex_iv, true)
+    }
+
+    fn decrypt(&self, encrypted_data: &str, hex_key: &str, hex_iv: &str, cbc_mode: bool) -> TardisResult<String> {
         let key_size = match hex_key.len() {
-            32 => crypto::aes::KeySize::KeySize128,
-            64 => crypto::aes::KeySize::KeySize256,
+            16 => crypto::aes::KeySize::KeySize128,
+            24 => crypto::aes::KeySize::KeySize192,
+            32 => crypto::aes::KeySize::KeySize256,
             _ => return Err(TardisError::BadRequest("[Tardis.Crypto] AES error, invalid key size".to_string())),
         };
 
-        let encrypted_data = base64::decode(encrypted_data)?;
+        let encrypted_data = hex::decode(encrypted_data)?;
 
-        let mut decryptor = crypto::aes::cbc_decryptor(key_size, hex::decode(hex_key)?.as_slice(), hex::decode(hex_iv)?.as_slice(), crypto::blockmodes::PkcsPadding);
+        let mut decryptor = if cbc_mode {
+            crypto::aes::cbc_decryptor(key_size, hex_key.as_bytes(), hex_iv.as_bytes(), crypto::blockmodes::PkcsPadding)
+        } else {
+            crypto::aes::ecb_decryptor(key_size, hex_key.as_bytes(), crypto::blockmodes::PkcsPadding)
+        };
 
         let mut final_result = Vec::<u8>::new();
         let mut read_buffer = crypto::buffer::RefReadBuffer::new(encrypted_data.as_slice());
@@ -197,14 +238,14 @@ impl TardisCryptoRsaPrivateKey {
     }
 
     pub fn decrypt(&self, encrypted_data: &str) -> TardisResult<String> {
-        let encrypted_data = base64::decode(encrypted_data)?;
+        let encrypted_data = hex::decode(encrypted_data)?;
         let data = self.pri_key.decrypt(rsa::PaddingScheme::PKCS1v15Encrypt, encrypted_data.as_slice())?;
         Ok(String::from_utf8(data)?)
     }
 
     pub fn sign(&self, data: &str) -> TardisResult<String> {
         let signed_data = self.pri_key.sign(rsa::PaddingScheme::PKCS1v15Sign { hash: None }, TardisFuns::crypto.digest.sha256(data)?.as_bytes())?;
-        Ok(base64::encode(&signed_data))
+        Ok(hex::encode(signed_data))
     }
 }
 
@@ -233,11 +274,11 @@ impl TardisCryptoRsaPublicKey {
     pub fn encrypt(&self, data: &str) -> TardisResult<String> {
         let mut rand = rand::rngs::OsRng;
         let encrypted_data = self.pub_key.encrypt(&mut rand, rsa::PaddingScheme::PKCS1v15Encrypt, data.as_bytes())?;
-        Ok(base64::encode(&encrypted_data))
+        Ok(hex::encode(encrypted_data))
     }
 
     pub fn verify(&self, data: &str, signed_data: &str) -> TardisResult<bool> {
-        let signed_data = base64::decode(signed_data)?;
+        let signed_data = hex::decode(signed_data)?;
         let result = self.pub_key.verify(
             rsa::PaddingScheme::PKCS1v15Sign { hash: None },
             TardisFuns::crypto.digest.sha256(data)?.as_bytes(),
@@ -295,17 +336,17 @@ impl TardisCryptoSm2PrivateKey {
     }
 
     pub fn from(private_key: &str) -> TardisResult<Self> {
-        let sk = SigCtx::new().load_seckey(&base64::decode(private_key)?).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 load sk error:{}", e)))?;
+        let sk = SigCtx::new().load_seckey(&hex::decode(private_key)?).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 load sk error:{}", e)))?;
         Ok(TardisCryptoSm2PrivateKey { pri_key: sk })
     }
 
     pub fn serialize(&self) -> TardisResult<String> {
         let sk = SigCtx::new().serialize_seckey(&self.pri_key).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 serialize sk error:{}", e)))?;
-        Ok(base64::encode(&sk))
+        Ok(hex::encode(sk))
     }
 
     pub fn decrypt(&self, encrypted_data: &str) -> TardisResult<String> {
-        let encrypted_data = base64::decode(encrypted_data)?;
+        let encrypted_data = hex::decode(encrypted_data)?;
         // https://github.com/citahub/libsm/issues/46
         let data = DecryptCtx::new(encrypted_data.len() - 97, self.pri_key.clone())
             .decrypt(&encrypted_data)
@@ -317,7 +358,7 @@ impl TardisCryptoSm2PrivateKey {
         let ctx = SigCtx::new();
         let pk = ctx.pk_from_sk(&self.pri_key).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 get pk error:{}", e)))?;
         let signature = ctx.sign(data.as_bytes(), &self.pri_key, &pk).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 sign error:{}", e)))?;
-        Ok(base64::encode(&signature.der_encode()))
+        Ok(hex::encode(signature.der_encode()))
     }
 }
 
@@ -330,29 +371,29 @@ impl TardisCryptoSm2PublicKey {
 
     pub fn from_private_key_str(private_key: &str) -> TardisResult<Self> {
         let ctx = SigCtx::new();
-        let sk = ctx.load_seckey(&base64::decode(private_key)?).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 load sk error:{}", e)))?;
+        let sk = ctx.load_seckey(&hex::decode(private_key)?).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 load sk error:{}", e)))?;
         let pk = ctx.pk_from_sk(&sk).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 get pk error:{}", e)))?;
         Ok(TardisCryptoSm2PublicKey { pub_key: pk })
     }
 
     pub fn from_public_key_str(public_key: &str) -> TardisResult<Self> {
-        let pk = SigCtx::new().load_pubkey(&base64::decode(public_key)?).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 load pk error:{}", e)))?;
+        let pk = SigCtx::new().load_pubkey(&hex::decode(public_key)?).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 load pk error:{}", e)))?;
         Ok(TardisCryptoSm2PublicKey { pub_key: pk })
     }
 
     pub fn serialize(&self) -> TardisResult<String> {
         let pk = SigCtx::new().serialize_pubkey(&self.pub_key, true).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 serialize pk error:{}", e)))?;
-        Ok(base64::encode(&pk))
+        Ok(hex::encode(pk))
     }
 
     pub fn encrypt(&self, data: &str) -> TardisResult<String> {
         let encrypted_data =
             EncryptCtx::new(data.len(), self.pub_key).encrypt(data.as_bytes()).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 encrypt error:{}", e)))?;
-        Ok(base64::encode(&encrypted_data))
+        Ok(hex::encode(encrypted_data))
     }
 
     pub fn verify(&self, data: &str, signed_data: &str) -> TardisResult<bool> {
-        let signed_data = base64::decode(signed_data)?;
+        let signed_data = hex::decode(signed_data)?;
         let signature = Signature::der_decode(&signed_data).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 decode signature error:{}", e)))?;
         let result = SigCtx::new().verify(data.as_bytes(), &self.pub_key, &signature).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM2 verify error:{}", e)))?;
         Ok(result)
@@ -373,17 +414,15 @@ impl TardisCryptoSm2PublicKey {
 #[cfg(feature = "crypto_with_sm")]
 impl TardisCryptoSm4 {
     pub fn encrypt_cbc(&self, data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
-        let cipher = Cipher::new(hex::decode(hex_key)?.as_slice(), Mode::Cbc).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM4 new cipher error:{}", e)))?;
-        let encrypted_data =
-            cipher.encrypt(data.as_bytes(), hex::decode(hex_iv)?.as_slice()).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM4 encrypt error:{}", e)))?;
-        Ok(base64::encode(&encrypted_data))
+        let cipher = Cipher::new(hex_key.as_bytes(), Mode::Cbc).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM4 new cipher error:{}", e)))?;
+        let encrypted_data = cipher.encrypt(data.as_bytes(), hex_iv.as_bytes()).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM4 encrypt error:{}", e)))?;
+        Ok(hex::encode(encrypted_data))
     }
 
     pub fn decrypt_cbc(&self, encrypted_data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
-        let cipher = Cipher::new(hex::decode(hex_key)?.as_slice(), Mode::Cbc).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM4 new cipher error:{}", e)))?;
-        let encrypted_data = base64::decode(encrypted_data)?;
-        let data =
-            cipher.decrypt(encrypted_data.as_slice(), hex::decode(hex_iv)?.as_slice()).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM4 decrypt error:{}", e)))?;
+        let cipher = Cipher::new(hex_key.as_bytes(), Mode::Cbc).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM4 new cipher error:{}", e)))?;
+        let encrypted_data = hex::decode(encrypted_data)?;
+        let data = cipher.decrypt(encrypted_data.as_slice(), hex_iv.as_bytes()).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] SM4 decrypt error:{}", e)))?;
         Ok(String::from_utf8(data)?)
     }
 }
@@ -446,36 +485,42 @@ impl TardisCryptoDigest {
     fn digest_hmac<A: crypto::digest::Digest>(&self, data: &str, key: &str, algorithm: A) -> TardisResult<String> {
         let mut hmac = crypto::hmac::Hmac::new(algorithm, key.as_bytes());
         hmac.input(data.as_bytes());
-        Ok(base64::encode(hmac.result().code()))
+        Ok(hex::encode(hmac.result().code()))
     }
 }
 
 impl TardisCryptoKey {
     pub fn rand_8_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 8] = [0; 8];
+        let mut key: [u8; 4] = [0; 4];
         rand::rngs::OsRng::default().fill_bytes(&mut key);
         Ok(hex::encode(key))
     }
 
     pub fn rand_16_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 16] = [0; 16];
+        let mut key: [u8; 8] = [0; 8];
         rand::rngs::OsRng::default().fill_bytes(&mut key);
         Ok(hex::encode(key))
     }
 
     pub fn rand_32_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 32] = [0; 32];
+        let mut key: [u8; 16] = [0; 16];
         rand::rngs::OsRng::default().fill_bytes(&mut key);
         Ok(hex::encode(key))
     }
 
     pub fn rand_64_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 64] = [0; 64];
+        let mut key: [u8; 32] = [0; 32];
         rand::rngs::OsRng::default().fill_bytes(&mut key);
         Ok(hex::encode(key))
     }
 
     pub fn rand_128_hex(&self) -> TardisResult<String> {
+        let mut key: [u8; 64] = [0; 64];
+        rand::rngs::OsRng::default().fill_bytes(&mut key);
+        Ok(hex::encode(key))
+    }
+
+    pub fn rand_256_hex(&self) -> TardisResult<String> {
         let mut key: [u8; 128] = [0; 128];
         rand::rngs::OsRng::default().fill_bytes(&mut key);
         Ok(hex::encode(key))
