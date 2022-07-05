@@ -9,6 +9,7 @@ use std::fmt::Debug;
 use std::path::Path;
 
 use config::{Config, ConfigError, Environment, File};
+use regex::{Captures, Regex};
 use serde_json::Value;
 
 use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
@@ -665,6 +666,16 @@ pub struct AdvConfig {
     ///
     /// 启用后可方便定位错误，但会影响性能.
     pub backtrace: bool,
+
+    /// Configure field encryption salt value / 配置字段加密盐值
+    ///
+    /// Using the aes-ecb algorithm, salt consists of 16-bit English or numeric characters.
+    ///
+    /// Usage:
+    /// . Open https://www.javainuse.com/aesgenerator and output the following:
+    /// `Enter Plain Text to Encrypt ` = `Value to be encrypted` , `Select Mode` = `ECB` , `Key Size in Bits` = `128` , `Enter Secret Key` = `Value of this field` , `Output Text Format` = `Hex`
+    /// . Click `Encrypt` to wrap the generated value in `ENC(xx)` to replace the original value
+    pub salt: String,
 }
 
 impl TardisConfig {
@@ -720,10 +731,37 @@ impl TardisConfig {
         );
         debug!("=====[Tardis.Config] Content=====\n{:#?}\n=====", framework_config);
 
-        Ok(TardisConfig {
-            cs: workspace_config,
-            fw: framework_config,
-        })
+        if framework_config.adv.salt.is_empty() {
+            Ok(TardisConfig {
+                cs: workspace_config,
+                fw: framework_config,
+            })
+        } else {
+            // decryption processing
+            let salt = framework_config.adv.salt.clone();
+            if salt.len() != 16 {
+                return Err(TardisError::FormatError("[Tardis.Config] [salt] length must be 16".to_string()));
+            }
+            fn decryption(text: &str, salt: &str) -> String {
+                let enc_r = Regex::new(r"(?P<ENC>ENC\([A-Za-z0-9+/]*\))").unwrap();
+                enc_r
+                    .replace_all(text, |captures: &Captures| {
+                        let data = captures.get(1).map_or("", |m| m.as_str()).to_string();
+                        let data = &data[4..data.len() - 1];
+                        TardisFuns::crypto.aes.decrypt_ecb(data, salt).expect("[Tardis.Config] Decryption error")
+                    })
+                    .to_string()
+            }
+
+            let wc = decryption(&TardisFuns::json.obj_to_string(&workspace_config)?, &salt);
+            let fw = decryption(&TardisFuns::json.obj_to_string(&framework_config)?, &salt);
+            let workspace_config = TardisFuns::json.str_to_obj(&wc)?;
+            let framework_config = TardisFuns::json.str_to_obj(&fw)?;
+            Ok(TardisConfig {
+                cs: workspace_config,
+                fw: framework_config,
+            })
+        }
     }
 }
 

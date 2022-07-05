@@ -1,5 +1,6 @@
 // https://github.com/mehcode/config-rs
 
+use regex::{Captures, Regex};
 use std::env;
 
 use tardis::basic::result::TardisResult;
@@ -10,6 +11,7 @@ use tardis::TardisFuns;
 async fn test_basic_config() -> TardisResult<()> {
     env::set_var("PROFILE", "test");
     TardisFuns::init("tests/config").await?;
+    env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
     assert!(!TardisFuns::fw_config().db.enabled);
     assert_eq!(TardisFuns::fw_config().db.url, "postgres://postgres@test");
@@ -18,6 +20,7 @@ async fn test_basic_config() -> TardisResult<()> {
 
     env::set_var("PROFILE", "prod");
     TardisFuns::init("tests/config").await?;
+    env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
     assert_eq!(TardisFuns::fw_config().db.url, "postgres://postgres@prod");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").db_proj.url, "postgres://postgres@prod.proj");
     assert_eq!(TardisFuns::fw_config().app.name, "Tardis Application");
@@ -28,6 +31,20 @@ async fn test_basic_config() -> TardisResult<()> {
     TardisFuns::init("tests/config").await?;
     assert_eq!(TardisFuns::fw_config().db.url, "test");
     assert_eq!(TardisFuns::fw_config().app.name, "Tardis Application");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_crypto_config() -> TardisResult<()> {
+    let re = Regex::new(r"(?P<ENC>ENC\([A-Za-z0-9+/]*\))").unwrap();
+    let before = r#"{"fw":{"app":{"name":"Hi{x}(a)"},"ak":"ENC(32ns9+s2/3df2v343)"},"sk":"ENC(4ewk2fsmd2)"}"#;
+    let after = re.replace_all(before, |captures: &Captures| {
+        let some = captures.get(1).map_or("", |m| m.as_str()).to_string();
+        println!("{}", some);
+        "1234"
+    });
+    assert_eq!(after, r#"{"fw":{"app":{"name":"Hi{x}(a)"},"ak":"1234"},"sk":"1234"}"#);
 
     Ok(())
 }

@@ -3,8 +3,11 @@
 url = "postgres://postgres@prod.proj"
 [csm.m1]
 [csm.m1.db_proj]
-url = "postgres://postgres@m1.proj"
+url = "ENC(9EE184E87EA31E6588C08BBC0F7C0E276DE482F7CEE914CBDA05DF619607A24E)"
 
 [fw]
 [fw.db]
-url = "postgres://postgres@prod"
+url = "ENC(9EE184E87EA31E6588C08BBC0F7C0E270BD6B3A21CDB32B06273DC96C5D24E51)"
+
+[fw.adv]
+salt = "16a80c4aea768c99"

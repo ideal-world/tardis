@@ -3,6 +3,10 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_basic_crypto() -> TardisResult<()> {
+    let hex_str = TardisFuns::crypto.hex.encode("测试".as_bytes());
+    let str = TardisFuns::crypto.hex.decode(hex_str)?;
+    assert_eq!(str, "测试".as_bytes());
+
     let b64_str = TardisFuns::crypto.base64.encode("测试");
     let str = TardisFuns::crypto.base64.decode(&b64_str)?;
     assert_eq!(str, "测试");
@@ -17,11 +21,14 @@ async fn test_basic_crypto() -> TardisResult<()> {
         TardisFuns::crypto.digest.sha512("测试")?,
         "98fb26ea83ce0f08918c967392a26ab298740aff3c18d032983b88bcee2e16d152ef372778259ebd529ed01701ff01ac4c95ed94e3a1ab9272ab98daf11f076c"
     );
-    assert_eq!(TardisFuns::crypto.digest.hmac_sha1("测试", "pwd")?, "0e+vxZN90mgzsju6KCbS2EJ8Us4=");
-    assert_eq!(TardisFuns::crypto.digest.hmac_sha256("测试", "pwd")?, "4RnnEGA9fWaf/4mnWSQbJsdtsCXeXdUddSZUmXe6qn4=");
+    assert_eq!(TardisFuns::crypto.digest.hmac_sha1("测试", "pwd")?, "d1efafc5937dd26833b23bba2826d2d8427c52ce");
+    assert_eq!(
+        TardisFuns::crypto.digest.hmac_sha256("测试", "pwd")?,
+        "e119e710603d7d669fff89a759241b26c76db025de5dd51d7526549977baaa7e"
+    );
     assert_eq!(
         TardisFuns::crypto.digest.hmac_sha512("测试", "pwd")?,
-        "wO2937bb3tY/zLxUped257He0QMWywTsyhf2ELB3YWJmCgN4rS5a6+yWS852MC1LZ5HRd3AQjlUSOUUYKk0p9w=="
+        "c0edbddfb6dbded63fccbc54a5e776e7b1ded10316cb04ecca17f610b0776162660a0378ad2e5aebec964bce76302d4b6791d17770108e55123945182a4d29f7"
     );
 
     let large_text = "为什么选择 Rust?
@@ -41,6 +48,12 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
 
     // let key = TardisFuns::crypto.key.rand_32_hex()?;
     // let iv = TardisFuns::crypto.key.rand_16_hex()?;
+
+    let key = TardisFuns::crypto.key.rand_16_hex()?;
+
+    let encrypted_data = TardisFuns::crypto.aes.encrypt_ecb(large_text, &key)?;
+    let data = TardisFuns::crypto.aes.decrypt_ecb(&encrypted_data, &key)?;
+    assert_eq!(data, large_text);
 
     let key = TardisFuns::crypto.key.rand_16_hex()?;
     let iv = TardisFuns::crypto.key.rand_16_hex()?;

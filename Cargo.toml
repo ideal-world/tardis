@@ -1,6 +1,6 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha13"
+.version = "0.1.0-alpha14"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -114,6 +114,10 @@ testcontainers = { version = "^0.14", optional = true }
 # Common
 tokio = { version = "^1.18", features = ["time", "rt", "macros"] }
 criterion = { version = "^0.3" }
+
+[[test]]
+name = "test_basic_config"
+required-features = ["crypto"]
 
 [[test]]
 name = "test_basic_crypto"
