@@ -9,7 +9,6 @@ use std::fmt::Debug;
 use std::path::Path;
 
 use config::{Config, ConfigError, Environment, File};
-use regex::{Captures, Regex};
 use serde_json::Value;
 
 use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
@@ -737,30 +736,36 @@ impl TardisConfig {
                 fw: framework_config,
             })
         } else {
-            // decryption processing
-            let salt = framework_config.adv.salt.clone();
-            if salt.len() != 16 {
-                return Err(TardisError::FormatError("[Tardis.Config] [salt] length must be 16".to_string()));
+            #[cfg(not(feature = "crypto"))]
+            return Err(TardisError::FormatError(
+                "[Tardis.Config] Configuration encryption must depend on the crypto feature".to_string(),
+            ));
+            #[cfg(feature = "crypto")]
+            {
+                // decryption processing
+                let salt = framework_config.adv.salt.clone();
+                if salt.len() != 16 {
+                    return Err(TardisError::FormatError("[Tardis.Config] [salt] length must be 16".to_string()));
+                }
+                fn decryption(text: &str, salt: &str) -> String {
+                    let enc_r = regex::Regex::new(r"(?P<ENC>ENC\([A-Za-z0-9+/]*\))").unwrap();
+                    enc_r
+                        .replace_all(text, |captures: &regex::Captures| {
+                            let data = captures.get(1).map_or("", |m| m.as_str()).to_string();
+                            let data = &data[4..data.len() - 1];
+                            TardisFuns::crypto.aes.decrypt_ecb(data, salt).expect("[Tardis.Config] Decryption error")
+                        })
+                        .to_string()
+                }
+                let wc = decryption(&TardisFuns::json.obj_to_string(&workspace_config)?, &salt);
+                let fw = decryption(&TardisFuns::json.obj_to_string(&framework_config)?, &salt);
+                let workspace_config = TardisFuns::json.str_to_obj(&wc)?;
+                let framework_config = TardisFuns::json.str_to_obj(&fw)?;
+                Ok(TardisConfig {
+                    cs: workspace_config,
+                    fw: framework_config,
+                })
             }
-            fn decryption(text: &str, salt: &str) -> String {
-                let enc_r = Regex::new(r"(?P<ENC>ENC\([A-Za-z0-9+/]*\))").unwrap();
-                enc_r
-                    .replace_all(text, |captures: &Captures| {
-                        let data = captures.get(1).map_or("", |m| m.as_str()).to_string();
-                        let data = &data[4..data.len() - 1];
-                        TardisFuns::crypto.aes.decrypt_ecb(data, salt).expect("[Tardis.Config] Decryption error")
-                    })
-                    .to_string()
-            }
-
-            let wc = decryption(&TardisFuns::json.obj_to_string(&workspace_config)?, &salt);
-            let fw = decryption(&TardisFuns::json.obj_to_string(&framework_config)?, &salt);
-            let workspace_config = TardisFuns::json.str_to_obj(&wc)?;
-            let framework_config = TardisFuns::json.str_to_obj(&fw)?;
-            Ok(TardisConfig {
-                cs: workspace_config,
-                fw: framework_config,
-            })
         }
     }
 }
