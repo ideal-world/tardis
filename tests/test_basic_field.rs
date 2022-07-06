@@ -5,19 +5,22 @@ use tardis::TardisFuns;
 async fn test_basic_field() -> TardisResult<()> {
     assert!(TardisFuns::field.is_phone("18657120202"));
 
-    assert_eq!(TardisFuns::field.incr_by_base62("abcd1").unwrap(), "abcd2");
-    assert_eq!(TardisFuns::field.incr_by_base62("abcd12").unwrap(), "abcd13");
-    assert_eq!(TardisFuns::field.incr_by_base62("abcd9").unwrap(), "abceA");
-    assert_eq!(TardisFuns::field.incr_by_base62("azzz9").unwrap(), "azz0A");
-    assert_eq!(TardisFuns::field.incr_by_base62("a9999").unwrap(), "bAAAA");
-    assert!(TardisFuns::field.incr_by_base62("999").is_none());
-
     assert_eq!(TardisFuns::field.incr_by_base36("abcd1").unwrap(), "abcd2");
     assert_eq!(TardisFuns::field.incr_by_base36("abcd12").unwrap(), "abcd13");
-    assert_eq!(TardisFuns::field.incr_by_base36("abcd9").unwrap(), "abcea");
-    assert_eq!(TardisFuns::field.incr_by_base36("azzz9").unwrap(), "azz0a");
-    assert_eq!(TardisFuns::field.incr_by_base36("a9999").unwrap(), "baaaa");
-    assert!(TardisFuns::field.incr_by_base36("999").is_none());
+    assert_eq!(TardisFuns::field.incr_by_base36("abcd9").unwrap(), "abcda");
+    assert_eq!(TardisFuns::field.incr_by_base36("0000").unwrap(), "0001");
+    assert_eq!(TardisFuns::field.incr_by_base36("000z").unwrap(), "0010");
+    assert_eq!(TardisFuns::field.incr_by_base36("azzzy").unwrap(), "azzzz");
+    assert_eq!(TardisFuns::field.incr_by_base36("azzzz").unwrap(), "b0000");
+    assert!(TardisFuns::field.incr_by_base36("zzz").is_none());
+
+    assert_eq!(TardisFuns::field.incr_by_base62("abcd1").unwrap(), "abcd2");
+    assert_eq!(TardisFuns::field.incr_by_base62("abcd12").unwrap(), "abcd13");
+    assert_eq!(TardisFuns::field.incr_by_base62("abcd9").unwrap(), "abcdA");
+    assert_eq!(TardisFuns::field.incr_by_base62("abcdz").unwrap(), "abce0");
+    assert_eq!(TardisFuns::field.incr_by_base62("azZzz").unwrap(), "aza00");
+    assert_eq!(TardisFuns::field.incr_by_base62("azzzz").unwrap(), "b0000");
+    assert!(TardisFuns::field.incr_by_base62("zzz").is_none());
 
     assert!(TardisFuns::field.is_code_cs("Adw834_dfds"));
     assert!(!TardisFuns::field.is_code_cs(" Adw834_dfds"));
