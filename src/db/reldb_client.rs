@@ -5,10 +5,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use async_trait::async_trait;
 use log::{error, trace};
 use sea_orm::sea_query::TableCreateStatement;
+use sea_orm::sea_query::{IndexCreateStatement, SelectStatement, UpdateStatement};
 use sea_orm::ActiveValue::Set;
 use sea_orm::*;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, EntityTrait, ExecResult, QueryTrait, Schema, Select, Statement};
-use sea_query::{IndexCreateStatement, SelectStatement, UpdateStatement};
 use sqlparser::ast;
 use sqlparser::ast::{SetExpr, TableFactor};
 use sqlparser::dialect::MySqlDialect;
@@ -44,7 +44,7 @@ use crate::{FrameworkConfig, TardisFuns};
 /// use sea_orm::{DeriveRelation, EnumIter};
 /// mod tardis_db_config{
 ///     use tardis::db::sea_orm::*;
-///     use tardis::db::sea_query::*;
+///     use tardis::db::sea_orm::sea_query::*;
 ///     use tardis::basic::dto::TardisContext;
 /// use tardis::db::domain::tardis_db_config;
 ///     use tardis::db::reldb_client::TardisActiveModel;
@@ -105,7 +105,7 @@ use crate::{FrameworkConfig, TardisFuns};
 /// use tardis::basic::dto::TardisContext;
 /// use tardis::db::domain::tardis_db_config;
 /// use tardis::db::reldb_client::IdResp;
-/// use tardis::db::sea_query::*;
+/// use tardis::db::sea_orm::sea_query::*;
 /// use tardis::db::sea_orm::*;
 /// use tardis::TardisFuns;
 /// let cxt = TardisContext{
@@ -577,7 +577,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///
     /// # Examples
     /// ```ignore
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -608,7 +608,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///
     /// # Examples
     /// ```ignore
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -640,7 +640,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///
     /// # Examples
     /// ```ignore
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -671,7 +671,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///
     /// # Examples
     /// ```ignore
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -718,7 +718,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// # Examples
     /// ```ignore
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -750,7 +750,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// # Examples
     /// ```ignore
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -784,7 +784,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// # Examples
     /// ```ignore
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -816,7 +816,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// # Examples
     /// ```ignore
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -846,7 +846,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// # Examples
     /// ```ignore
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -875,7 +875,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// # Examples
     /// ```ignore
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
@@ -1046,7 +1046,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     /// # Examples
     /// ```ignore
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// use tardis::basic::dto::TardisContext;
     /// fn create_table_and_index_statement(db: DbBackend) -> (TableCreateStatement, Vec<IndexCreateStatement>) {
     ///     (Self::create_table_statement(db), Self::create_index_statement())
@@ -1066,7 +1066,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     /// ```ignore
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// fn create_table_statement(db_type: DbBackend) -> TableCreateStatement {
     ///     match db_type {
     ///         DbBackend::MySql => Table::create()
@@ -1113,7 +1113,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     /// ```ignore
     /// use tardis::db::domain::tardis_db_config;
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::*;
+    /// use tardis::db::sea_orm::sea_query::*;
     /// fn create_index_statement() -> Vec<IndexCreateStatement> {
     ///         vec![
     ///             Index::create()

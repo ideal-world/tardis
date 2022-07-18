@@ -42,7 +42,7 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
     let private_key = TardisFuns::crypto.rsa.new_private_key(2048).unwrap();
     let public_key = TardisFuns::crypto.rsa.new_public_key(&private_key).unwrap();
     let signed_data = private_key.sign("测试").unwrap();
-    let encrypted_data = private_key.encrypt("测试").unwrap();
+    let encrypted_data = public_key.encrypt("测试").unwrap();
     c.bench_function("CRYPTO: rsa_sign", |b| {
         b.iter(|| {
             private_key.sign("测试").unwrap();

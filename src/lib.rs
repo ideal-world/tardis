@@ -616,7 +616,7 @@ impl TardisFuns {
     /// use tardis::basic::error::TardisError;
     /// use tardis::TardisFuns;
     /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_query::Query;
+    /// use tardis::db::sea_orm::sea_query::Query;
     /// // Initialize table structure
     /// TardisFuns::reldb().conn().create_table_from_entity(todos::Entity).await?;
     /// // Create record

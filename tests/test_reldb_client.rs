@@ -10,8 +10,8 @@ use tardis::basic::result::TardisResult;
 use tardis::db::domain::{tardis_db_config, tardis_db_del_record};
 use tardis::db::reldb_client::TardisRelDBClient;
 use tardis::db::reldb_client::TardisSeaORMExtend;
+use tardis::db::sea_orm::sea_query::*;
 use tardis::db::sea_orm::*;
-use tardis::db::sea_query::*;
 use tardis::log::info;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
@@ -241,22 +241,6 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         .column(entities::app::Column::Name)
         .column_as(entities::tenant::Column::Name, "tenant_name")
         .left_join(entities::tenant::Entity)
-        .filter(entities::tenant::Column::Name.contains("tenant"))
-        .into_json()
-        .all(conn)
-        .await?;
-    assert_eq!(apps.len(), 2);
-    assert_eq!(apps[0]["tenant_name"], "tenant1");
-
-    let apps = entities::app::Entity::find()
-        .select_only()
-        .column(entities::app::Column::Name)
-        .column_as(entities::tenant::Column::Name, "tenant_name")
-        .join(
-            JoinType::LeftJoin,
-            // construct `RelationDef` on the fly
-            entities::app::Entity::belongs_to(entities::tenant::Entity).from(entities::app::Column::TenantId).to(entities::tenant::Column::Id).into(),
-        )
         .filter(entities::tenant::Column::Name.contains("tenant"))
         .into_json()
         .all(conn)
@@ -529,7 +513,6 @@ async fn test_data_dict(client: &TardisRelDBClient) -> TardisResult<()> {
 }
 
 pub mod entities {
-
     pub mod tenant {
         use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;

@@ -13,8 +13,8 @@ use libsm::{
 #[cfg(feature = "crypto_with_sm")]
 use num_bigint::BigUint;
 use rand_core::RngCore;
-use rsa::pkcs8::{FromPrivateKey, FromPublicKey, ToPrivateKey, ToPublicKey};
-use rsa::{pkcs8, PublicKey};
+use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey, LineEnding};
+use rsa::PublicKey;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
@@ -40,29 +40,41 @@ pub struct TardisCrypto {
     #[cfg(feature = "crypto_with_sm")]
     pub sm2: TardisCryptoSm2,
 }
+
 pub struct TardisCryptoHex;
+
 pub struct TardisCryptoBase64;
+
 pub struct TardisCryptoAes;
+
 pub struct TardisCryptoRsa;
+
 pub struct TardisCryptoRsaPrivateKey {
     pri_key: rsa::RsaPrivateKey,
 }
+
 pub struct TardisCryptoRsaPublicKey {
     pub_key: rsa::RsaPublicKey,
 }
+
 #[cfg(feature = "crypto_with_sm")]
 pub struct TardisCryptoSm4;
+
 #[cfg(feature = "crypto_with_sm")]
 pub struct TardisCryptoSm2;
+
 #[cfg(feature = "crypto_with_sm")]
 pub struct TardisCryptoSm2PrivateKey {
     pri_key: BigUint,
 }
+
 #[cfg(feature = "crypto_with_sm")]
 pub struct TardisCryptoSm2PublicKey {
     pub_key: Point,
 }
+
 pub struct TardisCryptoDigest;
+
 pub struct TardisCryptoKey;
 
 impl TardisCryptoHex {
@@ -229,12 +241,12 @@ impl TardisCryptoRsaPrivateKey {
 
     pub fn from(private_key_pem: &str) -> TardisResult<Self> {
         Ok(TardisCryptoRsaPrivateKey {
-            pri_key: rsa::RsaPrivateKey::from_pkcs8_pem(private_key_pem)?,
+            pri_key: rsa::RsaPrivateKey::from_pkcs8_pem(private_key_pem).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] RSA crypto error, {}", e)))?,
         })
     }
 
     pub fn serialize(&self) -> TardisResult<String> {
-        Ok(self.pri_key.to_pkcs8_pem()?.to_string())
+        Ok(self.pri_key.to_pkcs8_pem(LineEnding::LF).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] RSA crypto error, {}", e)))?.to_string())
     }
 
     pub fn decrypt(&self, encrypted_data: &str) -> TardisResult<String> {
@@ -256,19 +268,19 @@ impl TardisCryptoRsaPublicKey {
     }
 
     pub fn from_private_key_str(private_key_pem: &str) -> TardisResult<Self> {
-        let private_key = rsa::RsaPrivateKey::from_pkcs8_pem(private_key_pem)?;
+        let private_key = rsa::RsaPrivateKey::from_pkcs8_pem(private_key_pem).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] RSA crypto error, {}", e)))?;
         let public_key = rsa::RsaPublicKey::from(private_key);
         Ok(TardisCryptoRsaPublicKey { pub_key: public_key })
     }
 
     pub fn from_public_key_str(public_key_pem: &str) -> TardisResult<Self> {
         Ok(TardisCryptoRsaPublicKey {
-            pub_key: rsa::RsaPublicKey::from_public_key_pem(public_key_pem)?,
+            pub_key: rsa::RsaPublicKey::from_public_key_pem(public_key_pem).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] RSA crypto error, {}", e)))?,
         })
     }
 
     pub fn serialize(&self) -> TardisResult<String> {
-        Ok(self.pub_key.to_public_key_pem()?)
+        self.pub_key.to_public_key_pem(LineEnding::LF).map_err(|e| TardisError::FormatError(format!("[Tardis.Crypto] RSA crypto error, {}", e)))
     }
 
     pub fn encrypt(&self, data: &str) -> TardisResult<String> {
@@ -551,12 +563,6 @@ impl From<crypto::symmetriccipher::SymmetricCipherError> for TardisError {
 
 impl From<rsa::errors::Error> for TardisError {
     fn from(error: rsa::errors::Error) -> Self {
-        TardisError::FormatError(format!("[Tardis.Crypto] RSA crypto error, {}", error))
-    }
-}
-
-impl From<pkcs8::Error> for TardisError {
-    fn from(error: pkcs8::Error) -> Self {
         TardisError::FormatError(format!("[Tardis.Crypto] RSA crypto error, {}", error))
     }
 }
