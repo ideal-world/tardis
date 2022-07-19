@@ -454,13 +454,13 @@ impl TardisFuns {
         TardisResult::Ok(())
     }
 
-    pub fn inst<'a>(code: String) -> TardisFunsInst<'a> {
-        TardisFunsInst::new(code)
+    pub fn inst<'a>(code: String, lang: Option<String>) -> TardisFunsInst<'a> {
+        TardisFunsInst::new(code, lang)
     }
 
     #[cfg(feature = "reldb")]
-    pub fn inst_with_db_conn<'a>(code: String) -> TardisFunsInst<'a> {
-        TardisFunsInst::new_with_db_conn(code)
+    pub fn inst_with_db_conn<'a>(code: String, lang: Option<String>) -> TardisFunsInst<'a> {
+        TardisFunsInst::new_with_db_conn(code, lang)
     }
 
     /// Get the custom configuration object / 获取自定义配置对象
@@ -964,10 +964,13 @@ pub struct TardisFunsInst<'a> {
 }
 
 impl<'a> TardisFunsInst<'a> {
-    pub(crate) fn new(code: String) -> Self {
+    pub(crate) fn new(code: String, lang: Option<String>) -> Self {
         Self {
             module_code: code.to_lowercase(),
-            err: TardisErrorWithExt { ext: code.to_lowercase() },
+            err: TardisErrorWithExt {
+                ext: code.to_lowercase(),
+                lang: if lang.is_some() { lang } else { TardisFuns::fw_config().app.default_lang.clone() },
+            },
             #[cfg(feature = "reldb")]
             db: None,
             #[cfg(not(feature = "reldb"))]
@@ -976,11 +979,14 @@ impl<'a> TardisFunsInst<'a> {
     }
 
     #[cfg(feature = "reldb")]
-    pub(crate) fn new_with_db_conn(code: String) -> Self {
+    pub(crate) fn new_with_db_conn(code: String, lang: Option<String>) -> Self {
         let reldb = TardisFuns::reldb_by_module_or_default(&code);
         Self {
             module_code: code.to_lowercase(),
-            err: TardisErrorWithExt { ext: code.to_lowercase() },
+            err: TardisErrorWithExt {
+                ext: code.to_lowercase(),
+                lang: if lang.is_some() { lang } else { TardisFuns::fw_config().app.default_lang.clone() },
+            },
             db: Some(reldb.conn()),
         }
     }

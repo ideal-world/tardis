@@ -13,7 +13,7 @@ impl TagApi {
     /// Add
     #[oai(path = "/", method = "post")]
     async fn add(&self, add_req: Json<TagAddReq>, cxt: TardisContextExtractor) -> TardisApiResult<TagResp> {
-        let mut funs = TardisFuns::inst_with_db_conn("tag".to_string());
+        let mut funs = TardisFuns::inst_with_db_conn("tag".to_string(), None);
         funs.begin().await?;
         let result = TagServ::add_doc(&add_req.0, &funs, &cxt.0).await?;
         funs.commit().await?;

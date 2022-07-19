@@ -99,6 +99,9 @@ pub struct AppConfig {
     ///
     /// 一个应用可以有多个实例，每个实例都有自己的标识，默认使用nanoid.
     pub inst: String,
+    /// Application default language / 应用默认语言
+    /// https://www.andiamo.co.uk/resources/iso-language-codes/
+    pub default_lang: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -111,6 +114,7 @@ impl Default for AppConfig {
             url: "".to_string(),
             email: "".to_string(),
             inst: format!("inst_{}", TardisFuns::field.nanoid()),
+            default_lang: None,
         }
     }
 }
@@ -730,7 +734,7 @@ impl TardisConfig {
         );
         debug!("=====[Tardis.Config] Content=====\n{:#?}\n=====", framework_config);
 
-        if framework_config.adv.salt.is_empty() {
+        let config = if framework_config.adv.salt.is_empty() {
             Ok(TardisConfig {
                 cs: workspace_config,
                 fw: framework_config,
@@ -766,7 +770,11 @@ impl TardisConfig {
                     fw: framework_config,
                 })
             }
-        }
+        };
+
+        TardisError::init_locale(path)?;
+
+        config
     }
 }
 
