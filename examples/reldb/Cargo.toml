@@ -6,4 +6,4 @@ edition = "2021"
 
 [dependencies]
 tardis = { path = "../..", features = ["reldb", "test"] }
-sea-orm = { version = "^0.9", features = ["macros"] }
+sea-orm = { version = "0.9", features = ["macros"] }
