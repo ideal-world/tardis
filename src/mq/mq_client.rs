@@ -28,7 +28,7 @@ impl TardisMQClient {
     }
 
     pub async fn init(str_url: &str) -> TardisResult<TardisMQClient> {
-        let url = Url::parse(str_url).map_err(|_| TardisError::BadRequest(format!("[Tardis.MQClient] Invalid url {}", str_url)))?;
+        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.MQClient] Invalid url {}", str_url), "406-tardis-mq-url-error"))?;
         info!("[Tardis.MQClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
         let con = Connection::connect(str_url, ConnectionProperties::default().with_connection_name("tardis".into())).await?;
         info!("[Tardis.MQClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
@@ -70,7 +70,7 @@ impl TardisMQClient {
             channel.close(200u16, "").await?;
             Ok(())
         } else {
-            Err(TardisError::InternalError("MQ request confirmation error".to_string()))
+            Err(TardisError::internal_error("MQ request confirmation error", "500-tardis-mq-confirm-error"))
         }
     }
 
@@ -134,7 +134,7 @@ impl TardisMQClient {
             channel.close(200u16, "").await?;
             Ok(())
         } else {
-            Err(TardisError::InternalError("MQ request confirmation error".to_string()))
+            Err(TardisError::internal_error("MQ request confirmation error", "500-tardis-mq-confirm-error"))
         }
     }
 
@@ -257,6 +257,6 @@ impl TardisMQClient {
 impl From<lapin::Error> for TardisError {
     fn from(error: lapin::Error) -> Self {
         error!("[Tardis.MQClient] Error: {}", error.to_string());
-        TardisError::Box(Box::new(error))
+        TardisError::wrap(&format!("[Tardis.MQClient] {:?}", error), "-1-tardis-mq-error")
     }
 }

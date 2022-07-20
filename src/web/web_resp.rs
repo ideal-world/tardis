@@ -1,6 +1,7 @@
 use crate::basic::error::TardisError;
 use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
 use crate::serde::{Deserialize, Serialize};
+use crate::TardisFuns;
 use poem::http::StatusCode;
 use poem_openapi::payload::Json;
 use poem_openapi::{
@@ -14,24 +15,50 @@ pub type TardisApiResult<T> = poem::Result<Json<TardisResp<T>>>;
 
 impl From<TardisError> for poem::Error {
     fn from(error: TardisError) -> Self {
-        let status_code = match error {
-            // TODO
-            TardisError::Custom(_, _) => StatusCode::BAD_REQUEST,
-            // TODO
-            TardisError::_Inner(_) => StatusCode::BAD_REQUEST,
-            // TODO
-            TardisError::Box(_) => StatusCode::BAD_REQUEST,
-            TardisError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            TardisError::NotImplemented(_) => StatusCode::NOT_IMPLEMENTED,
-            TardisError::IOError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            TardisError::BadRequest(_) => StatusCode::BAD_REQUEST,
-            TardisError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
-            TardisError::NotFound(_) => StatusCode::NOT_FOUND,
-            TardisError::FormatError(_) => StatusCode::BAD_REQUEST,
-            TardisError::Timeout(_) => StatusCode::REQUEST_TIMEOUT,
-            TardisError::Conflict(_) => StatusCode::CONFLICT,
+        let status_code = match &error.code {
+            c if c.starts_with("400") => StatusCode::BAD_REQUEST,
+            c if c.starts_with("401") => StatusCode::UNAUTHORIZED,
+            c if c.starts_with("403") => StatusCode::FORBIDDEN,
+            c if c.starts_with("404") => StatusCode::NOT_FOUND,
+            c if c.starts_with("405") => StatusCode::METHOD_NOT_ALLOWED,
+            c if c.starts_with("406") => StatusCode::NOT_ACCEPTABLE,
+            c if c.starts_with("408") => StatusCode::REQUEST_TIMEOUT,
+            c if c.starts_with("409") => StatusCode::CONFLICT,
+            c if c.starts_with("410") => StatusCode::GONE,
+            c if c.starts_with("411") => StatusCode::LENGTH_REQUIRED,
+            c if c.starts_with("412") => StatusCode::PRECONDITION_FAILED,
+            c if c.starts_with("413") => StatusCode::PAYLOAD_TOO_LARGE,
+            c if c.starts_with("414") => StatusCode::URI_TOO_LONG,
+            c if c.starts_with("415") => StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            c if c.starts_with("416") => StatusCode::RANGE_NOT_SATISFIABLE,
+            c if c.starts_with("417") => StatusCode::EXPECTATION_FAILED,
+            c if c.starts_with("418") => StatusCode::IM_A_TEAPOT,
+            c if c.starts_with("421") => StatusCode::MISDIRECTED_REQUEST,
+            c if c.starts_with("422") => StatusCode::UNPROCESSABLE_ENTITY,
+            c if c.starts_with("423") => StatusCode::LOCKED,
+            c if c.starts_with("424") => StatusCode::FAILED_DEPENDENCY,
+            c if c.starts_with("426") => StatusCode::UPGRADE_REQUIRED,
+            c if c.starts_with("428") => StatusCode::PRECONDITION_REQUIRED,
+            c if c.starts_with("429") => StatusCode::TOO_MANY_REQUESTS,
+            c if c.starts_with("431") => StatusCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+            c if c.starts_with("451") => StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS,
+            c if c.starts_with("500") => StatusCode::INTERNAL_SERVER_ERROR,
+            c if c.starts_with("501") => StatusCode::NOT_IMPLEMENTED,
+            c if c.starts_with("502") => StatusCode::BAD_GATEWAY,
+            c if c.starts_with("503") => StatusCode::SERVICE_UNAVAILABLE,
+            c if c.starts_with("504") => StatusCode::GATEWAY_TIMEOUT,
+            c if c.starts_with("505") => StatusCode::HTTP_VERSION_NOT_SUPPORTED,
+            c if c.starts_with("506") => StatusCode::VARIANT_ALSO_NEGOTIATES,
+            c if c.starts_with("507") => StatusCode::INSUFFICIENT_STORAGE,
+            c if c.starts_with("508") => StatusCode::LOOP_DETECTED,
+            c if c.starts_with("510") => StatusCode::NOT_EXTENDED,
+            c if c.starts_with("511") => StatusCode::NETWORK_AUTHENTICATION_REQUIRED,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
-        poem::Error::from_string(format!("{}{}", TARDIS_ERROR_FLAG, error), status_code)
+        poem::Error::from_string(
+            format!("{}{}", TARDIS_ERROR_FLAG, TardisFuns::json.obj_to_string(&error).unwrap_or_else(|_| "".to_string())),
+            status_code,
+        )
     }
 }
 
@@ -40,7 +67,7 @@ impl From<poem::Error> for TardisError {
         let msg = error.to_string();
         if msg.starts_with(TARDIS_ERROR_FLAG) {
             let msg = msg.split_at(TARDIS_ERROR_FLAG.len()).1.to_string();
-            return TardisError::form(&msg);
+            return TardisFuns::json.str_to_obj(&msg).unwrap_or_else(|_| TardisError::format_error("[Tardis.WebServer] Invalid format error", "406-tardis-error-invalid"));
         }
         let msg = &error.to_string();
         let http_code = error.into_response().status();
@@ -51,16 +78,23 @@ impl From<poem::Error> for TardisError {
 pub fn mapping_http_code_to_error(http_code: StatusCode, msg: &str) -> Option<TardisError> {
     if msg.starts_with(TARDIS_ERROR_FLAG) {
         let msg = msg.split_at(TARDIS_ERROR_FLAG.len()).1.to_string();
-        return Some(TardisError::form(&msg));
+        let error = TardisFuns::json.str_to_obj(&msg).unwrap_or_else(|_| TardisError::format_error("[Tardis.WebServer] Invalid format error", "406-tardis-error-invalid"));
+        return Some(error);
     }
     match http_code {
         StatusCode::OK => None,
-        StatusCode::BAD_REQUEST => Some(TardisError::BadRequest(msg.to_string())),
-        StatusCode::UNAUTHORIZED => Some(TardisError::Unauthorized(msg.to_string())),
-        StatusCode::NOT_FOUND => Some(TardisError::NotFound(msg.to_string())),
-        StatusCode::INTERNAL_SERVER_ERROR => Some(TardisError::InternalError(msg.to_string())),
-        StatusCode::SERVICE_UNAVAILABLE => Some(TardisError::InternalError(msg.to_string())),
-        _ => Some(TardisError::BadRequest(msg.to_string())),
+        _ => Some(TardisError::custom(
+            http_code.as_str(),
+            &format!("[Tardis.WebServer] Process error: {}", msg),
+            &format!(
+                "{}-tardis-webserver-error",
+                if [400, 401, 404, 406, 408, 409, 500, 501].contains(&http_code.as_u16()) {
+                    http_code.as_str()
+                } else {
+                    "-1"
+                }
+            ),
+        )),
     }
 }
 

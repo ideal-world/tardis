@@ -161,7 +161,7 @@ impl TardisRelDBClient {
         connect_timeout_sec: Option<u64>,
         idle_timeout_sec: Option<u64>,
     ) -> TardisResult<TardisRelDBClient> {
-        let url = Url::parse(str_url).map_err(|_| TardisError::BadRequest(format!("[Tardis.RelDBClient] Invalid url {}", str_url)))?;
+        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.RelDBClient] Invalid url {}", str_url), "406-tardis-reldb-url-error"))?;
         info!(
             "[Tardis.RelDBClient] Initializing, host:{}, port:{}, max_connections:{}",
             url.host_str().unwrap_or(""),
@@ -331,10 +331,10 @@ impl TardisRelDBClient {
         let count_result = CountResp::find_by_statement(count_statement).one(db).await?;
         match count_result {
             Some(r) => TardisResult::Ok(r.count as u64),
-            None => TardisResult::Err(TardisError::InternalError(format!(
-                "[Tardis.RelDBClient] No results found for count query by {}",
-                count_sql
-            ))),
+            None => TardisResult::Err(TardisError::internal_error(
+                &format!("[Tardis.RelDBClient] No results found for count query by {}", count_sql),
+                "500-tardis-reldb-count-empty",
+            )),
         }
     }
 
@@ -429,7 +429,10 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             Ok(tx)
         } else {
-            Err(TardisError::NotFound("[Tardis.RelDBClient] The current connection  has no transactions".to_string()))
+            Err(TardisError::not_found(
+                "[Tardis.RelDBClient] The current connection  has no transactions",
+                "404-tardis-reldb-tx-empty",
+            ))
         }
     }
 
@@ -950,7 +953,12 @@ where
         let sql = self.build(db_backend).sql.replace('?', "''");
         let ast = match Parser::parse_sql(&MySqlDialect {}, &sql)?.pop() {
             Some(ast) => ast,
-            None => return Err(TardisError::BadRequest("[Tardis.RelDBClient] Sql parsing error, no valid Statement found".to_string())),
+            None => {
+                return Err(TardisError::format_error(
+                    "[Tardis.RelDBClient] Sql parsing error, no valid Statement found",
+                    "406-tardis-reldb-sql-error",
+                ))
+            }
         };
         let mut table_name = String::new();
         if let ast::Statement::Query(query) = ast {
@@ -961,8 +969,9 @@ where
             }
         }
         if table_name.is_empty() {
-            return TardisResult::Err(TardisError::Conflict(
-                "sql parsing error, the name of the table to be soft deleted was not found".to_string(),
+            return TardisResult::Err(TardisError::not_found(
+                "[Tardis.RelDBClient] Sql parsing error, the name of the table to be soft deleted was not found",
+                "404-tardis-reldb-soft-delete-table-not-exit",
             ));
         }
 
@@ -979,14 +988,24 @@ where
                 ids.push(
                     id.as_str()
                         .as_ref()
-                        .ok_or_else(|| TardisError::InternalError(format!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a character type", id)))?
+                        .ok_or_else(|| {
+                            TardisError::internal_error(
+                                &format!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a character type", id),
+                                "500-tardis-reldb-id-not-char",
+                            )
+                        })?
                         .to_string()
                         .into(),
                 );
             } else {
                 ids.push(
                     id.as_u64()
-                        .ok_or_else(|| TardisError::InternalError(format!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a number type", id)))?
+                        .ok_or_else(|| {
+                            TardisError::internal_error(
+                                &format!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a number type", id),
+                                "500-tardis-reldb-id-not-num",
+                            )
+                        })?
                         .into(),
                 );
             }
@@ -1148,13 +1167,13 @@ pub struct IdResp {
 impl From<DbErr> for TardisError {
     fn from(error: DbErr) -> Self {
         error!("[Tardis.RelDBClient] DbErr: {}", error.to_string());
-        TardisError::Box(Box::new(error))
+        TardisError::wrap(&format!("[Tardis.RelDBClient] {:?}", error), "-1-tardis-reldb-error")
     }
 }
 
 impl From<ParserError> for TardisError {
     fn from(error: ParserError) -> Self {
         error!("[Tardis.RelDBClient] ParserError: {}", error.to_string());
-        TardisError::Box(Box::new(error))
+        TardisError::wrap(&format!("[Tardis.RelDBClient] {:?}", error), "406-tardis-reldb-sql-error")
     }
 }

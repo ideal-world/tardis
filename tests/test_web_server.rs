@@ -168,23 +168,23 @@ async fn test_basic(url: &str) -> TardisResult<()> {
 
     // Business Error
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/err", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, TardisError::Conflict("异常".to_string()).code());
-    assert_eq!(response.msg, TardisError::Conflict("异常".to_string()).message());
+    assert_eq!(response.code, TardisError::conflict("异常", "").code);
+    assert_eq!(response.msg, TardisError::conflict("异常", "").message);
 
     // Not Found
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/ss", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, TardisError::NotFound("".to_string()).code());
-    assert_eq!(response.msg, "not found");
+    assert_eq!(response.code, TardisError::not_found("", "").code);
+    assert_eq!(response.msg, "[Tardis.WebServer] Process error: not found");
 
     Ok(())
 }
 
 async fn test_validate(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/ss", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, TardisError::NotFound("".to_string()).code());
+    assert_eq!(response.code, TardisError::not_found("", "").code);
     assert_eq!(
         response.msg,
-        r#"failed to parse path `id`: failed to parse "integer(int64)": invalid digit found in string"#
+        r#"[Tardis.WebServer] Process error: failed to parse path `id`: failed to parse "integer(int64)": invalid digit found in string"#
     );
 
     let response = TardisFuns::web_client()
@@ -205,10 +205,10 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
-        r#"parse request payload error: failed to parse "ValidateReq": field `len` verification failed. minLength(1)"#
+        r#"[Tardis.WebServer] Process error: parse request payload error: failed to parse "ValidateReq": field `len` verification failed. minLength(1)"#
     );
 
     let response = TardisFuns::web_client()
@@ -229,10 +229,10 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
-        r#"parse request payload error: failed to parse "ValidateReq": field `eq` verification failed. minLength(5)"#
+        r#"[Tardis.WebServer] Process error: parse request payload error: failed to parse "ValidateReq": field `eq` verification failed. minLength(5)"#
     );
 
     let response = TardisFuns::web_client()
@@ -253,10 +253,10 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
-        r#"parse request payload error: failed to parse "ValidateReq": field `range` verification failed. minimum(1, exclusive: false)"#
+        r#"[Tardis.WebServer] Process error: parse request payload error: failed to parse "ValidateReq": field `range` verification failed. minimum(1, exclusive: false)"#
     );
 
     let response = TardisFuns::web_client()
@@ -277,10 +277,10 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
-        r#"parse request payload error: failed to parse "ValidateReq": field `mail` verification failed. Invalid mail format"#
+        r#"[Tardis.WebServer] Process error: parse request payload error: failed to parse "ValidateReq": field `mail` verification failed. Invalid mail format"#
     );
 
     let response = TardisFuns::web_client()
@@ -301,10 +301,10 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
-        r#"parse request payload error: failed to parse "ValidateReq": field `contain` verification failed. pattern(".*gmail.*")"#
+        r#"[Tardis.WebServer] Process error: parse request payload error: failed to parse "ValidateReq": field `contain` verification failed. pattern(".*gmail.*")"#
     );
 
     let response = TardisFuns::web_client()
@@ -325,10 +325,10 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
-        r#"parse request payload error: failed to parse "ValidateReq": field `phone` verification failed. Invalid phone number format"#
+        r#"[Tardis.WebServer] Process error: parse request payload error: failed to parse "ValidateReq": field `phone` verification failed. Invalid phone number format"#
     );
 
     let response = TardisFuns::web_client()
@@ -349,10 +349,10 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
-        r#"parse request payload error: failed to parse "ValidateReq": field `item_len` verification failed. minItems(1)"#
+        r#"[Tardis.WebServer] Process error: parse request payload error: failed to parse "ValidateReq": field `item_len` verification failed. minItems(1)"#
     );
 
     let response = TardisFuns::web_client()
@@ -373,10 +373,10 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
-        r#"parse request payload error: failed to parse "ValidateReq": field `item_unique` verification failed. uniqueItems()"#
+        r#"[Tardis.WebServer] Process error: parse request payload error: failed to parse "ValidateReq": field `item_unique` verification failed. uniqueItems()"#
     );
 
     let response = TardisFuns::web_client()
@@ -404,8 +404,8 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
 async fn test_context(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client().get::<TardisResp<String>>(format!("{}/other/context_in_header", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
-    assert_eq!(response.msg, "authorization error");
+    assert_eq!(response.code, TardisError::unauthorized("", "").code);
+    assert_eq!(response.msg, "[Tardis.WebServer] Process error: authorization error");
 
     // from header
     let response = TardisFuns::web_client()
@@ -416,8 +416,8 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
-    assert_eq!(response.msg, "authorization error");
+    assert_eq!(response.code, TardisError::unauthorized("", "").code);
+    assert_eq!(response.msg, "[Tardis.WebServer] Process error: authorization error");
 
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
@@ -427,8 +427,8 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
-    assert_eq!(response.msg, "authorization error");
+    assert_eq!(response.code, TardisError::unauthorized("", "").code);
+    assert_eq!(response.msg, "[Tardis.WebServer] Process error: authorization error");
 
     let context = TardisContext {
         own_paths: "tenant1/app1".to_string(),
@@ -448,8 +448,8 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
-    assert_eq!(response.msg, "authorization error");
+    assert_eq!(response.code, TardisError::unauthorized("", "").code);
+    assert_eq!(response.msg, "[Tardis.WebServer] Process error: authorization error");
 
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
@@ -477,8 +477,8 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::Unauthorized("".to_string()).code());
-    assert_eq!(response.msg, "authorization error");
+    assert_eq!(response.code, TardisError::unauthorized("", "").code);
+    assert_eq!(response.msg, "[Tardis.WebServer] Process error: authorization error");
 
     let context = TardisContext {
         own_paths: "tenant1/app1".to_string(),
@@ -600,13 +600,19 @@ async fn test_security() -> TardisResult<()> {
 
     // Business Error
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/err", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, TardisError::Conflict("异常".to_string()).code());
-    assert_eq!(response.msg, "Security is enabled, detailed errors are hidden, please check the server logs");
+    assert_eq!(response.code, TardisError::conflict("异常", "").code);
+    assert_eq!(
+        response.msg,
+        "[Tardis.WebServer] Security is enabled, detailed errors are hidden, please check the server logs"
+    );
 
     // Not Found
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/ss", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, TardisError::NotFound("".to_string()).code());
-    assert_eq!(response.msg, "Security is enabled, detailed errors are hidden, please check the server logs");
+    assert_eq!(response.code, TardisError::not_found("", "").code);
+    assert_eq!(
+        response.msg,
+        "[Tardis.WebServer] Security is enabled, detailed errors are hidden, please check the server logs"
+    );
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
@@ -626,8 +632,11 @@ async fn test_security() -> TardisResult<()> {
         .await?
         .body
         .unwrap();
-    assert_eq!(response.code, TardisError::BadRequest("".to_string()).code());
-    assert_eq!(response.msg, "Security is enabled, detailed errors are hidden, please check the server logs");
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
+    assert_eq!(
+        response.msg,
+        "[Tardis.WebServer] Security is enabled, detailed errors are hidden, please check the server logs"
+    );
 
     Ok(())
 }
@@ -700,7 +709,7 @@ impl TodosApi {
 
     #[oai(path = "/todos/:id/err", method = "get")]
     async fn get_by_error(&self, id: Path<i64>) -> TardisApiResult<TodoResp> {
-        TardisResp::err(TardisError::Conflict("异常".to_string()))
+        TardisResp::err(TardisError::conflict("异常", ""))
     }
 }
 

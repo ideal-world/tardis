@@ -204,7 +204,7 @@ async fn test_concurrent() -> TardisResult<()> {
 
     let _ = threads
         .into_iter()
-        .map(|i| {
+        .map(|_| {
             tokio::task::spawn(async {
                 let client = TardisFuns::cache_by_module("m1");
                 let id = TardisFuns::field.nanoid();

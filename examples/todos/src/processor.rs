@@ -77,7 +77,7 @@ impl TodoApi {
                     .and_where(todos::Column::Id.eq(id.0)),
             )
             .await?
-            .ok_or_else(|| TardisError::NotFound("Not found".to_string()))?;
+            .ok_or_else(|| TardisError::not_found("Not found", ""))?;
         TardisResp::ok(todo)
     }
 

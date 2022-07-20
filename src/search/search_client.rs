@@ -68,10 +68,14 @@ impl TardisSearchClient {
         trace!("[Tardis.SearchClient] Creating index: {}", index_name);
         let url = format!("{}/{}", self.server_url, index_name);
         let resp = self.client.put_str_to_str(&url, "", None).await?;
-        if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {
-            Err(err)
-        } else {
+        if resp.code >= 200 && resp.code <= 300 {
             Ok(())
+        } else {
+            Err(TardisError::custom(
+                &resp.code.to_string(),
+                &format!("[Tardis.SearchClient] Create index error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                "-1-tardis-search-error",
+            ))
         }
     }
 
@@ -91,11 +95,15 @@ impl TardisSearchClient {
         trace!("[Tardis.SearchClient] Creating record: {}, data:{}", index_name, data);
         let url = format!("{}/{}/_doc/", self.server_url, index_name);
         let resp = self.client.post_str_to_str(&url, data, None).await?;
-        if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {
-            Err(err)
-        } else {
+        if resp.code >= 200 && resp.code <= 300 {
             let result = TardisFuns::json.str_to_json(&resp.body.unwrap_or_else(|| "".to_string()))?;
-            Ok(result["_id"].as_str().ok_or_else(|| TardisError::FormatError("[Tardis.SearchClient] [_id] structure not found".to_string()))?.to_string())
+            Ok(result["_id"].as_str().ok_or_else(|| TardisError::bad_request("[Tardis.SearchClient] [_id] structure not found", "400-tardis-search-id-not-exist"))?.to_string())
+        } else {
+            Err(TardisError::custom(
+                &resp.code.to_string(),
+                &format!("[Tardis.SearchClient] Create record error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                "-1-tardis-search-error",
+            ))
         }
     }
 
@@ -115,11 +123,15 @@ impl TardisSearchClient {
         trace!("[Tardis.SearchClient] Getting record: {}, id:{}", index_name, id);
         let url = format!("{}/{}/_doc/{}", self.server_url, index_name, id);
         let resp = self.client.get_to_str(&url, None).await?;
-        if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {
-            Err(err)
-        } else {
+        if resp.code >= 200 && resp.code <= 300 {
             let result = TardisFuns::json.str_to_json(&resp.body.unwrap_or_else(|| "".to_string()))?;
             Ok(result["_source"].to_string())
+        } else {
+            Err(TardisError::custom(
+                &resp.code.to_string(),
+                &format!("[Tardis.SearchClient] Get record error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                "-1-tardis-search-error",
+            ))
         }
     }
 
@@ -139,10 +151,14 @@ impl TardisSearchClient {
         trace!("[Tardis.SearchClient] Simple search: {}, q:{}", index_name, q);
         let url = format!("{}/{}/_search?q={}", self.server_url, index_name, q);
         let resp = self.client.get_to_str(&url, None).await?;
-        if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {
-            Err(err)
-        } else {
+        if resp.code >= 200 && resp.code <= 300 {
             Self::parse_search_result(&resp.body.unwrap_or_else(|| "".to_string()))
+        } else {
+            Err(TardisError::custom(
+                &resp.code.to_string(),
+                &format!("[Tardis.SearchClient] Simple search error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                "-1-tardis-search-error",
+            ))
         }
     }
 
@@ -181,10 +197,14 @@ impl TardisSearchClient {
         trace!("[Tardis.SearchClient] Raw search: {}, q:{}", index_name, q);
         let url = format!("{}/{}/_search", self.server_url, index_name);
         let resp = self.client.post_str_to_str(&url, q, None).await?;
-        if let Some(err) = TardisError::new(resp.code, resp.body.as_ref().unwrap_or(&"".to_string())) {
-            Err(err)
-        } else {
+        if resp.code >= 200 && resp.code <= 300 {
             Self::parse_search_result(&resp.body.unwrap_or_else(|| "".to_string()))
+        } else {
+            Err(TardisError::custom(
+                &resp.code.to_string(),
+                &format!("[Tardis.SearchClient] Raw search error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                "-1-tardis-search-error",
+            ))
         }
     }
 
@@ -192,7 +212,7 @@ impl TardisSearchClient {
         let json = TardisFuns::json.str_to_json(result)?;
         let json = json["hits"]["hits"]
             .as_array()
-            .ok_or_else(|| TardisError::FormatError("[Tardis.SearchClient] [hit.hit] structure not found".to_string()))?
+            .ok_or_else(|| TardisError::format_error("[Tardis.SearchClient] [hit.hit] structure not found", "406-tardis-search-hit-not-exist"))?
             .iter()
             .map(|x| x["_source"].to_string())
             .collect();

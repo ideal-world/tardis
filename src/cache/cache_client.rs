@@ -47,7 +47,7 @@ impl TardisCacheClient {
 
     /// Initialize configuration / 初始化配置
     pub async fn init(str_url: &str) -> TardisResult<TardisCacheClient> {
-        let url = Url::parse(str_url).map_err(|_| TardisError::BadRequest(format!("[Tardis.CacheClient] Invalid url {}", str_url)))?;
+        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.CacheClient] Invalid url {}", str_url), "406-tardis-cache-url-error"))?;
         info!(
             "[Tardis.CacheClient] Initializing, host:{}, port:{}, db:{}",
             url.host_str().unwrap_or(""),
@@ -250,6 +250,6 @@ impl TardisCacheClient {
 impl From<RedisError> for TardisError {
     fn from(error: RedisError) -> Self {
         error!("[Tardis.CacheClient] [{}]{},", error.code().unwrap_or(""), error.detail().unwrap_or(""));
-        TardisError::Box(Box::new(error))
+        TardisError::wrap(&format!("[Tardis.CacheClient] {:?}", error), "-1-tardis-cache-error")
     }
 }

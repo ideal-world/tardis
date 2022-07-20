@@ -11,7 +11,7 @@ use std::path::Path;
 use config::{Config, ConfigError, Environment, File};
 use serde_json::Value;
 
-use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
+use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
 use crate::basic::result::TardisResult;
 use crate::log::{debug, info};
@@ -741,15 +741,13 @@ impl TardisConfig {
             })
         } else {
             #[cfg(not(feature = "crypto"))]
-            return Err(TardisError::FormatError(
-                "[Tardis.Config] Configuration encryption must depend on the crypto feature".to_string(),
-            ));
+            return Err(TardisError::format_error("[Tardis.Config] Configuration encryption must depend on the crypto feature", ""));
             #[cfg(feature = "crypto")]
             {
                 // decryption processing
                 let salt = framework_config.adv.salt.clone();
                 if salt.len() != 16 {
-                    return Err(TardisError::FormatError("[Tardis.Config] [salt] length must be 16".to_string()));
+                    return Err(TardisError::format_error("[Tardis.Config] [salt] Length must be 16", ""));
                 }
                 fn decryption(text: &str, salt: &str) -> String {
                     let enc_r = regex::Regex::new(r"(?P<ENC>ENC\([A-Za-z0-9+/]*\))").unwrap();
@@ -781,13 +779,13 @@ impl TardisConfig {
 impl From<ConfigError> for TardisError {
     fn from(error: ConfigError) -> Self {
         match error {
-            ConfigError::Frozen => TardisError::IOError(error.to_string()),
-            ConfigError::NotFound(_) => TardisError::NotFound(error.to_string()),
-            ConfigError::PathParse(_) => TardisError::IOError(error.to_string()),
-            ConfigError::FileParse { .. } => TardisError::IOError(error.to_string()),
-            ConfigError::Type { .. } => TardisError::FormatError(error.to_string()),
-            ConfigError::Message(s) => TardisError::Custom(ERROR_DEFAULT_CODE.to_string(), s),
-            ConfigError::Foreign(err) => TardisError::Box(err),
+            ConfigError::Frozen => TardisError::io_error(&format!("[Tardis.Config] {:?}", error), "503-tardis-config-frozen"),
+            ConfigError::NotFound(_) => TardisError::not_found(&format!("[Tardis.Config] {:?}", error), "404-tardis-config-not-exist"),
+            ConfigError::PathParse(_) => TardisError::format_error(&format!("[Tardis.Config] {:?}", error), "406-tardis-config-parse-error"),
+            ConfigError::FileParse { .. } => TardisError::format_error(&format!("[Tardis.Config] {:?}", error), "406-tardis-config-parse-error"),
+            ConfigError::Type { .. } => TardisError::format_error(&format!("[Tardis.Config] {:?}", error), "406-tardis-config-parse-error"),
+            ConfigError::Message(s) => TardisError::wrap(&format!("[Tardis.Config] {:?}", s), "-1-tardis-config-custom-error"),
+            ConfigError::Foreign(err) => TardisError::wrap(&format!("[Tardis.Config] {:?}", err), "-1-tardis-config-error"),
         }
     }
 }

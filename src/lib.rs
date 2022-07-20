@@ -489,6 +489,15 @@ impl TardisFuns {
         }
     }
 
+    pub fn default_lang() -> Option<String> {
+        unsafe {
+            match &TARDIS_INST.framework_config {
+                None => None,
+                Some(t) => t.app.default_lang.clone(),
+            }
+        }
+    }
+
     /// Get the Tardis configuration object / 获取Tardis配置对象
     pub fn fw_config() -> &'static FrameworkConfig {
         unsafe {

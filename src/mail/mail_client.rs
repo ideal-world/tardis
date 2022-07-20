@@ -38,7 +38,7 @@ impl TardisMailClient {
         info!("[Tardis.MailClient] Initializing");
         let creds = Credentials::new(smtp_username.to_string(), smtp_password.to_string());
         let client = AsyncSmtpTransport::<Tokio1Executor>::relay(smtp_host)
-            .map_err(|_| TardisError::InternalError(format!("[Tardis.MailClient] Failed to create SMTP client: {}", smtp_host)))?
+            .map_err(|_| TardisError::internal_error(&format!("[Tardis.MailClient] Failed to create SMTP client: {}", smtp_host), "500-tardis-mail-init-error"))?
             .credentials(creds)
             .port(smtp_port)
             .build();
@@ -92,7 +92,10 @@ impl TardisMailClient {
         );
         match self.client.send(email).await {
             Ok(_) => Ok(()),
-            Err(e) => Err(TardisError::InternalError(format!("[Tardis.MailClient] Could not send email: {}", e))),
+            Err(e) => Err(TardisError::internal_error(
+                &format!("[Tardis.MailClient] Could not send email: {}", e),
+                "-1-tardis-mail-error",
+            )),
         }
     }
 
@@ -123,13 +126,13 @@ pub struct TardisMailSendReq {
 impl From<address::AddressError> for TardisError {
     fn from(error: address::AddressError) -> Self {
         error!("[Tardis.MailClient] AddressError: {}", error.to_string());
-        TardisError::Box(Box::new(error))
+        TardisError::wrap(&format!("[Tardis.MailClient] {:?}", error), "-1-tardis-mail-error")
     }
 }
 
 impl From<error::Error> for TardisError {
     fn from(error: error::Error) -> Self {
         error!("[Tardis.MailClient] Error: {}", error.to_string());
-        TardisError::Box(Box::new(error))
+        TardisError::wrap(&format!("[Tardis.MailClient] {:?}", error), "406-tardis-mail-addr-error")
     }
 }

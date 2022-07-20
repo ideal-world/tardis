@@ -65,7 +65,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                 );
 
                 let (bus_code, msg) = if let Some(error) = mapping_http_code_to_error(http_code, &msg) {
-                    error.parse()
+                    (error.code, error.message)
                 } else {
                     (TARDIS_RESULT_SUCCESS_CODE.to_string(), "".to_string())
                 };
@@ -80,11 +80,10 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
             }
             Err(err) => {
                 let error: TardisError = err.into();
-                let (bus_code, msg) = error.parse();
                 Ok(Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(
                     json!({
-                        "code": bus_code,
-                        "msg": process_err_msg(bus_code.as_str(),msg),
+                        "code": error.code,
+                        "msg": process_err_msg(error.code.as_str(),error.message),
                     })
                     .to_string(),
                 ))
@@ -96,7 +95,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
 fn process_err_msg(code: &str, msg: String) -> String {
     if TardisFuns::fw_config().web_server.security_hide_err_msg {
         warn!("[Tardis.WebServer] Pesponse error,code:{},msg:{}", code, msg);
-        "Security is enabled, detailed errors are hidden, please check the server logs".to_string()
+        "[Tardis.WebServer] Security is enabled, detailed errors are hidden, please check the server logs".to_string()
     } else {
         msg
     }

@@ -13,7 +13,7 @@ pub struct DocServ;
 impl<'a> DocServ {
     pub async fn add_doc(add_req: &DocAddReq, funs: &TardisFunsInst<'a>, cxt: &TardisContext) -> TardisResult<i32> {
         if funs.conf::<DocConfig>().content_max_len < add_req.content.len() as u32 {
-            return Err(TardisError::BadRequest("content too long".to_string()));
+            return Err(TardisError::bad_request("content too long", ""));
         }
         let doc = doc::ActiveModel {
             name: Set(add_req.name.to_string()),

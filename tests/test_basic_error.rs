@@ -25,15 +25,15 @@ async fn test_basic_error() -> TardisResult<()> {
 
     let inst = TardisFuns::inst("m1".to_string(), Some("zh-CN".to_string()));
 
-    assert_eq!(inst.err().not_found("res", "add", "Not found RES1 resource in m1", "").message(), "在m1中找不到[RES1]资源");
+    assert_eq!(inst.err().not_found("res", "add", "Not found RES1 resource in m1", "").message, "在m1中找不到[RES1]资源");
 
     assert_eq!(
-        inst.err().not_found("xx", "add", "Not found RES1 resource in m1", "").message(),
+        inst.err().not_found("xx", "add", "Not found RES1 resource in m1", "").message,
         "Not found RES1 resource in m1"
     );
 
     assert_eq!(
-        inst.err().not_found("xx", "add", "Not found RES1 resource in m1", "404-m1-res-add").message(),
+        inst.err().not_found("xx", "add", "Not found RES1 resource in m1", "404-m1-res-add").message,
         "在m1中找不到[RES1]资源"
     );
 

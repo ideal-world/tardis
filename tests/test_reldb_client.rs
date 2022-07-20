@@ -80,7 +80,7 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
     )
     .await?;
 
-    #[derive(Debug, FromQueryResult)]
+    #[derive(FromQueryResult)]
     struct TenantResp {
         id: String,
         name: String,

@@ -14,8 +14,6 @@ lazy_static! {
 static BASE62: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 static BASE36: &str = "0123456789abcdefghijklmnopqrstuvwxyz";
 
-pub static GENERAL_SPLIT: &str = "##";
-
 /// Field handle / 字段处理
 ///
 /// Provides some common regular, Id generation and other functions.

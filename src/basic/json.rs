@@ -56,7 +56,7 @@ impl TardisJson {
         let result = serde_json::from_str::<'a, T>(str);
         match result {
             Ok(r) => Ok(r),
-            Err(e) => Err(TardisError::Box(Box::new(e))),
+            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-str-to-obj-error")),
         }
     }
 
@@ -75,7 +75,7 @@ impl TardisJson {
         let result = serde_json::from_str::<'a, Value>(str);
         match result {
             Ok(r) => Ok(r),
-            Err(e) => Err(TardisError::Box(Box::new(e))),
+            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-str-to-json-error")),
         }
     }
 
@@ -94,7 +94,7 @@ impl TardisJson {
         let result = serde_json::from_value::<T>(value);
         match result {
             Ok(r) => Ok(r),
-            Err(e) => Err(TardisError::Box(Box::new(e))),
+            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-json-to-obj-error")),
         }
     }
 
@@ -113,7 +113,7 @@ impl TardisJson {
         let result = serde_json::to_string(obj);
         match result {
             Ok(r) => Ok(r),
-            Err(e) => Err(TardisError::Box(Box::new(e))),
+            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-obj-to-str-error")),
         }
     }
 
@@ -132,7 +132,7 @@ impl TardisJson {
         let result = serde_json::to_value(obj);
         match result {
             Ok(r) => Ok(r),
-            Err(e) => Err(TardisError::Box(Box::new(e))),
+            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-obj-to-json-error")),
         }
     }
 
@@ -151,7 +151,7 @@ impl TardisJson {
         let result = serde_json::to_string(&value);
         match result {
             Ok(r) => Ok(r),
-            Err(e) => Err(TardisError::Box(Box::new(e))),
+            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-json-to-str-error")),
         }
     }
 }

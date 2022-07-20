@@ -14,7 +14,7 @@ pub struct TagServ;
 impl<'a> TagServ {
     pub async fn add_doc(add_req: &TagAddReq, funs: &TardisFunsInst<'a>, cxt: &TardisContext) -> TardisResult<TagResp> {
         if funs.conf::<TagConfig>().name_max_len < add_req.name.len() as u8 {
-            return Err(TardisError::BadRequest("name too long".to_string()));
+            return Err(TardisError::bad_request("name too long", ""));
         }
         let doc = tag::ActiveModel {
             name: Set(add_req.name.to_string()),

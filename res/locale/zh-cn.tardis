@@ -1,0 +1,88 @@
+406-tardis-error-invalid	错误格式不合法
+
+503-tardis-config-frozen	配置处理错误
+404-tardis-config-not-exist	配置不存在
+406-tardis-config-parse-error	配置解析错误
+-1-tardis-config-custom-error	配置处理错误
+-1-tardis-config-error	配置处理错误
+
+406-tardis-json-json-to-obj-error	Json转对象错误
+406-tardis-json-obj-to-json-error	对象转Json错误
+406-tardis-json-str-to-obj-error	Json字符串转对象错误
+406-tardis-json-str-to-json-error	Json字符串转Json错误
+406-tardis-json-obj-to-str-error	对象转Json字符串错误
+406-tardis-json-json-to-str-error	Json转Json字符串错误
+
+406-tardis-crypto-aes-key-invalid	AES Key格式错误
+406-tardis-crypto-aes-error	AES处理错误
+406-tardis-crypto-rsa-error	RSA处理错误
+406-tardis-crypto-rsa-pk-error	RSA公钥解析错误
+406-tardis-crypto-rsa-sk-error	RSA私钥解析错误
+500-tardis-crypto-sm2-keypair-error	SM2公私钥生成错误
+406-tardis-crypto-sm2-pk-error	SM2公钥解析错误
+406-tardis-crypto-sm2-sk-error	SM2密钥解析错误
+406-tardis-crypto-sm2-encrypt-error	SM2加密错误
+406-tardis-crypto-sm2-decode-sign-error	SM2签名解码错误
+406-tardis-crypto-sm2-verify-sign-error	SM2签名验证错误
+406-tardis-crypto-sm2-sign-error	SM2签名错误
+406-tardis-crypto-sm2-decrypt-error	SM2解密错误
+406-tardis-crypto-sm4-cipher-error	SM4 Cipher错误
+406-tardis-crypto-sm4-encrypt-error	SM4加密错误
+406-tardis-crypto-sm4-cipher-error	SM4 Cipher错误
+406-tardis-crypto-sm4-decrypt-error	SM4解密错误
+406-tardis-crypto-hex-decode-error	Hex解码错误
+406-tardis-crypto-base64-decode-error	Base64解码错误
+
+-1-tardis-webserver-error	Http处理错误
+400-tardis-webserver-error	请求参数错误
+401-tardis-webserver-error	请求认证错误
+404-tardis-webserver-error	请求资源不存在
+406-tardis-webserver-error	请求格式错误
+408-tardis-webserver-error	请求超时
+409-tardis-webserver-error	请求资源冲突
+500-tardis-webserver-error	Http处理错误
+501-tardis-webserver-error	请求的方法未实现
+400-tardis-webserver-context-header-not-exist	头信息中找不到请求上下文
+400-tardis-webserver-context-not-str	请求上下文不是合法的字符串
+400-tardis-webserver-context-not-base64	请求上下文不是合法的Base64编码字符串
+400-tardis-webserver-context-not-utf8	请求上下文不是合法的utf8字符串
+400-tardis-webserver-context-not-json	请求上下文不是合法的Json字符串
+400-tardis-webserver-context-not-valid	请求上下文格式错误
+400-tardis-webserver-context-not-in-cache	缓存中找不到请求上下文
+
+406-tardis-webclient-json-error	Http返回体不是合法的Json
+406-tardis-webclient-text-error	Http返回体不是合法的文本
+-1-tardis-webclient-error	Http请求错误
+
+-1-tardis-cache-error	缓存处理错误
+406-tardis-cache-url-error	缓存Url解析错误
+
+-1-tardis-search-error	搜索处理错误
+400-tardis-search-id-not-exist	搜索记录缺少_id字段
+406-tardis-search-hit-not-exist	搜索记录缺少hit字段
+
+-1-tardis-mq-error	MQ处理错误
+500-tardis-mq-confirm-error	MQ请求确认错误
+406-tardis-mq-url-error	MQ Url解析错误
+
+-1-tardis-reldb-error	SQL执行错误
+406-tardis-reldb-url-error	SQL Url解析错误
+406-tardis-reldb-sql-error	SQL解析错误
+500-tardis-reldb-id-not-char	主键不是字符串
+500-tardis-reldb-id-not-num	主键不是数值
+500-tardis-reldb-count-empty	统计查询结果为空
+404-tardis-reldb-tx-empty	当前连接没有事务
+404-tardis-reldb-soft-delete-table-not-exit	软删操作找不到对应的表名
+
+-1-tardis-mail-error	邮件发送错误
+406-tardis-mail-addr-error	邮件地址解析错误
+500-tardis-mail-init-error	邮件初始化错误
+
+-1-tardis-os-error	对象存储操作错误
+501-tardis-os-kind-error	对象存储类型[{1}]不支持	[Tardis.OSClient] Unsupported OS kind (\w+)
+404-tardis-os-default-bucket-not-exist	默认存储空间不存在
+-1-tardis-os-create-object-error	对象存储创建对象错误
+-1-tardis-os-get-object-error	对象存储获取对象错误
+-1-tardis-os-delete-object-error	对象存储删除对象错误
+-1-tardis-os-create-bucket-error	对象存储创建空间错误
+-1-tardis-os-delete-bucket-error	对象存储删除空间错误

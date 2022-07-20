@@ -6,7 +6,7 @@ use log::{error, info, trace};
 use s3::creds::Credentials;
 use s3::{Bucket, BucketConfiguration, Region};
 
-use crate::basic::error::TardisError;
+use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
 use crate::{FrameworkConfig, TardisResult};
 
 pub struct TardisOSClient {
@@ -63,7 +63,10 @@ impl TardisOSClient {
                 info!("[Tardis.OSClient] Initialized");
                 Ok(TardisOSClient { client: Box::new(s3) })
             }
-            _ => Err(TardisError::BadRequest(format!("[Tardis.OSClient] Unsupported OS kind {}", kind))),
+            _ => Err(TardisError::not_implemented(
+                &format!("[Tardis.OSClient] Unsupported OS kind {}", kind),
+                "501-tardis-os-kind-error",
+            )),
         }
     }
 
@@ -141,13 +144,18 @@ impl TardisOSOperations for TardisOSS3Client {
             if is_private { BucketConfiguration::private() } else { BucketConfiguration::public() },
         )
         .await?;
+
         if resp.success() {
             Ok(())
         } else {
-            Err(TardisError::_Inner(format!(
-                "[Tardis.OSClient] Failed to create bucket {} with error [{}]{}",
-                bucket_name, resp.response_code, resp.response_text
-            )))
+            Err(TardisError::custom(
+                &resp.response_code.to_string(),
+                &format!(
+                    "[Tardis.OSClient] Failed to create bucket {} with error [{}]{}",
+                    bucket_name, resp.response_code, resp.response_text
+                ),
+                "-1-tardis-os-create-bucket-error",
+            ))
         }
     }
 
@@ -156,10 +164,11 @@ impl TardisOSOperations for TardisOSS3Client {
         if code == 200 || code == 204 {
             Ok(())
         } else {
-            Err(TardisError::_Inner(format!(
-                "[Tardis.OSClient] Failed to delete bucket {} with error [{}]",
-                bucket_name, code
-            )))
+            Err(TardisError::custom(
+                &code.to_string(),
+                &format!("[Tardis.OSClient] Failed to delete bucket {} with error [{}]", bucket_name, code),
+                "-1-tardis-os-delete-bucket-error",
+            ))
         }
     }
 
@@ -173,10 +182,11 @@ impl TardisOSOperations for TardisOSS3Client {
         if code == 200 {
             Ok(())
         } else {
-            Err(TardisError::_Inner(format!(
-                "[Tardis.OSClient] Failed to create object {}:{} with error [{}]",
-                bucket.name, path, code
-            )))
+            Err(TardisError::custom(
+                &code.to_string(),
+                &format!("[Tardis.OSClient] Failed to create object {}:{} with error [{}]", bucket.name, path, code),
+                "-1-tardis-os-create-object-error",
+            ))
         }
     }
 
@@ -186,10 +196,11 @@ impl TardisOSOperations for TardisOSS3Client {
         if code == 200 {
             Ok(data)
         } else {
-            Err(TardisError::_Inner(format!(
-                "[Tardis.OSClient] Failed to get object {}:{} with error [{}]",
-                bucket.name, path, code
-            )))
+            Err(TardisError::custom(
+                &code.to_string(),
+                &format!("[Tardis.OSClient] Failed to get object {}:{} with error [{}]", bucket.name, path, code),
+                "-1-tardis-os-get-object-error",
+            ))
         }
     }
 
@@ -199,10 +210,11 @@ impl TardisOSOperations for TardisOSS3Client {
         if code == 200 || code == 204 {
             Ok(())
         } else {
-            Err(TardisError::_Inner(format!(
-                "[Tardis.OSClient] Failed to delete object {}:{} with error [{}]",
-                bucket.name, path, code
-            )))
+            Err(TardisError::custom(
+                &code.to_string(),
+                &format!("[Tardis.OSClient] Failed to delete object {}:{} with error [{}]", bucket.name, path, code),
+                "-1-tardis-os-delete-object-error",
+            ))
         }
     }
 
@@ -224,7 +236,8 @@ impl TardisOSS3Client {
         if let Some(bucket_name) = bucket_name {
             Ok(Bucket::new(bucket_name, self.region.clone(), self.credentials.clone())?.with_path_style())
         } else {
-            let bucket = self.default_bucket.as_ref().ok_or_else(|| TardisError::BadRequest("[Tardis.OSClient] No default bucket configured".to_string()))?;
+            let bucket =
+                self.default_bucket.as_ref().ok_or_else(|| TardisError::not_found("[Tardis.OSClient] No default bucket configured", "404-tardis-os-default-bucket-not-exist"))?;
             Ok(bucket.clone())
         }
     }
@@ -319,6 +332,6 @@ impl TardisOSS3Client {
 impl From<s3::error::S3Error> for TardisError {
     fn from(error: s3::error::S3Error) -> Self {
         error!("[Tardis.OSClient] Error: {}", error.to_string());
-        TardisError::_Inner(error.to_string())
+        TardisError::custom(ERROR_DEFAULT_CODE, &format!("[Tardis.OSClient] Error: {:?}", error), "-1-tardis-os-error")
     }
 }
