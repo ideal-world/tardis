@@ -10,7 +10,7 @@ use std::string::FromUtf8Error;
 use std::sync::Mutex;
 
 use derive_more::Display;
-use log::info;
+use log::{info, warn};
 use regex::Regex;
 
 use crate::basic::field::GENERAL_SPLIT;
@@ -54,10 +54,11 @@ pub enum TardisError {
 impl TardisError {
     pub fn init_locale(path: &Path) -> TardisResult<()> {
         let path = path.join("locale");
+        if !path.exists() {
+            return Ok(());
+        }
         info!("[Tardis.Error] Initializing, base path:{:?}", path);
-
         let mut conf = LOCALE_CONFIG.lock().map_err(|e| TardisError::InternalError(format!("{:?}", e)))?;
-
         let paths = path.read_dir().map_err(|e| TardisError::BadRequest(format!("[Tardis.Error] path {:#?} dir error:{:#?}", path, e)))?;
         for entry in paths {
             let entry = entry?;
@@ -174,54 +175,55 @@ pub struct TardisErrorWithExt {
 }
 
 impl TardisErrorWithExt {
-    fn error(&self, code: &str, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
+    fn error(&self, code: &str, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
         let code = format!("{}-{}-{}-{}", code, self.ext, obj_name, obj_opt);
-        let msg = self.localized_message(&code, msg);
+        warn!("[Tardis.Error] {}:{}", code, msg);
+        let msg = self.localized_message(if locale_code.trim().is_empty() { &code } else { locale_code }, msg);
         TardisError::Custom(code, msg)
     }
 
-    pub fn localized_message(&self, code: &str, msg: &str) -> String {
+    pub fn localized_message(&self, locale_code: &str, msg: &str) -> String {
         if let Some(lang) = &self.lang {
-            TardisError::get_localized_message(code, msg, lang).unwrap_or_else(|_| msg.to_string())
+            TardisError::get_localized_message(locale_code, msg, lang).unwrap_or_else(|_| msg.to_string())
         } else {
             msg.to_string()
         }
     }
 
-    pub fn internal_error(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
-        self.error("500", obj_name, obj_opt, msg)
+    pub fn internal_error(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+        self.error("500", obj_name, obj_opt, msg, locale_code)
     }
 
-    pub fn not_implemented(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
-        self.error("501", obj_name, obj_opt, msg)
+    pub fn not_implemented(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+        self.error("501", obj_name, obj_opt, msg, locale_code)
     }
 
-    pub fn io_error(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
-        self.error("503", obj_name, obj_opt, msg)
+    pub fn io_error(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+        self.error("503", obj_name, obj_opt, msg, locale_code)
     }
 
-    pub fn bad_request(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
-        self.error("400", obj_name, obj_opt, msg)
+    pub fn bad_request(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+        self.error("400", obj_name, obj_opt, msg, locale_code)
     }
 
-    pub fn unauthorized(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
-        self.error("401", obj_name, obj_opt, msg)
+    pub fn unauthorized(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+        self.error("401", obj_name, obj_opt, msg, locale_code)
     }
 
-    pub fn not_found(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
-        self.error("404", obj_name, obj_opt, msg)
+    pub fn not_found(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+        self.error("404", obj_name, obj_opt, msg, locale_code)
     }
 
-    pub fn format_error(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
-        self.error("406", obj_name, obj_opt, msg)
+    pub fn format_error(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+        self.error("406", obj_name, obj_opt, msg, locale_code)
     }
 
-    pub fn timeout(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
-        self.error("408", obj_name, obj_opt, msg)
+    pub fn timeout(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+        self.error("408", obj_name, obj_opt, msg, locale_code)
     }
 
-    pub fn conflict(&self, obj_name: &str, obj_opt: &str, msg: &str) -> TardisError {
-        self.error("409", obj_name, obj_opt, msg)
+    pub fn conflict(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+        self.error("409", obj_name, obj_opt, msg, locale_code)
     }
 }
 
