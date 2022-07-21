@@ -3,6 +3,8 @@ project_name = "测试"
 level_num = 2
 
 [fw]
+[fw.app]
+default_lang = "zh-CN"
 [fw.db]
 enabled = false
 port = 8089

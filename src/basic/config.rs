@@ -13,6 +13,7 @@ use serde_json::Value;
 
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
+use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
 use crate::log::{debug, info};
 use crate::serde::{Deserialize, Serialize};
@@ -770,7 +771,7 @@ impl TardisConfig {
             }
         };
 
-        TardisError::init_locale(path)?;
+        TardisLocale::init(path)?;
 
         config
     }

@@ -8,6 +8,7 @@ pub mod dto;
 pub mod error;
 pub mod field;
 pub mod json;
+pub mod locale;
 pub mod logger;
 pub mod result;
 pub mod uri;
