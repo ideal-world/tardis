@@ -15,6 +15,8 @@
 //! * Containerized unit testing of mainstream middleware
 //! * Multi-environment configuration
 //! * Multi-application aggregation
+//! * Configure encryption support
+//! * Internationalization and localization support
 //! * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
 //!
 //! ## ⚙️Feature description
@@ -97,7 +99,7 @@
 //!>   |-- webscoket     WebSocket Usage Example  
 //!>   |-- cache         Cache Usage Example  
 //!>   |-- mq            Message Queue Usage Example  
-//!>   |-- todo          A complete project usage example  
+//!>   |-- todos         A complete project usage example
 //!>   |-- multi-apps    Multi-application aggregation example
 //!>   |-- perf-test     Performance test case
 
@@ -451,7 +453,7 @@ impl TardisFuns {
                 };
             }
         }
-        TardisResult::Ok(())
+        Ok(())
     }
 
     pub fn inst<'a>(code: String, lang: Option<String>) -> TardisFunsInst<'a> {
@@ -571,17 +573,17 @@ impl TardisFuns {
     /// ```
     #[allow(non_upper_case_globals)]
     #[cfg(feature = "crypto")]
-    pub const crypto: crate::basic::crypto::TardisCrypto = crate::basic::crypto::TardisCrypto {
-        key: crate::basic::crypto::TardisCryptoKey {},
-        hex: crate::basic::crypto::TardisCryptoHex {},
-        base64: crate::basic::crypto::TardisCryptoBase64 {},
-        aes: crate::basic::crypto::TardisCryptoAes {},
-        rsa: crate::basic::crypto::TardisCryptoRsa {},
+    pub const crypto: basic::crypto::TardisCrypto = basic::crypto::TardisCrypto {
+        key: basic::crypto::TardisCryptoKey {},
+        hex: basic::crypto::TardisCryptoHex {},
+        base64: basic::crypto::TardisCryptoBase64 {},
+        aes: basic::crypto::TardisCryptoAes {},
+        rsa: basic::crypto::TardisCryptoRsa {},
         #[cfg(feature = "crypto_with_sm")]
-        sm4: crate::basic::crypto::TardisCryptoSm4 {},
+        sm4: basic::crypto::TardisCryptoSm4 {},
         #[cfg(feature = "crypto_with_sm")]
-        sm2: crate::basic::crypto::TardisCryptoSm2 {},
-        digest: crate::basic::crypto::TardisCryptoDigest {},
+        sm2: basic::crypto::TardisCryptoSm2 {},
+        digest: basic::crypto::TardisCryptoDigest {},
     };
 
     /// Use the relational database feature / 使用关系型数据库功能
@@ -966,7 +968,7 @@ pub struct TardisFunsInst<'a> {
     module_code: String,
     err: TardisErrorWithExt,
     #[cfg(feature = "reldb")]
-    db: Option<crate::db::reldb_client::TardisRelDBlConnection<'a>>,
+    db: Option<db::reldb_client::TardisRelDBlConnection<'a>>,
     // Solve the 'a not used issue when the reldb feature is not enabled
     #[cfg(not(feature = "reldb"))]
     _t: Option<&'a str>,
@@ -1018,7 +1020,7 @@ impl<'a> TardisFunsInst<'a> {
     }
 
     #[cfg(feature = "reldb")]
-    pub fn db(&self) -> &crate::db::reldb_client::TardisRelDBlConnection<'a> {
+    pub fn db(&self) -> &db::reldb_client::TardisRelDBlConnection<'a> {
         self.db.as_ref().expect("db is not initialized")
     }
 

@@ -84,17 +84,17 @@ impl TardisError {
             if let Some((message, regex)) = conf.get(code) {
                 let mut localized_message = message.clone();
                 if let Some(regex) = regex {
-                    if let Some(cap) = regex.captures(default_message) {
+                    return if let Some(cap) = regex.captures(default_message) {
                         for (idx, cap) in cap.iter().enumerate() {
                             if let Some(cap) = cap {
                                 localized_message = localized_message.replace(&format!("{{{}}}", idx), cap.as_str());
                             }
                         }
-                        return Ok(localized_message);
+                        Ok(localized_message)
                     } else {
                         // Regex not match, fallback to default message
-                        return Ok(default_message.to_string());
-                    }
+                        Ok(default_message.to_string())
+                    };
                 }
                 // No regex, return default message
                 return Ok(message.to_string());

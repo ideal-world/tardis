@@ -28,6 +28,8 @@ Do NOT use in production environment!**
 * Containerized unit testing of mainstream middleware
 * Multi-environment configuration
 * Multi-application aggregation
+* Configure encryption support
+* Internationalization and localization support
 * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
 
 ## ⚙️Feature description
@@ -102,7 +104,7 @@ async fn main() -> TardisResult<()> {
   |-- webscoket     WebSocket Usage Example
   |-- cache         Cache Usage Example
   |-- mq            Message Queue Usage Example
-  |-- todo          A complete project usage example
+  |-- todos         A complete project usage example
   |-- multi-apps    Multi-application aggregation example
   |-- perf-test     Performance test case
 ```
@@ -112,10 +114,12 @@ async fn main() -> TardisResult<()> {
 * An `` failed to run custom build command for openssl-sys`` error occurs when running under Windows.The solution is as follows( @see https://github.com/sfackler/rust-openssl/issues/1062 ): 
   ```shell
   git clone https://github.com/Microsoft/vcpkg --depth=1
-  vcpkg/bootstrap-vcpkg.bat
-  vcpkg/vcpkg.exe integrate install
-  vcpkg/vcpkg.exe install openssl:x64-windows-static
+  cd vcpkg
+  bootstrap-vcpkg.bat
+  vcpkg.exe integrate install
+  vcpkg.exe install openssl:x64-windows-static
   set OPENSSL_NO_VENDOR=1
+  set OPENSSL_DIR=<Current Dir>\packages\openssl_x64-windows-static
   ```
 
 ----
