@@ -245,6 +245,10 @@ pub struct WebServerConfig {
     ///
     /// Formatted as ``[(environment identifier, request path)]`` / 格式为 ``[（环境标识，请求路径）]``
     pub doc_urls: Vec<(String, String)>,
+    /// Common request headers for ``OpenAPI`` / 公共请求头信息，用于 ``OpenAPI``
+    ///
+    /// Formatted as ``[(header name, header description)]`` / 格式为 ``[（请求头名称，请求头说明）]``
+    pub req_headers: Vec<(String, String)>,
     /// ``OpenAPI`` UI path / 模``OpenAPI`` UI路径
     pub ui_path: Option<String>,
     /// ``OpenAPI`` information path / ``OpenAPI`` 信息路径
@@ -312,6 +316,10 @@ pub struct WebServerModuleConfig {
     ///
     /// Formatted as ``[(environment identifier, request path)]`` / 格式为 ``[（环境标识，请求路径）]``
     pub doc_urls: Vec<(String, String)>,
+    /// Module common request headers for ``OpenAPI`` / 模块公共请求头信息，用于 ``OpenAPI``
+    ///
+    /// Formatted as ``[(header name, header description)]`` / 格式为 ``[（请求头名称，请求头说明）]``
+    pub req_headers: Vec<(String, String)>,
     /// Module ``OpenAPI`` UI path / 模块 ``OpenAPI`` UI路径
     pub ui_path: Option<String>,
     /// Module ``OpenAPI`` information path / 模块 ``OpenAPI`` 信息路径
@@ -339,6 +347,7 @@ impl Default for WebServerConfig {
             security_hide_err_msg: false,
             context_conf: WebServerContextConfig::default(),
             doc_urls: [("test env".to_string(), "http://localhost:8080/".to_string())].to_vec(),
+            req_headers: vec![],
             ui_path: Some("ui".to_string()),
             spec_path: Some("spec".to_string()),
             modules: Default::default(),
@@ -352,6 +361,7 @@ impl Default for WebServerModuleConfig {
             name: "Tardis-based application".to_string(),
             version: "1.0.0".to_string(),
             doc_urls: [("test env".to_string(), "http://localhost:8080/".to_string())].to_vec(),
+            req_headers: vec![],
             ui_path: Some("ui".to_string()),
             spec_path: Some("spec".to_string()),
         }

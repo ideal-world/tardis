@@ -181,7 +181,7 @@ async fn test_basic(url: &str) -> TardisResult<()> {
 
 async fn test_validate(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/ss", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, TardisError::not_found("", "").code);
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
         r#"[Tardis.WebServer] Process error: failed to parse path `id`: failed to parse "integer(int64)": invalid digit found in string"#

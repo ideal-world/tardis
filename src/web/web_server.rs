@@ -2,7 +2,7 @@ use futures_util::lock::Mutex;
 use poem::listener::{Listener, RustlsCertificate, RustlsConfig, TcpListener};
 use poem::middleware::Cors;
 use poem::{EndpointExt, Route};
-use poem_openapi::{OpenApi, OpenApiService, ServerObject};
+use poem_openapi::{ExtraHeader, OpenApi, OpenApiService, ServerObject};
 use tokio::time::Duration;
 
 use crate::basic::config::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
@@ -43,6 +43,7 @@ impl TardisWebServer {
             name: self.app_name.clone(),
             version: self.version.clone(),
             doc_urls: self.config.doc_urls.clone(),
+            req_headers: self.config.req_headers.clone(),
             ui_path: self.config.ui_path.clone(),
             spec_path: self.config.spec_path.clone(),
         };
@@ -77,6 +78,9 @@ impl TardisWebServer {
         for (env, url) in &module.doc_urls {
             let url = if !url.ends_with('/') { format!("{}/{}", url, code) } else { format!("{}{}", url, code) };
             api_serv = api_serv.server(ServerObject::new(url).description(env));
+        }
+        for (name, desc) in &module.req_headers {
+            api_serv = api_serv.extra_request_header::<String, _>(ExtraHeader::new(name).description(desc));
         }
         let ui_serv = api_serv.rapidoc();
         let spec_serv = api_serv.spec();

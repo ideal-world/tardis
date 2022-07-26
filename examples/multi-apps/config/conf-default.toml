@@ -14,6 +14,7 @@ port = 8089
 [fw.web_server.modules.doc]
 name = "文档应用示例"
 doc_urls = [["test env", "http://localhost:8089/"]]
+req_headers = [["Token", "token header"],["App-Id", "app id header"]]
 [fw.web_server.modules.tag]
 name = "标签应用示例"
 doc_urls = [["test env", "http://localhost:8089/"]]
