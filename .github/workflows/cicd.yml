@@ -49,7 +49,7 @@ jobs:
       - name: Check format
         run: cargo fmt --all -- --check
 
-      - name: Check with clippy
+      - name: Check clippy
         run: cargo clippy --all-features
 
       - name: Run cargo-tarpaulin
@@ -88,13 +88,13 @@ jobs:
         run: cargo fmt --all -- --check
         working-directory: examples
 
-      - name: Check with clippy
+      - name: Check clippy
         run: cargo clippy
         working-directory: examples
 
   publish:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [check, check-examples]
+    needs: [check-tardis, check-examples]
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
