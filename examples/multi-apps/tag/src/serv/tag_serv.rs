@@ -12,7 +12,7 @@ use crate::dto::tag_dto::{TagAddReq, TagResp};
 pub struct TagServ;
 
 impl<'a> TagServ {
-    pub async fn add_doc(add_req: &TagAddReq, funs: &TardisFunsInst<'a>, cxt: &TardisContext) -> TardisResult<TagResp> {
+    pub async fn add_doc(add_req: &TagAddReq, funs: &TardisFunsInst<'a>, ctx: &TardisContext) -> TardisResult<TagResp> {
         if funs.conf::<TagConfig>().name_max_len < add_req.name.len() as u8 {
             return Err(TardisError::bad_request("name too long", ""));
         }
@@ -21,7 +21,7 @@ impl<'a> TagServ {
             create_id: Set(add_req.create_id.to_string()),
             ..Default::default()
         };
-        let result = funs.db().insert_one(doc, cxt).await?;
+        let result = funs.db().insert_one(doc, ctx).await?;
 
         let resp = funs
             .db()

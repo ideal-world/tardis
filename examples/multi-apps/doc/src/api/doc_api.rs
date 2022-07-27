@@ -12,10 +12,10 @@ pub struct DocApi;
 impl DocApi {
     /// Add
     #[oai(path = "/", method = "post")]
-    async fn add(&self, add_req: Json<DocAddReq>, cxt: TardisContextExtractor) -> TardisApiResult<i32> {
+    async fn add(&self, add_req: Json<DocAddReq>, ctx: TardisContextExtractor) -> TardisApiResult<i32> {
         let mut funs = TardisFuns::inst_with_db_conn("doc".to_string(), None);
         funs.begin().await?;
-        let result = DocServ::add_doc(&add_req.0, &funs, &cxt.0).await?;
+        let result = DocServ::add_doc(&add_req.0, &funs, &ctx.0).await?;
         funs.commit().await?;
         TardisResp::ok(result)
     }

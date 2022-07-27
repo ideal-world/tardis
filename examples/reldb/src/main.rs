@@ -30,7 +30,7 @@ async fn main() -> TardisResult<()> {
 
     // --------------------------------------------------
 
-    let cxt = TardisContext {
+    let ctx = TardisContext {
         own_paths: "".to_string(),
         ak: "".to_string(),
         owner: "".to_string(),
@@ -51,7 +51,7 @@ async fn main() -> TardisResult<()> {
             name: Set("tenant1".to_string()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -63,7 +63,7 @@ async fn main() -> TardisResult<()> {
             tenant_id: Set(tenant.id.clone()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -73,7 +73,7 @@ async fn main() -> TardisResult<()> {
             tenant_id: Set(tenant.id.clone()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -83,7 +83,7 @@ async fn main() -> TardisResult<()> {
             tenant_id: Set(tenant.id.clone()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -112,7 +112,7 @@ async fn main() -> TardisResult<()> {
                 name: Set("account1".to_string()),
                 ..Default::default()
             },
-            &cxt,
+            &ctx,
         )
         .await?
         .last_insert_id;

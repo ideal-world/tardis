@@ -6,7 +6,7 @@ env:
   TARDIS_TEST_DISABLED_DOCKER: true
 
 jobs:
-  check:
+  check-tardis:
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -55,7 +55,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          version: '0.19.1'
+          version: '0.20.1'
           args: '--all-features'
 
       - name: Upload to codecov.io

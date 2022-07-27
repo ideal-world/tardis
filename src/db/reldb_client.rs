@@ -67,7 +67,7 @@ use crate::{FrameworkConfig, TardisFuns};
 ///    
 ///     // Define extended information (Tardis function)
 ///     impl TardisActiveModel for ActiveModel {
-///         fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool) {}
+///         fn fill_ctx(&mut self, ctx: &TardisContext, is_insert: bool) {}
 ///    
 ///         fn create_table_statement(db_type: DbBackend) -> TableCreateStatement {
 ///              Table::create()
@@ -108,7 +108,7 @@ use crate::{FrameworkConfig, TardisFuns};
 /// use tardis::db::sea_orm::sea_query::*;
 /// use tardis::db::sea_orm::*;
 /// use tardis::TardisFuns;
-/// let cxt = TardisContext{
+/// let ctx = TardisContext{
 /// // Define Context
 ///   ..Default::default()
 /// };
@@ -117,7 +117,7 @@ use crate::{FrameworkConfig, TardisFuns};
 ///     k: Set("ke".to_string()),
 ///     v: Set("ve".to_string()),
 ///     ..Default::default()
-/// },&cxt).await.unwrap();
+/// },&ctx).await.unwrap();
 ///
 /// conn.paginate_dtos::<IdResp>(&Query::select()
 ///     .column(tardis_db_config::Column::Id)
@@ -338,35 +338,35 @@ impl TardisRelDBClient {
         }
     }
 
-    pub(self) async fn insert_one_inner<T, C>(mut model: T, db: &C, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
+    pub(self) async fn insert_one_inner<T, C>(mut model: T, db: &C, ctx: &TardisContext) -> TardisResult<InsertResult<T>>
     where
         C: ConnectionTrait,
         T: TardisActiveModel,
     {
         trace!("[Tardis.RelDBClient] Inserting one model");
-        model.fill_cxt(cxt, true);
+        model.fill_ctx(ctx, true);
         let result = EntityTrait::insert(model).exec(db).await?;
         Ok(result)
     }
 
-    pub(self) async fn insert_many_inner<T, C>(mut models: Vec<T>, db: &C, cxt: &TardisContext) -> TardisResult<()>
+    pub(self) async fn insert_many_inner<T, C>(mut models: Vec<T>, db: &C, ctx: &TardisContext) -> TardisResult<()>
     where
         C: ConnectionTrait,
         T: TardisActiveModel,
     {
         trace!("[Tardis.RelDBClient] Inserting many models");
-        models.iter_mut().for_each(|m| m.fill_cxt(cxt, true));
+        models.iter_mut().for_each(|m| m.fill_ctx(ctx, true));
         EntityTrait::insert_many(models).exec(db).await?;
         Ok(())
     }
 
-    pub(self) async fn update_one_inner<T, C>(mut model: T, db: &C, cxt: &TardisContext) -> TardisResult<()>
+    pub(self) async fn update_one_inner<T, C>(mut model: T, db: &C, ctx: &TardisContext) -> TardisResult<()>
     where
         C: ConnectionTrait,
         T: TardisActiveModel,
     {
         trace!("[Tardis.RelDBClient] Updating one model");
-        model.fill_cxt(cxt, false);
+        model.fill_ctx(ctx, false);
         let update = EntityTrait::update(model);
         TardisRelDBClient::execute_inner(db.get_database_backend().build(update.as_query()), db).await?;
         Ok(())
@@ -716,7 +716,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// # Arguments
     ///
     ///  * `model` -  Record to be inserted / 要插入的记录
-    ///  * `cxt` -  TardisContext
+    ///  * `ctx` -  TardisContext
     ///
     /// # Examples
     /// ```ignore
@@ -730,16 +730,16 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///     k: Set("ke".to_string()),
     ///     v: Set("ve".to_string()),
     ///     ..Default::default()
-    /// },&cxt).await.unwrap();
+    /// },&ctx).await.unwrap();
     /// ```
-    pub async fn insert_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<InsertResult<T>>
+    pub async fn insert_one<T>(&self, model: T, ctx: &TardisContext) -> TardisResult<InsertResult<T>>
     where
         T: TardisActiveModel,
     {
         if let Some(tx) = &self.tx {
-            TardisRelDBClient::insert_one_inner(model, tx, cxt).await
+            TardisRelDBClient::insert_one_inner(model, tx, ctx).await
         } else {
-            TardisRelDBClient::insert_one_inner(model, self.conn, cxt).await
+            TardisRelDBClient::insert_one_inner(model, self.conn, ctx).await
         }
     }
 
@@ -748,7 +748,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// # Arguments
     ///
     ///  * `models` -  Set of records to be inserted / 要插入的记录集
-    ///  * `cxt` -  TardisContext
+    ///  * `ctx` -  TardisContext
     ///
     /// # Examples
     /// ```ignore
@@ -764,16 +764,16 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///          v: Set("ve".to_string()),
     ///          ..Default::default()
     ///     }
-    ///  ],&cxt).await.unwrap();
+    ///  ],&ctx).await.unwrap();
     /// ```
-    pub async fn insert_many<T>(&self, models: Vec<T>, cxt: &TardisContext) -> TardisResult<()>
+    pub async fn insert_many<T>(&self, models: Vec<T>, ctx: &TardisContext) -> TardisResult<()>
     where
         T: TardisActiveModel,
     {
         if let Some(tx) = &self.tx {
-            TardisRelDBClient::insert_many_inner(models, tx, cxt).await
+            TardisRelDBClient::insert_many_inner(models, tx, ctx).await
         } else {
-            TardisRelDBClient::insert_many_inner(models, self.conn, cxt).await
+            TardisRelDBClient::insert_many_inner(models, self.conn, ctx).await
         }
     }
 
@@ -782,7 +782,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// # Arguments
     ///
     ///  * `model` -  Records to be inserted / 要插入的记录
-    ///  * `cxt` -  TardisContext
+    ///  * `ctx` -  TardisContext
     ///
     /// # Examples
     /// ```ignore
@@ -797,16 +797,16 @@ impl<'a> TardisRelDBlConnection<'a> {
     ///     k: Set("ke".to_string()),
     ///     v: Set("ve".to_string()),
     ///     ..Default::default()
-    /// },&cxt).await.unwrap();
+    /// },&ctx).await.unwrap();
     /// ```
-    pub async fn update_one<T>(&self, model: T, cxt: &TardisContext) -> TardisResult<()>
+    pub async fn update_one<T>(&self, model: T, ctx: &TardisContext) -> TardisResult<()>
     where
         T: TardisActiveModel,
     {
         if let Some(tx) = &self.tx {
-            TardisRelDBClient::update_one_inner(model, tx, cxt).await
+            TardisRelDBClient::update_one_inner(model, tx, ctx).await
         } else {
-            TardisRelDBClient::update_one_inner(model, self.conn, cxt).await
+            TardisRelDBClient::update_one_inner(model, self.conn, ctx).await
         }
     }
 
@@ -1039,7 +1039,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///
     /// # Arguments
     ///
-    ///  * `cxt` -  TardisContext
+    ///  * `ctx` -  TardisContext
     ///  * `is_insert` -  whether to insert the operation / 是否插入操作
     ///
     /// # Examples
@@ -1047,14 +1047,14 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     /// use tardis::basic::dto::TardisContext;
     /// use tardis::db::sea_orm::*;
     ///
-    /// fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool) {
+    /// fn fill_ctx(&mut self, ctx: &TardisContext, is_insert: bool) {
     ///     if is_insert {
-    ///         self.rel_app_code = Set(cxt.app_code.to_string());
+    ///         self.rel_app_code = Set(ctx.app_code.to_string());
     ///     }
-    ///     self.updater_code = Set(cxt.account_code.to_string());
+    ///     self.updater_code = Set(ctx.account_code.to_string());
     /// }
     /// ```
-    fn fill_cxt(&mut self, cxt: &TardisContext, is_insert: bool);
+    fn fill_ctx(&mut self, ctx: &TardisContext, is_insert: bool);
 
     /// Create table and index / 创建表和索引
     ///

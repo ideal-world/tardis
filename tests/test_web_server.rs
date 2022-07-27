@@ -723,7 +723,7 @@ impl OtherApi {
     }
 
     #[oai(path = "/context_in_header", method = "get")]
-    async fn context_in_header(&self, cxt: TardisContextExtractor) -> TardisApiResult<String> {
-        TardisResp::ok(cxt.0.roles.get(1).unwrap().to_string())
+    async fn context_in_header(&self, ctx: TardisContextExtractor) -> TardisApiResult<String> {
+        TardisResp::ok(ctx.0.roles.get(1).unwrap().to_string())
     }
 }

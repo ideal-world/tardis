@@ -12,7 +12,7 @@ pub struct Model {
 }
 
 impl TardisActiveModel for ActiveModel {
-    fn fill_cxt(&mut self, _: &TardisContext, _: bool) {}
+    fn fill_ctx(&mut self, _: &TardisContext, _: bool) {}
 }
 
 impl ActiveModelBehavior for ActiveModel {}

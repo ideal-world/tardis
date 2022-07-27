@@ -25,7 +25,7 @@ impl Related<super::app::Entity> for super::account::Entity {
 }
 
 impl TardisActiveModel for ActiveModel {
-    fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
+    fn fill_ctx(&mut self, _: &TardisContext, is_insert: bool) {
         if is_insert {
             self.id = Set(TardisFuns::field.nanoid());
         }

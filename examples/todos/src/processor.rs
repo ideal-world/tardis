@@ -47,7 +47,7 @@ impl TodoApi {
     //  -H "Tardis-Context: eyJvd25fcGF0aHMiOiAiIiwiYWsiOiAiIiwib3duZXIiOiAiIiwicm9sZXMiOiBbXSwiZ3JvdXBzIjogW119" \
     //  -d '{"code":"  测试2  ","description":"AA","done":false}'
     #[oai(path = "/", method = "post")]
-    async fn add(&self, todo_add_req: Json<TodoAddReq>, cxt: TardisContextExtractor) -> TardisApiResult<i32> {
+    async fn add(&self, todo_add_req: Json<TodoAddReq>, ctx: TardisContextExtractor) -> TardisApiResult<i32> {
         let todo_id = TardisFuns::reldb()
             .conn()
             .insert_one(
@@ -57,7 +57,7 @@ impl TodoApi {
                     done: Set(todo_add_req.done),
                     ..Default::default()
                 },
-                &cxt.0,
+                &ctx.0,
             )
             .await?
             .last_insert_id;
@@ -111,7 +111,7 @@ impl TodoApi {
     //  -H "Content-Type: application/json" \
     //  -d '{"description":"AAAAAAAA","done":false}'
     #[oai(path = "/:id", method = "put")]
-    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>, cxt: TardisContextExtractor) -> TardisApiResult<Void> {
+    async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>, ctx: TardisContextExtractor) -> TardisApiResult<Void> {
         TardisFuns::reldb()
             .conn()
             .update_one(
@@ -121,7 +121,7 @@ impl TodoApi {
                     done: todo_modify_req.done.map(Set).unwrap_or(NotSet),
                     ..Default::default()
                 },
-                &cxt.0,
+                &ctx.0,
             )
             .await?;
         TardisResp::ok(Void {})

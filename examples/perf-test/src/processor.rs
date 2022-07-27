@@ -39,7 +39,7 @@ pub struct TodoApi;
 impl TodoApi {
     #[oai(path = "/todo", method = "post")]
     async fn add(&self, todo_add_req: Json<TodoAddReq>) -> TardisApiResult<i32> {
-        let cxt = TardisContext {
+        let ctx = TardisContext {
             own_paths: "".to_string(),
             ak: "".to_string(),
             owner: "".to_string(),
@@ -54,7 +54,7 @@ impl TodoApi {
                     done: Set(todo_add_req.done),
                     ..Default::default()
                 },
-                &cxt,
+                &ctx,
             )
             .await?
             .last_insert_id;
@@ -97,7 +97,7 @@ impl TodoApi {
 
     #[oai(path = "/todo/:id", method = "put")]
     async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>) -> TardisApiResult<u64> {
-        let cxt = TardisContext {
+        let ctx = TardisContext {
             own_paths: "".to_string(),
             ak: "".to_string(),
             owner: "".to_string(),
@@ -112,7 +112,7 @@ impl TodoApi {
                     description: todo_modify_req.description.as_ref().map(|v| Set(v.clone())).unwrap_or(NotSet),
                     done: todo_modify_req.done.map(Set).unwrap_or(NotSet),
                 },
-                &cxt,
+                &ctx,
             )
             .await?;
         TardisResp::ok(0)

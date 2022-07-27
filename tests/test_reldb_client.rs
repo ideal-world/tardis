@@ -35,7 +35,7 @@ async fn test_reldb_client() -> TardisResult<()> {
 }
 
 async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
-    let cxt = TardisContext {
+    let ctx = TardisContext {
         own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
         roles: vec![],
@@ -58,7 +58,7 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
             name: Set("tenant1".to_string()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -67,7 +67,7 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
             name: Set("tenant2".to_string()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -76,7 +76,7 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
             name: Set("tenant3".to_string()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -110,7 +110,7 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
 }
 
 async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
-    let cxt = TardisContext {
+    let ctx = TardisContext {
         own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
         roles: vec![],
@@ -134,7 +134,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
                 name: Set("tenant1".to_string()),
                 ..Default::default()
             },
-            &cxt,
+            &ctx,
         )
         .await?
         .last_insert_id;
@@ -145,7 +145,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
             tenant_id: Set(tenant_id.clone()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -156,7 +156,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
                 tenant_id: Set(tenant_id.clone()),
                 ..Default::default()
             },
-            &cxt,
+            &ctx,
         )
         .await?
         .last_insert_id;
@@ -167,7 +167,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
                 name: Set("account1".to_string()),
                 ..Default::default()
             },
-            &cxt,
+            &ctx,
         )
         .await?
         .last_insert_id;
@@ -311,7 +311,7 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
 
     let db = client.conn();
 
-    let cxt = TardisContext {
+    let ctx = TardisContext {
         own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
         roles: vec![],
@@ -324,7 +324,7 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
             name: Set("tenant1".to_string()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -339,7 +339,7 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
             tenant_id: Set(tenant.id.clone()),
             ..Default::default()
         },
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -356,7 +356,7 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
                 ..Default::default()
             },
         ],
-        &cxt,
+        &ctx,
     )
     .await?;
 
@@ -385,7 +385,7 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
                 name: Set("account1".to_string()),
                 ..Default::default()
             },
-            &cxt,
+            &ctx,
         )
         .await?
         .last_insert_id;
@@ -551,7 +551,7 @@ pub mod entities {
         }
 
         impl TardisActiveModel for ActiveModel {
-            fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
+            fn fill_ctx(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.nanoid());
                 }
@@ -592,7 +592,7 @@ pub mod entities {
         }
 
         impl TardisActiveModel for ActiveModel {
-            fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
+            fn fill_ctx(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.nanoid());
                 }
@@ -643,7 +643,7 @@ pub mod entities {
         }
 
         impl TardisActiveModel for ActiveModel {
-            fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
+            fn fill_ctx(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.nanoid());
                 }
@@ -684,7 +684,7 @@ pub mod entities {
         }
 
         impl TardisActiveModel for ActiveModel {
-            fn fill_cxt(&mut self, _: &TardisContext, is_insert: bool) {
+            fn fill_ctx(&mut self, _: &TardisContext, is_insert: bool) {
                 if is_insert {
                     self.id = Set(TardisFuns::field.nanoid());
                 }

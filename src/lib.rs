@@ -616,7 +616,7 @@ impl TardisFuns {
     ///     pub enum Relation {}
     ///     
     ///     impl TardisActiveModel for ActiveModel {
-    ///         fn fill_cxt(&mut self, _: &TardisContext, _: bool) {}
+    ///         fn fill_ctx(&mut self, _: &TardisContext, _: bool) {}
     ///     }
     ///     
     ///     impl ActiveModelBehavior for ActiveModel {}
@@ -640,7 +640,7 @@ impl TardisFuns {
     ///             done: Set(todo_add_req.done),
     ///             ..Default::default()
     ///         },
-    ///         &cxt.0,
+    ///         &ctx.0,
     ///     ).unwrap()
     ///     .last_insert_id;
     /// // Query record
