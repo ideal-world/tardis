@@ -64,14 +64,18 @@ Dependency Configuration
 ```toml
 [dependencies]
 tardis = { version = "^0", features = ["web-server"] }
-poem-openapi = { version = "^2"}
 ```
 
 Processor Configuration
 ```ignore
+use tardis::basic::error::TardisError;
+use tardis::web::poem_openapi;
+use tardis::web::poem_openapi::param::Query;
+use tardis::web::web_resp::{TardisApiResult, TardisResp};
+
 pub struct Api;
 
-#[OpenApi]
+#[poem_openapi::OpenApi]
 impl Api {
     #[oai(path = "/hello", method = "get")]
     async fn index(&self, name: Query<Option<String>>) -> TardisResult<String> {
@@ -85,6 +89,12 @@ impl Api {
 
 Startup class configuration
 ```ignore
+use tardis::basic::result::TardisResult;
+use tardis::tokio;
+use tardis::TardisFuns;
+use crate::processor::Api;
+mod processor;
+
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     // Initial configuration

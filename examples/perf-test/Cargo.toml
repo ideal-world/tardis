@@ -3,11 +3,8 @@ name = "tardis-example-perf-test"
 version = "0.1.0"
 authors = ["gudaoxuri"]
 edition = "2021"
+publish = false
 
 [dependencies]
 # Tardis Functions
 tardis = { path = "../..", features = ["web-server", "reldb"] }
-# Web server dependencies
-poem-openapi = { version = "2" }
-# Reldb dependencies
-sea-orm = { version = "0.9", features = ["macros"] }

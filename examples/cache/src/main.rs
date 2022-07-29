@@ -1,6 +1,5 @@
 use std::env;
 use std::time::Duration;
-
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::testcontainers::clients;

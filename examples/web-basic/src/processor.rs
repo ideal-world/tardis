@@ -1,11 +1,11 @@
 use tardis::basic::error::TardisError;
+use tardis::web::poem_openapi;
 use tardis::web::poem_openapi::param::Query;
-use tardis::web::poem_openapi::OpenApi;
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
 
 pub struct Api;
 
-#[OpenApi]
+#[poem_openapi::OpenApi]
 impl Api {
     #[oai(path = "/hello", method = "get")]
     async fn index(&self, name: Query<Option<String>>) -> TardisApiResult<String> {

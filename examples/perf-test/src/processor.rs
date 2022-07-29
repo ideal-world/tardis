@@ -1,15 +1,17 @@
 use tardis::basic::dto::TardisContext;
+use tardis::db::sea_orm;
 use tardis::db::sea_orm::sea_query::Query as DbQuery;
 use tardis::db::sea_orm::*;
 use tardis::serde::{self, Deserialize, Serialize};
+use tardis::web::poem_openapi;
 use tardis::web::poem_openapi::param::Query;
-use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi};
+use tardis::web::poem_openapi::{param::Path, payload::Json};
 use tardis::web::web_resp::{TardisApiResult, TardisPage, TardisResp};
 use tardis::TardisFuns;
 
 use crate::domain::todos;
 
-#[derive(Object, FromQueryResult, Serialize, Deserialize, Debug)]
+#[derive(poem_openapi::Object, sea_orm::FromQueryResult, Serialize, Deserialize, Debug)]
 #[serde(crate = "self::serde")]
 struct TodoDetailResp {
     id: i32,
@@ -17,7 +19,7 @@ struct TodoDetailResp {
     done: bool,
 }
 
-#[derive(Object, Serialize, Deserialize, Debug)]
+#[derive(poem_openapi::Object, Serialize, Deserialize, Debug)]
 #[serde(crate = "self::serde")]
 struct TodoAddReq {
     #[oai(validator(min_length = "2", max_length = "255"))]
@@ -25,7 +27,7 @@ struct TodoAddReq {
     done: bool,
 }
 
-#[derive(Object, Serialize, Deserialize, Debug)]
+#[derive(poem_openapi::Object, Serialize, Deserialize, Debug)]
 #[serde(crate = "self::serde")]
 struct TodoModifyReq {
     #[oai(validator(min_length = "2", max_length = "255"))]
@@ -35,7 +37,7 @@ struct TodoModifyReq {
 
 pub struct TodoApi;
 
-#[OpenApi]
+#[poem_openapi::OpenApi]
 impl TodoApi {
     #[oai(path = "/todo", method = "post")]
     async fn add(&self, todo_add_req: Json<TodoAddReq>) -> TardisApiResult<i32> {

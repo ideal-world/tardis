@@ -1,5 +1,5 @@
-use futures_util::{SinkExt, StreamExt};
-
+use tardis::futures_util::{SinkExt, StreamExt};
+use tardis::web::poem;
 use tardis::web::poem::{
     handler,
     web::{
@@ -8,12 +8,12 @@ use tardis::web::poem::{
     },
     IntoResponse,
 };
+use tardis::web::poem_openapi;
 use tardis::web::poem_openapi::payload::Html;
-use tardis::web::poem_openapi::OpenApi;
 
 pub struct Page;
 
-#[OpenApi]
+#[poem_openapi::OpenApi]
 impl Page {
     #[oai(path = "/p2p", method = "get")]
     async fn p2p(&self) -> Html<&'static str> {

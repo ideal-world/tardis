@@ -2,18 +2,20 @@ use serde::{Deserialize, Serialize};
 
 use tardis::basic::error::TardisError;
 use tardis::basic::field::TrimString;
+use tardis::db::sea_orm;
 use tardis::db::sea_orm::sea_query::Query as DbQuery;
 use tardis::db::sea_orm::*;
 use tardis::web::context_extractor::TardisContextExtractor;
+use tardis::web::poem_openapi;
 use tardis::web::poem_openapi::param::Query;
-use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi};
+use tardis::web::poem_openapi::{param::Path, payload::Json};
 use tardis::web::web_resp::{TardisApiResult, Void};
 use tardis::web::web_resp::{TardisPage, TardisResp};
 use tardis::TardisFuns;
 
 use crate::domain::todos;
 
-#[derive(Object, FromQueryResult, Serialize, Deserialize, Debug)]
+#[derive(poem_openapi::Object, sea_orm::FromQueryResult, Serialize, Deserialize, Debug)]
 struct TodoDetailResp {
     id: i32,
     code: String,
@@ -21,7 +23,7 @@ struct TodoDetailResp {
     done: bool,
 }
 
-#[derive(Object, Serialize, Deserialize, Debug)]
+#[derive(poem_openapi::Object, Serialize, Deserialize, Debug)]
 struct TodoAddReq {
     #[oai(validator(min_length = "2", max_length = "255"))]
     code: TrimString,
@@ -30,7 +32,7 @@ struct TodoAddReq {
     done: bool,
 }
 
-#[derive(Object, Serialize, Deserialize, Debug)]
+#[derive(poem_openapi::Object, Serialize, Deserialize, Debug)]
 struct TodoModifyReq {
     #[oai(validator(min_length = "2", max_length = "255"))]
     description: Option<String>,
@@ -39,7 +41,7 @@ struct TodoModifyReq {
 
 pub struct TodoApi;
 
-#[OpenApi(prefix_path = "/todo")]
+#[poem_openapi::OpenApi(prefix_path = "/todo")]
 impl TodoApi {
     // curl -X POST "http://127.0.0.1:8089/todo" \
     //  -H "Accept: application/json" \

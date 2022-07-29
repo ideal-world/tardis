@@ -1,5 +1,6 @@
 use tardis::web::context_extractor::TardisContextExtractor;
-use tardis::web::poem_openapi::{payload::Json, OpenApi};
+use tardis::web::poem_openapi;
+use tardis::web::poem_openapi::payload::Json;
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
 use tardis::TardisFuns;
 
@@ -8,7 +9,7 @@ use crate::serv::doc_serv::DocServ;
 
 pub struct DocApi;
 
-#[OpenApi(prefix_path = "/doc")]
+#[poem_openapi::OpenApi(prefix_path = "/doc")]
 impl DocApi {
     /// Add
     #[oai(path = "/", method = "post")]

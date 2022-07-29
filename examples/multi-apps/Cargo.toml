@@ -3,6 +3,7 @@ name = "tardis-example-multi-apps"
 version = "0.1.0"
 authors = ["gudaoxuri"]
 edition = "2021"
+publish = false
 
 [dependencies]
 tardis-example-multi-apps-doc = { path = "doc"}

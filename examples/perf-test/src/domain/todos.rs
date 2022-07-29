@@ -1,5 +1,6 @@
 use tardis::basic::dto::TardisContext;
 use tardis::db::reldb_client::TardisActiveModel;
+use tardis::db::sea_orm;
 use tardis::db::sea_orm::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]

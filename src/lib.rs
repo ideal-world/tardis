@@ -49,15 +49,18 @@
 //! ```toml
 //! [dependencies]
 //! tardis = { version = "^0", features = ["web-server"] }
-//! poem-openapi = { version = "^2"}
 //! ```
 //!
 //! Processor Configuration
 //!```ignore
-//! use tardis::web::poem_openapi::OpenApi;
+//! use tardis::basic::error::TardisError;
+//! use tardis::web::poem_openapi;
+//! use tardis::web::poem_openapi::param::Query;
+//! use tardis::web::web_resp::{TardisApiResult, TardisResp};
+//!
 //! pub struct Api;
 //!
-//! #[OpenApi]
+//! #[poem_openapi::OpenApi]
 //! impl Api {
 //!     #[oai(path = "/hello", method = "get")]
 //!     async fn index(&self, name: Query<Option<String>>) -> TardisResult<String> {
@@ -71,16 +74,12 @@
 //!
 //! Startup class configuration
 //!```ignore
-//! use tardis::basic::config::NoneConfig;
-//! use tardis::basic::config::NoneConfig;
 //! use tardis::basic::result::TardisResult;
+//! use tardis::tokio;
 //! use tardis::TardisFuns;
-//! use tardis::TardisFuns;
+//! use crate::processor::Api;
+//! mod processor;
 //!
-//! use tardis::basic::result::TardisResult;
-//! use tardis::TardisFuns;
-//!
-//! use tardis::TardisFuns;
 //! #[tokio::main]
 //! async fn main() -> TardisResult<()> {
 //!     // Initial configuration
@@ -114,7 +113,16 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::ptr::replace;
 
+#[cfg(feature = "future")]
+pub use async_stream;
+#[cfg(feature = "future")]
+pub use async_trait;
 pub use chrono;
+pub use derive_more;
+#[cfg(feature = "future")]
+pub use futures;
+#[cfg(feature = "future")]
+pub use futures_util;
 pub use log;
 pub use rand;
 pub use regex;
@@ -126,6 +134,7 @@ use serde_json::Value;
 pub use testcontainers;
 #[cfg(feature = "rt_tokio")]
 pub use tokio;
+pub use url;
 
 use basic::error::TardisErrorWithExt;
 use basic::result::TardisResult;

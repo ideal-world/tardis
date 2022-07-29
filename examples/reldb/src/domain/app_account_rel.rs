@@ -1,3 +1,4 @@
+use tardis::db::sea_orm;
 use tardis::db::sea_orm::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
