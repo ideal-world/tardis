@@ -71,7 +71,7 @@ jobs:
 
   publish:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [check-tardis, check-examples]
+    needs: [check]
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
