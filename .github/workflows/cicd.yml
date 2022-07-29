@@ -6,7 +6,7 @@ env:
   TARDIS_TEST_DISABLED_DOCKER: true
 
 jobs:
-  check-tardis:
+  check:
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -50,13 +50,13 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Check clippy
-        run: cargo clippy --all-features
+        run: cargo clippy --all --all-features
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
           version: '0.20.1'
-          args: '--all-features'
+          args: '--all --all-features'
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
@@ -68,29 +68,6 @@ jobs:
         with:
           name: code-coverage-report
           path: cobertura.xml
-
-  check-examples:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v3
-
-      - name: Init rust envrionment
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-
-      - name: Cache rust
-        uses: Swatinem/rust-cache@v1
-
-      - name: Check format
-        run: cargo fmt --all -- --check
-        working-directory: examples
-
-      - name: Check clippy
-        run: cargo clippy
-        working-directory: examples
 
   publish:
     if: startsWith(github.ref, 'refs/tags/')
