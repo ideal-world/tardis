@@ -1,6 +1,5 @@
 [workspace]
-# members = [".", "tardis-macros", "examples/*"]
-members = [".", "examples/*"]
+members = [".", "tardis-macros", "examples/*"]
 
 [package]
 name = "tardis"
@@ -30,8 +29,7 @@ name = "tardis"
 path = "src/lib.rs"
 
 [features]
-#default = ["trace", "rt_tokio", "tardis-macros"]
-default = ["trace", "rt_tokio"]
+default = ["trace", "rt_tokio", "tardis-macros"]
 trace = ["tracing", "tracing-subscriber"]
 crypto = ["rust-crypto", "rsa"]
 crypto_with_sm = ["libsm", "num-bigint"]
@@ -66,7 +64,7 @@ url = { version = "2.2" }
 openssl = { version = "0.10", features = ["vendored"] }
 
 # macros
-# tardis-macros = { path = "tardis-macros", optional = true }
+tardis-macros = { path = "tardis-macros", optional = true }
 
 # Tokio
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "signal", "time"], optional = true }
@@ -89,7 +87,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = tr
 
 # RelDB
 sea-orm = { version = "0.9", features = ["sqlx-all", "macros", "runtime-tokio-native-tls", "debug-print"], optional = true }
-sqlparser = { version = "0.18", optional = true }
+sqlparser = { version = "0.19", optional = true }
 
 # Web Server
 poem-openapi = { version = "2", features = ["rapidoc", "chrono"], optional = true }
@@ -111,7 +109,7 @@ async-global-executor = { version = "2.0", optional = true }
 lettre = { version = "0.10.0-rc.6", features = ["smtp-transport", "tokio1", "tokio1-native-tls", "builder"], optional = true }
 
 #Object Storage
-rust-s3 = { version = "0.31", optional = true }
+rust-s3 = { version = "0.32", optional = true }
 anyhow = { version = "1.0", optional = true }
 
 # Test
