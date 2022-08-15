@@ -49,6 +49,7 @@ impl TardisOSClient {
                     secret_key: Some(sk.to_string()),
                     security_token: None,
                     session_token: None,
+                    expiration: None,
                 };
                 let default_bucket = if !default_bucket.is_empty() {
                     Some(Bucket::new(default_bucket, region.clone(), credentials.clone())?.with_path_style())
@@ -174,17 +175,22 @@ impl TardisOSOperations for TardisOSS3Client {
 
     async fn object_create(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
         let bucket = self.get_bucket(bucket_name)?;
-        let (_, code) = if let Some(content_type) = content_type {
+        let response_data = if let Some(content_type) = content_type {
             bucket.put_object_with_content_type(path, content, content_type).await?
         } else {
             bucket.put_object(path, content).await?
         };
-        if code == 200 {
+        if response_data.status_code() == 200 {
             Ok(())
         } else {
             Err(TardisError::custom(
-                &code.to_string(),
-                &format!("[Tardis.OSClient] Failed to create object {}:{} with error [{}]", bucket.name, path, code),
+                &response_data.status_code().to_string(),
+                &format!(
+                    "[Tardis.OSClient] Failed to create object {}:{} with error [{}]",
+                    bucket.name,
+                    path,
+                    std::str::from_utf8(response_data.bytes())?
+                ),
                 "-1-tardis-os-create-object-error",
             ))
         }
@@ -192,13 +198,18 @@ impl TardisOSOperations for TardisOSS3Client {
 
     async fn object_get(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<Vec<u8>> {
         let bucket = self.get_bucket(bucket_name)?;
-        let (data, code) = bucket.get_object(path).await?;
-        if code == 200 {
-            Ok(data)
+        let response_data = bucket.get_object(path).await?;
+        if response_data.status_code() == 200 {
+            Ok(response_data.bytes().to_vec())
         } else {
             Err(TardisError::custom(
-                &code.to_string(),
-                &format!("[Tardis.OSClient] Failed to get object {}:{} with error [{}]", bucket.name, path, code),
+                &response_data.status_code().to_string(),
+                &format!(
+                    "[Tardis.OSClient] Failed to get object {}:{} with error [{}]",
+                    bucket.name,
+                    path,
+                    std::str::from_utf8(response_data.bytes())?
+                ),
                 "-1-tardis-os-get-object-error",
             ))
         }
@@ -206,13 +217,18 @@ impl TardisOSOperations for TardisOSS3Client {
 
     async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()> {
         let bucket = self.get_bucket(bucket_name)?;
-        let (_, code) = bucket.delete_object(path).await?;
-        if code == 200 || code == 204 {
+        let response_data = bucket.delete_object(path).await?;
+        if response_data.status_code() == 200 || response_data.status_code() == 204 {
             Ok(())
         } else {
             Err(TardisError::custom(
-                &code.to_string(),
-                &format!("[Tardis.OSClient] Failed to delete object {}:{} with error [{}]", bucket.name, path, code),
+                &response_data.status_code().to_string(),
+                &format!(
+                    "[Tardis.OSClient] Failed to delete object {}:{} with error [{}]",
+                    bucket.name,
+                    path,
+                    std::str::from_utf8(response_data.bytes())?
+                ),
                 "-1-tardis-os-delete-object-error",
             ))
         }
