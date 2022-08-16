@@ -64,7 +64,7 @@ url = { version = "2.2" }
 openssl = { version = "0.10", features = ["vendored"] }
 
 # macros
-tardis-macros = { version = "0.1.0-alpha19", path = "tardis-macros", optional = true }
+tardis-macros = { path = "tardis-macros", version = "0.1.0-alpha19", optional = true }
 
 # Tokio
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "signal", "time"], optional = true }
