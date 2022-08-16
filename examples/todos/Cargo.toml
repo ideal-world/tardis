@@ -8,4 +8,4 @@ publish = false
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 # Tardis Functions
-tardis = { path = "../..", features = ["web-server", "reldb", "test"] }
+tardis = { path = "../../tardis", features = ["web-server", "reldb", "test"] }

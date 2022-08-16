@@ -85,8 +85,18 @@ jobs:
       - name: Cargo login
         run: cargo login ${{ secrets.CRATES_TOKEN }}
 
+      - name: Cargo package macros
+        working-directory: tardis-macros
+        run: cargo package
+
+      - name: Cargo publish macros
+        working-directory: tardis-macros
+        run: cargo publish
+
       - name: Cargo package
+        working-directory: tardis
         run: cargo package
 
       - name: Cargo publish
+        working-directory: tardis
         run: cargo publish

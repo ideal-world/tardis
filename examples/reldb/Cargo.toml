@@ -6,4 +6,4 @@ edition = "2021"
 publish = false
 
 [dependencies]
-tardis = { path = "../..", features = ["reldb", "test"] }
+tardis = { path = "../../tardis", features = ["reldb", "test"] }

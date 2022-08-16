@@ -6,4 +6,4 @@ edition = "2021"
 publish = false
 
 [dependencies]
-tardis = { path = "../..", features = ["web-client"] }
+tardis = { path = "../../tardis", features = ["web-client"] }
