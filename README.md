@@ -132,6 +132,11 @@ async fn main() -> TardisResult<()> {
   set OPENSSL_DIR=<Current Dir>\packages\openssl_x64-windows-static
   ```
 
+* An `` failed to run custom build command for openssl-sys`` error occurs when running under Ubuntu(similar to other distributions):
+  ```shell
+  apt install build-essential perl pkg-config libssl-dev
+  ```
+
 ----
 Thanks to `Jetbrains` for the [Open Source License](https://www.jetbrains.com/community/opensource/)
 
