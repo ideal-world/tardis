@@ -15,7 +15,6 @@ documentation = "https://docs.rs/tardis/"
 repository = "https://github.com/ideal-world/tardis"
 license = "MIT"
 edition = "2021"
-readme = "README.md"
 
 [lib]
 name = "tardis_macros"
