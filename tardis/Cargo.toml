@@ -1,6 +1,6 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha19"
+version = "0.1.0-alpha20"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -61,7 +61,7 @@ url = { version = "2.2" }
 openssl = { version = "0.10", features = ["vendored"] }
 
 # macros
-tardis-macros = { version = "0.1.0-alpha19", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-alpha20", path = "../tardis-macros", optional = true }
 
 # Tokio
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "signal", "time"], optional = true }
