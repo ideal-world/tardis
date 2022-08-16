@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "tardis-macros", "examples/*"]
+members = ["tardis-macros", ".",  "examples/*"]
 
 [package]
 name = "tardis"
