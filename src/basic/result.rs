@@ -5,3 +5,4 @@ use core::result::Result;
 pub type TardisResult<T> = Result<T, TardisError>;
 
 pub const TARDIS_RESULT_SUCCESS_CODE: &str = "200";
+pub const TARDIS_RESULT_ACCEPTED_CODE: &str = "202";

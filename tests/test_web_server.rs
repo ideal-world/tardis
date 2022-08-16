@@ -13,7 +13,7 @@ use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, Ma
 use tardis::basic::dto::TardisContext;
 use tardis::basic::error::TardisError;
 use tardis::basic::field::TrimString;
-use tardis::basic::result::{TardisResult, TARDIS_RESULT_SUCCESS_CODE};
+use tardis::basic::result::{TardisResult, TARDIS_RESULT_ACCEPTED_CODE, TARDIS_RESULT_SUCCESS_CODE};
 use tardis::serde::{Deserialize, Serialize};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::web::context_extractor::{TardisContextExtractor, TOKEN_FLAG};
@@ -162,9 +162,16 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
 
 async fn test_basic(url: &str) -> TardisResult<()> {
     // Normal
-    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?.body.unwrap();
-    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
-    assert_eq!(response.data.unwrap().code.to_string(), "code1");
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?;
+    assert_eq!(response.code, 200);
+    assert_eq!(response.body.as_ref().unwrap().code, TARDIS_RESULT_SUCCESS_CODE);
+    assert_eq!(response.body.as_ref().unwrap().data.as_ref().unwrap().code.to_string(), "code1");
+
+    // Accepted
+    let response = TardisFuns::web_client().get::<TardisResp<String>>(format!("{}/todo/todos/1/async", url).as_str(), None).await?;
+    assert_eq!(response.code, 200);
+    assert_eq!(response.body.as_ref().unwrap().code, TARDIS_RESULT_ACCEPTED_CODE);
+    assert_eq!(response.body.as_ref().unwrap().data.as_ref().unwrap(), "/todos/1/status");
 
     // Business Error
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/err", url).as_str(), None).await?.body.unwrap();
@@ -705,6 +712,11 @@ impl TodosApi {
             description: "测试".to_string(),
             done: false,
         })
+    }
+
+    #[oai(path = "/todos/:id/async", method = "get")]
+    async fn get_async(&self, id: Path<i64>) -> TardisApiResult<String> {
+        TardisResp::accepted(format!("/todos/{}/status", id.0))
     }
 
     #[oai(path = "/todos/:id/err", method = "get")]

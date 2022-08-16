@@ -1,5 +1,5 @@
 use crate::basic::error::TardisError;
-use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
+use crate::basic::result::{TARDIS_RESULT_ACCEPTED_CODE, TARDIS_RESULT_SUCCESS_CODE};
 use crate::serde::{Deserialize, Serialize};
 use crate::TardisFuns;
 use poem::http::StatusCode;
@@ -82,7 +82,7 @@ pub fn mapping_http_code_to_error(http_code: StatusCode, msg: &str) -> Option<Ta
         return Some(error);
     }
     match http_code {
-        StatusCode::OK => None,
+        code if code.as_u16() < 400 => None,
         _ => Some(TardisError::custom(
             http_code.as_str(),
             &format!("[Tardis.WebServer] Process error: {}", msg),
@@ -115,6 +115,14 @@ where
     pub fn ok(data: T) -> TardisApiResult<T> {
         TardisApiResult::Ok(Json(TardisResp {
             code: TARDIS_RESULT_SUCCESS_CODE.to_string(),
+            msg: "".to_string(),
+            data: Some(data),
+        }))
+    }
+
+    pub fn accepted(data: T) -> TardisApiResult<T> {
+        TardisApiResult::Ok(Json(TardisResp {
+            code: TARDIS_RESULT_ACCEPTED_CODE.to_string(),
             msg: "".to_string(),
             data: Some(data),
         }))
