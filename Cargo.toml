@@ -64,7 +64,7 @@ url = { version = "2.2" }
 openssl = { version = "0.10", features = ["vendored"] }
 
 # macros
-tardis-macros = { path = "tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-alpha19", path = "tardis-macros", optional = true }
 
 # Tokio
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "signal", "time"], optional = true }
@@ -87,7 +87,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = tr
 
 # RelDB
 sea-orm = { version = "0.9", features = ["sqlx-all", "macros", "runtime-tokio-native-tls", "debug-print"], optional = true }
-sqlparser = { version = "0.19", optional = true }
+sqlparser = { version = "0.20", optional = true }
 
 # Web Server
 poem-openapi = { version = "2", features = ["rapidoc", "chrono"], optional = true }
