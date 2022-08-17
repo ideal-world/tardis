@@ -113,6 +113,19 @@ async fn test_cache_client() -> TardisResult<()> {
         assert_eq!(list_result.get(0).unwrap(), "v2");
         assert_eq!(list_result.get(1).unwrap(), "v1");
 
+        // bitmap operations
+        assert!(!client.setbit("bit", 1024, true).await?);
+        assert!(client.setbit("bit", 1024, true).await?);
+        assert!(!client.setbit("bit", 2048, true).await?);
+        assert!(client.getbit("bit", 1024).await?);
+        assert!(client.getbit("bit", 2048).await?);
+        assert!(!client.getbit("bit", 3333).await?);
+        assert_eq!(client.bitcount("bit").await?, 2);
+        assert_eq!(client.bitcount_range_by_byte("bit", 1, 1023 / 8).await?, 0);
+        assert_eq!(client.bitcount_range_by_byte("bit", 1, 1024 / 8).await?, 1);
+        assert_eq!(client.bitcount_range_by_byte("bit", 1024 / 8, 2048 / 8).await?, 2);
+        assert_eq!(client.bitcount_range_by_byte("bit", 2048 / 8, 6666 / 8).await?, 1);
+
         // custom
 
         let mut _s: bool = client.cmd().await.sadd("s1", "m1").await?;

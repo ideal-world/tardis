@@ -225,6 +225,39 @@ impl TardisCacheClient {
         (*self.con.lock().await).hlen(key).await
     }
 
+    // bitmap operations
+
+    pub async fn setbit(&self, key: &str, offset: usize, value: bool) -> RedisResult<bool> {
+        trace!("[Tardis.CacheClient] setbit, key:{}, offset:{}, value:{}", key, offset, value);
+        (*self.con.lock().await).setbit(key, offset, value).await
+    }
+
+    pub async fn getbit(&self, key: &str, offset: usize) -> RedisResult<bool> {
+        trace!("[Tardis.CacheClient] getbit, key:{}, offset:{}", key, offset);
+        (*self.con.lock().await).getbit(key, offset).await
+    }
+
+    pub async fn bitcount(&self, key: &str) -> RedisResult<usize> {
+        trace!("[Tardis.CacheClient] bitcount, key:{}", key);
+        (*self.con.lock().await).bitcount(key).await
+    }
+
+    pub async fn bitcount_range_by_byte(&self, key: &str, start: usize, end: usize) -> RedisResult<usize> {
+        trace!("[Tardis.CacheClient] bitcount_range_by_byte, key:{}, start:{}, end:{}", key, start, end);
+        (*self.con.lock().await).bitcount_range(key, start, end).await
+    }
+
+    /// Supported from version redis 7.0.0
+    pub async fn bitcount_range_by_bit(&self, key: &str, start: usize, end: usize) -> RedisResult<usize> {
+        trace!("[Tardis.CacheClient] bitcount_range_by_bit, key:{}, start:{}, end:{}", key, start, end);
+        match redis::cmd("BITCOUNT").arg(key).arg(start).arg(end).arg("BIT").query_async(&mut (*self.con.lock().await)).await {
+            Ok(count) => Ok(count),
+            Err(e) => Err(e),
+        }
+    }
+
+    // other operations
+
     pub async fn flushdb(&self) -> RedisResult<()> {
         trace!("[Tardis.CacheClient] flushdb");
         match redis::cmd("FLUSHDB").query_async(&mut (*self.con.lock().await)).await {
