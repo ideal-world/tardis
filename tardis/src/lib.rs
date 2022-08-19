@@ -990,8 +990,6 @@ impl TardisFunsInst {
             },
             #[cfg(feature = "reldb")]
             db: None,
-            #[cfg(not(feature = "reldb"))]
-            _t: None,
         }
     }
 
