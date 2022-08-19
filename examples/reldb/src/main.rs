@@ -36,6 +36,7 @@ async fn main() -> TardisResult<()> {
         owner: "".to_string(),
         roles: vec![],
         groups: vec![],
+        ext: Default::default(),
     };
 
     // Create table

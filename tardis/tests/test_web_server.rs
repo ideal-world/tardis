@@ -443,6 +443,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
         roles: vec!["r1".to_string(), "管理员".to_string()],
         groups: vec!["g1".to_string()],
         owner: "acc1".to_string(),
+        ext: Default::default(),
     };
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
@@ -493,6 +494,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
         roles: vec!["r1".to_string(), "管理员".to_string()],
         groups: vec!["g1".to_string()],
         owner: "acc1".to_string(),
+        ext: Default::default(),
     };
     TardisFuns::cache()
         .set(

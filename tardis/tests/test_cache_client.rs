@@ -126,6 +126,9 @@ async fn test_cache_client() -> TardisResult<()> {
         assert_eq!(client.bitcount_range_by_byte("bit", 1024 / 8, 2048 / 8).await?, 2);
         assert_eq!(client.bitcount_range_by_byte("bit", 2048 / 8, 6666 / 8).await?, 1);
 
+        let max: i64 = u32::MAX.into();
+        assert!(!client.setbit("bit", max.try_into()?, true).await?);
+
         // custom
 
         let mut _s: bool = client.cmd().await.sadd("s1", "m1").await?;

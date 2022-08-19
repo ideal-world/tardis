@@ -47,6 +47,7 @@ impl TodoApi {
             owner: "".to_string(),
             roles: vec![],
             groups: vec![],
+            ext: Default::default(),
         };
         let todo_id = TardisFuns::reldb()
             .conn()
@@ -105,6 +106,7 @@ impl TodoApi {
             owner: "".to_string(),
             roles: vec![],
             groups: vec![],
+            ext: Default::default(),
         };
         TardisFuns::reldb()
             .conn()

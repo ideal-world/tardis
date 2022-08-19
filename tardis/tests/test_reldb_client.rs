@@ -41,6 +41,7 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
         roles: vec![],
         groups: vec![],
         owner: "acc1".to_string(),
+        ext: Default::default(),
     };
 
     let db = client.conn();
@@ -116,6 +117,7 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         roles: vec![],
         groups: vec![],
         owner: "acc1".to_string(),
+        ext: Default::default(),
     };
 
     let db = client.conn();
@@ -317,6 +319,7 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
         roles: vec![],
         groups: vec![],
         owner: "acc1".to_string(),
+        ext: Default::default(),
     };
 
     db.insert_one(
