@@ -465,12 +465,12 @@ impl TardisFuns {
         Ok(())
     }
 
-    pub fn inst<'a>(code: String, lang: Option<String>) -> TardisFunsInst<'a> {
+    pub fn inst(code: String, lang: Option<String>) -> TardisFunsInst {
         TardisFunsInst::new(code, lang)
     }
 
     #[cfg(feature = "reldb")]
-    pub fn inst_with_db_conn<'a>(code: String, lang: Option<String>) -> TardisFunsInst<'a> {
+    pub fn inst_with_db_conn(code: String, lang: Option<String>) -> TardisFunsInst {
         TardisFunsInst::new_with_db_conn(code, lang)
     }
 
@@ -973,17 +973,14 @@ impl TardisFuns {
     }
 }
 
-pub struct TardisFunsInst<'a> {
+pub struct TardisFunsInst {
     module_code: String,
     err: TardisErrorWithExt,
     #[cfg(feature = "reldb")]
-    db: Option<db::reldb_client::TardisRelDBlConnection<'a>>,
-    // Solve the 'a not used issue when the reldb feature is not enabled
-    #[cfg(not(feature = "reldb"))]
-    _t: Option<&'a str>,
+    db: Option<db::reldb_client::TardisRelDBlConnection>,
 }
 
-impl<'a> TardisFunsInst<'a> {
+impl TardisFunsInst {
     pub(crate) fn new(code: String, lang: Option<String>) -> Self {
         Self {
             module_code: code.to_lowercase(),
@@ -1029,7 +1026,7 @@ impl<'a> TardisFunsInst<'a> {
     }
 
     #[cfg(feature = "reldb")]
-    pub fn db(&self) -> &db::reldb_client::TardisRelDBlConnection<'a> {
+    pub fn db(&self) -> &db::reldb_client::TardisRelDBlConnection {
         self.db.as_ref().expect("db is not initialized")
     }
 

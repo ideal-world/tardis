@@ -73,26 +73,26 @@ pub enum Relation {}
 
 pub struct TardisDataDict;
 
-impl<'a> TardisDataDict {
-    pub async fn get(&self, key: &str, db: &TardisRelDBlConnection<'a>) -> TardisResult<Option<TardisDictResp>> {
+impl TardisDataDict {
+    pub async fn get(&self, key: &str, db: &TardisRelDBlConnection) -> TardisResult<Option<TardisDictResp>> {
         let model = tardis_db_config::Entity::find_by_id(key.to_string()).into_model::<TardisDictResp>();
         let result = if db.has_tx() { model.one(db.raw_tx()?).await? } else { model.one(db.raw_conn()).await? };
         Ok(result)
     }
 
-    pub async fn find_like(&self, key: &str, db: &TardisRelDBlConnection<'a>) -> TardisResult<Vec<TardisDictResp>> {
+    pub async fn find_like(&self, key: &str, db: &TardisRelDBlConnection) -> TardisResult<Vec<TardisDictResp>> {
         let model = tardis_db_config::Entity::find().filter(tardis_db_config::Column::K.like(format!("{}%", key).as_str())).into_model::<TardisDictResp>();
         let result = if db.has_tx() { model.all(db.raw_tx()?).await? } else { model.all(db.raw_conn()).await? };
         Ok(result)
     }
 
-    pub async fn find_all(&self, db: &TardisRelDBlConnection<'a>) -> TardisResult<Vec<TardisDictResp>> {
+    pub async fn find_all(&self, db: &TardisRelDBlConnection) -> TardisResult<Vec<TardisDictResp>> {
         let model = tardis_db_config::Entity::find().into_model::<TardisDictResp>();
         let result = if db.has_tx() { model.all(db.raw_tx()?).await? } else { model.all(db.raw_conn()).await? };
         Ok(result)
     }
 
-    pub async fn add(&self, key: &str, value: &str, creator: &str, db: &TardisRelDBlConnection<'a>) -> TardisResult<()> {
+    pub async fn add(&self, key: &str, value: &str, creator: &str, db: &TardisRelDBlConnection) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] [db_config] add key: {}, value: {}", key, value);
         let model = tardis_db_config::ActiveModel {
             k: Set(key.to_string()),
@@ -109,7 +109,7 @@ impl<'a> TardisDataDict {
         Ok(())
     }
 
-    pub async fn update(&self, key: &str, value: &str, updater: &str, db: &TardisRelDBlConnection<'a>) -> TardisResult<()> {
+    pub async fn update(&self, key: &str, value: &str, updater: &str, db: &TardisRelDBlConnection) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] [db_config] update key: {}, value: {}", key, value);
         let model = tardis_db_config::ActiveModel {
             k: Set(key.to_string()),
@@ -125,7 +125,7 @@ impl<'a> TardisDataDict {
         Ok(())
     }
 
-    pub async fn delete(&self, key: &str, db: &TardisRelDBlConnection<'a>) -> TardisResult<()> {
+    pub async fn delete(&self, key: &str, db: &TardisRelDBlConnection) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] [db_config] delete key: {}", key);
         let model = tardis_db_config::Entity::delete_many().filter(tardis_db_config::Column::K.eq(key.to_string()));
         if db.has_tx() {

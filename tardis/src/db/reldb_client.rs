@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -126,7 +127,7 @@ use crate::{FrameworkConfig, TardisFuns};
 /// ).await.unwrap();
 /// ```
 pub struct TardisRelDBClient {
-    con: DatabaseConnection,
+    con: Arc<DatabaseConnection>,
 }
 
 impl TardisRelDBClient {
@@ -183,7 +184,7 @@ impl TardisRelDBClient {
             url.port().unwrap_or(0),
             min_connections
         );
-        let client = TardisRelDBClient { con };
+        let client = TardisRelDBClient { con: Arc::new(con) };
         client.init_basic_tables().await?;
         Ok(client)
     }
@@ -197,7 +198,7 @@ impl TardisRelDBClient {
     ///
     /// 获取数据库操作连接
     pub fn conn(&self) -> TardisRelDBlConnection {
-        TardisRelDBlConnection { conn: &self.con, tx: None }
+        TardisRelDBlConnection { conn: self.con.clone(), tx: None }
     }
 
     /// Initialize basic tables / 初始化基础表
@@ -401,12 +402,12 @@ impl TardisRelDBClient {
 }
 
 /// Database operation connection object / 数据库操作连接对象
-pub struct TardisRelDBlConnection<'a> {
-    conn: &'a DatabaseConnection,
+pub struct TardisRelDBlConnection {
+    conn: Arc<DatabaseConnection>,
     tx: Option<DatabaseTransaction>,
 }
 
-impl<'a> TardisRelDBlConnection<'a> {
+impl TardisRelDBlConnection {
     /// Get original connection (generally not recommended) / 获取原始连接(一般不推荐使用)
     ///
     /// # Examples
@@ -415,7 +416,7 @@ impl<'a> TardisRelDBlConnection<'a> {
     /// let raw_conn = TardisFuns::reldb().conn().raw_conn();
     /// ```
     pub fn raw_conn(&self) -> &DatabaseConnection {
-        self.conn
+        self.conn.as_ref()
     }
 
     /// Get original transaction (if a transaction exists for the current object) (generally not recommended) / 获取原始事务(如果当前对象存在事务的话）(一般不推荐使用)
@@ -505,7 +506,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::create_table_from_entity_inner(entity, tx).await
         } else {
-            TardisRelDBClient::create_table_from_entity_inner(entity, self.conn).await
+            TardisRelDBClient::create_table_from_entity_inner(entity, self.conn.as_ref()).await
         }
     }
 
@@ -546,7 +547,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::create_table_inner(statement, tx).await
         } else {
-            TardisRelDBClient::create_table_inner(statement, self.conn).await
+            TardisRelDBClient::create_table_inner(statement, self.conn.as_ref()).await
         }
     }
 
@@ -568,7 +569,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::create_index_inner(statements, tx).await
         } else {
-            TardisRelDBClient::create_index_inner(statements, self.conn).await
+            TardisRelDBClient::create_index_inner(statements, self.conn.as_ref()).await
         }
     }
 
@@ -599,7 +600,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::get_dto_inner(select_statement, tx).await
         } else {
-            TardisRelDBClient::get_dto_inner(select_statement, self.conn).await
+            TardisRelDBClient::get_dto_inner(select_statement, self.conn.as_ref()).await
         }
     }
 
@@ -629,7 +630,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::find_dtos_inner(select_statement, tx).await
         } else {
-            TardisRelDBClient::find_dtos_inner(select_statement, self.conn).await
+            TardisRelDBClient::find_dtos_inner(select_statement, self.conn.as_ref()).await
         }
     }
 
@@ -662,7 +663,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::paginate_dtos_inner(select_statement, page_number, page_size, tx).await
         } else {
-            TardisRelDBClient::paginate_dtos_inner(select_statement, page_number, page_size, self.conn).await
+            TardisRelDBClient::paginate_dtos_inner(select_statement, page_number, page_size, self.conn.as_ref()).await
         }
     }
 
@@ -689,7 +690,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::count_inner(select_statement, tx).await
         } else {
-            TardisRelDBClient::count_inner(select_statement, self.conn).await
+            TardisRelDBClient::count_inner(select_statement, self.conn.as_ref()).await
         }
     }
 
@@ -707,7 +708,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::execute_inner(statement, tx).await
         } else {
-            TardisRelDBClient::execute_inner(statement, self.conn).await
+            TardisRelDBClient::execute_inner(statement, self.conn.as_ref()).await
         }
     }
 
@@ -739,7 +740,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::insert_one_inner(model, tx, ctx).await
         } else {
-            TardisRelDBClient::insert_one_inner(model, self.conn, ctx).await
+            TardisRelDBClient::insert_one_inner(model, self.conn.as_ref(), ctx).await
         }
     }
 
@@ -773,7 +774,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::insert_many_inner(models, tx, ctx).await
         } else {
-            TardisRelDBClient::insert_many_inner(models, self.conn, ctx).await
+            TardisRelDBClient::insert_many_inner(models, self.conn.as_ref(), ctx).await
         }
     }
 
@@ -806,7 +807,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::update_one_inner(model, tx, ctx).await
         } else {
-            TardisRelDBClient::update_one_inner(model, self.conn, ctx).await
+            TardisRelDBClient::update_one_inner(model, self.conn.as_ref(), ctx).await
         }
     }
 
@@ -835,7 +836,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::update_many_inner(update_statement, tx).await
         } else {
-            TardisRelDBClient::update_many_inner(update_statement, self.conn).await
+            TardisRelDBClient::update_many_inner(update_statement, self.conn.as_ref()).await
         }
     }
 
@@ -863,7 +864,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::soft_delete_inner(select, delete_user, tx).await
         } else {
-            TardisRelDBClient::soft_delete_inner(select, delete_user, self.conn).await
+            TardisRelDBClient::soft_delete_inner(select, delete_user, self.conn.as_ref()).await
         }
     }
 
@@ -892,7 +893,7 @@ impl<'a> TardisRelDBlConnection<'a> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, tx).await
         } else {
-            TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, self.conn).await
+            TardisRelDBClient::soft_delete_custom_inner(select, custom_pk_field, self.conn.as_ref()).await
         }
     }
 }
