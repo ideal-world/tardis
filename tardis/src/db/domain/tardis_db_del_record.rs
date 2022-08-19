@@ -6,7 +6,7 @@ use crate::db::sea_orm::ActiveValue::Set;
 use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
 use crate::TardisFuns;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "tardis_del_record")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]

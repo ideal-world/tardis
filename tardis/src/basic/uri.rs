@@ -105,7 +105,7 @@ impl TardisUri {
             None => "".to_string(),
             Some(q) => format!("?{}", q),
         };
-        return Ok(format!("{}{}", path, query));
+        Ok(format!("{}{}", path, query))
     }
 
     fn sort_query(&self, query: Option<&str>) -> String {

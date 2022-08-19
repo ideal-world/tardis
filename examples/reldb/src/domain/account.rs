@@ -4,7 +4,7 @@ use tardis::db::sea_orm;
 use tardis::db::sea_orm::*;
 use tardis::TardisFuns;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "test_account")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
