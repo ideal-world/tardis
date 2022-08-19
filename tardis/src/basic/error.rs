@@ -3,9 +3,10 @@ use crate::serde::{Deserialize, Serialize};
 use core::fmt::Display;
 use log::warn;
 use std::convert::Infallible;
-use std::num::ParseIntError;
+use std::num::{ParseIntError, TryFromIntError};
 use std::str::Utf8Error;
 use std::string::FromUtf8Error;
+use std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard};
 
 pub static ERROR_DEFAULT_CODE: &str = "-1";
 
@@ -184,5 +185,23 @@ impl From<hex::FromHexError> for TardisError {
 impl From<regex::Error> for TardisError {
     fn from(error: regex::Error) -> Self {
         TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+    }
+}
+
+impl From<TryFromIntError> for TardisError {
+    fn from(error: TryFromIntError) -> Self {
+        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+    }
+}
+
+impl<P> From<PoisonError<RwLockReadGuard<'_, P>>> for TardisError {
+    fn from(error: PoisonError<RwLockReadGuard<'_, P>>) -> Self {
+        TardisError::conflict(&format!("[Tardis.Basic] {}", error), "")
+    }
+}
+
+impl<P> From<PoisonError<RwLockWriteGuard<'_, P>>> for TardisError {
+    fn from(error: PoisonError<RwLockWriteGuard<'_, P>>) -> Self {
+        TardisError::conflict(&format!("[Tardis.Basic] {}", error), "")
     }
 }
