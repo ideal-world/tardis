@@ -2,7 +2,7 @@ use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
 #[tokio::test]
-async fn test_basic_crypto() -> TardisResult<()> {
+async fn test_crypto() -> TardisResult<()> {
     let hex_str = TardisFuns::crypto.hex.encode("测试".as_bytes());
     let str = TardisFuns::crypto.hex.decode(hex_str)?;
     assert_eq!(str, "测试".as_bytes());

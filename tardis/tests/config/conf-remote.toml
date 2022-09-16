@@ -1,0 +1,20 @@
+[fw]
+[fw.conf_center]
+kind = "nacos"
+url = "http://127.0.0.1:8848/nacos"
+username = "nacos"
+password = "nacos"
+group = "default"
+
+
+# appid-detault.toml in remote
+# [cs]
+# project_name = "测试_romote_default"
+# level_num = 3
+
+# appid-remote.toml in remote
+# [cs]
+# project_name = "测试_romote_remote"
+# [csm.m1]
+# [csm.m1.db_proj]
+# url = "ENC(9EE184E87EA31E6588C08BBC0F7C0E276DE482F7CEE914CBDA05DF619607A24E)"

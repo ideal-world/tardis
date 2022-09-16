@@ -52,6 +52,7 @@ async fn test_mq_client() -> TardisResult<()> {
                     ..Default::default()
                 },
                 adv: Default::default(),
+                conf_center: None,
             },
         })
         .await?;

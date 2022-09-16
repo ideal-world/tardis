@@ -53,6 +53,7 @@ async fn test_search_client() -> TardisResult<()> {
                     ..Default::default()
                 },
                 adv: Default::default(),
+                conf_center: None,
             },
         })
         .await?;

@@ -50,6 +50,7 @@ async fn test_os_client() -> TardisResult<()> {
                 modules: Default::default(),
             },
             adv: Default::default(),
+            conf_center: None,
         },
     })
     .await?;

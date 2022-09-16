@@ -8,7 +8,7 @@ use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
 
 #[tokio::test]
-async fn test_basic_config() -> TardisResult<()> {
+async fn test_config() -> TardisResult<()> {
     env::set_var("PROFILE", "test");
     TardisFuns::init("tests/config").await?;
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");

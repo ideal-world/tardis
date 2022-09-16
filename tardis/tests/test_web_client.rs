@@ -43,6 +43,7 @@ async fn test_web_client() -> TardisResult<()> {
                 ..Default::default()
             },
             adv: Default::default(),
+            conf_center: None,
         },
     })
     .await?;

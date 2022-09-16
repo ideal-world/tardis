@@ -118,11 +118,15 @@ tokio = { version = "1.18", features = ["time", "rt", "macros"] }
 criterion = { version = "0.4" }
 
 [[test]]
-name = "test_basic_config"
+name = "test_config"
 required-features = ["crypto"]
 
 [[test]]
-name = "test_basic_crypto"
+name = "test_config_with_remote"
+required-features = ["crypto","web-client"]
+
+[[test]]
+name = "test_crypto"
 required-features = ["crypto", "crypto_with_sm"]
 
 [[test]]

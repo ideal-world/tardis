@@ -321,7 +321,7 @@ impl TardisFuns {
     /// ```
     pub async fn init(relative_path: &str) -> TardisResult<()> {
         TardisLogger::init()?;
-        let config = TardisConfig::init(relative_path)?;
+        let config = TardisConfig::init(relative_path).await?;
         TardisFuns::init_conf(config).await
     }
 

@@ -39,6 +39,9 @@ pub struct FrameworkConfig {
     pub os: OSConfig,
     /// Advanced configuration / 高级配置
     pub adv: AdvConfig,
+    /// Config center configuration / 配置中心的配置
+    #[cfg(feature = "web-client")]
+    pub conf_center: Option<ConfCenterConfig>,
 }
 
 /// Application configuration / 应用配置
@@ -676,4 +679,30 @@ pub struct AdvConfig {
     /// `Enter Plain Text to Encrypt ` = `Value to be encrypted` , `Select Mode` = `ECB` , `Key Size in Bits` = `128` , `Enter Secret Key` = `Value of this field` , `Output Text Format` = `Hex`
     /// . Click `Encrypt` to wrap the generated value in `ENC(xx)` to replace the original value
     pub salt: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct ConfCenterConfig {
+    pub kind: String,
+    pub url: String,
+    pub username: String,
+    pub password: String,
+    pub group: Option<String>,
+    pub format: Option<String>,
+    pub namespace: Option<String>,
+}
+
+impl Default for ConfCenterConfig {
+    fn default() -> Self {
+        ConfCenterConfig {
+            kind: "nacos".to_string(),
+            url: "".to_string(),
+            username: "".to_string(),
+            password: "".to_string(),
+            format: Some("toml".to_string()),
+            group: Some("default".to_string()),
+            namespace: None,
+        }
+    }
 }

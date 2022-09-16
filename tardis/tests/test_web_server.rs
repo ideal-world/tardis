@@ -154,6 +154,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
                 ..Default::default()
             },
             adv: Default::default(),
+            conf_center: None,
         },
     })
     .await?;
@@ -579,6 +580,7 @@ async fn test_security() -> TardisResult<()> {
                     ..Default::default()
                 },
                 adv: Default::default(),
+                conf_center: None,
             },
         })
         .await?;
