@@ -84,7 +84,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = tr
 
 # RelDB
 sea-orm = { version = "0.9", features = ["sqlx-all", "macros", "runtime-tokio-native-tls", "debug-print"], optional = true }
-sqlparser = { version = "0.20", optional = true }
+sqlparser = { version = "0.23", optional = true }
 
 # Web Server
 poem-openapi = { version = "2", features = ["rapidoc", "chrono"], optional = true }
@@ -115,7 +115,7 @@ testcontainers = { version = "0.14", optional = true }
 [dev-dependencies]
 # Common
 tokio = { version = "1.18", features = ["time", "rt", "macros"] }
-criterion = { version = "0.3" }
+criterion = { version = "0.4" }
 
 [[test]]
 name = "test_basic_config"
