@@ -5,8 +5,8 @@ use poem::{EndpointExt, Route};
 use poem_openapi::{ExtraHeader, OpenApi, OpenApiService, ServerObject};
 use tokio::time::Duration;
 
-use crate::basic::config::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
 use crate::basic::result::TardisResult;
+use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
 use crate::log::info;
 use crate::web::uniform_error_mw::UniformError;
 

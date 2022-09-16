@@ -8,9 +8,9 @@ use redis::AsyncCommands;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
-use tardis::basic::config::{CacheConfig, CacheModuleConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
 use tardis::cache::cache_client::TardisCacheClient;
+use tardis::config::config_dto::{CacheConfig, CacheModuleConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 

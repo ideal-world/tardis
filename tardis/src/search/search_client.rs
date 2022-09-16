@@ -4,8 +4,9 @@ use log::trace;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
+use crate::config::config_dto::FrameworkConfig;
 use crate::log::info;
-use crate::{FrameworkConfig, TardisFuns, TardisWebClient};
+use crate::{TardisFuns, TardisWebClient};
 
 /// Distributed search handle / 分布式搜索操作
 ///

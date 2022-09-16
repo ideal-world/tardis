@@ -4,8 +4,8 @@ use std::env;
 
 use reqwest::StatusCode;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig};
 use tardis::basic::result::TardisResult;
+use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig};
 use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
 

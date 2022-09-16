@@ -1,7 +1,7 @@
 use std::env;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
+use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::mail::mail_client::TardisMailSendReq;
 use tardis::TardisFuns;
 

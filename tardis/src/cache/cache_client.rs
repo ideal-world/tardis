@@ -6,9 +6,9 @@ use redis::aio::MultiplexedConnection;
 use redis::{AsyncCommands, RedisError, RedisResult};
 use url::Url;
 
-use crate::basic::config::FrameworkConfig;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
+use crate::config::config_dto::FrameworkConfig;
 use crate::log::info;
 
 /// Distributed cache handle / 分布式缓存操作

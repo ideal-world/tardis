@@ -7,9 +7,9 @@ use futures_util::stream::StreamExt;
 use lapin::{options::*, types::FieldTable, BasicProperties, Channel, Connection, ConnectionProperties, Consumer, ExchangeKind};
 use url::Url;
 
-use crate::basic::config::FrameworkConfig;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
+use crate::config::config_dto::FrameworkConfig;
 use crate::log::{error, info, trace};
 
 pub struct TardisMQClient {

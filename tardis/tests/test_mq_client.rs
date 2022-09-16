@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::env;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MQModuleConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::basic::result::TardisResult;
+use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MQModuleConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 

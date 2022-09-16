@@ -9,11 +9,11 @@ use std::time::Duration;
 use testcontainers::clients;
 use tokio::time::sleep;
 
-use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};
 use tardis::basic::dto::TardisContext;
 use tardis::basic::error::TardisError;
 use tardis::basic::field::TrimString;
 use tardis::basic::result::{TardisResult, TARDIS_RESULT_ACCEPTED_CODE, TARDIS_RESULT_SUCCESS_CODE};
+use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig, WebServerModuleConfig};
 use tardis::serde::{Deserialize, Serialize};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::web::context_extractor::{TardisContextExtractor, TOKEN_FLAG};

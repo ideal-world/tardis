@@ -6,10 +6,11 @@ use reqwest::{Client, Method, Response};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
+use crate::config::config_dto::FrameworkConfig;
 use crate::log::info;
 use crate::serde::de::DeserializeOwned;
 use crate::serde::Serialize;
-use crate::{FrameworkConfig, TardisFuns};
+use crate::TardisFuns;
 
 pub struct TardisWebClient {
     default_headers: Vec<(String, String)>,
