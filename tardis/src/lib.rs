@@ -139,13 +139,13 @@ pub use url;
 use basic::error::TardisErrorWithExt;
 use basic::result::TardisResult;
 
-use crate::basic::config::{FrameworkConfig, TardisConfig};
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;
 use crate::basic::logger::TardisLogger;
 use crate::basic::uri::TardisUri;
 #[cfg(feature = "cache")]
 use crate::cache::cache_client::TardisCacheClient;
+use crate::config::config_dto::{FrameworkConfig, TardisConfig};
 #[cfg(feature = "reldb")]
 use crate::db::domain::tardis_db_config::TardisDataDict;
 #[cfg(feature = "reldb")]
@@ -582,17 +582,17 @@ impl TardisFuns {
     /// ```
     #[allow(non_upper_case_globals)]
     #[cfg(feature = "crypto")]
-    pub const crypto: basic::crypto::TardisCrypto = basic::crypto::TardisCrypto {
-        key: basic::crypto::TardisCryptoKey {},
-        hex: basic::crypto::TardisCryptoHex {},
-        base64: basic::crypto::TardisCryptoBase64 {},
-        aes: basic::crypto::TardisCryptoAes {},
-        rsa: basic::crypto::TardisCryptoRsa {},
+    pub const crypto: crypto::crypto_main::TardisCrypto = crypto::crypto_main::TardisCrypto {
+        key: crypto::crypto_key::TardisCryptoKey {},
+        hex: crypto::crypto_hex::TardisCryptoHex {},
+        base64: crypto::crypto_base64::TardisCryptoBase64 {},
+        aes: crypto::crypto_aes::TardisCryptoAes {},
+        rsa: crypto::crypto_rsa::TardisCryptoRsa {},
         #[cfg(feature = "crypto_with_sm")]
-        sm4: basic::crypto::TardisCryptoSm4 {},
+        sm4: crypto::crypto_sm2_4::TardisCryptoSm4 {},
         #[cfg(feature = "crypto_with_sm")]
-        sm2: basic::crypto::TardisCryptoSm2 {},
-        digest: basic::crypto::TardisCryptoDigest {},
+        sm2: crypto::crypto_sm2_4::TardisCryptoSm2 {},
+        digest: crypto::crypto_digest::TardisCryptoDigest {},
     };
 
     /// Use the relational database feature / 使用关系型数据库功能
@@ -1078,6 +1078,10 @@ pub mod basic;
 #[cfg(feature = "cache")]
 #[cfg_attr(docsrs, doc(cfg(feature = "cache")))]
 pub mod cache;
+pub mod config;
+#[cfg(feature = "crypto")]
+#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
+pub mod crypto;
 #[cfg(feature = "reldb")]
 #[cfg_attr(docsrs, doc(cfg(feature = "reldb")))]
 pub mod db;
