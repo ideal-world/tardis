@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use config::ConfigError;
 use serde::Deserialize;
@@ -12,9 +14,12 @@ pub(crate) struct ConfNacosProcessor;
 impl ConfCenterProcess for ConfNacosProcessor {
     async fn fetch_conf_urls(profile: &str, app_id: &str, config: &ConfCenterConfig) -> TardisResult<Vec<String>> {
         let auth_url = format!("{}/v1/auth/login", config.url);
+        let mut params = HashMap::new();
+        params.insert("username", &config.username);
+        params.insert("password", &config.password);
         let access_token = reqwest::Client::new()
             .post(&auth_url)
-            .body(format!("username={}&password={}", config.username, config.password))
+            .form(&params)
             .send()
             .await
             .map_err(|e| ConfigError::Foreign(Box::new(e)))?
@@ -27,17 +32,16 @@ impl ConfCenterProcess for ConfNacosProcessor {
         } else {
             "".to_string()
         };
-        let format = config.format.as_ref().unwrap_or(&"toml".to_string()).to_string();
-        let group = config.group.as_ref().unwrap_or(&"default".to_string()).to_string();
+        let group = config.group.as_ref().unwrap_or(&"DEFAULT_GROUP".to_string()).to_string();
 
         Ok(vec![
             format!(
-                "{}/v1/cs/configs?accessToken={}&dataId={}-default.{}&group={}{}",
-                config.url, access_token, app_id, format, group, tenant
+                "{}/v1/cs/configs?accessToken={}&dataId={}-default&group={}{}",
+                config.url, access_token, app_id, group, tenant
             ),
             format!(
-                "{}/v1/cs/configs?accessToken={}&dataId={}-{}.{}&group={}{}",
-                config.url, access_token, app_id, profile, format, group, tenant
+                "{}/v1/cs/configs?accessToken={}&dataId={}-{}&group={}{}",
+                config.url, access_token, app_id, profile, group, tenant
             ),
         ])
     }

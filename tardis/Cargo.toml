@@ -27,6 +27,7 @@ path = "src/lib.rs"
 
 [features]
 default = ["trace", "rt_tokio", "tardis-macros"]
+conf_remote = ["web-client", "async-trait"]
 trace = ["tracing", "tracing-subscriber"]
 crypto = ["rust-crypto", "rsa"]
 crypto_with_sm = ["libsm", "num-bigint"]
@@ -123,7 +124,7 @@ required-features = ["crypto"]
 
 [[test]]
 name = "test_config_with_remote"
-required-features = ["crypto","web-client"]
+required-features = ["crypto","conf_remote"]
 
 [[test]]
 name = "test_crypto"

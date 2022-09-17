@@ -1,6 +1,8 @@
+#[cfg(feature = "conf_remote")]
 use async_trait::async_trait;
 use config::builder::AsyncState;
 use config::{AsyncSource, ConfigBuilder, ConfigError, Environment, File, FileFormat, Format, Map};
+use log::warn;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
@@ -11,7 +13,6 @@ use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
-use crate::config::config_nacos::ConfNacosProcessor;
 use crate::log::{debug, info};
 use std::fmt::Debug;
 
@@ -22,10 +23,20 @@ use super::config_dto::{ConfCenterConfig, TardisConfig};
 /// Organizing Configuration Management with Tardis Best Practices
 ///
 /// 使用 Tardis 最佳实践组织配置管理
+///
+/// ## Configure fetch priority
+///
+/// 1. Local file: <local path>/conf-default.toml
+/// 1. Local file: <local path>/conf-<profile>.toml
+///     ``Requires [conf_remote] feature``
+/// 1. Remote file: <fw.app.id>-default
+///      ``Requires [conf_remote] feature``
+/// 1. Remote file: <fw.app.id>-<profile>
+/// 1. Environment variables starting with TARDIS
+///
 impl TardisConfig {
     pub(crate) async fn init(relative_path: &str) -> TardisResult<TardisConfig> {
         let profile = fetch_profile();
-        let path = Path::new(relative_path);
         let parent_path = env::current_dir().expect("[Tardis.Config] Current path get error");
 
         info!(
@@ -35,23 +46,33 @@ impl TardisConfig {
 
         let mut config = TardisConfig::do_init(relative_path, &profile, None).await?;
 
-        #[cfg(feature = "web-client")]
+        #[cfg(feature = "conf_remote")]
         {
             config = if let Some(conf_center) = &config.fw.conf_center {
+                if config.fw.app.id.is_empty() {
+                    return Err(TardisError::format_error(
+                        "[Tardis.Config] The [fw.app.id] must be set when the config center is enabled",
+                        "",
+                    ));
+                }
                 let format = match conf_center.format.as_ref().unwrap_or(&"toml".to_string()).to_lowercase().as_str() {
                     "toml" => FileFormat::Toml,
                     "json" => FileFormat::Json,
                     "yaml" => FileFormat::Yaml,
                     _ => {
                         return Err(TardisError::format_error(
-                            "[Tardis.Config] The file format of configcenter only supports [toml,json,yaml]",
+                            "[Tardis.Config] The file format of config center only supports [toml,json,yaml]",
                             "",
                         ))
                     }
                 };
+                info!(
+                    "[Tardis.Config] Enabled config center: [{}] {} , start refetching configuration",
+                    conf_center.kind, conf_center.url
+                );
                 let conf_center_urls = match conf_center.kind.to_lowercase().as_str() {
-                    "nacos" => ConfNacosProcessor::fetch_conf_urls(&profile, &config.fw.app.id, conf_center).await?,
-                    _ => return Err(TardisError::format_error("[Tardis.Config] The kind of configcenter only supports [nacos]", "")),
+                    "nacos" => crate::config::config_nacos::ConfNacosProcessor::fetch_conf_urls(&profile, &config.fw.app.id, conf_center).await?,
+                    _ => return Err(TardisError::format_error("[Tardis.Config] The kind of config center only supports [nacos]", "")),
                 };
                 TardisConfig::do_init(relative_path, &profile, Some((conf_center_urls, format))).await?
             } else {
@@ -65,7 +86,9 @@ impl TardisConfig {
         );
         debug!("=====[Tardis.Config] Content=====\n{:#?}\n=====", &config.fw);
 
-        TardisLocale::init(path)?;
+        if !relative_path.is_empty() {
+            TardisLocale::init(Path::new(relative_path))?;
+        }
         Ok(config)
     }
 
@@ -76,17 +99,22 @@ impl TardisConfig {
 
         // Fetch from local file
         if !relative_path.is_empty() {
-            conf = conf.add_source(File::from(path.join("conf-default")).required(true));
+            let file = path.join("conf-default");
+            debug!("[Tardis.Config] Fetch local file: {:?}", file);
+            conf = conf.add_source(File::from(file).required(true));
             if !profile.is_empty() {
-                conf = conf.add_source(File::from(path.join(format!("conf-{}", profile).as_str())).required(true));
+                let file = path.join(format!("conf-{}", profile).as_str());
+                debug!("[Tardis.Config] Fetch local file: {:?}", file);
+                conf = conf.add_source(File::from(file).required(true));
             }
         }
 
-        #[cfg(feature = "web-client")]
+        #[cfg(feature = "conf_remote")]
         {
             // Fetch from remote
             if let Some(conf_center) = conf_center {
                 for conf_center_url in conf_center.0 {
+                    debug!("[Tardis.Config] Fetch remote file: {}", conf_center_url);
                     conf = conf.add_async_source(HttpSource {
                         url: conf_center_url,
                         format: conf_center.1,
@@ -96,6 +124,7 @@ impl TardisConfig {
         }
 
         // Fetch from ENV
+        debug!("[Tardis.Config] Fetch env with prefix: TARDIS");
         conf = conf.add_source(Environment::with_prefix("TARDIS"));
         let conf = conf.build().await?;
 
@@ -152,30 +181,41 @@ impl TardisConfig {
     }
 }
 
+#[cfg(feature = "conf_remote")]
 #[derive(Debug)]
 pub(crate) struct HttpSource<F: Format> {
     url: String,
     format: F,
 }
 
+#[cfg(feature = "conf_remote")]
 #[async_trait]
 pub(crate) trait ConfCenterProcess {
     async fn fetch_conf_urls(profile: &str, app_id: &str, config: &ConfCenterConfig) -> TardisResult<Vec<String>>;
 }
 
+#[cfg(feature = "conf_remote")]
 #[async_trait]
 impl<F> AsyncSource for HttpSource<F>
 where
     F: Format + Send + Sync + Debug,
 {
     async fn collect(&self) -> Result<Map<String, config::Value>, ConfigError> {
-        reqwest::get(&self.url)
-            .await
-            .map_err(|e| ConfigError::Foreign(Box::new(e)))?
-            .text()
-            .await
-            .map_err(|e| ConfigError::Foreign(Box::new(e)))
-            .and_then(|text| self.format.parse(Some(&self.url), &text).map_err(|e| ConfigError::Foreign(e)))
+        let response = reqwest::get(&self.url).await.map_err(|e| ConfigError::Foreign(Box::new(e)))?;
+        match response.status().as_u16() {
+            404 => {
+                warn!("[Tardis.Config] Fetch remote file: {} not found", &self.url);
+                Ok(Map::default())
+            }
+            200 => {
+                response.text().await.map_err(|e| ConfigError::Foreign(Box::new(e))).and_then(|text| self.format.parse(Some(&self.url), &text).map_err(|e| ConfigError::Foreign(e)))
+            }
+            _ => Err(ConfigError::Message(format!(
+                "[Tardis.Config] Fetch remote file: {} error {}",
+                &self.url,
+                response.status().as_u16()
+            ))),
+        }
     }
 }
 

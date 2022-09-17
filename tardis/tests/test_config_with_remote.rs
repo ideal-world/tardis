@@ -9,6 +9,8 @@ use tardis::TardisFuns;
 #[tokio::test]
 #[ignore]
 async fn test_config_with_remote() -> TardisResult<()> {
+    env::set_var("RUST_LOG", "debug");
+
     TardisFuns::init("tests/config").await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 2);

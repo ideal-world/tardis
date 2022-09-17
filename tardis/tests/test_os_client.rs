@@ -49,8 +49,7 @@ async fn test_os_client() -> TardisResult<()> {
                 default_bucket: "".to_string(),
                 modules: Default::default(),
             },
-            adv: Default::default(),
-            conf_center: None,
+            ..Default::default()
         },
     })
     .await?;

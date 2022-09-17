@@ -40,7 +40,7 @@ pub struct FrameworkConfig {
     /// Advanced configuration / 高级配置
     pub adv: AdvConfig,
     /// Config center configuration / 配置中心的配置
-    #[cfg(feature = "web-client")]
+    #[cfg(feature = "conf_remote")]
     pub conf_center: Option<ConfCenterConfig>,
 }
 
