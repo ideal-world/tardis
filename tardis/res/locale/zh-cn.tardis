@@ -12,6 +12,8 @@
 406-tardis-json-str-to-json-error	Json字符串转Json错误
 406-tardis-json-obj-to-str-error	对象转Json字符串错误
 406-tardis-json-json-to-str-error	Json转Json字符串错误
+406-tardis-json-copy-serialize-error	对象复制序列化错误
+406-tardis-json-copy-deserialize-error	对象复制反序列化错误
 
 406-tardis-crypto-aes-key-invalid	AES Key格式错误
 406-tardis-crypto-aes-error	AES处理错误

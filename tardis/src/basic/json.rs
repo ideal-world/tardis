@@ -154,4 +154,18 @@ impl TardisJson {
             Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-json-to-str-error")),
         }
     }
+
+    pub fn copy<F: Serialize, T: DeserializeOwned>(&self, source: &F) -> TardisResult<T> {
+        let result = serde_json::to_value(source);
+        match result {
+            Ok(value) => {
+                let result = serde_json::from_value::<T>(value);
+                match result {
+                    Ok(r) => Ok(r),
+                    Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-copy-deserialize-error")),
+                }
+            }
+            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-copy-serialize-error")),
+        }
+    }
 }
