@@ -1,8 +1,7 @@
 #[cfg(feature = "conf_remote")]
 use async_trait::async_trait;
 use config::builder::AsyncState;
-use config::{AsyncSource, ConfigBuilder, ConfigError, Environment, File, FileFormat, Format, Map};
-use log::warn;
+use config::{ConfigBuilder, ConfigError, Environment, File, FileFormat};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
@@ -14,9 +13,8 @@ use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
 use crate::log::{debug, info};
-use std::fmt::Debug;
 
-use super::config_dto::{ConfCenterConfig, TardisConfig};
+use super::config_dto::TardisConfig;
 
 /// Configuration handle / 配置处理
 ///
@@ -92,7 +90,7 @@ impl TardisConfig {
         Ok(config)
     }
 
-    async fn do_init(relative_path: &str, profile: &str, conf_center: Option<(Vec<String>, FileFormat)>) -> TardisResult<TardisConfig> {
+    async fn do_init(relative_path: &str, profile: &str, _conf_center: Option<(Vec<String>, FileFormat)>) -> TardisResult<TardisConfig> {
         let mut conf = ConfigBuilder::<AsyncState>::default();
 
         let path = Path::new(relative_path);
@@ -112,7 +110,7 @@ impl TardisConfig {
         #[cfg(feature = "conf_remote")]
         {
             // Fetch from remote
-            if let Some(conf_center) = conf_center {
+            if let Some(conf_center) = _conf_center {
                 for conf_center_url in conf_center.0 {
                     debug!("[Tardis.Config] Fetch remote file: {}", conf_center_url);
                     conf = conf.add_async_source(HttpSource {
@@ -182,8 +180,8 @@ impl TardisConfig {
 }
 
 #[cfg(feature = "conf_remote")]
-#[derive(Debug)]
-pub(crate) struct HttpSource<F: Format> {
+#[derive(std::fmt::Debug)]
+pub(crate) struct HttpSource<F: config::Format> {
     url: String,
     format: F,
 }
@@ -191,21 +189,21 @@ pub(crate) struct HttpSource<F: Format> {
 #[cfg(feature = "conf_remote")]
 #[async_trait]
 pub(crate) trait ConfCenterProcess {
-    async fn fetch_conf_urls(profile: &str, app_id: &str, config: &ConfCenterConfig) -> TardisResult<Vec<String>>;
+    async fn fetch_conf_urls(profile: &str, app_id: &str, config: &super::config_dto::ConfCenterConfig) -> TardisResult<Vec<String>>;
 }
 
 #[cfg(feature = "conf_remote")]
 #[async_trait]
-impl<F> AsyncSource for HttpSource<F>
+impl<F> config::AsyncSource for HttpSource<F>
 where
-    F: Format + Send + Sync + Debug,
+    F: config::Format + Send + Sync + std::fmt::Debug,
 {
-    async fn collect(&self) -> Result<Map<String, config::Value>, ConfigError> {
+    async fn collect(&self) -> Result<config::Map<String, config::Value>, ConfigError> {
         let response = reqwest::get(&self.url).await.map_err(|e| ConfigError::Foreign(Box::new(e)))?;
         match response.status().as_u16() {
             404 => {
-                warn!("[Tardis.Config] Fetch remote file: {} not found", &self.url);
-                Ok(Map::default())
+                log::warn!("[Tardis.Config] Fetch remote file: {} not found", &self.url);
+                Ok(config::Map::default())
             }
             200 => {
                 response.text().await.map_err(|e| ConfigError::Foreign(Box::new(e))).and_then(|text| self.format.parse(Some(&self.url), &text).map_err(|e| ConfigError::Foreign(e)))

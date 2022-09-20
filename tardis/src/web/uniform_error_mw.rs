@@ -1,7 +1,7 @@
 use async_trait::async_trait;
+use log::{trace, warn};
 use poem::http::StatusCode;
 use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
-use tracing::{trace, warn};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;

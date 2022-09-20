@@ -26,20 +26,19 @@ name = "tardis"
 path = "src/lib.rs"
 
 [features]
-default = ["trace", "rt_tokio", "tardis-macros"]
+default = ["rt_tokio", "tardis-macros"]
+rt_tokio = ["tokio"]
 conf_remote = ["web-client", "async-trait"]
-trace = ["tracing", "tracing-subscriber"]
 crypto = ["rust-crypto", "rsa"]
 crypto_with_sm = ["libsm", "num-bigint"]
-rt_tokio = ["tokio"]
 future = ["rt_tokio", "futures", "async-stream", "futures-util", "async-trait"]
 reldb = ["future", "sqlparser", "sea-orm"]
-web-server = ["trace", "future", "poem", "poem-openapi", "poem-openapi-derive"]
+web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
 web-client = ["rt_tokio", "reqwest"]
 cache = ["futures-util", "redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 mail = ["lettre"]
-os = ["tokio", "async-trait", "anyhow", "rust-s3"]
+os = ["rt_tokio", "async-trait", "anyhow", "rust-s3"]
 test = ["testcontainers"]
 
 [dependencies]
@@ -78,10 +77,6 @@ futures = { version = "0.3", optional = true }
 async-stream = { version = "0.3", optional = true }
 futures-util = { version = "0.3", optional = true }
 async-trait = { version = "0.1", optional = true }
-
-# Tracing
-tracing = { version = "0.1", optional = true }
-tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
 
 # RelDB
 sea-orm = { version = "0.9", features = ["sqlx-all", "macros", "runtime-tokio-native-tls", "debug-print"], optional = true }
