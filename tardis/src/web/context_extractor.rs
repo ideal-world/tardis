@@ -11,10 +11,6 @@ pub const TOKEN_FLAG: &str = "__";
 #[oai(type = "api_key", key_name = "Tardis-Context", in = "header", checker = "context_checker")]
 pub struct TardisContextExtractor(pub TardisContext);
 
-pub trait TardisContextExtractFun {
-    fn extract_context(&self, req: &Request) -> TardisResult<TardisContext>;
-}
-
 async fn context_checker(req: &Request, _: ApiKey) -> Option<TardisContext> {
     match extract_context(req).await {
         Ok(context) => Some(context),
