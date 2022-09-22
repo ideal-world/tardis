@@ -14,8 +14,6 @@ impl TardisLogger {
         if std::env::var_os("RUST_LOG").is_none() {
             std::env::set_var("RUST_LOG", "info");
         }
-
-        #[cfg(feature = "trace")]
         tracing_subscriber::fmt::init();
         Ok(())
     }
