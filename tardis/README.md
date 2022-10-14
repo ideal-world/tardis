@@ -111,7 +111,7 @@ async fn main() -> TardisResult<()> {
   |-- reldb         Relational database usage example
   |-- web-basic     Web service Usage Example
   |-- web-client    Web client Usage Example
-  |-- webscoket     WebSocket Usage Example
+  |-- websocket     WebSocket Usage Example
   |-- cache         Cache Usage Example
   |-- mq            Message Queue Usage Example
   |-- todos         A complete project usage example

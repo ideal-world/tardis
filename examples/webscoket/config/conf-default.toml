@@ -1,9 +1,0 @@
-[app]
-id = "websocket"
-name = "ws基础示例"
-desc = "ws基础示例"
-version = "1.0.0"
-
-[web_server]
-port = 8089
-doc_urls = [["test env", "http://localhost:8089/"]]
