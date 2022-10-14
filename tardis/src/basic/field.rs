@@ -254,7 +254,7 @@ impl Deref for TrimString {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        &self.0.trim()
+        self.0.trim()
     }
 }
 

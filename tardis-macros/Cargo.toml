@@ -4,12 +4,7 @@ version = "0.1.0-alpha26"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
-categories = [
-    "asynchronous",
-    "web-programming",
-    "database",
-    "caching",
-]
+categories = ["asynchronous", "web-programming", "database", "caching"]
 homepage = "https://github.com/ideal-world/tardis"
 documentation = "https://docs.rs/tardis/"
 repository = "https://github.com/ideal-world/tardis"
@@ -27,5 +22,3 @@ quote = "1"
 proc-macro2 = "1"
 
 [dev-dependencies]
-
-
