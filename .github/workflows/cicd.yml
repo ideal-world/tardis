@@ -37,7 +37,7 @@ jobs:
         image: minio/minio:RELEASE.2022-02-07T08-17-33Z
         ports:
           - 9000:9000
-        options: --entrypoint server /data
+        options: --entrypoint 'server /data'
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
