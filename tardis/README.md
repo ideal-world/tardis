@@ -136,6 +136,15 @@ async fn main() -> TardisResult<()> {
   ```shell
   apt install build-essential perl pkg-config libssl-dev
   ```
+* FreeBSD deployment for ``openssl-sys``
+  ```shell
+  sudo pkg install cmake ninja zip pkgconf gmake
+  git clone https://github.com/Microsoft/vcpkg --depth=1
+  cd vcpkg
+  sh bootstrap-vcpkg.sh
+  ./vcpkg integrate install
+  ./vcpkg install openssl
+  ```
 
 ----
 Thanks to `Jetbrains` for the [Open Source License](https://www.jetbrains.com/community/opensource/)
