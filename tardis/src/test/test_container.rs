@@ -5,6 +5,7 @@ use testcontainers::clients::Cli;
 use testcontainers::core::Container;
 use testcontainers::core::WaitFor;
 use testcontainers::images::generic::GenericImage;
+use testcontainers::images::minio::MinIO;
 use testcontainers::images::redis::Redis;
 use testcontainers::{clients, images};
 
@@ -153,5 +154,24 @@ impl TardisTestContainer {
                 .with_env_var("discovery.type", "single-node")
                 .with_wait_for(WaitFor::message_on_stdout("successfully loaded geoip database file")),
         )
+    }
+
+    pub async fn minio<F, T>(fun: F) -> TardisResult<()>
+    where
+        F: Fn(String) -> T + Send + Sync + 'static,
+        T: Future<Output = TardisResult<()>> + Send + 'static,
+    {
+        if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
+            fun("http://localhost:9000".to_string()).await
+        } else {
+            let docker = clients::Cli::default();
+            let node = TardisTestContainer::minio_custom(&docker);
+            let port = node.get_host_port_ipv4(9000);
+            fun(format!("http://localhost:{}", port)).await
+        }
+    }
+
+    pub fn minio_custom(docker: &Cli) -> Container<MinIO> {
+        docker.run(images::minio::MinIO::default())
     }
 }

@@ -1,6 +1,6 @@
 name: CICD
 
-on: [ push ]
+on: [push]
 
 env:
   TARDIS_TEST_DISABLED_DOCKER: true
@@ -33,6 +33,10 @@ jobs:
         ports:
           - 9200:9200
         options: -e ELASTIC_PASSWORD=123456 -e discovery.type=single-node
+      minio:
+        image: minio/minio:RELEASE.2022-02-07T08-17-33Z
+        ports:
+          - 9000:9000
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
@@ -55,7 +59,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '--all --all-features'
+          args: "--all --all-features"
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
@@ -93,25 +97,25 @@ jobs:
         run: cargo publish
 
   publish-tardis:
-      if: startsWith(github.ref, 'refs/tags/')
-      needs: [check, publish-macros]
-      runs-on: ubuntu-latest
-      steps:
-        - name: Check out the repo
-          uses: actions/checkout@v3
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [check, publish-macros]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
 
-        - name: Init rust envrionment
-          uses: actions-rs/toolchain@v1
-          with:
-            toolchain: stable
+      - name: Init rust envrionment
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
-        - name: Cargo login
-          run: cargo login ${{ secrets.CRATES_TOKEN }}
+      - name: Cargo login
+        run: cargo login ${{ secrets.CRATES_TOKEN }}
 
-        - name: Cargo package tardis
-          working-directory: tardis
-          run: cargo package
+      - name: Cargo package tardis
+        working-directory: tardis
+        run: cargo package
 
-        - name: Cargo publish tardis
-          working-directory: tardis
-          run: cargo publish
+      - name: Cargo publish tardis
+        working-directory: tardis
+        run: cargo publish
