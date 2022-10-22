@@ -1,6 +1,6 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha26"
+version = "0.1.0-alpha27"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -27,7 +27,7 @@ conf_remote = ["web-client", "async-trait"]
 crypto = ["rust-crypto", "rsa"]
 crypto_with_sm = ["libsm", "num-bigint"]
 future = ["rt_tokio", "futures", "async-stream", "futures-util", "async-trait"]
-reldb = ["future", "sqlparser", "sea-orm"]
+reldb = ["future", "sqlparser", "sea-orm", "sqlx"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
 web-client = ["rt_tokio", "reqwest"]
 cache = ["futures-util", "redis"]
@@ -59,7 +59,7 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # macros
-tardis-macros = { version = "0.1.0-alpha26", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-alpha27", path = "../tardis-macros", optional = true }
 
 # Tokio
 tokio = { version = "1.18", features = [
@@ -88,6 +88,7 @@ sea-orm = { version = "0.9", features = [
     "runtime-tokio-native-tls",
     "debug-print",
 ], optional = true }
+sqlx = { version = "0.6", features = ["any"], optional = true }
 sqlparser = { version = "0.23", optional = true }
 
 # Web Server

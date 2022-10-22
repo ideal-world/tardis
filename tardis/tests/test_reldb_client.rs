@@ -3,6 +3,7 @@
 use std::env;
 use std::time::Duration;
 
+use chrono::{DateTime, Utc};
 use tokio::time::sleep;
 
 use tardis::basic::dto::TardisContext;
@@ -29,6 +30,7 @@ async fn test_reldb_client() -> TardisResult<()> {
         test_advanced_query(&client).await?;
         test_raw_query(&client).await?;
         test_data_dict(&client).await?;
+        test_timezone(&url).await?;
         Ok(())
     })
     .await
@@ -511,6 +513,24 @@ async fn test_data_dict(client: &TardisRelDBClient) -> TardisResult<()> {
     assert_eq!(vals[0].v, "1");
     assert_eq!(vals[1].k, "t1:yy");
     assert_eq!(vals[1].v, "2");
+
+    Ok(())
+}
+
+async fn test_timezone(url: &str) -> TardisResult<()> {
+    let client_with_out_time_zone = TardisRelDBClient::init(&url, 10, 5, None, None).await?;
+    let client_with_time_zone = TardisRelDBClient::init(&format!("{}?timezone=%2B08:00", url), 10, 5, None, None).await?;
+
+    let tz = client_with_out_time_zone.conn().query_one("SELECT @@global.time_zone z1, @@session.time_zone z2", Vec::new()).await?.unwrap().try_get::<String>("", "z2")?;
+    assert_eq!(tz, "+00:00");
+
+    let tz = client_with_time_zone.conn().query_one("SELECT @@global.time_zone z1, @@session.time_zone z2", Vec::new()).await?.unwrap().try_get::<String>("", "z2")?;
+    assert_eq!(tz, "+08:00");
+
+    let now1 = client_with_out_time_zone.conn().query_one("select CURRENT_TIMESTAMP() AS now", Vec::new()).await?.unwrap().try_get::<DateTime<Utc>>("", "now")?;
+    let now2 = client_with_time_zone.conn().query_one("select CURRENT_TIMESTAMP() AS now", Vec::new()).await?.unwrap().try_get::<DateTime<Utc>>("", "now")?;
+
+    println!("client_with_out_time_zone：{},client_with_time_zone：{},", now1, now2);
 
     Ok(())
 }

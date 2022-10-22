@@ -14,6 +14,9 @@ use sqlparser::ast;
 use sqlparser::ast::{SetExpr, TableFactor};
 use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::{Parser, ParserError};
+use sqlx::mysql::MySqlConnectOptions;
+use sqlx::postgres::PgConnectOptions;
+use sqlx::{Executor, MySql, Postgres};
 use url::Url;
 
 use crate::basic::dto::TardisContext;
@@ -178,7 +181,72 @@ impl TardisRelDBClient {
         if let Some(idle_timeout_sec) = idle_timeout_sec {
             opt.idle_timeout(Duration::from_secs(idle_timeout_sec));
         }
-        let con = Database::connect(opt).await?;
+        let con = if let Some(timezone) = url.query_pairs().find(|x| x.0.to_lowercase() == "timezone").map(|x| x.1.to_string()) {
+            match url.scheme().to_lowercase().as_str() {
+                "mysql" => {
+                    let mut raw_opt = opt.get_url().parse::<MySqlConnectOptions>().map_err(|e| DbErr::Conn(e.to_string()))?;
+                    use sqlx::ConnectOptions;
+                    if !opt.get_sqlx_logging() {
+                        raw_opt.disable_statement_logging();
+                    } else {
+                        raw_opt.log_statements(opt.get_sqlx_logging_level());
+                    }
+                    match opt
+                        .pool_options::<MySql>()
+                        .after_connect(move |conn, _| {
+                            let timezone = timezone.clone();
+                            Box::pin(async move {
+                                conn.execute(format!("SET time_zone = '{}';", timezone).as_str()).await?;
+                                Ok(())
+                            })
+                        })
+                        .connect_with(raw_opt)
+                        .await
+                    {
+                        Ok(pool) => Ok(SqlxMySqlConnector::from_sqlx_mysql_pool(pool)),
+                        Err(e) => Err(TardisError::format_error(
+                            &format!("[Tardis.RelDBClient] {} Initialization error: {}", str_url, e),
+                            "406-tardis-reldb-conn-init-error",
+                        )),
+                    }
+                }
+                "postgres" => {
+                    let mut raw_opt = opt.get_url().parse::<PgConnectOptions>().map_err(|e| DbErr::Conn(e.to_string()))?;
+                    use sqlx::ConnectOptions;
+                    if !opt.get_sqlx_logging() {
+                        raw_opt.disable_statement_logging();
+                    } else {
+                        raw_opt.log_statements(opt.get_sqlx_logging_level());
+                    }
+                    match opt
+                        .pool_options::<Postgres>()
+                        .after_connect(move |conn, _| {
+                            let timezone = timezone.clone();
+                            Box::pin(async move {
+                                conn.execute(format!("SET TIME ZONE '{}';", timezone).as_str()).await?;
+                                Ok(())
+                            })
+                        })
+                        .connect_with(raw_opt)
+                        .await
+                    {
+                        Ok(pool) => Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool)),
+                        Err(e) => Err(TardisError::format_error(
+                            &format!("[Tardis.RelDBClient] {} Initialization error: {}", str_url, e),
+                            "406-tardis-reldb-conn-init-error",
+                        )),
+                    }
+                }
+                _ => Err(TardisError::format_error(
+                    &format!("[Tardis.RelDBClient] {} , current database does not support setting timezone", str_url),
+                    "406-tardis-reldb-conn-init-error",
+                )),
+            }
+        } else {
+            Database::connect(opt)
+                .await
+                .map_err(|e| TardisError::format_error(&format!("[Tardis.RelDBClient] {} Initialization error: {}", str_url, e), "406-tardis-reldb-conn-init-error"))
+        }?;
         info!(
             "[Tardis.RelDBClient] Initialized, host:{}, port:{}, max_connections:{}",
             url.host_str().unwrap_or(""),
@@ -242,7 +310,7 @@ impl TardisRelDBClient {
     {
         trace!("[Tardis.RelDBClient] Creating table");
         let statement = db.get_database_backend().build(statement);
-        match TardisRelDBClient::execute_inner(statement, db).await {
+        match Self::execute_inner(statement, db).await {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
@@ -255,19 +323,53 @@ impl TardisRelDBClient {
         trace!("[Tardis.RelDBClient] Creating index from statements");
         for statement in statements {
             let statement = db.get_database_backend().build(statement);
-            if let Err(e) = TardisRelDBClient::execute_inner(statement, db).await {
+            if let Err(e) = Self::execute_inner(statement, db).await {
                 return Err(e);
             }
         }
         Ok(())
     }
 
+    pub(self) async fn execute_one_inner<C>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<ExecResult>
+    where
+        C: ConnectionTrait,
+    {
+        trace!("[Tardis.RelDBClient] Executing one sql {}, params:{:?}", sql, params);
+        let execute_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
+        Self::execute_inner(execute_stmt, db).await
+    }
+
     pub(self) async fn execute_inner<C>(statement: Statement, db: &C) -> TardisResult<ExecResult>
     where
         C: ConnectionTrait,
     {
-        trace!("[Tardis.RelDBClient] Executing statement {}", statement);
         let result = db.execute(statement).await;
+        match result {
+            Ok(ok) => TardisResult::Ok(ok),
+            Err(err) => TardisResult::Err(TardisError::from(err)),
+        }
+    }
+
+    pub(self) async fn query_one_inner<C>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<Option<QueryResult>>
+    where
+        C: ConnectionTrait,
+    {
+        trace!("[Tardis.RelDBClient] Quering one sql {}, params:{:?}", sql, params);
+        let query_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
+        let result = db.query_one(query_stmt).await;
+        match result {
+            Ok(ok) => TardisResult::Ok(ok),
+            Err(err) => TardisResult::Err(TardisError::from(err)),
+        }
+    }
+
+    pub(self) async fn query_all_inner<C>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<Vec<QueryResult>>
+    where
+        C: ConnectionTrait,
+    {
+        trace!("[Tardis.RelDBClient] Quering all sql {}, params:{:?}", sql, params);
+        let query_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
+        let result = db.query_all(query_stmt).await;
         match result {
             Ok(ok) => TardisResult::Ok(ok),
             Err(err) => TardisResult::Err(TardisError::from(err)),
@@ -697,19 +799,28 @@ impl TardisRelDBlConnection {
 
     /// Execute SQL operations (provide custom SQL processing capabilities) / 执行SQL操作（提供自定义SQL处理能力）
     ///
-    /// # Arguments
     ///
-    ///  * `statement` -  Custom statement / 自定义Statement
-    ///
-    pub async fn execute<S>(&self, statement: &S) -> TardisResult<ExecResult>
-    where
-        S: StatementBuilder,
-    {
-        let statement = self.conn.get_database_backend().build(statement);
+    pub async fn execute_one(&self, sql: &str, params: Vec<Value>) -> TardisResult<ExecResult> {
         if let Some(tx) = &self.tx {
-            TardisRelDBClient::execute_inner(statement, tx).await
+            TardisRelDBClient::execute_one_inner(sql, params, tx).await
         } else {
-            TardisRelDBClient::execute_inner(statement, self.conn.as_ref()).await
+            TardisRelDBClient::execute_one_inner(sql, params, self.conn.as_ref()).await
+        }
+    }
+
+    pub async fn query_one(&self, sql: &str, params: Vec<Value>) -> TardisResult<Option<QueryResult>> {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::query_one_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::query_one_inner(sql, params, self.conn.as_ref()).await
+        }
+    }
+
+    pub async fn query_all(&self, sql: &str, params: Vec<Value>) -> TardisResult<Vec<QueryResult>> {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::query_all_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::query_all_inner(sql, params, self.conn.as_ref()).await
         }
     }
 
