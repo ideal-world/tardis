@@ -323,9 +323,7 @@ impl TardisRelDBClient {
         trace!("[Tardis.RelDBClient] Creating index from statements");
         for statement in statements {
             let statement = db.get_database_backend().build(statement);
-            if let Err(e) = Self::execute_inner(statement, db).await {
-                return Err(e);
-            }
+            Self::execute_inner(statement, db).await?;
         }
         Ok(())
     }
@@ -794,6 +792,24 @@ impl TardisRelDBlConnection {
             TardisRelDBClient::count_inner(select_statement, tx).await
         } else {
             TardisRelDBClient::count_inner(select_statement, self.conn.as_ref()).await
+        }
+    }
+
+    /// Execute SQL operations (provide custom SQL processing capabilities) / 执行SQL操作（提供自定义SQL处理能力）
+    ///
+    /// # Arguments
+    ///
+    ///  * `statement` -  Custom statement / 自定义Statement
+    ///
+    pub async fn execute<S>(&self, statement: &S) -> TardisResult<ExecResult>
+    where
+        S: StatementBuilder,
+    {
+        let statement = self.conn.get_database_backend().build(statement);
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::execute_inner(statement, tx).await
+        } else {
+            TardisRelDBClient::execute_inner(statement, self.conn.as_ref()).await
         }
     }
 
