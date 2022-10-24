@@ -253,9 +253,7 @@ impl TardisRelDBClient {
             url.port().unwrap_or(0),
             min_connections
         );
-        let client = TardisRelDBClient { con: Arc::new(con) };
-        client.init_basic_tables().await?;
-        Ok(client)
+        Ok(TardisRelDBClient { con: Arc::new(con) })
     }
 
     /// Get database instance implementation / 获取数据库实例的实现
@@ -271,7 +269,7 @@ impl TardisRelDBClient {
     }
 
     /// Initialize basic tables / 初始化基础表
-    async fn init_basic_tables(&self) -> TardisResult<()> {
+    pub async fn init_basic_tables(&self) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] Initializing basic tables");
         let tx = self.con.begin().await?;
         let config_create_table_statements = tardis_db_config::ActiveModel::create_table_and_index_statement(self.con.get_database_backend());

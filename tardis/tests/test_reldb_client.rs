@@ -24,6 +24,8 @@ async fn test_reldb_client() -> TardisResult<()> {
     TardisTestContainer::mysql(None, |url| async move {
         let client = TardisRelDBClient::init(&url, 10, 5, None, None).await?;
 
+        client.init_basic_tables().await?;
+
         test_basic(&client).await?;
         test_rel(&client).await?;
         test_transaction(&client).await?;
