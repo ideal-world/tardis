@@ -1,6 +1,6 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha27"
+version = "0.1.0-alpha28"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -59,7 +59,7 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # macros
-tardis-macros = { version = "0.1.0-alpha27", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-alpha28", path = "../tardis-macros", optional = true }
 
 # Tokio
 tokio = { version = "1.18", features = [
