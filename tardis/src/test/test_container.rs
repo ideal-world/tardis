@@ -152,7 +152,7 @@ impl TardisTestContainer {
             images::generic::GenericImage::new("elasticsearch", "8.1.0")
                 .with_env_var("ELASTIC_PASSWORD", "123456")
                 .with_env_var("discovery.type", "single-node")
-                .with_wait_for(WaitFor::message_on_stdout("successfully loaded geoip database file")),
+                .with_wait_for(WaitFor::message_on_stdout("license mode is [basic], currently licensed security realms are")),
         )
     }
 
