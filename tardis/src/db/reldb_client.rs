@@ -184,7 +184,7 @@ impl TardisRelDBClient {
         let con = if let Some(timezone) = url.query_pairs().find(|x| x.0.to_lowercase() == "timezone").map(|x| x.1.to_string()) {
             match url.scheme().to_lowercase().as_str() {
                 "mysql" => {
-                    let mut raw_opt = opt.get_url().parse::<MySqlConnectOptions>().map_err(|e| DbErr::Conn(e.to_string()))?;
+                    let mut raw_opt = opt.get_url().parse::<MySqlConnectOptions>().map_err(|e| DbErr::Conn(RuntimeErr::Internal(e.to_string())))?;
                     use sqlx::ConnectOptions;
                     if !opt.get_sqlx_logging() {
                         raw_opt.disable_statement_logging();
@@ -211,7 +211,7 @@ impl TardisRelDBClient {
                     }
                 }
                 "postgres" => {
-                    let mut raw_opt = opt.get_url().parse::<PgConnectOptions>().map_err(|e| DbErr::Conn(e.to_string()))?;
+                    let mut raw_opt = opt.get_url().parse::<PgConnectOptions>().map_err(|e| DbErr::Conn(RuntimeErr::Internal(e.to_string())))?;
                     use sqlx::ConnectOptions;
                     if !opt.get_sqlx_logging() {
                         raw_opt.disable_statement_logging();
