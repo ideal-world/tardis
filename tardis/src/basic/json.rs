@@ -3,6 +3,8 @@ use crate::basic::result::TardisResult;
 use crate::serde::de::DeserializeOwned;
 use crate::serde::{Deserialize, Serialize};
 use crate::serde_json::Value;
+use std::fs::File;
+use std::path::Path;
 
 /// Json handle / Json处理
 ///
@@ -57,6 +59,48 @@ impl TardisJson {
         match result {
             Ok(r) => Ok(r),
             Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-str-to-obj-error")),
+        }
+    }
+
+    /// Convert std::io::Read trait to Rust object / 将Read trait转换为Rust对象 \
+    /// see [serde_json::from_reader]
+    /// # Arguments
+    ///
+    /// * `rdr` - impl std::io::Read trait/ impl Read trait 对象
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// use tardis::serde_json::Value;
+    ///
+    /// let file = fs::File::open("text.json")?
+    /// TardisFuns::json.reader_to_obj::<Value>(file);
+    /// ```
+    pub fn reader_to_obj<R: std::io::Read, T: DeserializeOwned>(&self, rdr: R) -> TardisResult<T> {
+        let result = serde_json::from_reader::<R, T>(rdr);
+        match result {
+            Ok(r) => Ok(r),
+            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-reader-to-obj-error")),
+        }
+    }
+
+    /// Read the contents of the file and convert it to a Rust object / 读取file文件内容转换为Rust对象
+    /// # Arguments
+    ///
+    /// * `path` - file path/ file路径
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// use tardis::serde_json::Value;
+    ///
+    /// TardisFuns::json.file_to_obj::<Value, &str>("text.json")?;
+    /// ```
+    pub fn file_to_obj<T: DeserializeOwned, P: AsRef<Path>>(&self, path: P) -> TardisResult<T> {
+        let file = File::open(path);
+        match file {
+            Ok(f) => self.reader_to_obj::<File, T>(f),
+            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-file-to-obj-error")),
         }
     }
 

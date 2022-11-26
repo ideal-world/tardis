@@ -1,5 +1,6 @@
 use chrono::{DateTime, TimeZone, Utc};
 use serde::Deserializer;
+use std::fs;
 use tardis::basic::dto::TardisContext;
 use tardis::basic::field::TrimString;
 use tardis::basic::result::TardisResult;
@@ -33,6 +34,17 @@ async fn test_basic_json() -> TardisResult<()> {
     assert_eq!(json_value["db_proj"]["url"], "http://xxx");
 
     let json_obj = TardisFuns::json.json_to_obj::<TestConfig<DatabaseConfig>>(json_value)?;
+    assert_eq!(json_obj.project_name, "测试");
+    assert_eq!(json_obj.level_num, 0);
+    assert_eq!(json_obj.db_proj.url, "http://xxx");
+
+    let file = fs::File::open("tests/test-json-files/text.json")?;
+    let json_obj: TestConfig<DatabaseConfig> = TardisFuns::json.reader_to_obj(file)?;
+    assert_eq!(json_obj.project_name, "测试");
+    assert_eq!(json_obj.level_num, 0);
+    assert_eq!(json_obj.db_proj.url, "http://xxx");
+
+    let json_obj = TardisFuns::json.file_to_obj::<TestConfig<DatabaseConfig>, &str>("tests/test-json-files/text.json")?;
     assert_eq!(json_obj.project_name, "测试");
     assert_eq!(json_obj.level_num, 0);
     assert_eq!(json_obj.db_proj.url, "http://xxx");
