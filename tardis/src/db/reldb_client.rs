@@ -272,10 +272,15 @@ impl TardisRelDBClient {
     pub async fn init_basic_tables(&self) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] Initializing basic tables");
         let tx = self.con.begin().await?;
-        let config_create_table_statements = tardis_db_config::ActiveModel::create_table_and_index_statement(self.con.get_database_backend());
-        TardisRelDBClient::create_table_and_index_inner(&config_create_table_statements, &tx).await?;
-        let del_record_create_statements = tardis_db_del_record::ActiveModel::create_table_and_index_statement(self.con.get_database_backend());
-        TardisRelDBClient::create_table_and_index_inner(&del_record_create_statements, &tx).await?;
+        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"));
+        TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
+        TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
+        for function_sql in create_all.2 {
+            TardisRelDBClient::execute_one_inner(&function_sql, Vec::new(), &tx).await?;
+        }
+        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None);
+        TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
+        TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         tx.commit().await?;
         Ok(())
     }
@@ -291,15 +296,6 @@ impl TardisRelDBClient {
         let schema = Schema::new(builder);
         let table_create_statement = &schema.create_table_from_entity(entity);
         TardisRelDBClient::create_table_inner(table_create_statement, db).await
-    }
-
-    pub(self) async fn create_table_and_index_inner<C>(statements: &(TableCreateStatement, Vec<IndexCreateStatement>), db: &C) -> TardisResult<()>
-    where
-        C: ConnectionTrait,
-    {
-        trace!("[Tardis.RelDBClient] Creating table and index from statements");
-        Self::create_table_inner(&statements.0, db).await?;
-        Self::create_index_inner(&statements.1, db).await
     }
 
     pub(self) async fn create_table_inner<C>(statement: &TableCreateStatement, db: &C) -> TardisResult<()>
@@ -609,11 +605,12 @@ impl TardisRelDBlConnection {
         }
     }
 
-    /// Create table and index / 创建表和索引
+    /// Create table index and functions / 创建表、索引和函数
     ///
     /// # Arguments
     ///
     ///  * `statements` -  Statement for creating table and creating index / 创建表和创建索引的Statement
+    ///  * `function_sqls` -  sql for functions / 创建函数的sqls
     ///
     /// # Examples
     /// ```ignore
@@ -621,11 +618,15 @@ impl TardisRelDBlConnection {
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
     /// let mut conn = TardisFuns::reldb().conn();
-    /// conn.create_table_and_index(&tardis_db_config::ActiveModel::create_table_and_index_statement(TardisFuns::reldb().backend())).await.unwrap();
+    /// conn.init(&tardis_db_config::ActiveModel::create_table_and_index_statement(TardisFuns::reldb().backend())).await.unwrap();
     /// ```
-    pub async fn create_table_and_index(&self, statements: &(TableCreateStatement, Vec<IndexCreateStatement>)) -> TardisResult<()> {
+    pub async fn init(&self, statements: &(TableCreateStatement, Vec<IndexCreateStatement>), function_sqls: Vec<String>) -> TardisResult<()> {
         self.create_table(&statements.0).await?;
-        self.create_index(&statements.1).await
+        self.create_index(&statements.1).await?;
+        for function_sql in function_sqls {
+            self.execute_one(&function_sql, Vec::new()).await?;
+        }
+        Ok(())
     }
 
     /// Create table  / 创建表
@@ -1207,18 +1208,27 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     /// # Arguments
     ///
     ///  * `db` -  database instance type / 数据库实例类型
-    ///
-    /// # Examples
-    /// ```ignore
-    /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_orm::sea_query::*;
-    /// use tardis::basic::dto::TardisContext;
-    /// fn create_table_and_index_statement(db: DbBackend) -> (TableCreateStatement, Vec<IndexCreateStatement>) {
-    ///     (Self::create_table_statement(db), Self::create_index_statement())
-    /// }
+    ///  * `update_time_field` -  update time field / 更新字段
     /// ```
-    fn create_table_and_index_statement(db: DbBackend) -> (TableCreateStatement, Vec<IndexCreateStatement>) {
-        (Self::create_table_statement(db), Self::create_index_statement())
+    fn init(db: DbBackend, update_time_field: Option<&str>) -> (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>) {
+        let create_table_statement = Self::create_table_statement(db);
+        // create_table_statement.to_string(schema_builder)
+        let create_index_statement = Self::create_index_statement();
+        if let Some(table_name) = create_table_statement.get_table_name() {
+            let table_name = match table_name {
+                sea_query::TableRef::Table(t)
+                | sea_query::TableRef::SchemaTable(_, t)
+                | sea_query::TableRef::DatabaseSchemaTable(_, _, t)
+                | sea_query::TableRef::TableAlias(t, _)
+                | sea_query::TableRef::SchemaTableAlias(_, t, _)
+                | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
+                _ => unimplemented!(),
+            };
+            // let df = table_name.;
+            let create_function_sql = Self::create_function_sqls(db, &table_name, update_time_field);
+            return (create_table_statement, create_index_statement, create_function_sql);
+        }
+        (create_table_statement, create_index_statement, Vec::new())
     }
 
     /// Create table / 创建表
@@ -1290,6 +1300,42 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///     }
     fn create_index_statement() -> Vec<IndexCreateStatement> {
         vec![]
+    }
+
+    /// Create functions / 创建函数
+    fn create_function_sqls(db: DbBackend, table_name: &str, update_time_field: Option<&str>) -> Vec<String> {
+        if db == DbBackend::Postgres {
+            if let Some(update_time_field) = update_time_field {
+                return Self::create_function_postgresql_auto_update_time(table_name, update_time_field);
+            }
+        }
+        vec![]
+    }
+
+    fn create_function_postgresql_auto_update_time(table_name: &str, update_time_field: &str) -> Vec<String> {
+        vec![
+            format!(
+                r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_ITME_{}()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.{} = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';"###,
+                update_time_field.replace('-', "_"),
+                update_time_field
+            ),
+            format!(
+                r###"CREATE OR REPLACE TRIGGER TARDIS_ATUO_UPDATE_TIME_ON
+    BEFORE UPDATE
+    ON
+        {}
+    FOR EACH ROW
+EXECUTE PROCEDURE TARDIS_AUTO_UPDATE_ITME_{}();"###,
+                table_name,
+                update_time_field.replace('-', "_")
+            ),
+        ]
     }
 }
 

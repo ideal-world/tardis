@@ -39,34 +39,7 @@ async fn test_reldb_client() -> TardisResult<()> {
     TardisTestContainer::postgres(None, |url| async move {
         let client = TardisRelDBClient::init(&url, 10, 5, None, None).await?;
 
-        client
-            .conn()
-            .execute_one(
-                r###"CREATE  FUNCTION update_updated_common()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.update_time = now();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';"###,
-                Vec::new(),
-            )
-            .await?;
-
         client.init_basic_tables().await?;
-
-        client
-            .conn()
-            .execute_one(
-                r###"CREATE TRIGGER update_tardis_config_updated_on
-    BEFORE UPDATE
-    ON
-        tardis_config
-    FOR EACH ROW
-EXECUTE PROCEDURE update_updated_common();"###,
-                Vec::new(),
-            )
-            .await?;
 
         test_basic(&client).await?;
         test_rel(&client).await?;
