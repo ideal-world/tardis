@@ -622,8 +622,9 @@ impl TardisRelDBlConnection {
     ///
     /// # Arguments
     ///
-    ///  * `statements` -  Statement for creating table and creating index / 创建表和创建索引的Statement
-    ///  * `function_sqls` -  sql for functions / 创建函数的sqls
+    ///  * `params.0` -  Statement for creating table  / 创建表的Statement
+    ///  * `params.1` -  Statement for creating index / 创建索引的Statements
+    ///  * `params.2` -  sql for functions / 创建函数的sqls
     ///
     /// # Examples
     /// ```ignore
@@ -631,12 +632,12 @@ impl TardisRelDBlConnection {
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
     /// let mut conn = TardisFuns::reldb().conn();
-    /// conn.init(&tardis_db_config::ActiveModel::create_table_and_index_statement(TardisFuns::reldb().backend())).await.unwrap();
+    /// conn.init(&tardis_db_config::ActiveModel::init(TardisFuns::reldb().backend(),Some("update_time"))).await.unwrap();
     /// ```
-    pub async fn init(&self, statements: &(TableCreateStatement, Vec<IndexCreateStatement>), function_sqls: Vec<String>) -> TardisResult<()> {
-        self.create_table(&statements.0).await?;
-        self.create_index(&statements.1).await?;
-        for function_sql in function_sqls {
+    pub async fn init(&self, params: (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>)) -> TardisResult<()> {
+        self.create_table(&params.0).await?;
+        self.create_index(&params.1).await?;
+        for function_sql in params.2 {
             self.execute_one(&function_sql, Vec::new()).await?;
         }
         Ok(())
