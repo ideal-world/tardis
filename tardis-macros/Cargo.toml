@@ -1,6 +1,6 @@
 [package]
 name = "tardis-macros"
-version = "0.1.0-alpha28"
+version = "0.1.0-alpha29"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
