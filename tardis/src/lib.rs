@@ -92,15 +92,16 @@
 //! ### use sqlparser::ast::Action::Usage;More examples
 //!
 //!> |-- examples  
-//!>   |-- reldb         Relational database usage example  
-//!>   |-- web-basic     Web service Usage Example  
-//!>   |-- web-client    Web client Usage Example  
-//!>   |-- webscoket     WebSocket Usage Example  
-//!>   |-- cache         Cache Usage Example  
-//!>   |-- mq            Message Queue Usage Example  
-//!>   |-- todos         A complete project usage example
-//!>   |-- multi-apps    Multi-application aggregation example
-//!>   |-- perf-test     Performance test case
+//!>   |-- reldb              Relational database usage example
+//!>   |-- web-basic          Web service Usage Example
+//!>   |-- web-client         Web client Usage Example
+//!>   |-- websocket          WebSocket Usage Example
+//!>   |-- cache              Cache Usage Example
+//!>   |-- mq                 Message Queue Usage Example
+//!>   |-- todos              A complete project usage example
+//!>   |-- multi-apps         Multi-application aggregation example
+//!>   |-- pg-graph-search    Graph search by Postgresql example
+//!>   |-- perf-test          Performance test case
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-world/tardis/main/logo.png")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
