@@ -456,6 +456,19 @@ impl TardisRelDBClient {
         Ok(())
     }
 
+    pub(self) async fn insert_raw_many_inner<C>(sql: &str, params: Vec<Vec<Value>>, db: &C) -> TardisResult<()>
+    where
+        C: ConnectionTrait,
+    {
+        trace!("[Tardis.RelDBClient] Inserting many sql {}, some params:{:?}", sql, params[0]);
+        // TODO Performance Optimization
+        for param in params {
+            let execute_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, param);
+            Self::execute_inner(execute_stmt, db).await?;
+        }
+        Ok(())
+    }
+
     pub(self) async fn update_one_inner<T, C>(mut model: T, db: &C, ctx: &TardisContext) -> TardisResult<()>
     where
         C: ConnectionTrait,
@@ -813,8 +826,6 @@ impl TardisRelDBlConnection {
     }
 
     /// Execute SQL operations (provide custom SQL processing capabilities) / 执行SQL操作（提供自定义SQL处理能力）
-    ///
-    ///
     pub async fn execute_one(&self, sql: &str, params: Vec<Value>) -> TardisResult<ExecResult> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::execute_one_inner(sql, params, tx).await
@@ -902,6 +913,14 @@ impl TardisRelDBlConnection {
             TardisRelDBClient::insert_many_inner(models, tx, ctx).await
         } else {
             TardisRelDBClient::insert_many_inner(models, self.conn.as_ref(), ctx).await
+        }
+    }
+
+    pub async fn insert_raw_many(&self, sql: &str, params: Vec<Vec<Value>>) -> TardisResult<()> {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::insert_raw_many_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::insert_raw_many_inner(sql, params, self.conn.as_ref()).await
         }
     }
 
@@ -1224,7 +1243,6 @@ pub trait TardisActiveModel: ActiveModelBehavior {
                 | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
                 _ => unimplemented!(),
             };
-            // let df = table_name.;
             let create_function_sql = Self::create_function_sqls(db, &table_name, update_time_field);
             return (create_table_statement, create_index_statement, create_function_sql);
         }
