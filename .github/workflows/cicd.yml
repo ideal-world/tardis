@@ -14,6 +14,11 @@ jobs:
         ports:
           - 3306:3306
         options: -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=test
+     postgres:
+        image: postgres:alpine
+        ports:
+          - 5432:5432
+        options: -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=test
       redis:
         image: redis
         ports:
