@@ -12,7 +12,7 @@ use sea_orm::*;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, EntityTrait, ExecResult, QueryTrait, Schema, Select, Statement};
 use sqlparser::ast;
 use sqlparser::ast::{SetExpr, TableFactor};
-use sqlparser::dialect::MySqlDialect;
+use sqlparser::dialect::{MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
 use sqlx::mysql::MySqlConnectOptions;
 use sqlx::postgres::PgConnectOptions;
@@ -402,7 +402,7 @@ impl TardisRelDBClient {
         D: FromQueryResult,
     {
         let statement = db.get_database_backend().build(select_statement);
-        let select_sql = format!("{} LIMIT {} , {}", statement.sql, (page_number - 1) * page_size, page_size);
+        let select_sql = format!("{} LIMIT {} OFFSET {}", statement.sql, page_size, (page_number - 1) * page_size);
         let query_statement = Statement {
             sql: select_sql,
             values: statement.values,
@@ -1078,7 +1078,16 @@ where
         let db_backend: DbBackend = db.get_database_backend();
 
         let sql = self.build(db_backend).sql.replace('?', "''");
-        let ast = match Parser::parse_sql(&MySqlDialect {}, &sql)?.pop() {
+        let ast = match Parser::parse_sql(
+            match db.get_database_backend() {
+                DatabaseBackend::MySql => &MySqlDialect {},
+                DatabaseBackend::Postgres => &PostgreSqlDialect {},
+                DatabaseBackend::Sqlite => &SQLiteDialect {},
+            },
+            &sql,
+        )?
+        .pop()
+        {
             Some(ast) => ast,
             None => {
                 return Err(TardisError::format_error(
@@ -1145,8 +1154,18 @@ where
         let statement = Statement::from_sql_and_values(
             db_backend,
             match db_backend {
-                DbBackend::Postgres => format!("DELETE FROM {} WHERE {} in ($1)", table_name, custom_pk_field),
-                _ => format!("DELETE FROM {} WHERE {} in (?)", table_name, custom_pk_field),
+                DatabaseBackend::Postgres => format!(
+                    "DELETE FROM {} WHERE {} IN ({})",
+                    table_name,
+                    custom_pk_field,
+                    ids.iter().enumerate().map(|(idx, _)| format!("${}", idx + 1)).collect::<Vec<String>>().join(",")
+                ),
+                _ => format!(
+                    "DELETE FROM {} WHERE {} IN ({})",
+                    table_name,
+                    custom_pk_field,
+                    ids.iter().map(|_| "?").collect::<Vec<&str>>().join(",")
+                ),
             }
             .as_str(),
             ids,

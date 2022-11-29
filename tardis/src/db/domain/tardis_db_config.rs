@@ -48,9 +48,9 @@ impl TardisActiveModel for ActiveModel {
                 .col(ColumnDef::new(Column::V).not_null().text())
                 .col(ColumnDef::new(Column::Creator).not_null().string())
                 .col(ColumnDef::new(Column::Updater).not_null().string())
-                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp_with_time_zone())
                 // TODO update time
-                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp())
+                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp_with_time_zone())
                 .to_owned(),
             DbBackend::Sqlite => Table::create()
                 .table(Entity.table_ref())

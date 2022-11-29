@@ -35,6 +35,48 @@ async fn test_reldb_client() -> TardisResult<()> {
         test_timezone(&url).await?;
         Ok(())
     })
+    .await?;
+    TardisTestContainer::postgres(None, |url| async move {
+        let client = TardisRelDBClient::init(&url, 10, 5, None, None).await?;
+
+        client
+            .conn()
+            .execute_one(
+                r###"CREATE  FUNCTION update_updated_common()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.update_time = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';"###,
+                Vec::new(),
+            )
+            .await?;
+
+        client.init_basic_tables().await?;
+
+        client
+            .conn()
+            .execute_one(
+                r###"CREATE TRIGGER update_tardis_config_updated_on
+    BEFORE UPDATE
+    ON
+        tardis_config
+    FOR EACH ROW
+EXECUTE PROCEDURE update_updated_common();"###,
+                Vec::new(),
+            )
+            .await?;
+
+        test_basic(&client).await?;
+        test_rel(&client).await?;
+        test_transaction(&client).await?;
+        test_advanced_query(&client).await?;
+        test_raw_query(&client).await?;
+        test_data_dict(&client).await?;
+        test_timezone(&url).await?;
+        Ok(())
+    })
     .await
 }
 
@@ -477,6 +519,8 @@ async fn test_basic(client: &TardisRelDBClient) -> TardisResult<()> {
     let dels = tardis_db_del_record::Entity::find().all(db.raw_conn()).await?;
     assert_eq!(dels.len(), 2);
     assert_eq!(dels[0].entity_name, "tardis_config");
+    let vals = TardisFuns::dict.find_all(&db).await?;
+    assert_eq!(vals.len(), 0);
 
     // Delete
     let delete_result = tardis_db_del_record::Entity::delete_many().filter(tardis_db_del_record::Column::Id.eq(dels[0].id.clone())).exec(db.raw_conn()).await?;
@@ -508,7 +552,7 @@ async fn test_data_dict(client: &TardisRelDBClient) -> TardisResult<()> {
     TardisFuns::dict.add("t1:yy", "2", "", &db).await?;
     TardisFuns::dict.add("t2:zz", "3", "", &db).await?;
     let vals = TardisFuns::dict.find_all(&db).await?;
-    assert_eq!(vals.len(), 6);
+    assert_eq!(vals.len(), 4);
     let vals = TardisFuns::dict.find_like("t1", &db).await?;
     assert_eq!(vals.len(), 2);
     assert_eq!(vals[0].k, "t1:xx");
@@ -521,18 +565,38 @@ async fn test_data_dict(client: &TardisRelDBClient) -> TardisResult<()> {
 
 async fn test_timezone(url: &str) -> TardisResult<()> {
     let client_with_out_time_zone = TardisRelDBClient::init(&url, 10, 5, None, None).await?;
-    let client_with_time_zone = TardisRelDBClient::init(&format!("{}?timezone=%2B08:00", url), 10, 5, None, None).await?;
 
-    let tz = client_with_out_time_zone.conn().query_one("SELECT @@global.time_zone z1, @@session.time_zone z2", Vec::new()).await?.unwrap().try_get::<String>("", "z2")?;
-    assert_eq!(tz, "+00:00");
+    match client_with_out_time_zone.backend() {
+        DatabaseBackend::Postgres => {
+            let client_with_time_zone = TardisRelDBClient::init(&format!("{}?timezone=Asia/Shanghai", url), 10, 5, None, None).await?;
 
-    let tz = client_with_time_zone.conn().query_one("SELECT @@global.time_zone z1, @@session.time_zone z2", Vec::new()).await?.unwrap().try_get::<String>("", "z2")?;
-    assert_eq!(tz, "+08:00");
+            let tz = client_with_out_time_zone.conn().query_one("SHOW timezone", Vec::new()).await?.unwrap().try_get::<String>("", "TimeZone")?;
+            assert_eq!(tz, "UTC");
 
-    let now1 = client_with_out_time_zone.conn().query_one("select CURRENT_TIMESTAMP() AS now", Vec::new()).await?.unwrap().try_get::<DateTime<Utc>>("", "now")?;
-    let now2 = client_with_time_zone.conn().query_one("select CURRENT_TIMESTAMP() AS now", Vec::new()).await?.unwrap().try_get::<DateTime<Utc>>("", "now")?;
+            let tz = client_with_time_zone.conn().query_one("SHOW timezone", Vec::new()).await?.unwrap().try_get::<String>("", "TimeZone")?;
+            assert_eq!(tz, "Asia/Shanghai");
 
-    println!("client_with_out_time_zone：{},client_with_time_zone：{},", now1, now2);
+            let now1 = client_with_out_time_zone.conn().query_one("SELECT CURRENT_TIMESTAMP AS now", Vec::new()).await?.unwrap().try_get::<DateTime<Utc>>("", "now")?;
+            let now2 = client_with_time_zone.conn().query_one("SELECT CURRENT_TIMESTAMP AS now", Vec::new()).await?.unwrap().try_get::<DateTime<Utc>>("", "now")?;
+
+            println!("client_with_out_time_zone：{},client_with_time_zone：{},", now1, now2);
+        }
+        _ => {
+            let client_with_time_zone = TardisRelDBClient::init(&format!("{}?timezone=%2B08:00", url), 10, 5, None, None).await?;
+
+            let tz = client_with_out_time_zone.conn().query_one("SELECT @@global.time_zone z1, @@session.time_zone z2", Vec::new()).await?.unwrap().try_get::<String>("", "z2")?;
+            assert_eq!(tz, "+00:00");
+
+            let tz = client_with_time_zone.conn().query_one("SELECT @@global.time_zone z1, @@session.time_zone z2", Vec::new()).await?.unwrap().try_get::<String>("", "z2")?;
+            assert_eq!(tz, "+08:00");
+
+            let now1 = client_with_out_time_zone.conn().query_one("SELECT CURRENT_TIMESTAMP() AS now", Vec::new()).await?.unwrap().try_get::<DateTime<Utc>>("", "now")?;
+            let now2 = client_with_time_zone.conn().query_one("SELECT CURRENT_TIMESTAMP() AS now", Vec::new()).await?.unwrap().try_get::<DateTime<Utc>>("", "now")?;
+
+            // Mysql's timestamp does not store the time zone, so there is an error when converting to utc time zone
+            println!("client_with_out_time_zone：{},client_with_time_zone：{},", now1, now2);
+        }
+    }
 
     Ok(())
 }
