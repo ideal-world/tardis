@@ -15,8 +15,8 @@ pub struct Page;
 
 #[poem_openapi::OpenApi]
 impl Page {
-    #[oai(path = "/p2p", method = "get")]
-    async fn p2p(&self) -> Html<&'static str> {
+    #[oai(path = "/echo", method = "get")]
+    async fn echo(&self) -> Html<&'static str> {
         Html(
             r###"
     <body>
@@ -47,7 +47,7 @@ impl Page {
             sendForm.hidden = false;
             msgsArea.hidden = false;
             msgInput.focus();
-            ws = new WebSocket("ws://127.0.0.1:8089/ws/p2p/" + nameInput.value);
+            ws = new WebSocket("ws://127.0.0.1:8089/ws/echo/" + nameInput.value);
             ws.onmessage = function(event) {
                 msgsArea.value += event.data + "\r\n";
             }
@@ -110,6 +110,17 @@ impl Page {
     "###,
         )
     }
+}
+
+#[handler]
+pub fn ws_echo(Path(name): Path<String>, websocket: WebSocket) -> impl IntoResponse {
+    websocket.on_upgrade(|mut socket| async move {
+        while let Some(Ok(Message::Text(text))) = socket.next().await {
+            if socket.send(Message::Text(format!("{}: {}", name, text))).await.is_err() {
+                break;
+            }
+        }
+    })
 }
 
 #[handler]

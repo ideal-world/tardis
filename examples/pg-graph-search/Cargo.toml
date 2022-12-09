@@ -1,0 +1,9 @@
+[package]
+name = "tardis-example-pg-graph_search"
+version = "0.1.0"
+authors = ["gudaoxuri"]
+edition = "2021"
+publish = false
+
+[dependencies]
+tardis = { path = "../../tardis", features = ["reldb", "test"] }

@@ -24,7 +24,7 @@
 //! * ``trace`` tracing operation
 //! * ``crypto`` encryption, decryption and digest operations
 //! * ``future`` asynchronous operations
-//! * ``reldb`` relational database operations(based on [SeaORM](https://github.com/SeaQL/sea-orm))
+//! * ``reldb/reldb-postgres/reldb-mysql/reldb-sqlite`` relational database operations(based on [SeaORM](https://github.com/SeaQL/sea-orm))
 //! * ``web-server`` web service operations(based on [Poem](https://github.com/poem-web/poem))
 //! * ``web-client`` web client operations
 //! * ``cache`` cache operations
@@ -92,15 +92,16 @@
 //! ### use sqlparser::ast::Action::Usage;More examples
 //!
 //!> |-- examples  
-//!>   |-- reldb         Relational database usage example  
-//!>   |-- web-basic     Web service Usage Example  
-//!>   |-- web-client    Web client Usage Example  
-//!>   |-- webscoket     WebSocket Usage Example  
-//!>   |-- cache         Cache Usage Example  
-//!>   |-- mq            Message Queue Usage Example  
-//!>   |-- todos         A complete project usage example
-//!>   |-- multi-apps    Multi-application aggregation example
-//!>   |-- perf-test     Performance test case
+//!>   |-- reldb              Relational database usage example
+//!>   |-- web-basic          Web service Usage Example
+//!>   |-- web-client         Web client Usage Example
+//!>   |-- websocket          WebSocket Usage Example
+//!>   |-- cache              Cache Usage Example
+//!>   |-- mq                 Message Queue Usage Example
+//!>   |-- todos              A complete project usage example
+//!>   |-- multi-apps         Multi-application aggregation example
+//!>   |-- pg-graph-search    Graph search by Postgresql example
+//!>   |-- perf-test          Performance test case
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-world/tardis/main/logo.png")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -146,9 +147,9 @@ use crate::basic::uri::TardisUri;
 #[cfg(feature = "cache")]
 use crate::cache::cache_client::TardisCacheClient;
 use crate::config::config_dto::{FrameworkConfig, TardisConfig};
-#[cfg(feature = "reldb")]
+#[cfg(feature = "reldb-core")]
 use crate::db::domain::tardis_db_config::TardisDataDict;
-#[cfg(feature = "reldb")]
+#[cfg(feature = "reldb-core")]
 use crate::db::reldb_client::TardisRelDBClient;
 #[cfg(feature = "mail")]
 use crate::mail::mail_client::TardisMailClient;
@@ -262,7 +263,7 @@ pub struct TardisFuns {
     custom_config: Option<HashMap<String, Value>>,
     _custom_config_cached: Option<HashMap<String, Box<dyn Any>>>,
     framework_config: Option<FrameworkConfig>,
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     reldb: Option<HashMap<String, TardisRelDBClient>>,
     #[cfg(feature = "web-server")]
     web_server: Option<TardisWebServer>,
@@ -284,7 +285,7 @@ static mut TARDIS_INST: TardisFuns = TardisFuns {
     custom_config: None,
     _custom_config_cached: None,
     framework_config: None,
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     reldb: None,
     #[cfg(feature = "web-server")]
     web_server: None,
@@ -392,7 +393,7 @@ impl TardisFuns {
             replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
             replace(&mut TARDIS_INST.framework_config, Some(conf.fw));
         };
-        #[cfg(feature = "reldb")]
+        #[cfg(feature = "reldb-core")]
         {
             if TardisFuns::fw_config().db.enabled {
                 let reldb_clients = TardisRelDBClient::init_by_conf(TardisFuns::fw_config()).await?;
@@ -469,7 +470,7 @@ impl TardisFuns {
         TardisFunsInst::new(code, lang)
     }
 
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub fn inst_with_db_conn(code: String, lang: Option<String>) -> TardisFunsInst {
         TardisFunsInst::new_with_db_conn(code, lang)
     }
@@ -569,9 +570,9 @@ impl TardisFuns {
     ///
     /// 支持的算法： base64/md5/sha/hmac/aes/rsa/sm2/sm3/sm4.
     ///
-    /// This feature needs to be enabled #[cfg(feature = "crypto")] and #[cfg(feature = "crypto_with_sm")] .
+    /// This feature needs to be enabled #[cfg(feature = "crypto")] and #[cfg(feature = "crypto-with-sm")] .
     ///
-    /// 本功能需要启用 #[cfg(feature = "crypto")] 和 #[cfg(feature = "crypto_with_sm")] .
+    /// 本功能需要启用 #[cfg(feature = "crypto")] 和 #[cfg(feature = "crypto-with-sm")] .
     ///
     /// # Examples
     /// ```ignore
@@ -588,18 +589,18 @@ impl TardisFuns {
         base64: crypto::crypto_base64::TardisCryptoBase64 {},
         aes: crypto::crypto_aes::TardisCryptoAes {},
         rsa: crypto::crypto_rsa::TardisCryptoRsa {},
-        #[cfg(feature = "crypto_with_sm")]
+        #[cfg(feature = "crypto-with-sm")]
         sm4: crypto::crypto_sm2_4::TardisCryptoSm4 {},
-        #[cfg(feature = "crypto_with_sm")]
+        #[cfg(feature = "crypto-with-sm")]
         sm2: crypto::crypto_sm2_4::TardisCryptoSm2 {},
         digest: crypto::crypto_digest::TardisCryptoDigest {},
     };
 
     /// Use the relational database feature / 使用关系型数据库功能
     ///
-    /// This feature needs to be enabled #[cfg(feature = "reldb")] .
+    /// This feature needs to be enabled #[cfg(feature = "reldb/reldb-postgres/reldb-mysql/reldb-sqlite")] .
     ///
-    /// 本功能需要启用 #[cfg(feature = "reldb")] .
+    /// 本功能需要启用 #[cfg(feature = "reldb/reldb-postgres/reldb-mysql/reldb-sqlite")] .
     ///
     /// # Steps to use / 使用步骤
     ///
@@ -663,12 +664,12 @@ impl TardisFuns {
     ///     )
     ///     .await.unwrap();
     /// ```
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub fn reldb() -> &'static TardisRelDBClient {
         Self::reldb_by_module("")
     }
 
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub fn reldb_by_module(code: &str) -> &'static TardisRelDBClient {
         let code = code.to_lowercase();
         let code = code.as_str();
@@ -683,7 +684,7 @@ impl TardisFuns {
         }
     }
 
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub fn reldb_by_module_or_default(code: &str) -> &'static TardisRelDBClient {
         let code = code.to_lowercase();
         let code = code.as_str();
@@ -699,7 +700,7 @@ impl TardisFuns {
     }
 
     #[allow(non_upper_case_globals)]
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub const dict: TardisDataDict = TardisDataDict {};
 
     #[cfg(feature = "web-server")]
@@ -976,7 +977,7 @@ impl TardisFuns {
 pub struct TardisFunsInst {
     module_code: String,
     err: TardisErrorWithExt,
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     db: Option<db::reldb_client::TardisRelDBlConnection>,
 }
 
@@ -988,12 +989,12 @@ impl TardisFunsInst {
                 ext: code.to_lowercase(),
                 lang: if lang.is_some() { lang } else { TardisFuns::fw_config().app.default_lang.clone() },
             },
-            #[cfg(feature = "reldb")]
+            #[cfg(feature = "reldb-core")]
             db: None,
         }
     }
 
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub(crate) fn new_with_db_conn(code: String, lang: Option<String>) -> Self {
         let reldb = TardisFuns::reldb_by_module_or_default(&code);
         Self {
@@ -1018,27 +1019,27 @@ impl TardisFunsInst {
         &self.err
     }
 
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub fn reldb(&self) -> &'static TardisRelDBClient {
         TardisFuns::reldb_by_module_or_default(&self.module_code)
     }
 
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub fn db(&self) -> &db::reldb_client::TardisRelDBlConnection {
         self.db.as_ref().expect("db is not initialized")
     }
 
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub async fn begin(&mut self) -> TardisResult<()> {
         self.db.as_mut().expect("db is not initialized").begin().await
     }
 
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub async fn commit(self) -> TardisResult<()> {
         self.db.expect("db is not initialized").commit().await
     }
 
-    #[cfg(feature = "reldb")]
+    #[cfg(feature = "reldb-core")]
     pub async fn rollback(self) -> TardisResult<()> {
         self.db.expect("db is not initialized").rollback().await
     }
@@ -1082,8 +1083,8 @@ pub mod config;
 #[cfg(feature = "crypto")]
 #[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 pub mod crypto;
-#[cfg(feature = "reldb")]
-#[cfg_attr(docsrs, doc(cfg(feature = "reldb")))]
+#[cfg(feature = "reldb-core")]
+#[cfg_attr(docsrs, doc(cfg(feature = "reldb-core")))]
 pub mod db;
 #[cfg(feature = "mail")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mail")))]

@@ -6,7 +6,7 @@ use tardis::web::poem::{get, EndpointExt, Route};
 use tardis::TardisFuns;
 
 use crate::processor::ws_broadcast;
-use crate::processor::ws_p2p;
+use crate::processor::ws_echo;
 use crate::processor::Page;
 
 mod processor;
@@ -23,6 +23,6 @@ async fn main() -> TardisResult<()> {
     TardisFuns::init("config").await?;
 
     let mut ws_route = Route::new();
-    ws_route = ws_route.at("/broadcast/:name", get(ws_broadcast.data(tokio::sync::broadcast::channel::<String>(32).0))).at("/p2p/:name", get(ws_p2p));
+    ws_route = ws_route.at("/broadcast/:name", get(ws_broadcast.data(tokio::sync::broadcast::channel::<String>(32).0))).at("/echo/:name", get(ws_echo));
     TardisFuns::web_server().add_route(Page).await.add_module_raw("ws", ws_route).await.start().await
 }

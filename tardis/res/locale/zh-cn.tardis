@@ -69,6 +69,7 @@
 
 -1-tardis-reldb-error	SQL执行错误
 406-tardis-reldb-url-error	SQL Url解析错误
+406-tardis-reldb-conn-init-error	数据连接初始化错误
 406-tardis-reldb-sql-error	SQL解析错误
 500-tardis-reldb-id-not-char	主键不是字符串
 500-tardis-reldb-id-not-num	主键不是数值

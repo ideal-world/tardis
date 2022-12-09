@@ -12,8 +12,9 @@ use sea_orm::*;
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, EntityTrait, ExecResult, QueryTrait, Schema, Select, Statement};
 use sqlparser::ast;
 use sqlparser::ast::{SetExpr, TableFactor};
-use sqlparser::dialect::MySqlDialect;
+use sqlparser::dialect::{MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
+use sqlx::Executor;
 use url::Url;
 
 use crate::basic::dto::TardisContext;
@@ -178,16 +179,81 @@ impl TardisRelDBClient {
         if let Some(idle_timeout_sec) = idle_timeout_sec {
             opt.idle_timeout(Duration::from_secs(idle_timeout_sec));
         }
-        let con = Database::connect(opt).await?;
+        let con = if let Some(timezone) = url.query_pairs().find(|x| x.0.to_lowercase() == "timezone").map(|x| x.1.to_string()) {
+            match url.scheme().to_lowercase().as_str() {
+                #[cfg(feature = "reldb-mysql")]
+                "mysql" => {
+                    let mut raw_opt = opt.get_url().parse::<sqlx::mysql::MySqlConnectOptions>().map_err(|e| DbErr::Conn(RuntimeErr::Internal(e.to_string())))?;
+                    use sqlx::ConnectOptions;
+                    if !opt.get_sqlx_logging() {
+                        raw_opt.disable_statement_logging();
+                    } else {
+                        raw_opt.log_statements(opt.get_sqlx_logging_level());
+                    }
+                    match opt
+                        .pool_options::<sqlx::MySql>()
+                        .after_connect(move |conn, _| {
+                            let timezone = timezone.clone();
+                            Box::pin(async move {
+                                conn.execute(format!("SET time_zone = '{}';", timezone).as_str()).await?;
+                                Ok(())
+                            })
+                        })
+                        .connect_with(raw_opt)
+                        .await
+                    {
+                        Ok(pool) => Ok(SqlxMySqlConnector::from_sqlx_mysql_pool(pool)),
+                        Err(e) => Err(TardisError::format_error(
+                            &format!("[Tardis.RelDBClient] {} Initialization error: {}", str_url, e),
+                            "406-tardis-reldb-conn-init-error",
+                        )),
+                    }
+                }
+                #[cfg(feature = "reldb-postgres")]
+                "postgres" => {
+                    let mut raw_opt = opt.get_url().parse::<sqlx::postgres::PgConnectOptions>().map_err(|e| DbErr::Conn(RuntimeErr::Internal(e.to_string())))?;
+                    use sqlx::ConnectOptions;
+                    if !opt.get_sqlx_logging() {
+                        raw_opt.disable_statement_logging();
+                    } else {
+                        raw_opt.log_statements(opt.get_sqlx_logging_level());
+                    }
+                    match opt
+                        .pool_options::<sqlx::Postgres>()
+                        .after_connect(move |conn, _| {
+                            let timezone = timezone.clone();
+                            Box::pin(async move {
+                                conn.execute(format!("SET TIME ZONE '{}';", timezone).as_str()).await?;
+                                Ok(())
+                            })
+                        })
+                        .connect_with(raw_opt)
+                        .await
+                    {
+                        Ok(pool) => Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool)),
+                        Err(e) => Err(TardisError::format_error(
+                            &format!("[Tardis.RelDBClient] {} Initialization error: {}", str_url, e),
+                            "406-tardis-reldb-conn-init-error",
+                        )),
+                    }
+                }
+                _ => Err(TardisError::format_error(
+                    &format!("[Tardis.RelDBClient] {} , current database does not support setting timezone", str_url),
+                    "406-tardis-reldb-conn-init-error",
+                )),
+            }
+        } else {
+            Database::connect(opt)
+                .await
+                .map_err(|e| TardisError::format_error(&format!("[Tardis.RelDBClient] {} Initialization error: {}", str_url, e), "406-tardis-reldb-conn-init-error"))
+        }?;
         info!(
             "[Tardis.RelDBClient] Initialized, host:{}, port:{}, max_connections:{}",
             url.host_str().unwrap_or(""),
             url.port().unwrap_or(0),
             min_connections
         );
-        let client = TardisRelDBClient { con: Arc::new(con) };
-        client.init_basic_tables().await?;
-        Ok(client)
+        Ok(TardisRelDBClient { con: Arc::new(con) })
     }
 
     /// Get database instance implementation / 获取数据库实例的实现
@@ -203,13 +269,18 @@ impl TardisRelDBClient {
     }
 
     /// Initialize basic tables / 初始化基础表
-    async fn init_basic_tables(&self) -> TardisResult<()> {
+    pub async fn init_basic_tables(&self) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] Initializing basic tables");
         let tx = self.con.begin().await?;
-        let config_create_table_statements = tardis_db_config::ActiveModel::create_table_and_index_statement(self.con.get_database_backend());
-        TardisRelDBClient::create_table_and_index_inner(&config_create_table_statements, &tx).await?;
-        let del_record_create_statements = tardis_db_del_record::ActiveModel::create_table_and_index_statement(self.con.get_database_backend());
-        TardisRelDBClient::create_table_and_index_inner(&del_record_create_statements, &tx).await?;
+        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"));
+        TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
+        TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
+        for function_sql in create_all.2 {
+            TardisRelDBClient::execute_one_inner(&function_sql, Vec::new(), &tx).await?;
+        }
+        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None);
+        TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
+        TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         tx.commit().await?;
         Ok(())
     }
@@ -227,22 +298,13 @@ impl TardisRelDBClient {
         TardisRelDBClient::create_table_inner(table_create_statement, db).await
     }
 
-    pub(self) async fn create_table_and_index_inner<C>(statements: &(TableCreateStatement, Vec<IndexCreateStatement>), db: &C) -> TardisResult<()>
-    where
-        C: ConnectionTrait,
-    {
-        trace!("[Tardis.RelDBClient] Creating table and index from statements");
-        Self::create_table_inner(&statements.0, db).await?;
-        Self::create_index_inner(&statements.1, db).await
-    }
-
     pub(self) async fn create_table_inner<C>(statement: &TableCreateStatement, db: &C) -> TardisResult<()>
     where
         C: ConnectionTrait,
     {
         trace!("[Tardis.RelDBClient] Creating table");
         let statement = db.get_database_backend().build(statement);
-        match TardisRelDBClient::execute_inner(statement, db).await {
+        match Self::execute_inner(statement, db).await {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
@@ -255,19 +317,51 @@ impl TardisRelDBClient {
         trace!("[Tardis.RelDBClient] Creating index from statements");
         for statement in statements {
             let statement = db.get_database_backend().build(statement);
-            if let Err(e) = TardisRelDBClient::execute_inner(statement, db).await {
-                return Err(e);
-            }
+            Self::execute_inner(statement, db).await?;
         }
         Ok(())
+    }
+
+    pub(self) async fn execute_one_inner<C>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<ExecResult>
+    where
+        C: ConnectionTrait,
+    {
+        trace!("[Tardis.RelDBClient] Executing one sql {}, params:{:?}", sql, params);
+        let execute_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
+        Self::execute_inner(execute_stmt, db).await
     }
 
     pub(self) async fn execute_inner<C>(statement: Statement, db: &C) -> TardisResult<ExecResult>
     where
         C: ConnectionTrait,
     {
-        trace!("[Tardis.RelDBClient] Executing statement {}", statement);
         let result = db.execute(statement).await;
+        match result {
+            Ok(ok) => TardisResult::Ok(ok),
+            Err(err) => TardisResult::Err(TardisError::from(err)),
+        }
+    }
+
+    pub(self) async fn query_one_inner<C>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<Option<QueryResult>>
+    where
+        C: ConnectionTrait,
+    {
+        trace!("[Tardis.RelDBClient] Quering one sql {}, params:{:?}", sql, params);
+        let query_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
+        let result = db.query_one(query_stmt).await;
+        match result {
+            Ok(ok) => TardisResult::Ok(ok),
+            Err(err) => TardisResult::Err(TardisError::from(err)),
+        }
+    }
+
+    pub(self) async fn query_all_inner<C>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<Vec<QueryResult>>
+    where
+        C: ConnectionTrait,
+    {
+        trace!("[Tardis.RelDBClient] Quering all sql {}, params:{:?}", sql, params);
+        let query_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
+        let result = db.query_all(query_stmt).await;
         match result {
             Ok(ok) => TardisResult::Ok(ok),
             Err(err) => TardisResult::Err(TardisError::from(err)),
@@ -304,7 +398,7 @@ impl TardisRelDBClient {
         D: FromQueryResult,
     {
         let statement = db.get_database_backend().build(select_statement);
-        let select_sql = format!("{} LIMIT {} , {}", statement.sql, (page_number - 1) * page_size, page_size);
+        let select_sql = format!("{} LIMIT {} OFFSET {}", statement.sql, page_size, (page_number - 1) * page_size);
         let query_statement = Statement {
             sql: select_sql,
             values: statement.values,
@@ -359,6 +453,19 @@ impl TardisRelDBClient {
         trace!("[Tardis.RelDBClient] Inserting many models");
         models.iter_mut().for_each(|m| m.fill_ctx(ctx, true));
         EntityTrait::insert_many(models).exec(db).await?;
+        Ok(())
+    }
+
+    pub(self) async fn insert_raw_many_inner<C>(sql: &str, params: Vec<Vec<Value>>, db: &C) -> TardisResult<()>
+    where
+        C: ConnectionTrait,
+    {
+        trace!("[Tardis.RelDBClient] Inserting many sql {}, some params:{:?}", sql, params[0]);
+        // TODO Performance Optimization
+        for param in params {
+            let execute_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, param);
+            Self::execute_inner(execute_stmt, db).await?;
+        }
         Ok(())
     }
 
@@ -511,11 +618,13 @@ impl TardisRelDBlConnection {
         }
     }
 
-    /// Create table and index / 创建表和索引
+    /// Create table index and functions / 创建表、索引和函数
     ///
     /// # Arguments
     ///
-    ///  * `statements` -  Statement for creating table and creating index / 创建表和创建索引的Statement
+    ///  * `params.0` -  Statement for creating table  / 创建表的Statement
+    ///  * `params.1` -  Statement for creating index / 创建索引的Statements
+    ///  * `params.2` -  sql for functions / 创建函数的sqls
     ///
     /// # Examples
     /// ```ignore
@@ -523,11 +632,15 @@ impl TardisRelDBlConnection {
     /// use tardis::db::reldb_client::TardisActiveModel;
     /// use tardis::TardisFuns;
     /// let mut conn = TardisFuns::reldb().conn();
-    /// conn.create_table_and_index(&tardis_db_config::ActiveModel::create_table_and_index_statement(TardisFuns::reldb().backend())).await.unwrap();
+    /// conn.init(&tardis_db_config::ActiveModel::init(TardisFuns::reldb().backend(),Some("update_time"))).await.unwrap();
     /// ```
-    pub async fn create_table_and_index(&self, statements: &(TableCreateStatement, Vec<IndexCreateStatement>)) -> TardisResult<()> {
-        self.create_table(&statements.0).await?;
-        self.create_index(&statements.1).await
+    pub async fn init(&self, params: (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>)) -> TardisResult<()> {
+        self.create_table(&params.0).await?;
+        self.create_index(&params.1).await?;
+        for function_sql in params.2 {
+            self.execute_one(&function_sql, Vec::new()).await?;
+        }
+        Ok(())
     }
 
     /// Create table  / 创建表
@@ -713,6 +826,31 @@ impl TardisRelDBlConnection {
         }
     }
 
+    /// Execute SQL operations (provide custom SQL processing capabilities) / 执行SQL操作（提供自定义SQL处理能力）
+    pub async fn execute_one(&self, sql: &str, params: Vec<Value>) -> TardisResult<ExecResult> {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::execute_one_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::execute_one_inner(sql, params, self.conn.as_ref()).await
+        }
+    }
+
+    pub async fn query_one(&self, sql: &str, params: Vec<Value>) -> TardisResult<Option<QueryResult>> {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::query_one_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::query_one_inner(sql, params, self.conn.as_ref()).await
+        }
+    }
+
+    pub async fn query_all(&self, sql: &str, params: Vec<Value>) -> TardisResult<Vec<QueryResult>> {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::query_all_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::query_all_inner(sql, params, self.conn.as_ref()).await
+        }
+    }
+
     /// Insert a record and return primary key value / 插入一条记录，返回主键值
     ///
     /// # Arguments
@@ -776,6 +914,14 @@ impl TardisRelDBlConnection {
             TardisRelDBClient::insert_many_inner(models, tx, ctx).await
         } else {
             TardisRelDBClient::insert_many_inner(models, self.conn.as_ref(), ctx).await
+        }
+    }
+
+    pub async fn insert_raw_many(&self, sql: &str, params: Vec<Vec<Value>>) -> TardisResult<()> {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::insert_raw_many_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::insert_raw_many_inner(sql, params, self.conn.as_ref()).await
         }
     }
 
@@ -953,7 +1099,16 @@ where
         let db_backend: DbBackend = db.get_database_backend();
 
         let sql = self.build(db_backend).sql.replace('?', "''");
-        let ast = match Parser::parse_sql(&MySqlDialect {}, &sql)?.pop() {
+        let ast = match Parser::parse_sql(
+            match db.get_database_backend() {
+                DatabaseBackend::MySql => &MySqlDialect {},
+                DatabaseBackend::Postgres => &PostgreSqlDialect {},
+                DatabaseBackend::Sqlite => &SQLiteDialect {},
+            },
+            &sql,
+        )?
+        .pop()
+        {
             Some(ast) => ast,
             None => {
                 return Err(TardisError::format_error(
@@ -1020,8 +1175,18 @@ where
         let statement = Statement::from_sql_and_values(
             db_backend,
             match db_backend {
-                DbBackend::Postgres => format!("DELETE FROM {} WHERE {} in ($1)", table_name, custom_pk_field),
-                _ => format!("DELETE FROM {} WHERE {} in (?)", table_name, custom_pk_field),
+                DatabaseBackend::Postgres => format!(
+                    "DELETE FROM {} WHERE {} IN ({})",
+                    table_name,
+                    custom_pk_field,
+                    ids.iter().enumerate().map(|(idx, _)| format!("${}", idx + 1)).collect::<Vec<String>>().join(",")
+                ),
+                _ => format!(
+                    "DELETE FROM {} WHERE {} IN ({})",
+                    table_name,
+                    custom_pk_field,
+                    ids.iter().map(|_| "?").collect::<Vec<&str>>().join(",")
+                ),
             }
             .as_str(),
             ids,
@@ -1063,18 +1228,26 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     /// # Arguments
     ///
     ///  * `db` -  database instance type / 数据库实例类型
-    ///
-    /// # Examples
-    /// ```ignore
-    /// use tardis::db::sea_orm::*;
-    /// use tardis::db::sea_orm::sea_query::*;
-    /// use tardis::basic::dto::TardisContext;
-    /// fn create_table_and_index_statement(db: DbBackend) -> (TableCreateStatement, Vec<IndexCreateStatement>) {
-    ///     (Self::create_table_statement(db), Self::create_index_statement())
-    /// }
+    ///  * `update_time_field` -  update time field / 更新字段
     /// ```
-    fn create_table_and_index_statement(db: DbBackend) -> (TableCreateStatement, Vec<IndexCreateStatement>) {
-        (Self::create_table_statement(db), Self::create_index_statement())
+    fn init(db: DbBackend, update_time_field: Option<&str>) -> (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>) {
+        let create_table_statement = Self::create_table_statement(db);
+        // create_table_statement.to_string(schema_builder)
+        let create_index_statement = Self::create_index_statement();
+        if let Some(table_name) = create_table_statement.get_table_name() {
+            let table_name = match table_name {
+                sea_query::TableRef::Table(t)
+                | sea_query::TableRef::SchemaTable(_, t)
+                | sea_query::TableRef::DatabaseSchemaTable(_, _, t)
+                | sea_query::TableRef::TableAlias(t, _)
+                | sea_query::TableRef::SchemaTableAlias(_, t, _)
+                | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
+                _ => unimplemented!(),
+            };
+            let create_function_sql = Self::create_function_sqls(db, &table_name, update_time_field);
+            return (create_table_statement, create_index_statement, create_function_sql);
+        }
+        (create_table_statement, create_index_statement, Vec::new())
     }
 
     /// Create table / 创建表
@@ -1146,6 +1319,42 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///     }
     fn create_index_statement() -> Vec<IndexCreateStatement> {
         vec![]
+    }
+
+    /// Create functions / 创建函数
+    fn create_function_sqls(db: DbBackend, table_name: &str, update_time_field: Option<&str>) -> Vec<String> {
+        if db == DbBackend::Postgres {
+            if let Some(update_time_field) = update_time_field {
+                return Self::create_function_postgresql_auto_update_time(table_name, update_time_field);
+            }
+        }
+        vec![]
+    }
+
+    fn create_function_postgresql_auto_update_time(table_name: &str, update_time_field: &str) -> Vec<String> {
+        vec![
+            format!(
+                r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_ITME_{}()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.{} = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';"###,
+                update_time_field.replace('-', "_"),
+                update_time_field
+            ),
+            format!(
+                r###"CREATE OR REPLACE TRIGGER TARDIS_ATUO_UPDATE_TIME_ON
+    BEFORE UPDATE
+    ON
+        {}
+    FOR EACH ROW
+EXECUTE PROCEDURE TARDIS_AUTO_UPDATE_ITME_{}();"###,
+                table_name,
+                update_time_field.replace('-', "_")
+            ),
+        ]
     }
 }
 

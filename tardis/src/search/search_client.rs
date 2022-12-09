@@ -97,7 +97,7 @@ impl TardisSearchClient {
         let url = format!("{}/{}/_doc/", self.server_url, index_name);
         let resp = self.client.post_str_to_str(&url, data, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
-            let result = TardisFuns::json.str_to_json(&resp.body.unwrap_or_else(|| "".to_string()))?;
+            let result = TardisFuns::json.str_to_json(&resp.body.unwrap_or_default())?;
             Ok(result["_id"].as_str().ok_or_else(|| TardisError::bad_request("[Tardis.SearchClient] [_id] structure not found", "400-tardis-search-id-not-exist"))?.to_string())
         } else {
             Err(TardisError::custom(
@@ -125,7 +125,7 @@ impl TardisSearchClient {
         let url = format!("{}/{}/_doc/{}", self.server_url, index_name, id);
         let resp = self.client.get_to_str(&url, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
-            let result = TardisFuns::json.str_to_json(&resp.body.unwrap_or_else(|| "".to_string()))?;
+            let result = TardisFuns::json.str_to_json(&resp.body.unwrap_or_default())?;
             Ok(result["_source"].to_string())
         } else {
             Err(TardisError::custom(
@@ -153,7 +153,7 @@ impl TardisSearchClient {
         let url = format!("{}/{}/_search?q={}", self.server_url, index_name, q);
         let resp = self.client.get_to_str(&url, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
-            Self::parse_search_result(&resp.body.unwrap_or_else(|| "".to_string()))
+            Self::parse_search_result(&resp.body.unwrap_or_default())
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
@@ -199,7 +199,7 @@ impl TardisSearchClient {
         let url = format!("{}/{}/_search", self.server_url, index_name);
         let resp = self.client.post_str_to_str(&url, q, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
-            Self::parse_search_result(&resp.body.unwrap_or_else(|| "".to_string()))
+            Self::parse_search_result(&resp.body.unwrap_or_default())
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),

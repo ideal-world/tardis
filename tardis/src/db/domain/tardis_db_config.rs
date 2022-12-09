@@ -1,10 +1,10 @@
+use chrono::Utc;
 use log::trace;
 use sea_orm::*;
 
 use crate::basic::dto::TardisContext;
 use crate::db::domain::tardis_db_config;
 use crate::db::reldb_client::{TardisActiveModel, TardisRelDBlConnection};
-use crate::db::sea_orm::entity::prelude::*;
 use crate::db::sea_orm::sea_query::{ColumnDef, Table, TableCreateStatement};
 use crate::db::sea_orm::ActiveValue::Set;
 use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
@@ -19,8 +19,8 @@ pub struct Model {
     pub v: String,
     pub creator: String,
     pub updater: String,
-    pub create_time: DateTime,
-    pub update_time: DateTime,
+    pub create_time: chrono::DateTime<Utc>,
+    pub update_time: chrono::DateTime<Utc>,
 }
 
 impl TardisActiveModel for ActiveModel {
@@ -38,8 +38,8 @@ impl TardisActiveModel for ActiveModel {
                 .col(ColumnDef::new(Column::V).not_null().text())
                 .col(ColumnDef::new(Column::Creator).not_null().string())
                 .col(ColumnDef::new(Column::Updater).not_null().string())
-                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).date_time())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp())
+                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).timestamp())
                 .to_owned(),
             DbBackend::Postgres => Table::create()
                 .table(Entity.table_ref())
@@ -48,9 +48,9 @@ impl TardisActiveModel for ActiveModel {
                 .col(ColumnDef::new(Column::V).not_null().text())
                 .col(ColumnDef::new(Column::Creator).not_null().string())
                 .col(ColumnDef::new(Column::Updater).not_null().string())
-                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp_with_time_zone())
                 // TODO update time
-                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp_with_time_zone())
                 .to_owned(),
             DbBackend::Sqlite => Table::create()
                 .table(Entity.table_ref())
@@ -59,8 +59,8 @@ impl TardisActiveModel for ActiveModel {
                 .col(ColumnDef::new(Column::V).not_null().text())
                 .col(ColumnDef::new(Column::Creator).not_null().string())
                 .col(ColumnDef::new(Column::Updater).not_null().string())
-                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
-                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).date_time())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp())
+                .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).timestamp())
                 .to_owned(),
         }
     }
@@ -99,6 +99,7 @@ impl TardisDataDict {
             v: Set(value.to_string()),
             creator: Set(creator.to_string()),
             updater: Set(creator.to_string()),
+            update_time: Set(Utc::now()),
             ..Default::default()
         };
         if db.has_tx() {
@@ -143,6 +144,6 @@ pub struct TardisDictResp {
     pub v: String,
     pub creator: String,
     pub updater: String,
-    pub create_time: DateTime,
-    pub update_time: DateTime,
+    pub create_time: chrono::DateTime<Utc>,
+    pub update_time: chrono::DateTime<Utc>,
 }

@@ -1,15 +1,10 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha26"
+version = "0.1.0-alpha30"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
-categories = [
-    "asynchronous",
-    "web-programming",
-    "database",
-    "caching",
-]
+categories = ["asynchronous", "web-programming", "database", "caching"]
 homepage = "https://github.com/ideal-world/tardis"
 documentation = "https://docs.rs/tardis/"
 repository = "https://github.com/ideal-world/tardis"
@@ -30,12 +25,13 @@ default = ["rt-tokio", "tardis-macros"]
 rt-tokio = ["tokio"]
 conf-remote = ["web-client", "async-trait"]
 crypto = ["rust-crypto", "rsa"]
-crypto_with_sm = ["libsm", "num-bigint"]
+crypto-with-sm = ["libsm", "num-bigint"]
 future = ["rt-tokio", "futures", "async-stream", "futures-util", "async-trait"]
-reldb = ["future", "sqlparser", "sea-orm", "sea-orm/sqlx-all"]
-reldb-postgres = ["future", "sqlparser", "sea-orm", "sea-orm/sqlx-postgres"]
-reldb-mysql = ["future", "sqlparser", "sea-orm", "sea-orm/sqlx-mysql"]
-reldb-sqlite = ["future", "sqlparser", "sea-orm", "sea-orm/sqlx-sqlite"]
+reldb-core = ["future", "sqlparser", "sea-orm", "sqlx"]
+reldb-postgres = ["reldb-core", "sea-orm/postgres-array", "sea-orm/sqlx-postgres"]
+reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql"]
+reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
+reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
 web-client = ["rt-tokio", "reqwest"]
 cache = ["futures-util", "redis"]
@@ -63,14 +59,19 @@ url = { version = "2.2" }
 openssl = { version = "0.10", features = ["vendored"] }
 # Log
 log = { version = "0.4" }
-tracing = { version = "0.1"}
+tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # macros
-tardis-macros = { version = "0.1.0-alpha26", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-alpha30", path = "../tardis-macros", optional = true }
 
 # Tokio
-tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "signal", "time"], optional = true }
+tokio = { version = "1.18", features = [
+    "macros",
+    "rt-multi-thread",
+    "signal",
+    "time",
+], optional = true }
 
 # Crypto
 rust-crypto = { version = "0.2", optional = true }
@@ -86,18 +87,31 @@ async-trait = { version = "0.1", optional = true }
 
 # RelDB
 sea-orm = { version = "0.10", features = ["macros", "runtime-tokio-native-tls", "debug-print"], optional = true }
+sqlx = { version = "0.6", features = ["any"], optional = true }
 sqlparser = { version = "0.28", optional = true }
 
 # Web Server
-poem-openapi = { version = "2", features = ["rapidoc", "chrono"], optional = true }
+poem-openapi = { version = "2", features = [
+    "rapidoc",
+    "chrono",
+], optional = true }
 poem-openapi-derive = { version = "2", optional = true }
-poem = { version = "1.3", features = ["csrf", "opentelemetry", "rustls", "prometheus", "websocket"], optional = true }
+poem = { version = "1.3", features = [
+    "csrf",
+    "opentelemetry",
+    "rustls",
+    "prometheus",
+    "websocket",
+], optional = true }
 
 # Web Client
 reqwest = { version = "0.11", features = ["json"], optional = true }
 
 # Redis
-redis = { version = "0.22", features = ["tokio-comp", "tokio-native-tls-comp"], optional = true }
+redis = { version = "0.22", features = [
+    "tokio-comp",
+    "tokio-native-tls-comp",
+], optional = true }
 
 # Rabbit
 lapin = { version = "2.0", optional = true }
@@ -105,7 +119,12 @@ amq-protocol-types = { version = "7.0", optional = true }
 async-global-executor = { version = "2.0", optional = true }
 
 #Mail
-lettre = { version = "0.10.0-rc.6", features = ["smtp-transport", "tokio1", "tokio1-native-tls", "builder"], optional = true }
+lettre = { version = "0.10.0-rc.6", features = [
+    "smtp-transport",
+    "tokio1",
+    "tokio1-native-tls",
+    "builder",
+], optional = true }
 
 #Object Storage
 rust-s3 = { version = "0.32", optional = true }
@@ -129,11 +148,11 @@ required-features = ["crypto","conf-remote"]
 
 [[test]]
 name = "test_crypto"
-required-features = ["crypto", "crypto_with_sm"]
+required-features = ["crypto", "crypto-with-sm"]
 
 [[test]]
 name = "test_reldb_client"
-required-features = ["test", "reldb-postgres"]
+required-features = ["test", "reldb"]
 
 [[test]]
 name = "test_web_server"
@@ -174,7 +193,7 @@ harness = false
 [[bench]]
 name = "crypto_benchmark"
 harness = false
-required-features = ["crypto", "crypto_with_sm"]
+required-features = ["crypto", "crypto-with-sm"]
 
 [package.metadata.docs.rs]
 all-features = true

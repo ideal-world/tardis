@@ -1,3 +1,5 @@
+use chrono::Utc;
+
 use crate::basic::dto::TardisContext;
 use crate::db::reldb_client::TardisActiveModel;
 use crate::db::sea_orm::entity::prelude::*;
@@ -18,7 +20,7 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub content: String,
     pub creator: String,
-    pub create_time: DateTime,
+    pub create_time: chrono::DateTime<Utc>,
 }
 
 impl TardisActiveModel for ActiveModel {
@@ -37,9 +39,9 @@ impl TardisActiveModel for ActiveModel {
                 .col(ColumnDef::new(Column::RecordId).not_null().string())
                 .col(ColumnDef::new(Column::Content).not_null().text())
                 .col(ColumnDef::new(Column::Creator).not_null().string())
-                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp())
                 .to_owned(),
-            _ => Table::create()
+            DbBackend::Postgres => Table::create()
                 .table(Entity.table_ref())
                 .if_not_exists()
                 .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
@@ -47,7 +49,17 @@ impl TardisActiveModel for ActiveModel {
                 .col(ColumnDef::new(Column::RecordId).not_null().string())
                 .col(ColumnDef::new(Column::Content).not_null().text())
                 .col(ColumnDef::new(Column::Creator).not_null().string())
-                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).date_time())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp_with_time_zone())
+                .to_owned(),
+            DbBackend::Sqlite => Table::create()
+                .table(Entity.table_ref())
+                .if_not_exists()
+                .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
+                .col(ColumnDef::new(Column::EntityName).not_null().string())
+                .col(ColumnDef::new(Column::RecordId).not_null().string())
+                .col(ColumnDef::new(Column::Content).not_null().text())
+                .col(ColumnDef::new(Column::Creator).not_null().string())
+                .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp())
                 .to_owned(),
         }
     }

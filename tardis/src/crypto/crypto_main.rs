@@ -18,8 +18,8 @@ pub struct TardisCrypto {
     pub aes: TardisCryptoAes,
     pub rsa: TardisCryptoRsa,
     pub digest: TardisCryptoDigest,
-    #[cfg(feature = "crypto_with_sm")]
+    #[cfg(feature = "crypto-with-sm")]
     pub sm4: super::crypto_sm2_4::TardisCryptoSm4,
-    #[cfg(feature = "crypto_with_sm")]
+    #[cfg(feature = "crypto-with-sm")]
     pub sm2: super::crypto_sm2_4::TardisCryptoSm2,
 }

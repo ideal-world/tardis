@@ -108,15 +108,16 @@ async fn main() -> TardisResult<()> {
 
 ```
 |-- examples
-  |-- reldb         Relational database usage example
-  |-- web-basic     Web service Usage Example
-  |-- web-client    Web client Usage Example
-  |-- webscoket     WebSocket Usage Example
-  |-- cache         Cache Usage Example
-  |-- mq            Message Queue Usage Example
-  |-- todos         A complete project usage example
-  |-- multi-apps    Multi-application aggregation example
-  |-- perf-test     Performance test case
+  |-- reldb              Relational database usage example
+  |-- web-basic          Web service Usage Example
+  |-- web-client         Web client Usage Example
+  |-- websocket          WebSocket Usage Example
+  |-- cache              Cache Usage Example
+  |-- mq                 Message Queue Usage Example
+  |-- todos              A complete project usage example
+  |-- multi-apps         Multi-application aggregation example
+  |-- pg-graph-search    Graph search by Postgresql example
+  |-- perf-test          Performance test case
 ```
 
 ### FAQ
@@ -135,6 +136,15 @@ async fn main() -> TardisResult<()> {
 * An `` failed to run custom build command for openssl-sys`` error occurs when running under Ubuntu(similar to other distributions):
   ```shell
   apt install build-essential perl pkg-config libssl-dev
+  ```
+* FreeBSD deployment for ``openssl-sys``
+  ```shell
+  sudo pkg install cmake ninja zip pkgconf gmake
+  git clone https://github.com/Microsoft/vcpkg --depth=1
+  cd vcpkg
+  sh bootstrap-vcpkg.sh
+  ./vcpkg integrate install
+  ./vcpkg install openssl
   ```
 
 ----

@@ -62,19 +62,6 @@ impl From<TardisError> for poem::Error {
     }
 }
 
-impl From<poem::Error> for TardisError {
-    fn from(error: poem::Error) -> Self {
-        let msg = error.to_string();
-        if msg.starts_with(TARDIS_ERROR_FLAG) {
-            let msg = msg.split_at(TARDIS_ERROR_FLAG.len()).1.to_string();
-            return TardisFuns::json.str_to_obj(&msg).unwrap_or_else(|_| TardisError::format_error("[Tardis.WebServer] Invalid format error", "406-tardis-error-invalid"));
-        }
-        let msg = &error.to_string();
-        let http_code = error.into_response().status();
-        mapping_http_code_to_error(http_code, msg).unwrap()
-    }
-}
-
 pub fn mapping_http_code_to_error(http_code: StatusCode, msg: &str) -> Option<TardisError> {
     if msg.starts_with(TARDIS_ERROR_FLAG) {
         let msg = msg.split_at(TARDIS_ERROR_FLAG.len()).1.to_string();

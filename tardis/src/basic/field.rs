@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::ops::Deref;
 
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -171,6 +172,22 @@ impl TardisField {
 ///
 /// 当启用 `web-server` feature时，在请求体转Rust对象时有效.
 ///
+/// # Deref
+///
+/// `TrimString` implements <code>[Deref]<Target = [str]></code>
+/// In addition, this means that you can pass a `TrimString` to a
+/// function which takes a [`&str`] by using an ampersand (`&`):
+///
+/// TrimString类似String实现了<code>[Deref]<Target = [str]></code>，
+/// 从而可以使用把`&`加在`TrimString`前面传入接受[`&str`]的函数：
+/// ```
+/// use tardis::basic::field::TrimString;
+/// fn takes_str(s: &str) { }
+///
+/// let s = TrimString::from("Hello");
+///
+/// takes_str(&s);
+/// ```
 /// ```ignore
 /// use serde::{Serialize,Deserialize};
 /// use serde_json::Value::Object;
@@ -230,6 +247,14 @@ impl<'de> Deserialize<'de> for TrimString {
 impl AsRef<str> for TrimString {
     fn as_ref(&self) -> &str {
         self.0.as_str()
+    }
+}
+
+impl Deref for TrimString {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.trim()
     }
 }
 

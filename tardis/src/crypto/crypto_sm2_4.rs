@@ -35,7 +35,7 @@ pub struct TardisCryptoSm2PublicKey {
 /// let encrypted_data = public_key.encrypt("测试").unwrap();
 /// private_key.decrypt(&encrypted_data).unwrap();
 /// ```
-#[cfg(feature = "crypto_with_sm")]
+#[cfg(feature = "crypto-with-sm")]
 impl TardisCryptoSm2 {
     pub fn new_private_key(&self) -> TardisResult<TardisCryptoSm2PrivateKey> {
         TardisCryptoSm2PrivateKey::new()
@@ -58,7 +58,7 @@ impl TardisCryptoSm2 {
     }
 }
 
-#[cfg(feature = "crypto_with_sm")]
+#[cfg(feature = "crypto-with-sm")]
 impl TardisCryptoSm2PrivateKey {
     pub fn new() -> TardisResult<Self> {
         let (_, sk) =
@@ -99,7 +99,7 @@ impl TardisCryptoSm2PrivateKey {
     }
 }
 
-#[cfg(feature = "crypto_with_sm")]
+#[cfg(feature = "crypto-with-sm")]
 impl TardisCryptoSm2PublicKey {
     pub fn from_private_key(private_key: &TardisCryptoSm2PrivateKey) -> TardisResult<Self> {
         let pk = SigCtx::new()
@@ -160,7 +160,7 @@ impl TardisCryptoSm2PublicKey {
 /// let encrypted_data = TardisFuns::crypto.sm4.encrypt_cbc(text, &key, &iv).unwrap();
 /// let data = TardisFuns::crypto.sm4.decrypt_cbc(&encrypted_data, &key, &iv).unwrap();
 /// ```
-#[cfg(feature = "crypto_with_sm")]
+#[cfg(feature = "crypto-with-sm")]
 impl TardisCryptoSm4 {
     pub fn encrypt_cbc(&self, data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
         let cipher = Cipher::new(hex_key.as_bytes(), Mode::Cbc)

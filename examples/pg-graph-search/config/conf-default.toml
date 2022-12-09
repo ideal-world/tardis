@@ -1,0 +1,8 @@
+[fw.app]
+id = "pg_graph_search"
+name = "Postgresql图搜索示例"
+desc = "Postgresql图搜索示例"
+version = "1.0.0"
+
+[fw.db]
+url = "postgres://postgres:123456@localhost:5432/test"

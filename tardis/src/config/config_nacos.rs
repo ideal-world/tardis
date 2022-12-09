@@ -34,16 +34,17 @@ impl ConfCenterProcess for ConfNacosProcessor {
         };
         let group = config.group.as_ref().unwrap_or(&"DEFAULT_GROUP".to_string()).to_string();
 
-        Ok(vec![
-            format!(
-                "{}/v1/cs/configs?accessToken={}&dataId={}-default&group={}{}",
-                config.url, access_token, app_id, group, tenant
-            ),
-            format!(
+        let mut config_urls = vec![format!(
+            "{}/v1/cs/configs?accessToken={}&dataId={}-default&group={}{}",
+            config.url, access_token, app_id, group, tenant
+        )];
+        if !profile.is_empty() {
+            config_urls.push(format!(
                 "{}/v1/cs/configs?accessToken={}&dataId={}-{}&group={}{}",
                 config.url, access_token, app_id, profile, group, tenant
-            ),
-        ])
+            ));
+        }
+        Ok(config_urls)
     }
 }
 

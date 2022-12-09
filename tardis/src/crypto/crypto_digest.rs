@@ -48,7 +48,7 @@ impl TardisCryptoDigest {
         self.digest_hmac(data, key, crypto::sha2::Sha512::new())
     }
 
-    #[cfg(feature = "crypto_with_sm")]
+    #[cfg(feature = "crypto-with-sm")]
     pub fn sm3(&self, data: &str) -> TardisResult<String> {
         use libsm::sm3::hash::Sm3Hash;
 

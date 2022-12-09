@@ -1,12 +1,10 @@
+use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
+use crate::serde_json::json;
+use crate::TardisFuns;
 use async_trait::async_trait;
 use log::{trace, warn};
 use poem::http::StatusCode;
 use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
-
-use crate::basic::error::TardisError;
-use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
-use crate::serde_json::json;
-use crate::TardisFuns;
 
 use super::web_resp::mapping_http_code_to_error;
 
@@ -29,6 +27,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
     async fn call(&self, req: Request) -> poem::Result<Self::Output> {
         let method = req.method().to_string();
         let url = req.uri().to_string();
+        trace!("[Tardis.WebServer] Request {} {}", method, url);
         let resp = self.0.call(req).await;
         match resp {
             Ok(resp) => {
@@ -79,7 +78,12 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                 Ok(resp)
             }
             Err(err) => {
-                let error: TardisError = err.into();
+                let msg = err.to_string();
+                let error = mapping_http_code_to_error(err.into_response().status(), &msg).unwrap();
+                warn!(
+                    "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
+                    method, url, error.code, error.message
+                );
                 Ok(Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(
                     json!({
                         "code": error.code,
