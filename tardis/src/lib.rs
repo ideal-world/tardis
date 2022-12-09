@@ -132,7 +132,7 @@ pub use serde_json;
 use serde_json::Value;
 #[cfg(feature = "test")]
 pub use testcontainers;
-#[cfg(feature = "rt_tokio")]
+#[cfg(feature = "rt-tokio")]
 pub use tokio;
 pub use url;
 

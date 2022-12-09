@@ -1,4 +1,4 @@
-#[cfg(feature = "conf_remote")]
+#[cfg(feature = "conf-remote")]
 use async_trait::async_trait;
 use config::builder::AsyncState;
 use config::{ConfigBuilder, ConfigError, Environment, File, FileFormat};
@@ -26,9 +26,9 @@ use super::config_dto::TardisConfig;
 ///
 /// 1. Local file: <local path>/conf-default.toml
 /// 1. Local file: <local path>/conf-<profile>.toml
-///     ``Requires [conf_remote] feature``
+///     ``Requires [conf-remote] feature``
 /// 1. Remote file: <fw.app.id>-default
-///      ``Requires [conf_remote] feature``
+///      ``Requires [conf-remote] feature``
 /// 1. Remote file: <fw.app.id>-<profile>
 /// 1. Environment variables starting with TARDIS
 ///
@@ -44,7 +44,7 @@ impl TardisConfig {
 
         let mut config = TardisConfig::do_init(relative_path, &profile, None).await?;
 
-        #[cfg(feature = "conf_remote")]
+        #[cfg(feature = "conf-remote")]
         {
             config = if let Some(conf_center) = &config.fw.conf_center {
                 if config.fw.app.id.is_empty() {
@@ -107,7 +107,7 @@ impl TardisConfig {
             }
         }
 
-        #[cfg(feature = "conf_remote")]
+        #[cfg(feature = "conf-remote")]
         {
             // Fetch from remote
             if let Some(conf_center) = _conf_center {
@@ -179,20 +179,20 @@ impl TardisConfig {
     }
 }
 
-#[cfg(feature = "conf_remote")]
+#[cfg(feature = "conf-remote")]
 #[derive(std::fmt::Debug)]
 pub(crate) struct HttpSource<F: config::Format> {
     url: String,
     format: F,
 }
 
-#[cfg(feature = "conf_remote")]
+#[cfg(feature = "conf-remote")]
 #[async_trait]
 pub(crate) trait ConfCenterProcess {
     async fn fetch_conf_urls(profile: &str, app_id: &str, config: &super::config_dto::ConfCenterConfig) -> TardisResult<Vec<String>>;
 }
 
-#[cfg(feature = "conf_remote")]
+#[cfg(feature = "conf-remote")]
 #[async_trait]
 impl<F> config::AsyncSource for HttpSource<F>
 where

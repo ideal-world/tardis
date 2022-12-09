@@ -80,7 +80,13 @@ impl TardisCryptoRsaPrivateKey {
     }
 
     pub fn sign(&self, data: &str) -> TardisResult<String> {
-        let signed_data = self.pri_key.sign(rsa::PaddingScheme::PKCS1v15Sign { hash: None }, TardisFuns::crypto.digest.sha256(data)?.as_bytes())?;
+        let signed_data = self.pri_key.sign(
+            rsa::PaddingScheme::PKCS1v15Sign {
+                hash_len: None,
+                prefix: Box::new([]),
+            },
+            TardisFuns::crypto.digest.sha256(data)?.as_bytes(),
+        )?;
         Ok(hex::encode(signed_data))
     }
 }
@@ -120,7 +126,10 @@ impl TardisCryptoRsaPublicKey {
     pub fn verify(&self, data: &str, signed_data: &str) -> TardisResult<bool> {
         let signed_data = hex::decode(signed_data)?;
         let result = self.pub_key.verify(
-            rsa::PaddingScheme::PKCS1v15Sign { hash: None },
+            rsa::PaddingScheme::PKCS1v15Sign {
+                hash_len: None,
+                prefix: Box::new([]),
+            },
             TardisFuns::crypto.digest.sha256(data)?.as_bytes(),
             signed_data.as_slice(),
         );
