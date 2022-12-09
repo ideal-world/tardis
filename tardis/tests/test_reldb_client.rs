@@ -9,8 +9,8 @@ use tokio::time::sleep;
 use tardis::basic::dto::TardisContext;
 use tardis::basic::result::TardisResult;
 use tardis::db::domain::{tardis_db_config, tardis_db_del_record};
-use tardis::db::reldb_client::TardisRelDBClient;
 use tardis::db::reldb_client::TardisSeaORMExtend;
+use tardis::db::reldb_client::{TardisActiveModel, TardisRelDBClient};
 use tardis::db::sea_orm::sea_query::*;
 use tardis::db::sea_orm::*;
 use tardis::log::info;
@@ -19,7 +19,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_reldb_client() -> TardisResult<()> {
-    env::set_var("RUST_LOG", "info,tardis=trace");
+    env::set_var("RUST_LOG", "debug,tardis=trace,sqlx=off,sqlparser::parser=off");
     TardisFuns::init_log()?;
     TardisTestContainer::mysql(None, |url| async move {
         let client = TardisRelDBClient::init(&url, 10, 5, None, None).await?;
@@ -33,6 +33,7 @@ async fn test_reldb_client() -> TardisResult<()> {
         test_raw_query(&client).await?;
         test_data_dict(&client).await?;
         test_timezone(&url).await?;
+        test_field_type(&client).await?;
         Ok(())
     })
     .await?;
@@ -48,6 +49,7 @@ async fn test_reldb_client() -> TardisResult<()> {
         test_raw_query(&client).await?;
         test_data_dict(&client).await?;
         test_timezone(&url).await?;
+        test_field_type(&client).await?;
         Ok(())
     })
     .await
@@ -574,6 +576,48 @@ async fn test_timezone(url: &str) -> TardisResult<()> {
     Ok(())
 }
 
+async fn test_field_type(client: &TardisRelDBClient) -> TardisResult<()> {
+    let ctx = TardisContext {
+        own_paths: "t1/a1".to_string(),
+        ak: "ak1".to_string(),
+        roles: vec![],
+        groups: vec![],
+        owner: "acc1".to_string(),
+        ext: Default::default(),
+    };
+
+    let mut conn = client.conn();
+    conn.init(entities::rbum_example::ActiveModel::init(client.backend(), Some("update_time"))).await?;
+
+    conn.begin().await?;
+    let insert_result = conn
+        .insert_one(
+            entities::rbum_example::ActiveModel {
+                name: Set("sunisle".to_string()),
+                sort: Set(100),
+                scope_level: Set(0),
+                ..Default::default()
+            },
+            &ctx,
+        )
+        .await?;
+    let id_value = insert_result.last_insert_id.into_value_tuple();
+    let id = match id_value {
+        ValueTuple::One(v) => {
+            if let Value::String(s) = v {
+                s.map(|id| id.to_string())
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+    assert!(id.is_some());
+    conn.commit().await?;
+
+    Ok(())
+}
+
 pub mod entities {
     pub mod tenant {
         use sea_orm::entity::prelude::*;
@@ -790,5 +834,72 @@ pub mod entities {
         }
 
         impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    pub mod rbum_example {
+        use tardis::basic::dto::TardisContext;
+        use tardis::chrono::{self, Utc};
+        use tardis::db::reldb_client::TardisActiveModel;
+        use tardis::db::sea_orm;
+        use tardis::db::sea_orm::prelude::*;
+        use tardis::db::sea_orm::sea_query::{ColumnDef, Index, IndexCreateStatement, Table, TableCreateStatement};
+        use tardis::db::sea_orm::*;
+        use tardis::TardisFuns;
+
+        #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+        #[sea_orm(table_name = "rbum_example")]
+        pub struct Model {
+            #[sea_orm(primary_key, auto_increment = false)]
+            pub id: String,
+            pub name: String,
+            pub sort: u32,
+            pub own_paths: String,
+            pub scope_level: i16,
+            pub create_time: chrono::DateTime<Utc>,
+            pub update_time: chrono::DateTime<Utc>,
+        }
+
+        impl TardisActiveModel for ActiveModel {
+            fn fill_ctx(&mut self, ctx: &TardisContext, is_insert: bool) {
+                if is_insert {
+                    self.id = Set(TardisFuns::field.nanoid());
+                    self.own_paths = Set(ctx.own_paths.to_string());
+                }
+            }
+
+            fn create_table_statement(db: DbBackend) -> TableCreateStatement {
+                let mut builder = Table::create();
+                builder
+                    .table(Entity.table_ref())
+                    .if_not_exists()
+                    .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
+                    .col(ColumnDef::new(Column::Name).not_null().string())
+                    .col(ColumnDef::new(Column::Sort).not_null().unsigned())
+                    .col(ColumnDef::new(Column::OwnPaths).not_null().string())
+                    .col(ColumnDef::new(Column::ScopeLevel).not_null().tiny_integer());
+                if db == DatabaseBackend::Postgres {
+                    builder
+                        .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp_with_time_zone())
+                        .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp_with_time_zone());
+                } else {
+                    builder
+                        .engine("InnoDB")
+                        .character_set("utf8mb4")
+                        .collate("utf8mb4_0900_as_cs")
+                        .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp())
+                        .col(ColumnDef::new(Column::UpdateTime).extra("DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".to_string()).timestamp());
+                }
+                builder.to_owned()
+            }
+
+            fn create_index_statement() -> Vec<IndexCreateStatement> {
+                vec![Index::create().name(&format!("idx-{}-{}", Entity.table_name(), Column::OwnPaths.to_string())).table(Entity).col(Column::OwnPaths).to_owned()]
+            }
+        }
+
+        impl ActiveModelBehavior for ActiveModel {}
+
+        #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+        pub enum Relation {}
     }
 }
