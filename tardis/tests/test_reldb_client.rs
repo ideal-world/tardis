@@ -17,6 +17,8 @@ use tardis::log::info;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 
+use crate::entities::RbumExampleResp;
+
 #[tokio::test]
 async fn test_reldb_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug,tardis=trace,sqlx=off,sqlparser::parser=off");
@@ -577,6 +579,7 @@ async fn test_timezone(url: &str) -> TardisResult<()> {
 }
 
 async fn test_field_type(client: &TardisRelDBClient) -> TardisResult<()> {
+    // https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/#column-type
     let ctx = TardisContext {
         own_paths: "t1/a1".to_string(),
         ak: "ak1".to_string(),
@@ -595,30 +598,47 @@ async fn test_field_type(client: &TardisRelDBClient) -> TardisResult<()> {
             entities::rbum_example::ActiveModel {
                 name: Set("sunisle".to_string()),
                 sort: Set(100),
+                status: Set(1),
                 scope_level: Set(0),
                 ..Default::default()
             },
             &ctx,
         )
         .await?;
-    let id_value = insert_result.last_insert_id.into_value_tuple();
-    let id = match id_value {
-        ValueTuple::One(v) => {
-            if let Value::String(s) = v {
-                s.map(|id| id.to_string())
-            } else {
-                None
-            }
-        }
-        _ => None,
-    };
-    assert!(id.is_some());
+
+    let dto = conn
+        .get_dto::<RbumExampleResp>(
+            Query::select()
+                .columns(vec![
+                    entities::rbum_example::Column::Id,
+                    entities::rbum_example::Column::Name,
+                    entities::rbum_example::Column::Sort,
+                    entities::rbum_example::Column::Status,
+                    entities::rbum_example::Column::OwnPaths,
+                    entities::rbum_example::Column::ScopeLevel,
+                    entities::rbum_example::Column::CreateTime,
+                    entities::rbum_example::Column::UpdateTime,
+                ])
+                .from(entities::rbum_example::Entity)
+                .and_where(Expr::col(entities::rbum_example::Column::Id).eq(insert_result.last_insert_id)),
+        )
+        .await?
+        .unwrap();
+
+    assert_eq!(dto.name, "sunisle");
+    assert_eq!(dto.sort, 100);
+    assert_eq!(dto.status, 1);
+    assert_eq!(dto.own_paths, "t1/a1");
+    assert_eq!(dto.scope_level, 0);
     conn.commit().await?;
 
     Ok(())
 }
 
 pub mod entities {
+    use chrono::{DateTime, Utc};
+    use serde::{Deserialize, Serialize};
+
     pub mod tenant {
         use sea_orm::entity::prelude::*;
         use sea_orm::ActiveModelBehavior;
@@ -852,9 +872,10 @@ pub mod entities {
             #[sea_orm(primary_key, auto_increment = false)]
             pub id: String,
             pub name: String,
-            pub sort: u32,
+            pub sort: i64,
             pub own_paths: String,
             pub scope_level: i16,
+            pub status: i16,
             pub create_time: chrono::DateTime<Utc>,
             pub update_time: chrono::DateTime<Utc>,
         }
@@ -874,9 +895,10 @@ pub mod entities {
                     .if_not_exists()
                     .col(ColumnDef::new(Column::Id).not_null().string().primary_key())
                     .col(ColumnDef::new(Column::Name).not_null().string())
-                    .col(ColumnDef::new(Column::Sort).not_null().unsigned())
+                    .col(ColumnDef::new(Column::Sort).not_null().big_integer())
                     .col(ColumnDef::new(Column::OwnPaths).not_null().string())
-                    .col(ColumnDef::new(Column::ScopeLevel).not_null().tiny_integer());
+                    .col(ColumnDef::new(Column::ScopeLevel).not_null().small_integer())
+                    .col(ColumnDef::new(Column::Status).not_null().small_integer());
                 if db == DatabaseBackend::Postgres {
                     builder
                         .col(ColumnDef::new(Column::CreateTime).extra("DEFAULT CURRENT_TIMESTAMP".to_string()).timestamp_with_time_zone())
@@ -901,5 +923,17 @@ pub mod entities {
 
         #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
         pub enum Relation {}
+    }
+
+    #[derive(Serialize, Deserialize, sea_orm::FromQueryResult, Debug)]
+    pub struct RbumExampleResp {
+        pub id: String,
+        pub name: String,
+        pub sort: i64,
+        pub status: i16,
+        pub own_paths: String,
+        pub scope_level: i16,
+        pub create_time: DateTime<Utc>,
+        pub update_time: DateTime<Utc>,
     }
 }
