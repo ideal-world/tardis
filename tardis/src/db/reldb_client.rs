@@ -1232,6 +1232,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     /// ```
     fn init(db: DbBackend, update_time_field: Option<&str>) -> (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>) {
         let create_table_statement = Self::create_table_statement(db);
+        // create_table_statement.to_string(schema_builder)
         let create_index_statement = Self::create_index_statement();
         if let Some(table_name) = create_table_statement.get_table_name() {
             let table_name = match table_name {

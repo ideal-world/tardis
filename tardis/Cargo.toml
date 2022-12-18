@@ -1,5 +1,6 @@
 [package]
-version = "0.1.0-alpha31"
+name = "tardis"
+version = "0.1.0-alpha30"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -62,9 +63,8 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # macros
-tardis-macros = { version = 0.1.0-alpha31", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-alpha30", path = "../tardis-macros", optional = true }
 
-name = "tardis"
 # Tokio
 tokio = { version = "1.18", features = [
     "macros",
@@ -86,11 +86,7 @@ futures-util = { version = "0.3", optional = true }
 async-trait = { version = "0.1", optional = true }
 
 # RelDB
-sea-orm = { version = "0.10", features = [
-    "macros",
-    "runtime-tokio-native-tls",
-    "debug-print",
-], optional = true }
+sea-orm = { version = "0.10", features = ["macros", "runtime-tokio-native-tls", "debug-print"], optional = true }
 sqlx = { version = "0.6", features = ["any"], optional = true }
 sqlparser = { version = "0.28", optional = true }
 
@@ -148,7 +144,7 @@ required-features = ["crypto"]
 
 [[test]]
 name = "test_config_with_remote"
-required-features = ["crypto", "conf-remote"]
+required-features = ["crypto","conf-remote"]
 
 [[test]]
 name = "test_crypto"
