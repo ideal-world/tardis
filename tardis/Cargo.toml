@@ -1,6 +1,6 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha31"
+version = "0.1.0-alpha32"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -46,7 +46,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
 derive_more = { version = "0.99" }
 nanoid = { version = "0.4" }
-base64 = { version = "0.13" }
+base64 = { version = "0.20" }
 hex = { version = "0.4" }
 lazy_static = { version = "1.4" }
 rand = { version = "0.8" }
@@ -63,7 +63,7 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # macros
-tardis-macros = { version = "0.1.0-alpha31", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-alpha32", path = "../tardis-macros", optional = true }
 
 # Tokio
 tokio = { version = "1.18", features = [
