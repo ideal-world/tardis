@@ -69,9 +69,11 @@ async fn test_cache_client() -> TardisResult<()> {
         assert_eq!(num_value, 2);
         num_value = client.incr("incr", -1).await?;
         assert_eq!(num_value, 1);
+        num_value = client.incr("incr", -3).await?;
+        assert_eq!(num_value, -2);
 
         client.expire_at("test_key_xp", 1893430861).await?;
-        num_value = client.ttl("test_key_xp").await?;
+        let num_value = client.ttl("test_key_xp").await?;
         println!("Expire AT : {}", num_value);
         assert!(num_value > 0);
 

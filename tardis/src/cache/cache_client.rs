@@ -90,7 +90,7 @@ impl TardisCacheClient {
         (*self.con.lock().await).getset(key, value).await
     }
 
-    pub async fn incr(&self, key: &str, delta: isize) -> RedisResult<usize> {
+    pub async fn incr(&self, key: &str, delta: isize) -> RedisResult<isize> {
         trace!("[Tardis.CacheClient] incr, key:{}, delta:{}", key, delta);
         (*self.con.lock().await).incr(key, delta).await
     }
@@ -191,7 +191,7 @@ impl TardisCacheClient {
         }
     }
 
-    pub async fn hincr(&self, key: &str, field: &str, delta: isize) -> RedisResult<usize> {
+    pub async fn hincr(&self, key: &str, field: &str, delta: isize) -> RedisResult<isize> {
         trace!("[Tardis.CacheClient] hincr, key:{}, field:{}, delta:{}", key, field, delta);
         (*self.con.lock().await).hincr(key, field, delta).await
     }
