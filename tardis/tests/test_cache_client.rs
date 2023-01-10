@@ -133,9 +133,9 @@ async fn test_cache_client() -> TardisResult<()> {
 
         // custom
 
-        let mut _s: bool = client.cmd().await.sadd("s1", "m1").await?;
-        _s = client.cmd().await.sadd("s1", "m2").await?;
-        let mem: Vec<String> = client.cmd().await.smembers("s1").await?;
+        let mut _s: bool = client.cmd().await?.sadd("s1", "m1").await?;
+        _s = client.cmd().await?.sadd("s1", "m2").await?;
+        let mem: Vec<String> = client.cmd().await?.smembers("s1").await?;
         assert!(mem.contains(&"m1".to_string()));
         assert!(mem.contains(&"m2".to_string()));
         assert!(!mem.contains(&"m3".to_string()));
