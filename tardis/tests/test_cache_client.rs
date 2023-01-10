@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::env;
 
 use log::info;
-use redis::AsyncCommands;
+use tardis::cache::AsyncCommands;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
