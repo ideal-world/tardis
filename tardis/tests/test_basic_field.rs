@@ -1,3 +1,4 @@
+use tardis::basic::field::TrimString;
 use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
@@ -30,6 +31,17 @@ async fn test_basic_field() -> TardisResult<()> {
     assert!(!TardisFuns::field.is_code_ncs("Adw834_dfds"));
     assert_eq!(TardisFuns::field.nanoid().len(), 21);
     assert_eq!(TardisFuns::field.nanoid_len(4).len(), 4);
+
+    let ts = TrimString(" a ".to_string());
+     assert_eq!(ts.0, " a ");
+    let s:&str = &ts;
+    assert_eq!(s, "a");
+    let ts:TrimString = " a ".into();
+    let s:&str = &ts;
+    assert_eq!(s, "a");
+    let ts:TrimString = " a ".to_string().into();
+    let s:&str = &ts;
+    assert_eq!(s, "a");
 
     Ok(())
 }
