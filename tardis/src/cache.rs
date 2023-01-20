@@ -1,2 +1,2 @@
-pub use redis::AsyncCommands;
+pub use redis::*;
 pub mod cache_client;
