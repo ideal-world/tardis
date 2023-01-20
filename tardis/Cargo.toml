@@ -50,7 +50,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
 derive_more = { version = "0.99" }
 nanoid = { version = "0.4" }
-base64 = { version = "0.20" }
+base64 = { version = "0.21" }
 hex = { version = "0.4" }
 lazy_static = { version = "1.4" }
 rand = { version = "0.8" }
@@ -96,7 +96,7 @@ sea-orm = { version = "0.10", features = [
     "debug-print",
 ], optional = true }
 sqlx = { version = "0.6", features = ["any"], optional = true }
-sqlparser = { version = "0.28", optional = true }
+sqlparser = { version = "0.30", optional = true }
 
 # Web Server
 poem-openapi = { version = "2", features = [
