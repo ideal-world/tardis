@@ -32,18 +32,16 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
         match resp {
             Ok(resp) => {
                 let mut resp = resp.into_response();
-                if resp.status() == StatusCode::OK {
+                let http_code = resp.status().as_u16();
+                if http_code < 400 {
                     return Ok(resp);
                 }
                 let msg = resp.take_body().into_string().await.expect("[Tardis.WebClient] Request exception type conversion error");
 
-                let http_code = if resp.status().as_u16() >= 500 {
+                let http_code = if http_code >= 500 {
                     warn!(
                         "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
-                        method,
-                        url,
-                        resp.status().as_u16(),
-                        msg
+                        method, url, http_code, msg
                     );
                     resp.status()
                 } else {
@@ -51,7 +49,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                         "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
                         method,
                         url,
-                        resp.status().as_u16(),
+                        http_code,
                         msg
                     );
                     // Request fallback friendly

@@ -23,3 +23,6 @@ pub mod web_server;
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub mod web_validation;
+#[cfg(feature = "web-server")]
+#[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
+pub mod websocket;

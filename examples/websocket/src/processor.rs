@@ -1,15 +1,12 @@
-use tardis::futures_util::{SinkExt, StreamExt};
-use tardis::web::poem;
-use tardis::web::poem::{
-    handler,
-    web::{
-        websocket::{Message, WebSocket},
-        Data, Path,
-    },
-    IntoResponse,
-};
-use tardis::web::poem_openapi;
+use serde::{Deserialize, Serialize};
+use tardis::basic::result::TardisResult;
+use tardis::tokio::sync::broadcast::Sender;
+use tardis::web::poem::web::websocket::BoxWebSocketUpgraded;
+use tardis::web::poem::web::{websocket::WebSocket, Data, Path};
 use tardis::web::poem_openapi::payload::Html;
+use tardis::web::poem_openapi::{self};
+use tardis::web::websocket::{ws_broadcast, ws_echo, TardisWebsocketResp};
+use tardis::TardisFuns;
 
 pub struct Page;
 
@@ -47,7 +44,7 @@ impl Page {
             sendForm.hidden = false;
             msgsArea.hidden = false;
             msgInput.focus();
-            ws = new WebSocket("ws://127.0.0.1:8089/ws/echo/" + nameInput.value);
+            ws = new WebSocket("ws://" + location.host + "/ws/echo/" + nameInput.value);
             ws.onmessage = function(event) {
                 msgsArea.value += event.data + "\r\n";
             }
@@ -74,7 +71,7 @@ impl Page {
         </form>
         
         <form id="sendForm" hidden>
-            Text: <input id="msgInput" type="text" />
+            Text: <input id="msgInput" type="text" /> Receiver name: <input id="recNameInput" type="text" />
             <button type="submit">Send</button>
         </form>
         
@@ -86,6 +83,7 @@ impl Page {
         const sendForm = document.querySelector("#sendForm");
         const nameInput = document.querySelector("#nameInput");
         const msgInput = document.querySelector("#msgInput");
+        const recNameInput = document.querySelector("#recNameInput");
         const msgsArea = document.querySelector("#msgsArea");
         
         nameInput.focus();
@@ -95,7 +93,7 @@ impl Page {
             sendForm.hidden = false;
             msgsArea.hidden = false;
             msgInput.focus();
-            ws = new WebSocket("ws://127.0.0.1:8089/ws/broadcast/" + nameInput.value);
+            ws = new WebSocket("ws://" + location.host + "/ws/broadcast/" + nameInput.value);
             ws.onmessage = function(event) {
                 msgsArea.value += event.data + "\r\n";
             }
@@ -103,60 +101,50 @@ impl Page {
         
         sendForm.addEventListener("submit", function(event) {
             event.preventDefault();
-            ws.send(msgInput.value);
+            ws.send(JSON.stringify({"to": recNameInput.value, "msg": msgInput.value}));
+            recNameInput.value = "";
             msgInput.value = "";
         });
     </script>
     "###,
         )
     }
+
+    #[oai(path = "/ws/echo/:name", method = "get")]
+    async fn ws_echo(&self, name: Path<String>, websocket: WebSocket) -> BoxWebSocketUpgraded {
+        ws_echo(
+            websocket,
+            name.0,
+            |req_session, msg| async move {
+                let resp = format!("echo:{} by {}", msg, req_session);
+                Some(resp)
+            },
+            |_| async move {},
+        )
+    }
+
+    #[oai(path = "/ws/broadcast/:name", method = "get")]
+    async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<String>>) -> BoxWebSocketUpgraded {
+        ws_broadcast(
+            websocket,
+            sender,
+            name.0,
+            |req_session, msg| async move {
+                let exmaple_msg = TardisFuns::json.str_to_obj::<WebsocketExample>(&msg).unwrap();
+                Some(TardisWebsocketResp {
+                    msg: TardisFuns::json.obj_to_string(&TardisResult::Ok(format!("echo:{}", exmaple_msg.msg))).unwrap(),
+                    from_seesion: req_session,
+                    to_seesions: if exmaple_msg.to.is_empty() { vec![] } else { vec![exmaple_msg.to] },
+                    ignore_self: true,
+                })
+            },
+            |_| async move {},
+        )
+    }
 }
 
-#[handler]
-pub fn ws_echo(Path(name): Path<String>, websocket: WebSocket) -> impl IntoResponse {
-    websocket.on_upgrade(|mut socket| async move {
-        while let Some(Ok(Message::Text(text))) = socket.next().await {
-            if socket.send(Message::Text(format!("{}: {}", name, text))).await.is_err() {
-                break;
-            }
-        }
-    })
-}
-
-#[handler]
-pub fn ws_p2p(Path(name): Path<String>, websocket: WebSocket) -> impl IntoResponse {
-    websocket.on_upgrade(|mut socket| async move {
-        while let Some(Ok(Message::Text(text))) = socket.next().await {
-            if socket.send(Message::Text(format!("{}: {}", name, text))).await.is_err() {
-                break;
-            }
-        }
-    })
-}
-
-#[handler]
-pub fn ws_broadcast(Path(name): Path<String>, ws: WebSocket, sender: Data<&tardis::tokio::sync::broadcast::Sender<String>>) -> impl IntoResponse {
-    let sender = sender.clone();
-    let mut receiver = sender.subscribe();
-    ws.on_upgrade(move |socket| async move {
-        let (mut sink, mut stream) = socket.split();
-
-        tardis::tokio::spawn(async move {
-            while let Some(Ok(msg)) = stream.next().await {
-                if let Message::Text(text) = msg {
-                    if sender.send(format!("{}: {}", name, text)).is_err() {
-                        break;
-                    }
-                }
-            }
-        });
-
-        tardis::tokio::spawn(async move {
-            while let Ok(msg) = receiver.recv().await {
-                if sink.send(Message::Text(msg)).await.is_err() {
-                    break;
-                }
-            }
-        });
-    })
+#[derive(Deserialize, Serialize)]
+pub struct WebsocketExample {
+    pub msg: String,
+    pub to: String,
 }
