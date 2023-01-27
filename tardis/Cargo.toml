@@ -1,15 +1,15 @@
 [package]
 name = "tardis"
-version = "0.1.0-alpha33"
-authors = ["gudaoxuri <i@sunisle.org>"]
-description = "Elegant, clean Rust development framework"
-keywords = ["http", "database", "web", "redis", "mq"]
-categories = ["asynchronous", "web-programming", "database", "caching"]
-homepage = "https://github.com/ideal-world/tardis"
-documentation = "https://docs.rs/tardis/"
-repository = "https://github.com/ideal-world/tardis"
-license = "MIT"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+keywords.workspace = true
+categories.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
 readme = "README.md"
 
 [profile.release]
@@ -67,7 +67,7 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # macros
-tardis-macros = { version = "0.1.0-alpha33", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-alpha34", path = "../tardis-macros", optional = true }
 
 # Tokio
 tokio = { version = "1.18", features = [
@@ -101,7 +101,7 @@ sqlparser = { version = "0.30", optional = true }
 # Web Server
 poem-openapi = { version = "2", features = [
     "rapidoc",
-    "chrono",
+    "websocket",
 ], optional = true }
 poem-openapi-derive = { version = "2", optional = true }
 poem = { version = "1.3", features = [

@@ -1,2 +1,15 @@
 [workspace]
 members = ["tardis-macros", "tardis", "examples/*"]
+
+[workspace.package]
+version = "0.1.0-alpha34"
+authors = ["gudaoxuri <i@sunisle.org>"]
+description = "Elegant, clean Rust development framework"
+keywords = ["http", "database", "web", "redis", "mq"]
+categories = ["asynchronous", "web-programming", "database", "caching"]
+homepage = "https://github.com/ideal-world/tardis"
+documentation = "https://docs.rs/tardis/"
+repository = "https://github.com/ideal-world/tardis"
+edition = "2021"
+license = "MIT/Apache-2.0"
+rust-version = "1.64"
