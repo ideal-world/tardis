@@ -33,7 +33,8 @@ where
                         trace!("[Tardis.WebServer] WS echo receive: {} by {}", text, &current_seesion);
                         if let Some(msg) = process_fun(current_seesion.clone(), text).await {
                             trace!("[Tardis.WebServer] WS echo send: {} to {}", msg, &current_seesion);
-                            if socket.send(Message::Text(msg)).await.is_err() {
+                            if let Err(error) = socket.send(Message::Text(msg.clone())).await {
+                                warn!("[Tardis.WebServer] WS echo send failed, message {msg} to {}: {error}", &current_seesion);
                                 break;
                             }
                         }
@@ -77,23 +78,27 @@ where
                             trace!("[Tardis.WebServer] WS broadcast receive: {} by {}", text, current_seesion);
                             if let Some(resp) = process_fun(current_seesion.clone(), text).await {
                                 trace!("[Tardis.WebServer] WS broadcast send: {} to {:?}", resp.msg, resp.to_seesions);
-                                if sender.send(TardisFuns::json.obj_to_string(&resp).unwrap()).is_err() {
+                                if let Err(error) = sender.send(TardisFuns::json.obj_to_string(&resp).unwrap()) {
+                                    warn!(
+                                        "[Tardis.WebServer] WS broadcast send to channel failed, message {} to {:?}: {error}",
+                                        resp.msg, resp.to_seesions
+                                    );
                                     break;
                                 }
                             }
                         }
                         Message::Close(msg) => {
-                            trace!("[Tardis.WebServer] WS echo receive: clone {:?}", msg);
+                            trace!("[Tardis.WebServer] WS broadcast receive: close {:?}", msg);
                             close_fun(msg).await
                         }
                         Message::Binary(_) => {
-                            warn!("[Tardis.WebServer] WS echo receive: the binary type is not implemented");
+                            warn!("[Tardis.WebServer] WS broadcast receive: the binary type is not implemented");
                         }
                         Message::Ping(_) => {
-                            warn!("[Tardis.WebServer] WS echo receive: the ping type is not implemented");
+                            warn!("[Tardis.WebServer] WS broadcast receive: the ping type is not implemented");
                         }
                         Message::Pong(_) => {
-                            warn!("[Tardis.WebServer] WS echo receive: the pong type is not implemented");
+                            warn!("[Tardis.WebServer] WS broadcast receive: the pong type is not implemented");
                         }
                     }
                 }
@@ -102,10 +107,11 @@ where
             tokio::spawn(async move {
                 while let Ok(resp) = receiver.recv().await {
                     let resp = TardisFuns::json.str_to_obj::<TardisWebsocketResp>(&resp).unwrap();
-                    if ((resp.to_seesions.is_empty() && (!resp.ignore_self || resp.from_seesion != current_seesion_clone)) || resp.to_seesions.contains(&current_seesion_clone))
-                        && sink.send(Message::Text(resp.msg)).await.is_err()
-                    {
-                        break;
+                    if (resp.to_seesions.is_empty() && (!resp.ignore_self || resp.from_seesion != current_seesion_clone)) || resp.to_seesions.contains(&current_seesion_clone) {
+                        if let Err(error) = sink.send(Message::Text(resp.msg.clone())).await {
+                            warn!("[Tardis.WebServer] WS broadcast send failed, message {} to {:?}: {error}", resp.msg, resp.to_seesions);
+                            break;
+                        }
                     }
                 }
             });

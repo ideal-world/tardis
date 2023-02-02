@@ -67,6 +67,10 @@
 500-tardis-mq-confirm-error	MQ请求确认错误
 406-tardis-mq-url-error	MQ Url解析错误
 
+406-tardis-ws-url-error	Websocket Url解析错误
+500-tardis-ws-client-send-error	Websocket客户端消息发送错误
+500-tardis-ws-client-close-error	Websocket客户端关闭错误
+
 -1-tardis-reldb-error	SQL执行错误
 406-tardis-reldb-url-error	SQL Url解析错误
 406-tardis-reldb-conn-init-error	数据连接初始化错误

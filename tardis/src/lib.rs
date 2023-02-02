@@ -19,14 +19,20 @@
 //! * Internationalization and localization support
 //! * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
 //!
-//! ## ⚙️Feature description
+//! ## ⚙️Key Features
 //!
-//! * ``trace`` tracing operation
+//! * ``conf-remote`` enable the unified configuration center
 //! * ``crypto`` encryption, decryption and digest operations
+//! * ``crypto-with-sm`` encryption, decryption and digest with SM.x operations
 //! * ``future`` asynchronous operations
-//! * ``reldb/reldb-postgres/reldb-mysql/reldb-sqlite`` relational database operations(based on [SeaORM](https://github.com/SeaQL/sea-orm))
+//! * ``reldb-core`` relational database core operations(based on [SeaORM](https://github.com/SeaQL/sea-orm))
+//! * ``reldb-postgres`` relational database with postgres driver
+//! * ``reldb-mysql`` relational database with mysql driver
+//! * ``reldb-sqlite`` relational database with sqlite driver
+//! * ``reldb`` relational database with postgres/mysql/sqlite drivers
 //! * ``web-server`` web service operations(based on [Poem](https://github.com/poem-web/poem))
 //! * ``web-client`` web client operations
+//! * ``ws-client`` webscoket client operations
 //! * ``cache`` cache operations
 //! * ``mq`` message queue operations
 //! * ``mail`` mail send operations
@@ -405,7 +411,7 @@ impl TardisFuns {
         #[cfg(feature = "web-server")]
         {
             if TardisFuns::fw_config().web_server.enabled {
-                let web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config()).await?;
+                let web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config())?;
                 unsafe {
                     replace(&mut TARDIS_INST.web_server, Some(web_server));
                 };
@@ -746,6 +752,15 @@ impl TardisFuns {
                 },
             }
         }
+    }
+
+    #[cfg(feature = "ws-client")]
+    pub async fn ws_client<F, T>(str_url: &str, fun: F) -> TardisResult<web::ws_client::TardisWSClient>
+    where
+        F: Fn(String) -> T + Send + Sync + 'static,
+        T: futures::Future<Output = Option<String>> + Send + 'static,
+    {
+        web::ws_client::TardisWSClient::init(str_url, fun).await
     }
 
     /// Use the distributed cache feature / 使用分布式缓存功能

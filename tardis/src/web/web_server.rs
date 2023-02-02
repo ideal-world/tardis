@@ -18,11 +18,24 @@ pub struct TardisWebServer {
 }
 
 impl TardisWebServer {
-    pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServer> {
+    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServer> {
         Ok(TardisWebServer {
             app_name: conf.app.name.clone(),
             version: conf.app.version.clone(),
             config: conf.web_server.clone(),
+            route: Mutex::new(Route::new()),
+        })
+    }
+
+    pub fn init_simple(host: &str, port: u16) -> TardisResult<TardisWebServer> {
+        Ok(TardisWebServer {
+            app_name: "".to_string(),
+            version: "".to_string(),
+            config: WebServerConfig {
+                host: host.to_string(),
+                port,
+                ..Default::default()
+            },
             route: Mutex::new(Route::new()),
         })
     }
@@ -132,7 +145,7 @@ impl TardisWebServer {
         self
     }
 
-    pub async fn start(&'static self) -> TardisResult<()> {
+    pub async fn start(&self) -> TardisResult<()> {
         let output_info = format!(
             r#"
 =================

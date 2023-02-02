@@ -5,7 +5,7 @@ use tardis::web::poem::web::websocket::BoxWebSocketUpgraded;
 use tardis::web::poem::web::{websocket::WebSocket, Data, Path};
 use tardis::web::poem_openapi::payload::Html;
 use tardis::web::poem_openapi::{self};
-use tardis::web::websocket::{ws_broadcast, ws_echo, TardisWebsocketResp};
+use tardis::web::ws_processor::{ws_broadcast, ws_echo, TardisWebsocketResp};
 use tardis::TardisFuns;
 
 pub struct Page;

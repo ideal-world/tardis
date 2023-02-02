@@ -32,14 +32,20 @@ Do NOT use in production environment!**
 * Internationalization and localization support
 * Commonly used operations (E.g. uniform error handling, encryption and decryption, regular checksums)
 
-## ⚙️Feature description
+## ⚙️Key Features
 
-* ``trace`` tracing operation
+* ``conf-remote`` enable the unified configuration center
 * ``crypto`` encryption, decryption and digest operations
+* ``crypto-with-sm`` encryption, decryption and digest with SM.x operations
 * ``future`` asynchronous operations
-* ``reldb`` relational database operations(based on [SeaORM](https://github.com/SeaQL/sea-orm))
+* ``reldb-core`` relational database core operations(based on [SeaORM](https://github.com/SeaQL/sea-orm))
+* ``reldb-postgres`` relational database with postgres driver
+* ``reldb-mysql`` relational database with mysql driver
+* ``reldb-sqlite`` relational database with sqlite driver
+* ``reldb`` relational database with postgres/mysql/sqlite drivers
 * ``web-server`` web service operations(based on [Poem](https://github.com/poem-web/poem))
 * ``web-client`` web client operations
+* ``ws-client`` webscoket client operations
 * ``cache`` cache operations
 * ``mq`` message queue operations
 * ``mail`` mail send operations
