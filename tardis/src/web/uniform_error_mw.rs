@@ -75,9 +75,9 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                 );
                 Ok(resp)
             }
-            Err(err) => {
-                let msg = err.to_string();
-                let error = mapping_http_code_to_error(err.into_response().status(), &msg).unwrap();
+            Err(error) => {
+                let msg = error.to_string();
+                let error = mapping_http_code_to_error(error.into_response().status(), &msg).unwrap();
                 warn!(
                     "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
                     method, url, error.code, error.message

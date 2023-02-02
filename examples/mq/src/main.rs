@@ -16,7 +16,7 @@ async fn main() -> TardisResult<()> {
     let docker = clients::Cli::default();
     let rabbit_container = TardisTestContainer::rabbit_custom(&docker);
     let port = rabbit_container.get_host_port_ipv4(5672);
-    let url = format!("amqp://guest:guest@127.0.0.1:{}/%2f", port);
+    let url = format!("amqp://guest:guest@127.0.0.1:{port}/%2f");
     env::set_var("TARDIS_FW.MQ.URL", url);
 
     env::set_var("RUST_LOG", "debug");

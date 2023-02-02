@@ -12,4 +12,3 @@ tardis-example-multi-apps-tag = { path = "tag"}
 serde = { version = "1", features = ["derive"] }
 # Tardis Functions
 tardis = { path = "../../tardis", features = ["web-server", "test"] }
-

@@ -38,7 +38,7 @@ impl TardisMailClient {
         info!("[Tardis.MailClient] Initializing");
         let creds = Credentials::new(smtp_username.to_string(), smtp_password.to_string());
         let client = AsyncSmtpTransport::<Tokio1Executor>::relay(smtp_host)
-            .map_err(|_| TardisError::internal_error(&format!("[Tardis.MailClient] Failed to create SMTP client: {}", smtp_host), "500-tardis-mail-init-error"))?
+            .map_err(|_| TardisError::internal_error(&format!("[Tardis.MailClient] Failed to create SMTP client: {smtp_host}"), "500-tardis-mail-init-error"))?
             .credentials(creds)
             .port(smtp_port)
             .build();
@@ -92,8 +92,8 @@ impl TardisMailClient {
         );
         match self.client.send(email).await {
             Ok(_) => Ok(()),
-            Err(e) => Err(TardisError::internal_error(
-                &format!("[Tardis.MailClient] Could not send email: {}", e),
+            Err(error) => Err(TardisError::internal_error(
+                &format!("[Tardis.MailClient] Could not send email: {error}"),
                 "-1-tardis-mail-error",
             )),
         }
@@ -104,7 +104,7 @@ impl TardisMailClient {
             let client = TardisFuns::mail_by_module_or_default(&module_code);
             match client.send(&req).await {
                 Ok(_) => (),
-                Err(e) => warn!("{:?} | send data: {:?}", e, req),
+                Err(error) => warn!("{error:?} | send data: {req:?}"),
             }
         });
         Ok(())
@@ -126,13 +126,13 @@ pub struct TardisMailSendReq {
 impl From<address::AddressError> for TardisError {
     fn from(error: address::AddressError) -> Self {
         error!("[Tardis.MailClient] AddressError: {}", error.to_string());
-        TardisError::wrap(&format!("[Tardis.MailClient] {:?}", error), "-1-tardis-mail-error")
+        TardisError::wrap(&format!("[Tardis.MailClient] {error:?}"), "-1-tardis-mail-error")
     }
 }
 
 impl From<error::Error> for TardisError {
     fn from(error: error::Error) -> Self {
         error!("[Tardis.MailClient] Error: {}", error.to_string());
-        TardisError::wrap(&format!("[Tardis.MailClient] {:?}", error), "406-tardis-mail-addr-error")
+        TardisError::wrap(&format!("[Tardis.MailClient] {error:?}"), "406-tardis-mail-addr-error")
     }
 }

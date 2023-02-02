@@ -58,7 +58,7 @@ impl TardisJson {
         let result = serde_json::from_str::<'a, T>(str);
         match result {
             Ok(r) => Ok(r),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-str-to-obj-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-str-to-obj-error")),
         }
     }
 
@@ -80,7 +80,7 @@ impl TardisJson {
         let result = serde_json::from_reader::<R, T>(rdr);
         match result {
             Ok(r) => Ok(r),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-reader-to-obj-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-reader-to-obj-error")),
         }
     }
 
@@ -100,7 +100,7 @@ impl TardisJson {
         let file = File::open(path);
         match file {
             Ok(f) => self.reader_to_obj::<File, T>(f),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-file-to-obj-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-file-to-obj-error")),
         }
     }
 
@@ -119,7 +119,7 @@ impl TardisJson {
         let result = serde_json::from_str::<'a, Value>(str);
         match result {
             Ok(r) => Ok(r),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-str-to-json-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-str-to-json-error")),
         }
     }
 
@@ -138,7 +138,7 @@ impl TardisJson {
         let result = serde_json::from_value::<T>(value);
         match result {
             Ok(r) => Ok(r),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-json-to-obj-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-json-to-obj-error")),
         }
     }
 
@@ -157,7 +157,7 @@ impl TardisJson {
         let result = serde_json::to_string(obj);
         match result {
             Ok(r) => Ok(r),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-obj-to-str-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-obj-to-str-error")),
         }
     }
 
@@ -176,7 +176,7 @@ impl TardisJson {
         let result = serde_json::to_value(obj);
         match result {
             Ok(r) => Ok(r),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-obj-to-json-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-obj-to-json-error")),
         }
     }
 
@@ -195,7 +195,7 @@ impl TardisJson {
         let result = serde_json::to_string(&value);
         match result {
             Ok(r) => Ok(r),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-json-to-str-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-json-to-str-error")),
         }
     }
 
@@ -206,10 +206,10 @@ impl TardisJson {
                 let result = serde_json::from_value::<T>(value);
                 match result {
                     Ok(r) => Ok(r),
-                    Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-copy-deserialize-error")),
+                    Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-copy-deserialize-error")),
                 }
             }
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.Json] {:?}", err), "406-tardis-json-copy-serialize-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-copy-serialize-error")),
         }
     }
 }

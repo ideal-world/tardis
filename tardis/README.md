@@ -80,7 +80,7 @@ impl Api {
     #[oai(path = "/hello", method = "get")]
     async fn index(&self, name: Query<Option<String>>) -> TardisResult<String> {
         match name.0 {
-            Some(name) => TardisResp::ok(format!("hello, {}!", name)),
+            Some(name) => TardisResp::ok(format!("hello, {name}!")),
             None => TardisResp::err(TardisError::NotFound("name does not exist".to_string())),
         }
     }

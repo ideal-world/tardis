@@ -28,7 +28,7 @@ impl TardisMQClient {
     }
 
     pub async fn init(str_url: &str) -> TardisResult<TardisMQClient> {
-        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.MQClient] Invalid url {}", str_url), "406-tardis-mq-url-error"))?;
+        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.MQClient] Invalid url {str_url}"), "406-tardis-mq-url-error"))?;
         info!("[Tardis.MQClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
         let con = Connection::connect(str_url, ConnectionProperties::default().with_connection_name("tardis".into())).await?;
         info!("[Tardis.MQClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
@@ -215,14 +215,8 @@ impl TardisMQClient {
                                     let value = if let AMQPValue::LongString(val) = v {
                                         val.to_string()
                                     } else {
-                                        error!(
-                                            "[Tardis.MQClient] Receive, queue:{}, message:{} | MQ Header only supports string types",
-                                            topic_or_address, msg
-                                        );
-                                        panic!(
-                                            "[Tardis.MQClient] Receive, queue:{}, message:{} | MQ Header only supports string types",
-                                            topic_or_address, msg
-                                        )
+                                        error!("[Tardis.MQClient] Receive, queue:{topic_or_address}, message:{msg} | MQ Header only supports string types");
+                                        panic!("[Tardis.MQClient] Receive, queue:{topic_or_address}, message:{msg} | MQ Header only supports string types")
                                     };
                                     resp_header.insert(k.to_string(), value);
                                 }
@@ -230,21 +224,21 @@ impl TardisMQClient {
                             match fun((resp_header, msg.to_string())).await {
                                 Ok(_) => match d.ack(BasicAckOptions::default()).await {
                                     Ok(_) => (),
-                                    Err(e) => {
-                                        error!("[Tardis.MQClient] Receive ack err, queue:{}, message:{} | {}", topic_or_address, msg, e.to_string());
+                                    Err(error) => {
+                                        error!("[Tardis.MQClient] Receive ack error, queue:{topic_or_address}, message:{msg} | {error}");
                                     }
                                 },
-                                Err(e) => {
-                                    error!("[Tardis.MQClient] Receive process err, queue:{}, message:{} | {}", topic_or_address, msg, e.to_string());
+                                Err(error) => {
+                                    error!("[Tardis.MQClient] Receive process error, queue:{topic_or_address}, message:{msg} | {error}");
                                 }
                             }
                         }
-                        Err(e) => {
-                            error!("[Tardis.MQClient] Receive delivery err, queue:{} | {}", topic_or_address, e.to_string());
+                        Err(error) => {
+                            error!("[Tardis.MQClient] Receive delivery error, queue:{topic_or_address} | {error}");
                         }
                     },
-                    Err(e) => {
-                        error!("[Tardis.MQClient] Receive connection err, queue:{} | {}", topic_or_address, e.to_string());
+                    Err(error) => {
+                        error!("[Tardis.MQClient] Receive connection error, queue:{topic_or_address} | {error}");
                     }
                 }
             }
@@ -257,6 +251,6 @@ impl TardisMQClient {
 impl From<lapin::Error> for TardisError {
     fn from(error: lapin::Error) -> Self {
         error!("[Tardis.MQClient] Error: {}", error.to_string());
-        TardisError::wrap(&format!("[Tardis.MQClient] {:?}", error), "-1-tardis-mq-error")
+        TardisError::wrap(&format!("[Tardis.MQClient] {error:?}"), "-1-tardis-mq-error")
     }
 }

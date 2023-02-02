@@ -171,7 +171,7 @@ impl TardisWebClient {
             .map(|(k, v)| {
                 (
                     k.to_string(),
-                    v.to_str().unwrap_or_else(|_| panic!("[Tardis.WebClient] Http head {:?} parsing error", v)).to_string(),
+                    v.to_str().unwrap_or_else(|_| panic!("[Tardis.WebClient] Http head {v:?} parsing error")).to_string(),
                 )
             })
             .collect();
@@ -182,14 +182,14 @@ impl TardisWebClient {
     async fn to_text(&self, code: u16, headers: HashMap<String, String>, response: Response) -> TardisResult<TardisHttpResponse<String>> {
         match response.text().await {
             Ok(body) => Ok(TardisHttpResponse { code, headers, body: Some(body) }),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.WebClient] {:?}", err), "406-tardis-webclient-text-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.WebClient] {error:?}"), "406-tardis-webclient-text-error")),
         }
     }
 
     async fn to_json<T: DeserializeOwned>(&self, code: u16, headers: HashMap<String, String>, response: Response) -> TardisResult<TardisHttpResponse<T>> {
         match response.json().await {
             Ok(body) => Ok(TardisHttpResponse { code, headers, body: Some(body) }),
-            Err(err) => Err(TardisError::format_error(&format!("[Tardis.WebClient] {:?}", err), "406-tardis-webclient-json-error")),
+            Err(error) => Err(TardisError::format_error(&format!("[Tardis.WebClient] {error:?}"), "406-tardis-webclient-json-error")),
         }
     }
 
@@ -208,6 +208,6 @@ pub struct TardisHttpResponse<T> {
 impl From<reqwest::Error> for TardisError {
     fn from(error: reqwest::Error) -> Self {
         error!("[Tardis.WebClient] Error: {}", error.to_string());
-        TardisError::wrap(&format!("[Tardis.WebClient] {:?}", error), "-1-tardis-webclient-error")
+        TardisError::wrap(&format!("[Tardis.WebClient] {error:?}"), "-1-tardis-webclient-error")
     }
 }

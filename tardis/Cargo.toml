@@ -101,6 +101,7 @@ sqlparser = { version = "0.30", optional = true }
 # Web Server
 poem-openapi = { version = "2", features = [
     "rapidoc",
+    "chrono",
     "websocket",
 ], optional = true }
 poem-openapi-derive = { version = "2", optional = true }

@@ -109,6 +109,6 @@ impl TardisCryptoAes {
 
 impl From<crypto::symmetriccipher::SymmetricCipherError> for TardisError {
     fn from(error: crypto::symmetriccipher::SymmetricCipherError) -> Self {
-        TardisError::format_error(&format!("[Tardis.Crypto] AES crypto error, {:?}", error), "406-tardis-crypto-aes-error")
+        TardisError::format_error(&format!("[Tardis.Crypto] AES crypto error, {error:?}"), "406-tardis-crypto-aes-error")
     }
 }

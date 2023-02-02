@@ -136,72 +136,72 @@ impl TardisErrorWithExt {
 
 impl From<std::io::Error> for TardisError {
     fn from(error: std::io::Error) -> Self {
-        TardisError::io_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::io_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl From<Utf8Error> for TardisError {
     fn from(error: Utf8Error) -> Self {
-        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl From<FromUtf8Error> for TardisError {
     fn from(error: FromUtf8Error) -> Self {
-        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl From<url::ParseError> for TardisError {
     fn from(error: url::ParseError) -> Self {
-        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl From<ParseIntError> for TardisError {
     fn from(error: ParseIntError) -> Self {
-        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl From<Infallible> for TardisError {
     fn from(error: Infallible) -> Self {
-        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl From<base64::DecodeError> for TardisError {
     fn from(error: base64::DecodeError) -> Self {
-        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl From<hex::FromHexError> for TardisError {
     fn from(error: hex::FromHexError) -> Self {
-        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl From<regex::Error> for TardisError {
     fn from(error: regex::Error) -> Self {
-        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl From<TryFromIntError> for TardisError {
     fn from(error: TryFromIntError) -> Self {
-        TardisError::format_error(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl<P> From<PoisonError<RwLockReadGuard<'_, P>>> for TardisError {
     fn from(error: PoisonError<RwLockReadGuard<'_, P>>) -> Self {
-        TardisError::conflict(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::conflict(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 
 impl<P> From<PoisonError<RwLockWriteGuard<'_, P>>> for TardisError {
     fn from(error: PoisonError<RwLockWriteGuard<'_, P>>) -> Self {
-        TardisError::conflict(&format!("[Tardis.Basic] {}", error), "")
+        TardisError::conflict(&format!("[Tardis.Basic] {error}"), "")
     }
 }

@@ -116,7 +116,7 @@ impl Page {
             websocket,
             name.0,
             |req_session, msg| async move {
-                let resp = format!("echo:{} by {}", msg, req_session);
+                let resp = format!("echo:{msg} by {req_session}");
                 Some(resp)
             },
             |_| async move {},

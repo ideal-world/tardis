@@ -5,8 +5,8 @@ impl TardisCryptoHex {
     pub fn decode<T: AsRef<[u8]>>(&self, data: T) -> TardisResult<Vec<u8>> {
         match hex::decode(data) {
             Ok(result) => Ok(result),
-            Err(e) => Err(TardisError::format_error(
-                &format!("[Tardis.Crypto] Hex decode error:{}", e),
+            Err(error) => Err(TardisError::format_error(
+                &format!("[Tardis.Crypto] Hex decode error:{error}"),
                 "406-tardis-crypto-hex-decode-error",
             )),
         }

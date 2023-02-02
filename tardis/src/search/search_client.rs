@@ -182,8 +182,8 @@ impl TardisSearchClient {
     /// ```
     pub async fn multi_search(&self, index_name: &str, q: HashMap<&str, &str>) -> TardisResult<Vec<String>> {
         trace!("[Tardis.SearchClient] Multi search: {}, q:{:?}", index_name, q);
-        let q = q.into_iter().map(|(k, v)| format!(r#"{{"match": {{"{}": "{}"}}}}"#, k, v)).collect::<Vec<String>>().join(",");
-        let q = format!(r#"{{ "query": {{ "bool": {{ "must": [{}]}}}}}}"#, q);
+        let q = q.into_iter().map(|(k, v)| format!(r#"{{"match": {{"{k}": "{v}"}}}}"#)).collect::<Vec<String>>().join(",");
+        let q = format!(r#"{{ "query": {{ "bool": {{ "must": [{q}]}}}}}}"#);
         self.raw_search(index_name, &q).await
     }
 

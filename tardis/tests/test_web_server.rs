@@ -86,7 +86,7 @@ async fn test_web_server() -> TardisResult<()> {
     let docker = clients::Cli::default();
     let redis_container = TardisTestContainer::redis_custom(&docker);
     let redis_port = redis_container.get_host_port_ipv4(6379);
-    let redis_url = format!("redis://127.0.0.1:{}/0", redis_port);
+    let redis_url = format!("redis://127.0.0.1:{redis_port}/0");
 
     tokio::spawn(async move { start_serv(web_url, &redis_url).await });
     sleep(Duration::from_millis(500)).await;
@@ -162,24 +162,24 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
 
 async fn test_basic(url: &str) -> TardisResult<()> {
     // Normal
-    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?;
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1").as_str(), None).await?;
     assert_eq!(response.code, 200);
     assert_eq!(response.body.as_ref().unwrap().code, TARDIS_RESULT_SUCCESS_CODE);
     assert_eq!(response.body.as_ref().unwrap().data.as_ref().unwrap().code.to_string(), "code1");
 
     // Accepted
-    let response = TardisFuns::web_client().get::<TardisResp<String>>(format!("{}/todo/todos/1/async", url).as_str(), None).await?;
+    let response = TardisFuns::web_client().get::<TardisResp<String>>(format!("{url}/todo/todos/1/async").as_str(), None).await?;
     assert_eq!(response.code, 200);
     assert_eq!(response.body.as_ref().unwrap().code, TARDIS_RESULT_ACCEPTED_CODE);
     assert_eq!(response.body.as_ref().unwrap().data.as_ref().unwrap(), "/todos/1/status");
 
     // Business Error
-    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/err", url).as_str(), None).await?.body.unwrap();
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1/err").as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, TardisError::conflict("异常", "").code);
     assert_eq!(response.msg, TardisError::conflict("异常", "").message);
 
     // Not Found
-    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/ss", url).as_str(), None).await?.body.unwrap();
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1/ss").as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, TardisError::not_found("", "").code);
     assert_eq!(response.msg, "[Tardis.WebServer] Process error: not found");
 
@@ -187,7 +187,7 @@ async fn test_basic(url: &str) -> TardisResult<()> {
 }
 
 async fn test_validate(url: &str) -> TardisResult<()> {
-    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/ss", url).as_str(), None).await?.body.unwrap();
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/ss").as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, TardisError::bad_request("", "").code);
     assert_eq!(
         response.msg,
@@ -220,7 +220,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
-            format!("{}/other/validate", url).as_str(),
+            format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
                 eq: "".to_string(),
@@ -244,7 +244,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
-            format!("{}/other/validate", url).as_str(),
+            format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
                 eq: "11111".to_string(),
@@ -268,7 +268,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
-            format!("{}/other/validate", url).as_str(),
+            format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
                 eq: "11111".to_string(),
@@ -292,7 +292,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
-            format!("{}/other/validate", url).as_str(),
+            format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
                 eq: "11111".to_string(),
@@ -316,7 +316,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
-            format!("{}/other/validate", url).as_str(),
+            format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
                 eq: "11111".to_string(),
@@ -340,7 +340,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
-            format!("{}/other/validate", url).as_str(),
+            format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
                 eq: "11111".to_string(),
@@ -364,7 +364,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
-            format!("{}/other/validate", url).as_str(),
+            format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
                 eq: "11111".to_string(),
@@ -388,7 +388,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
-            format!("{}/other/validate", url).as_str(),
+            format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
                 eq: "11111".to_string(),
@@ -410,14 +410,14 @@ async fn test_validate(url: &str) -> TardisResult<()> {
 }
 
 async fn test_context(url: &str) -> TardisResult<()> {
-    let response = TardisFuns::web_client().get::<TardisResp<String>>(format!("{}/other/context_in_header", url).as_str(), None).await?.body.unwrap();
+    let response = TardisFuns::web_client().get::<TardisResp<String>>(format!("{url}/other/context_in_header").as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, TardisError::unauthorized("", "").code);
     assert_eq!(response.msg, "[Tardis.WebServer] Process error: authorization error");
 
     // from header
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
-            format!("{}/other/context_in_header", url).as_str(),
+            format!("{url}/other/context_in_header").as_str(),
             Some(vec![(TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(), "sss".to_string())]),
         )
         .await?
@@ -428,7 +428,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
-            format!("{}/other/context_in_header", url).as_str(),
+            format!("{url}/other/context_in_header").as_str(),
             Some(vec![(TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(), "c3Nz".to_string())]),
         )
         .await?
@@ -447,7 +447,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     };
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
-            format!("{}/other/context_in_header", url).as_str(),
+            format!("{url}/other/context_in_header").as_str(),
             Some(vec![(
                 TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(),
                 TardisFuns::json.obj_to_string(&context).unwrap(),
@@ -461,10 +461,10 @@ async fn test_context(url: &str) -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
-            format!("{}/other/context_in_header", url).as_str(),
+            format!("{url}/other/context_in_header").as_str(),
             Some(vec![(
                 TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(),
-                base64::encode(&TardisFuns::json.obj_to_string(&context).unwrap()),
+                TardisFuns::crypto.base64.encode(&TardisFuns::json.obj_to_string(&context).unwrap()),
             )]),
         )
         .await?
@@ -476,10 +476,10 @@ async fn test_context(url: &str) -> TardisResult<()> {
     // from cache
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
-            format!("{}/other/context_in_header", url).as_str(),
+            format!("{url}/other/context_in_header").as_str(),
             Some(vec![(
                 TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(),
-                format!("{}{}", TOKEN_FLAG, "token1").to_string(),
+                format!("{TOKEN_FLAG}token1").to_string(),
             )]),
         )
         .await?
@@ -505,10 +505,10 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .unwrap();
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
-            format!("{}/other/context_in_header", url).as_str(),
+            format!("{url}/other/context_in_header").as_str(),
             Some(vec![(
                 TardisFuns::fw_config().web_server.context_conf.context_header_name.to_string(),
-                format!("{}{}", TOKEN_FLAG, "token1"),
+                format!("{TOKEN_FLAG}token1"),
             )]),
         )
         .await?
@@ -589,7 +589,7 @@ async fn test_security() -> TardisResult<()> {
     // Normal
     let response = TardisFuns::web_client()
         .post::<TodoAddReq, TardisResp<String>>(
-            format!("{}/todo/todos", url).as_str(),
+            format!("{url}/todo/todos").as_str(),
             &TodoAddReq {
                 code: "  编码1 ".into(),
                 description: "测试".to_string(),
@@ -603,12 +603,12 @@ async fn test_security() -> TardisResult<()> {
     assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
     assert_eq!(response.data.unwrap(), "编码1");
 
-    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1", url).as_str(), None).await?.body.unwrap();
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1").as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
     assert_eq!(response.data.unwrap().description, "测试");
 
     // Business Error
-    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/err", url).as_str(), None).await?.body.unwrap();
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1/err").as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, TardisError::conflict("异常", "").code);
     assert_eq!(
         response.msg,
@@ -616,7 +616,7 @@ async fn test_security() -> TardisResult<()> {
     );
 
     // Not Found
-    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{}/todo/todos/1/ss", url).as_str(), None).await?.body.unwrap();
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1/ss").as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, TardisError::not_found("", "").code);
     assert_eq!(
         response.msg,
@@ -625,7 +625,7 @@ async fn test_security() -> TardisResult<()> {
 
     let response = TardisFuns::web_client()
         .post::<ValidateReq, TardisResp<String>>(
-            format!("{}/other/validate", url).as_str(),
+            format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
                 eq: "11111".to_string(),

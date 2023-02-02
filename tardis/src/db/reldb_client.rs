@@ -164,7 +164,7 @@ impl TardisRelDBClient {
         connect_timeout_sec: Option<u64>,
         idle_timeout_sec: Option<u64>,
     ) -> TardisResult<TardisRelDBClient> {
-        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.RelDBClient] Invalid url {}", str_url), "406-tardis-reldb-url-error"))?;
+        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.RelDBClient] Invalid url {str_url}"), "406-tardis-reldb-url-error"))?;
         info!(
             "[Tardis.RelDBClient] Initializing, host:{}, port:{}, max_connections:{}",
             url.host_str().unwrap_or(""),
@@ -183,7 +183,7 @@ impl TardisRelDBClient {
             match url.scheme().to_lowercase().as_str() {
                 #[cfg(feature = "reldb-mysql")]
                 "mysql" => {
-                    let mut raw_opt = opt.get_url().parse::<sqlx::mysql::MySqlConnectOptions>().map_err(|e| DbErr::Conn(RuntimeErr::Internal(e.to_string())))?;
+                    let mut raw_opt = opt.get_url().parse::<sqlx::mysql::MySqlConnectOptions>().map_err(|error| DbErr::Conn(RuntimeErr::Internal(error.to_string())))?;
                     use sqlx::ConnectOptions;
                     if !opt.get_sqlx_logging() {
                         raw_opt.disable_statement_logging();
@@ -195,7 +195,7 @@ impl TardisRelDBClient {
                         .after_connect(move |conn, _| {
                             let timezone = timezone.clone();
                             Box::pin(async move {
-                                conn.execute(format!("SET time_zone = '{}';", timezone).as_str()).await?;
+                                conn.execute(format!("SET time_zone = '{timezone}';").as_str()).await?;
                                 Ok(())
                             })
                         })
@@ -203,15 +203,15 @@ impl TardisRelDBClient {
                         .await
                     {
                         Ok(pool) => Ok(SqlxMySqlConnector::from_sqlx_mysql_pool(pool)),
-                        Err(e) => Err(TardisError::format_error(
-                            &format!("[Tardis.RelDBClient] {} Initialization error: {}", str_url, e),
+                        Err(error) => Err(TardisError::format_error(
+                            &format!("[Tardis.RelDBClient] {str_url} Initialization error: {error}"),
                             "406-tardis-reldb-conn-init-error",
                         )),
                     }
                 }
                 #[cfg(feature = "reldb-postgres")]
                 "postgres" => {
-                    let mut raw_opt = opt.get_url().parse::<sqlx::postgres::PgConnectOptions>().map_err(|e| DbErr::Conn(RuntimeErr::Internal(e.to_string())))?;
+                    let mut raw_opt = opt.get_url().parse::<sqlx::postgres::PgConnectOptions>().map_err(|error| DbErr::Conn(RuntimeErr::Internal(error.to_string())))?;
                     use sqlx::ConnectOptions;
                     if !opt.get_sqlx_logging() {
                         raw_opt.disable_statement_logging();
@@ -223,7 +223,7 @@ impl TardisRelDBClient {
                         .after_connect(move |conn, _| {
                             let timezone = timezone.clone();
                             Box::pin(async move {
-                                conn.execute(format!("SET TIME ZONE '{}';", timezone).as_str()).await?;
+                                conn.execute(format!("SET TIME ZONE '{timezone}';").as_str()).await?;
                                 Ok(())
                             })
                         })
@@ -231,21 +231,21 @@ impl TardisRelDBClient {
                         .await
                     {
                         Ok(pool) => Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool)),
-                        Err(e) => Err(TardisError::format_error(
-                            &format!("[Tardis.RelDBClient] {} Initialization error: {}", str_url, e),
+                        Err(error) => Err(TardisError::format_error(
+                            &format!("[Tardis.RelDBClient] {str_url} Initialization error: {error}"),
                             "406-tardis-reldb-conn-init-error",
                         )),
                     }
                 }
                 _ => Err(TardisError::format_error(
-                    &format!("[Tardis.RelDBClient] {} , current database does not support setting timezone", str_url),
+                    &format!("[Tardis.RelDBClient] {str_url} , current database does not support setting timezone"),
                     "406-tardis-reldb-conn-init-error",
                 )),
             }
         } else {
             Database::connect(opt)
                 .await
-                .map_err(|e| TardisError::format_error(&format!("[Tardis.RelDBClient] {} Initialization error: {}", str_url, e), "406-tardis-reldb-conn-init-error"))
+                .map_err(|error| TardisError::format_error(&format!("[Tardis.RelDBClient] {str_url} Initialization error: {error}"), "406-tardis-reldb-conn-init-error"))
         }?;
         info!(
             "[Tardis.RelDBClient] Initialized, host:{}, port:{}, max_connections:{}",
@@ -306,7 +306,7 @@ impl TardisRelDBClient {
         let statement = db.get_database_backend().build(statement);
         match Self::execute_inner(statement, db).await {
             Ok(_) => Ok(()),
-            Err(e) => Err(e),
+            Err(error) => Err(error),
         }
     }
 
@@ -338,7 +338,7 @@ impl TardisRelDBClient {
         let result = db.execute(statement).await;
         match result {
             Ok(ok) => TardisResult::Ok(ok),
-            Err(err) => TardisResult::Err(TardisError::from(err)),
+            Err(error) => TardisResult::Err(TardisError::from(error)),
         }
     }
 
@@ -351,7 +351,7 @@ impl TardisRelDBClient {
         let result = db.query_one(query_stmt).await;
         match result {
             Ok(ok) => TardisResult::Ok(ok),
-            Err(err) => TardisResult::Err(TardisError::from(err)),
+            Err(error) => TardisResult::Err(TardisError::from(error)),
         }
     }
 
@@ -364,7 +364,7 @@ impl TardisRelDBClient {
         let result = db.query_all(query_stmt).await;
         match result {
             Ok(ok) => TardisResult::Ok(ok),
-            Err(err) => TardisResult::Err(TardisError::from(err)),
+            Err(error) => TardisResult::Err(TardisError::from(error)),
         }
     }
 
@@ -376,7 +376,7 @@ impl TardisRelDBClient {
         let result = D::find_by_statement(db.get_database_backend().build(select_statement)).one(db).await;
         match result {
             Ok(r) => TardisResult::Ok(r),
-            Err(err) => TardisResult::Err(TardisError::from(err)),
+            Err(error) => TardisResult::Err(TardisError::from(error)),
         }
     }
 
@@ -388,7 +388,7 @@ impl TardisRelDBClient {
         let result = D::find_by_statement(db.get_database_backend().build(select_statement)).all(db).await;
         match result {
             Ok(r) => TardisResult::Ok(r),
-            Err(err) => TardisResult::Err(TardisError::from(err)),
+            Err(error) => TardisResult::Err(TardisError::from(error)),
         }
     }
 
@@ -428,7 +428,7 @@ impl TardisRelDBClient {
         match count_result {
             Some(r) => TardisResult::Ok(r.count as u64),
             None => TardisResult::Err(TardisError::internal_error(
-                &format!("[Tardis.RelDBClient] No results found for count query by {}", count_sql),
+                &format!("[Tardis.RelDBClient] No results found for count query by {count_sql}"),
                 "500-tardis-reldb-count-empty",
             )),
         }
@@ -1147,7 +1147,7 @@ where
                         .as_ref()
                         .ok_or_else(|| {
                             TardisError::internal_error(
-                                &format!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a character type", id),
+                                &format!("[Tardis.RelDBClient] The primary key [{id}] in a soft delete operation is not a character type"),
                                 "500-tardis-reldb-id-not-char",
                             )
                         })?
@@ -1159,7 +1159,7 @@ where
                     id.as_u64()
                         .ok_or_else(|| {
                             TardisError::internal_error(
-                                &format!("[Tardis.RelDBClient] The primary key [{}] in a soft delete operation is not a number type", id),
+                                &format!("[Tardis.RelDBClient] The primary key [{id}] in a soft delete operation is not a number type"),
                                 "500-tardis-reldb-id-not-num",
                             )
                         })?
@@ -1194,7 +1194,7 @@ where
         let result = db.execute(statement).await;
         match result {
             Ok(_) => Ok(delete_entities),
-            Err(err) => Err(TardisError::from(err)),
+            Err(error) => Err(TardisError::from(error)),
         }
     }
 }
@@ -1377,13 +1377,13 @@ pub struct IdResp {
 impl From<DbErr> for TardisError {
     fn from(error: DbErr) -> Self {
         error!("[Tardis.RelDBClient] DbErr: {}", error.to_string());
-        TardisError::wrap(&format!("[Tardis.RelDBClient] {:?}", error), "-1-tardis-reldb-error")
+        TardisError::wrap(&format!("[Tardis.RelDBClient] {error:?}"), "-1-tardis-reldb-error")
     }
 }
 
 impl From<ParserError> for TardisError {
     fn from(error: ParserError) -> Self {
         error!("[Tardis.RelDBClient] ParserError: {}", error.to_string());
-        TardisError::wrap(&format!("[Tardis.RelDBClient] {:?}", error), "406-tardis-reldb-sql-error")
+        TardisError::wrap(&format!("[Tardis.RelDBClient] {error:?}"), "406-tardis-reldb-sql-error")
     }
 }

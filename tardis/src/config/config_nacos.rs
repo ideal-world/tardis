@@ -22,13 +22,13 @@ impl ConfCenterProcess for ConfNacosProcessor {
             .form(&params)
             .send()
             .await
-            .map_err(|e| ConfigError::Foreign(Box::new(e)))?
+            .map_err(|error| ConfigError::Foreign(Box::new(error)))?
             .json::<AuthResponse>()
             .await
-            .map_err(|e| ConfigError::Foreign(Box::new(e)))?
+            .map_err(|error| ConfigError::Foreign(Box::new(error)))?
             .access_token;
         let tenant = if let Some(namespace) = &config.namespace {
-            format!("&tenant={}", namespace)
+            format!("&tenant={namespace}")
         } else {
             "".to_string()
         };

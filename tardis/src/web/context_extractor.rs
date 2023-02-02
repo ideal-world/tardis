@@ -16,8 +16,8 @@ pub struct TardisContextExtractor(pub TardisContext);
 async fn context_checker(req: &Request, _: ApiKey) -> Option<TardisContext> {
     match extract_context(req).await {
         Ok(context) => Some(context),
-        Err(err) => {
-            log::warn!("[Tardis.WebServer] [{}]{} at {}", err.code, err.message, req.uri());
+        Err(error) => {
+            log::warn!("[Tardis.WebServer] [{}]{} at {}", error.code, error.message, req.uri());
             None
         }
     }
@@ -30,7 +30,7 @@ async fn extract_context(req: &Request) -> TardisResult<TardisContext> {
         .get(context_header_name)
         .ok_or_else(|| {
             TardisError::bad_request(
-                &format!("[Tardis.WebServer] {} is not found", context_header_name),
+                &format!("[Tardis.WebServer] {context_header_name} is not found"),
                 "400-tardis-webserver-context-header-not-exist",
             )
         })?

@@ -78,7 +78,7 @@ impl TardisWebServer {
     {
         let code = code.to_lowercase();
         let code = code.as_str();
-        let module = self.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {} not found", code));
+        let module = self.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {code} not found"));
         self.do_add_module_with_data(code, module, apis, data).await
     }
 
@@ -90,7 +90,7 @@ impl TardisWebServer {
         info!("[Tardis.WebServer] Add module {}", code);
         let mut api_serv = OpenApiService::new(apis, &module.name, &module.version);
         for (env, url) in &module.doc_urls {
-            let url = if !url.ends_with('/') { format!("{}/{}", url, code) } else { format!("{}{}", url, code) };
+            let url = if !url.ends_with('/') { format!("{url}/{code}") } else { format!("{url}{code}") };
             api_serv = api_serv.server(ServerObject::new(url).description(env));
         }
         for (name, desc) in &module.req_headers {
@@ -101,10 +101,10 @@ impl TardisWebServer {
         let mut route = Route::new();
         route = route.nest("/", api_serv);
         if let Some(ui_path) = &module.ui_path {
-            route = route.nest(format!("/{}", ui_path), ui_serv);
+            route = route.nest(format!("/{ui_path}"), ui_serv);
         }
         if let Some(spec_path) = &module.spec_path {
-            route = route.at(format!("/{}", spec_path), poem::endpoint::make_sync(move |_| spec_serv.clone()));
+            route = route.at(format!("/{spec_path}"), poem::endpoint::make_sync(move |_| spec_serv.clone()));
         }
         let cors = if &self.config.allowed_origin == "*" {
             // https://github.com/poem-web/poem/issues/161
@@ -118,9 +118,9 @@ impl TardisWebServer {
         let mut swap_route = Route::new();
         std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
         *self.route.lock().await = if let Some(data) = data {
-            swap_route.nest(format!("/{}", code), route.data(data))
+            swap_route.nest(format!("/{code}"), route.data(data))
         } else {
-            swap_route.nest(format!("/{}", code), route)
+            swap_route.nest(format!("/{code}"), route)
         };
         self
     }
@@ -128,7 +128,7 @@ impl TardisWebServer {
     pub async fn add_module_raw(&self, code: &str, route: Route) -> &Self {
         let mut swap_route = Route::new();
         std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
-        *self.route.lock().await = swap_route.nest(format!("/{}", code), route);
+        *self.route.lock().await = swap_route.nest(format!("/{code}"), route);
         self
     }
 

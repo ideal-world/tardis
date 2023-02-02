@@ -101,7 +101,7 @@ impl TardisConfig {
             debug!("[Tardis.Config] Fetch local file: {:?}", file);
             conf = conf.add_source(File::from(file).required(true));
             if !profile.is_empty() {
-                let file = path.join(format!("conf-{}", profile).as_str());
+                let file = path.join(format!("conf-{profile}").as_str());
                 debug!("[Tardis.Config] Fetch local file: {:?}", file);
                 conf = conf.add_source(File::from(file).required(true));
             }
@@ -131,22 +131,22 @@ impl TardisConfig {
             Ok(c) => {
                 workspace_config.insert("".to_string(), c);
             }
-            Err(e) => match e {
+            Err(error) => match error {
                 ConfigError::NotFound(_) => {
                     info!("[Tardis.Config] No [cs] configuration found");
                 }
-                _ => return Err(e.into()),
+                _ => return Err(error.into()),
             },
         }
         match conf.get::<HashMap<String, Value>>("csm") {
             Ok(c) => {
                 workspace_config.extend(c);
             }
-            Err(e) => match e {
+            Err(error) => match error {
                 ConfigError::NotFound(_) => {
                     info!("[Tardis.Config] No [csm] configuration found");
                 }
-                _ => return Err(e.into()),
+                _ => return Err(error.into()),
             },
         }
         let framework_config = conf.get::<FrameworkConfig>("fw")?;
@@ -199,15 +199,17 @@ where
     F: config::Format + Send + Sync + std::fmt::Debug,
 {
     async fn collect(&self) -> Result<config::Map<String, config::Value>, ConfigError> {
-        let response = reqwest::get(&self.url).await.map_err(|e| ConfigError::Foreign(Box::new(e)))?;
+        let response = reqwest::get(&self.url).await.map_err(|error| ConfigError::Foreign(Box::new(error)))?;
         match response.status().as_u16() {
             404 => {
                 log::warn!("[Tardis.Config] Fetch remote file: {} not found", &self.url);
                 Ok(config::Map::default())
             }
-            200 => {
-                response.text().await.map_err(|e| ConfigError::Foreign(Box::new(e))).and_then(|text| self.format.parse(Some(&self.url), &text).map_err(|e| ConfigError::Foreign(e)))
-            }
+            200 => response
+                .text()
+                .await
+                .map_err(|error| ConfigError::Foreign(Box::new(error)))
+                .and_then(|text| self.format.parse(Some(&self.url), &text).map_err(|error| ConfigError::Foreign(error))),
             _ => Err(ConfigError::Message(format!(
                 "[Tardis.Config] Fetch remote file: {} error {}",
                 &self.url,
@@ -236,13 +238,13 @@ fn decryption(text: &str, salt: &str) -> TardisResult<String> {
 impl From<ConfigError> for TardisError {
     fn from(error: ConfigError) -> Self {
         match error {
-            ConfigError::Frozen => TardisError::io_error(&format!("[Tardis.Config] {:?}", error), "503-tardis-config-frozen"),
-            ConfigError::NotFound(_) => TardisError::not_found(&format!("[Tardis.Config] {:?}", error), "404-tardis-config-not-exist"),
-            ConfigError::PathParse(_) => TardisError::format_error(&format!("[Tardis.Config] {:?}", error), "406-tardis-config-parse-error"),
-            ConfigError::FileParse { .. } => TardisError::format_error(&format!("[Tardis.Config] {:?}", error), "406-tardis-config-parse-error"),
-            ConfigError::Type { .. } => TardisError::format_error(&format!("[Tardis.Config] {:?}", error), "406-tardis-config-parse-error"),
-            ConfigError::Message(s) => TardisError::wrap(&format!("[Tardis.Config] {:?}", s), "-1-tardis-config-custom-error"),
-            ConfigError::Foreign(err) => TardisError::wrap(&format!("[Tardis.Config] {:?}", err), "-1-tardis-config-error"),
+            ConfigError::Frozen => TardisError::io_error(&format!("[Tardis.Config] {error:?}"), "503-tardis-config-frozen"),
+            ConfigError::NotFound(_) => TardisError::not_found(&format!("[Tardis.Config] {error:?}"), "404-tardis-config-not-exist"),
+            ConfigError::PathParse(_) => TardisError::format_error(&format!("[Tardis.Config] {error:?}"), "406-tardis-config-parse-error"),
+            ConfigError::FileParse { .. } => TardisError::format_error(&format!("[Tardis.Config] {error:?}"), "406-tardis-config-parse-error"),
+            ConfigError::Type { .. } => TardisError::format_error(&format!("[Tardis.Config] {error:?}"), "406-tardis-config-parse-error"),
+            ConfigError::Message(s) => TardisError::wrap(&format!("[Tardis.Config] {s:?}"), "-1-tardis-config-custom-error"),
+            ConfigError::Foreign(error) => TardisError::wrap(&format!("[Tardis.Config] {error:?}"), "-1-tardis-config-error"),
         }
     }
 }

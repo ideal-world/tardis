@@ -72,7 +72,7 @@ pub fn mapping_http_code_to_error(http_code: StatusCode, msg: &str) -> Option<Ta
         code if code.as_u16() < 400 => None,
         _ => Some(TardisError::custom(
             http_code.as_str(),
-            &format!("[Tardis.WebServer] Process error: {}", msg),
+            &format!("[Tardis.WebServer] Process error: {msg}"),
             &format!(
                 "{}-tardis-webserver-error",
                 if [400, 401, 404, 406, 408, 409, 500, 501].contains(&http_code.as_u16()) {

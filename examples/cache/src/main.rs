@@ -13,7 +13,7 @@ async fn main() -> TardisResult<()> {
     let docker = clients::Cli::default();
     let redis_container = TardisTestContainer::redis_custom(&docker);
     let port = redis_container.get_host_port_ipv4(6379);
-    let url = format!("redis://127.0.0.1:{}/0", port);
+    let url = format!("redis://127.0.0.1:{port}/0");
     env::set_var("TARDIS_FW.CACHE.URL", url.clone());
     env::set_var("TARDIS_FW.CACHE.MODULES.M1.URL", url.clone());
 
@@ -79,7 +79,7 @@ async fn main() -> TardisResult<()> {
 
     client.expire_at("test_key_xp", 1893430861).await?;
     let num_value = client.ttl("test_key_xp").await?;
-    println!("Expire AT : {}", num_value);
+    println!("Expire AT : {num_value}");
     assert!(num_value > 0);
 
     // hash operations

@@ -23,14 +23,14 @@ impl TardisLocale {
             return Ok(());
         }
         info!("[Tardis.Locale] Initializing, base path:{:?}", path);
-        let mut conf = LOCALE_CONFIG.lock().map_err(|e| TardisError::internal_error(&format!("{:?}", e), ""))?;
-        let paths = path.read_dir().map_err(|e| TardisError::bad_request(&format!("[Tardis.Locale] Path {:#?} dir error:{:#?}", path, e), ""))?;
+        let mut conf = LOCALE_CONFIG.lock().map_err(|error| TardisError::internal_error(&format!("{error:?}"), ""))?;
+        let paths = path.read_dir().map_err(|error| TardisError::bad_request(&format!("[Tardis.Locale] Path {path:#?} dir error:{error:#?}"), ""))?;
         for entry in paths {
             let entry = entry?;
             let name = entry.file_name();
             let lang = name
                 .to_str()
-                .ok_or_else(|| TardisError::bad_request(&format!("[Tardis.Locale] File name error {:#?}", entry), ""))?
+                .ok_or_else(|| TardisError::bad_request(&format!("[Tardis.Locale] File name error {entry:#?}"), ""))?
                 // Ignore module name, just take language flag
                 .split('.')
                 .next()
@@ -46,10 +46,10 @@ impl TardisLocale {
                     continue;
                 }
                 let mut items = line.split('\t');
-                let code = items.next().ok_or_else(|| TardisError::bad_request(&format!("[Tardis.Locale] Code not exist in {}", line), ""))?.trim();
-                let message = items.next().ok_or_else(|| TardisError::bad_request(&format!("[Tardis.Locale] Message not exist in {}", line), ""))?.trim();
+                let code = items.next().ok_or_else(|| TardisError::bad_request(&format!("[Tardis.Locale] Code not exist in {line}"), ""))?.trim();
+                let message = items.next().ok_or_else(|| TardisError::bad_request(&format!("[Tardis.Locale] Message not exist in {line}"), ""))?.trim();
                 let regex = if let Some(regex) = items.next() {
-                    Some(Regex::new(regex.trim()).map_err(|_| TardisError::bad_request(&format!("[Tardis.Locale] Regex illegal in {}", line), ""))?)
+                    Some(Regex::new(regex.trim()).map_err(|_| TardisError::bad_request(&format!("[Tardis.Locale] Regex illegal in {line}"), ""))?)
                 } else {
                     None
                 };
@@ -61,7 +61,7 @@ impl TardisLocale {
 
     pub fn get_message(code: &str, default_message: &str, lang: &str) -> TardisResult<String> {
         let lang = lang.to_lowercase();
-        let conf = LOCALE_CONFIG.lock().map_err(|e| TardisError::conflict(&format!("[Tardis.Locale] locale config lock error: {:?}", e), ""))?;
+        let conf = LOCALE_CONFIG.lock().map_err(|error| TardisError::conflict(&format!("[Tardis.Locale] locale config lock error: {error:?}"), ""))?;
         if let Some(conf) = conf.get(&lang) {
             if let Some((message, regex)) = conf.get(code) {
                 let mut localized_message = message.clone();
@@ -69,7 +69,7 @@ impl TardisLocale {
                     return if let Some(cap) = regex.captures(default_message) {
                         for (idx, cap) in cap.iter().enumerate() {
                             if let Some(cap) = cap {
-                                localized_message = localized_message.replace(&format!("{{{}}}", idx), cap.as_str());
+                                localized_message = localized_message.replace(&format!("{{{idx}}}"), cap.as_str());
                             }
                         }
                         Ok(localized_message)

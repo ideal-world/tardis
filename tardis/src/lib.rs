@@ -65,7 +65,7 @@
 //!     #[oai(path = "/hello", method = "get")]
 //!     async fn index(&self, name: Query<Option<String>>) -> TardisResult<String> {
 //!         match name.0 {
-//!             Some(name) => TardisResp::ok(format!("hello, {}!", name)),
+//!             Some(name) => TardisResp::ok(format!("hello, {name}!")),
 //!             None => TardisResp::err(TardisError::NotFound("name does not exist".to_string())),
 //!         }
 //!     }
@@ -484,20 +484,20 @@ impl TardisFuns {
             let cached_conf = TARDIS_INST._custom_config_cached.as_ref().expect("[Tardis.Config] Custom Config doesn't exist");
             if let Some(t) = conf.get(code) {
                 if let Some(cached_t) = cached_conf.get(code) {
-                    return cached_t.downcast_ref::<T>().unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{}] type error", code));
+                    return cached_t.downcast_ref::<T>().unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{code}] type error"));
                 }
-                let t: T = TardisFuns::json.json_to_obj(t.clone()).unwrap_or_else(|_| panic!("[Tardis.Config] Custom Config [{}] type conversion error", code));
+                let t: T = TardisFuns::json.json_to_obj(t.clone()).unwrap_or_else(|_| panic!("[Tardis.Config] Custom Config [{code}] type conversion error"));
                 TARDIS_INST._custom_config_cached.as_mut().expect("[Tardis.Config] Custom Config doesn't exist").insert(code.to_string(), Box::new(t));
                 return cached_conf
                     .get(code)
-                    .unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{}] doesn't exist", code))
+                    .unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{code}] doesn't exist"))
                     .downcast_ref::<T>()
-                    .unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{}] type error", code));
+                    .unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{code}] type error"));
             }
             if !code.is_empty() {
                 return Self::cs_config("");
             }
-            panic!("[Tardis.Config] Custom Config [{}] or [] doesn't exist", code);
+            panic!("[Tardis.Config] Custom Config [{code}] or [] doesn't exist");
         }
     }
 
@@ -677,7 +677,7 @@ impl TardisFuns {
             match &TARDIS_INST.reldb {
                 None => panic!("[Tardis.Config] RelDB instance doesn't exist"),
                 Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] RelDB {} instance doesn't exist", code),
+                    None => panic!("[Tardis.Config] RelDB {code} instance doesn't exist"),
                     Some(t) => t,
                 },
             }
@@ -726,7 +726,7 @@ impl TardisFuns {
             match &TARDIS_INST.web_client {
                 None => panic!("[Tardis.Config] Web Client instance doesn't exist"),
                 Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Web Client {} instance doesn't exist", code),
+                    None => panic!("[Tardis.Config] Web Client {code} instance doesn't exist"),
                     Some(t) => t,
                 },
             }
@@ -780,7 +780,7 @@ impl TardisFuns {
             match &TARDIS_INST.cache {
                 None => panic!("[Tardis.Config] Cache instance doesn't exist"),
                 Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Cache {} instance doesn't exist", code),
+                    None => panic!("[Tardis.Config] Cache {code} instance doesn't exist"),
                     Some(t) => t,
                 },
             }
@@ -815,7 +815,7 @@ impl TardisFuns {
             match &TARDIS_INST.mq {
                 None => panic!("[Tardis.Config] MQ instance doesn't exist"),
                 Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] MQ {} instance doesn't exist", code),
+                    None => panic!("[Tardis.Config] MQ {code} instance doesn't exist"),
                     Some(t) => t,
                 },
             }
@@ -868,7 +868,7 @@ impl TardisFuns {
             match &TARDIS_INST.search {
                 None => panic!("[Tardis.Config] Search instance doesn't exist"),
                 Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Search {} instance doesn't exist", code),
+                    None => panic!("[Tardis.Config] Search {code} instance doesn't exist"),
                     Some(t) => t,
                 },
             }
@@ -903,7 +903,7 @@ impl TardisFuns {
             match &TARDIS_INST.mail {
                 None => panic!("[Tardis.Config] Mail instance doesn't exist"),
                 Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Mail {} instance doesn't exist", code),
+                    None => panic!("[Tardis.Config] Mail {code} instance doesn't exist"),
                     Some(t) => t,
                 },
             }
@@ -938,7 +938,7 @@ impl TardisFuns {
             match &TARDIS_INST.os {
                 None => panic!("[Tardis.Config] Object Storage instance doesn't exist"),
                 Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Object Storage {} instance doesn't exist", code),
+                    None => panic!("[Tardis.Config] Object Storage {code} instance doesn't exist"),
                     Some(t) => t,
                 },
             }

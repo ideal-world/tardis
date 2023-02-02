@@ -46,7 +46,7 @@ impl TardisCacheClient {
 
     /// Initialize configuration / 初始化配置
     pub async fn init(str_url: &str) -> TardisResult<TardisCacheClient> {
-        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.CacheClient] Invalid url {}", str_url), "406-tardis-cache-url-error"))?;
+        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.CacheClient] Invalid url {str_url}"), "406-tardis-cache-url-error"))?;
         info!(
             "[Tardis.CacheClient] Initializing, host:{}, port:{}, db:{}",
             url.host_str().unwrap_or(""),
@@ -106,8 +106,8 @@ impl TardisCacheClient {
                 Ok(false) => {
                     return Ok(());
                 }
-                Err(e) => {
-                    return Err(e);
+                Err(error) => {
+                    return Err(error);
                 }
                 _ => {}
             }
@@ -181,8 +181,8 @@ impl TardisCacheClient {
                 Ok(false) => {
                     return Ok(());
                 }
-                Err(e) => {
-                    return Err(e);
+                Err(error) => {
+                    return Err(error);
                 }
                 _ => {}
             }
@@ -246,7 +246,7 @@ impl TardisCacheClient {
         trace!("[Tardis.CacheClient] bitcount_range_by_bit, key:{}, start:{}, end:{}", key, start, end);
         match redis::cmd("BITCOUNT").arg(key).arg(start).arg(end).arg("BIT").query_async(&mut self.client.get_multiplexed_tokio_connection().await?).await {
             Ok(count) => Ok(count),
-            Err(e) => Err(e),
+            Err(error) => Err(error),
         }
     }
 
@@ -256,7 +256,7 @@ impl TardisCacheClient {
         trace!("[Tardis.CacheClient] flushdb");
         match redis::cmd("FLUSHDB").query_async(&mut self.client.get_multiplexed_tokio_connection().await?).await {
             Ok(()) => Ok(()),
-            Err(e) => Err(e),
+            Err(error) => Err(error),
         }
     }
 
@@ -264,7 +264,7 @@ impl TardisCacheClient {
         trace!("[Tardis.CacheClient] flushall");
         match redis::cmd("FLUSHALL").query_async(&mut self.client.get_multiplexed_tokio_connection().await?).await {
             Ok(()) => Ok(()),
-            Err(e) => Err(e),
+            Err(error) => Err(error),
         }
     }
 
@@ -277,6 +277,6 @@ impl TardisCacheClient {
 impl From<RedisError> for TardisError {
     fn from(error: RedisError) -> Self {
         error!("[Tardis.CacheClient] [{}]{},", error.code().unwrap_or(""), error.detail().unwrap_or(""));
-        TardisError::wrap(&format!("[Tardis.CacheClient] {:?}", error), "-1-tardis-cache-error")
+        TardisError::wrap(&format!("[Tardis.CacheClient] {error:?}"), "-1-tardis-cache-error")
     }
 }

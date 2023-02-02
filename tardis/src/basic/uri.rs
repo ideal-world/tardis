@@ -26,9 +26,9 @@ impl TardisUri {
         if path_and_query.is_empty() {
             self.format(host)
         } else if path_and_query.starts_with('/') && !host.ends_with('/') || !path_and_query.starts_with('/') && host.ends_with('/') {
-            self.format(format!("{}{}", host, path_and_query).as_str())
+            self.format(format!("{host}{path_and_query}").as_str())
         } else if path_and_query.starts_with('/') && host.ends_with('/') {
-            self.format(format!("{}/{}", host, path_and_query).as_str())
+            self.format(format!("{host}/{path_and_query}").as_str())
         } else {
             self.format(format!("{}/{}", host, &path_and_query[1..]).as_str())
         }
@@ -67,7 +67,7 @@ impl TardisUri {
             }
         };
         let port = match uri.port() {
-            Some(port) => format!(":{}", port),
+            Some(port) => format!(":{port}"),
             None => "".to_string(),
         };
         let path = if uri.path().is_empty() {
@@ -79,7 +79,7 @@ impl TardisUri {
         };
         let query = self.sort_query(uri.query());
         let query = match uri.query() {
-            Some(_) => format!("?{}", query),
+            Some(_) => format!("?{query}"),
             None => "".to_string(),
         };
         let formatted_uri = format!("{}://{}{}{}{}{}", uri.scheme(), authority, host, port, path, query);
@@ -103,9 +103,9 @@ impl TardisUri {
         };
         let query = match uri.query() {
             None => "".to_string(),
-            Some(q) => format!("?{}", q),
+            Some(q) => format!("?{q}"),
         };
-        Ok(format!("{}{}", path, query))
+        Ok(format!("{path}{query}"))
     }
 
     fn sort_query(&self, query: Option<&str>) -> String {

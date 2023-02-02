@@ -61,7 +61,7 @@ impl TardisOSClient {
                 Ok(TardisOSClient { client: Box::new(s3) })
             }
             _ => Err(TardisError::not_implemented(
-                &format!("[Tardis.OSClient] Unsupported OS kind {}", kind),
+                &format!("[Tardis.OSClient] Unsupported OS kind {kind}"),
                 "501-tardis-os-kind-error",
             )),
         }
@@ -163,7 +163,7 @@ impl TardisOSOperations for TardisOSS3Client {
         } else {
             Err(TardisError::custom(
                 &code.to_string(),
-                &format!("[Tardis.OSClient] Failed to delete bucket {} with error [{}]", bucket_name, code),
+                &format!("[Tardis.OSClient] Failed to delete bucket {bucket_name} with error [{code}]"),
                 "-1-tardis-os-delete-bucket-error",
             ))
         }
@@ -259,8 +259,8 @@ impl From<s3::error::S3Error> for TardisError {
     fn from(error: s3::error::S3Error) -> Self {
         error!("[Tardis.OSClient] Error: {}", error.to_string());
         match error {
-            s3::error::S3Error::Http(http_code, msg) => TardisError::custom(&format!("{}", http_code), &format!("[Tardis.OSClient] Error: {}", msg), "-1-tardis-os-error"),
-            _ => TardisError::custom(ERROR_DEFAULT_CODE, &format!("[Tardis.OSClient] Error: {:?}", error), "-1-tardis-os-error"),
+            s3::error::S3Error::Http(http_code, msg) => TardisError::custom(&format!("{http_code}"), &format!("[Tardis.OSClient] Error: {msg}"), "-1-tardis-os-error"),
+            _ => TardisError::custom(ERROR_DEFAULT_CODE, &format!("[Tardis.OSClient] Error: {error:?}"), "-1-tardis-os-error"),
         }
     }
 }

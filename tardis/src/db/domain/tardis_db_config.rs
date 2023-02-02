@@ -81,7 +81,7 @@ impl TardisDataDict {
     }
 
     pub async fn find_like(&self, key: &str, db: &TardisRelDBlConnection) -> TardisResult<Vec<TardisDictResp>> {
-        let model = tardis_db_config::Entity::find().filter(tardis_db_config::Column::K.like(format!("{}%", key).as_str())).into_model::<TardisDictResp>();
+        let model = tardis_db_config::Entity::find().filter(tardis_db_config::Column::K.like(format!("{key}%").as_str())).into_model::<TardisDictResp>();
         let result = if db.has_tx() { model.all(db.raw_tx()?).await? } else { model.all(db.raw_conn()).await? };
         Ok(result)
     }

@@ -53,7 +53,7 @@ impl TardisCryptoKey {
         let sk = TardisFuns::crypto.digest.sha1(format!("{}{}", ak, TardisFuns::field.nanoid()).as_str());
         match sk {
             Ok(sk) => Ok(sk),
-            Err(e) => Err(e),
+            Err(error) => Err(error),
         }
     }
 }

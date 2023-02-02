@@ -25,7 +25,7 @@ impl TardisTestContainer {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::redis_custom(&docker);
             let port = node.get_host_port_ipv4(6379);
-            fun(format!("redis://127.0.0.1:{}/0", port)).await
+            fun(format!("redis://127.0.0.1:{port}/0")).await
         }
     }
 
@@ -44,7 +44,7 @@ impl TardisTestContainer {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::rabbit_custom(&docker);
             let port = node.get_host_port_ipv4(5672);
-            fun(format!("amqp://guest:guest@127.0.0.1:{}/%2f", port)).await
+            fun(format!("amqp://guest:guest@127.0.0.1:{port}/%2f")).await
         }
     }
 
@@ -63,7 +63,7 @@ impl TardisTestContainer {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::mysql_custom(init_script_path, &docker);
             let port = node.get_host_port_ipv4(3306);
-            fun(format!("mysql://root:123456@localhost:{}/test", port)).await
+            fun(format!("mysql://root:123456@localhost:{port}/test")).await
         }
     }
 
@@ -73,7 +73,7 @@ impl TardisTestContainer {
                 .expect("[Tardis.Test_Container] Current path get error")
                 .join(std::path::Path::new(init_script_path))
                 .to_str()
-                .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{}] get error", init_script_path))
+                .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{init_script_path}] get error"))
                 .to_string();
             docker.run(
                 images::generic::GenericImage::new("mysql", "8")
@@ -103,7 +103,7 @@ impl TardisTestContainer {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::postgres_custom(init_script_path, &docker);
             let port = node.get_host_port_ipv4(5432);
-            fun(format!("postgres://postgres:123456@localhost:{}/test", port)).await
+            fun(format!("postgres://postgres:123456@localhost:{port}/test")).await
         }
     }
 
@@ -113,7 +113,7 @@ impl TardisTestContainer {
                 .expect("[Tardis.Test_Container] Current path get error")
                 .join(std::path::Path::new(init_script_path))
                 .to_str()
-                .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{}] get error", init_script_path))
+                .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{init_script_path}] get error"))
                 .to_string();
             docker.run(
                 images::generic::GenericImage::new("postgres", "alpine")
@@ -143,7 +143,7 @@ impl TardisTestContainer {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::es_custom(&docker);
             let port = node.get_host_port_ipv4(9200);
-            fun(format!("https://elastic:123456@127.0.0.1:{}", port)).await
+            fun(format!("https://elastic:123456@127.0.0.1:{port}")).await
         }
     }
 
@@ -167,7 +167,7 @@ impl TardisTestContainer {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::minio_custom(&docker);
             let port = node.get_host_port_ipv4(9000);
-            fun(format!("http://localhost:{}", port)).await
+            fun(format!("http://localhost:{port}")).await
         }
     }
 

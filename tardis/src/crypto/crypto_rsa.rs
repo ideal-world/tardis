@@ -61,7 +61,7 @@ impl TardisCryptoRsaPrivateKey {
     pub fn from(private_key_pem: &str) -> TardisResult<Self> {
         Ok(TardisCryptoRsaPrivateKey {
             pri_key: rsa::RsaPrivateKey::from_pkcs8_pem(private_key_pem)
-                .map_err(|e| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto sk load error, {}", e), "406-tardis-crypto-rsa-sk-error"))?,
+                .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto sk load error, {error}"), "406-tardis-crypto-rsa-sk-error"))?,
         })
     }
 
@@ -69,7 +69,7 @@ impl TardisCryptoRsaPrivateKey {
         Ok(self
             .pri_key
             .to_pkcs8_pem(LineEnding::LF)
-            .map_err(|e| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto sk serialize error, {}", e), "406-tardis-crypto-rsa-sk-error"))?
+            .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto sk serialize error, {error}"), "406-tardis-crypto-rsa-sk-error"))?
             .to_string())
     }
 
@@ -99,7 +99,7 @@ impl TardisCryptoRsaPublicKey {
 
     pub fn from_private_key_str(private_key_pem: &str) -> TardisResult<Self> {
         let private_key = rsa::RsaPrivateKey::from_pkcs8_pem(private_key_pem)
-            .map_err(|e| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto sk load error, {}", e), "406-tardis-crypto-rsa-sk-error"))?;
+            .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto sk load error, {error}"), "406-tardis-crypto-rsa-sk-error"))?;
         let public_key = rsa::RsaPublicKey::from(private_key);
         Ok(TardisCryptoRsaPublicKey { pub_key: public_key })
     }
@@ -107,14 +107,14 @@ impl TardisCryptoRsaPublicKey {
     pub fn from_public_key_str(public_key_pem: &str) -> TardisResult<Self> {
         Ok(TardisCryptoRsaPublicKey {
             pub_key: rsa::RsaPublicKey::from_public_key_pem(public_key_pem)
-                .map_err(|e| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto pk load error, {}", e), "406-tardis-crypto-rsa-pk-error"))?,
+                .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto pk load error, {error}"), "406-tardis-crypto-rsa-pk-error"))?,
         })
     }
 
     pub fn serialize(&self) -> TardisResult<String> {
         self.pub_key
             .to_public_key_pem(LineEnding::LF)
-            .map_err(|e| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto pk serialize error, {}", e), "406-tardis-crypto-rsa-pk-error"))
+            .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto pk serialize error, {error}"), "406-tardis-crypto-rsa-pk-error"))
     }
 
     pub fn encrypt(&self, data: &str) -> TardisResult<String> {
@@ -142,6 +142,6 @@ impl TardisCryptoRsaPublicKey {
 
 impl From<rsa::errors::Error> for TardisError {
     fn from(error: rsa::errors::Error) -> Self {
-        TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto error, {:?}", error), "406-tardis-crypto-rsa-error")
+        TardisError::format_error(&format!("[Tardis.Crypto] RSA crypto error, {error:?}"), "406-tardis-crypto-rsa-error")
     }
 }

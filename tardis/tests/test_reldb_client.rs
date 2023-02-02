@@ -545,7 +545,7 @@ async fn test_timezone(url: &str) -> TardisResult<()> {
 
     match client_with_out_time_zone.backend() {
         DatabaseBackend::Postgres => {
-            let client_with_time_zone = TardisRelDBClient::init(&format!("{}?timezone=Asia/Shanghai", url), 10, 5, None, None).await?;
+            let client_with_time_zone = TardisRelDBClient::init(&format!("{url}?timezone=Asia/Shanghai"), 10, 5, None, None).await?;
 
             let tz = client_with_out_time_zone.conn().query_one("SHOW timezone", Vec::new()).await?.unwrap().try_get::<String>("", "TimeZone")?;
             assert_eq!(tz, "UTC");
@@ -559,7 +559,7 @@ async fn test_timezone(url: &str) -> TardisResult<()> {
             println!("client_with_out_time_zone：{},client_with_time_zone：{},", now1, now2);
         }
         _ => {
-            let client_with_time_zone = TardisRelDBClient::init(&format!("{}?timezone=%2B08:00", url), 10, 5, None, None).await?;
+            let client_with_time_zone = TardisRelDBClient::init(&format!("{url}?timezone=%2B08:00"), 10, 5, None, None).await?;
 
             let tz = client_with_out_time_zone.conn().query_one("SELECT @@global.time_zone z1, @@session.time_zone z2", Vec::new()).await?.unwrap().try_get::<String>("", "z2")?;
             assert_eq!(tz, "+00:00");
