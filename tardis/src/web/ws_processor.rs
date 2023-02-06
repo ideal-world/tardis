@@ -1,5 +1,5 @@
 use futures::{Future, SinkExt, StreamExt};
-use log::trace;
+use log::{info, trace};
 use poem::web::{
     websocket::{BoxWebSocketUpgraded, CloseCode, Message, WebSocket},
     Data,
@@ -109,7 +109,9 @@ where
                     let resp = TardisFuns::json.str_to_obj::<TardisWebsocketResp>(&resp).unwrap();
                     if (resp.to_seesions.is_empty() && (!resp.ignore_self || resp.from_seesion != current_seesion_clone)) || resp.to_seesions.contains(&current_seesion_clone) {
                         if let Err(error) = sink.send(Message::Text(resp.msg.clone())).await {
-                            warn!("[Tardis.WebServer] WS broadcast send failed, message {} to {:?}: {error}", resp.msg, resp.to_seesions);
+                            if error.to_string() != "Connection closed normally" {
+                                warn!("[Tardis.WebServer] WS broadcast send failed, message {} to {:?}: {error}", resp.msg, resp.to_seesions);
+                            }
                             break;
                         }
                     }
