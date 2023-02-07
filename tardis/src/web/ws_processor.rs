@@ -136,18 +136,15 @@ where
                     let resp = TardisFuns::json.str_to_obj::<TardisWebsocketResp>(&resp_str).unwrap();
                     if (resp.to_seesions.is_empty() && (!resp.ignore_self || resp.from_seesion != current_seesion_clone)) || resp.to_seesions.contains(&current_seesion_clone) {
                         if !subscribe_mode {
-                            warn!("1>>>>>>>>>>>>{}", &current_seesion_clone);
                             let resp = TardisFuns::json.str_to_json(&resp_str).unwrap();
                             let id = resp.get("id").unwrap().as_str().unwrap();
                             let id = format!("{id}{}", &current_seesion_clone);
                             let cache = CACHES.read().await;
                             let cache = cache.get(&topic.clone()).unwrap();
                             if cache.contains_key(&id) {
-                                warn!("2>>>>>>>>>>>>{}", &current_seesion_clone);
                                 continue;
                             }
                             cache.insert(id.clone(), true).await;
-                            warn!("3>>>>>>>>>>>>{}", id);
                         }
                         if let Err(error) = sink.send(Message::Text(resp.msg.clone())).await {
                             if error.to_string() != "Connection closed normally" {
