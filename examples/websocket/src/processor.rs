@@ -127,7 +127,7 @@ impl Page {
     async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<String>>) -> BoxWebSocketUpgraded {
         ws_broadcast(
             websocket,
-            sender,
+            sender.clone(),
             name.0,
             |req_session, msg| async move {
                 let exmaple_msg = TardisFuns::json.str_to_obj::<WebsocketExample>(&msg).unwrap();
