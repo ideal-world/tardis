@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
@@ -52,10 +53,13 @@ impl Api {
     #[oai(path = "/ws/broadcast/:name", method = "get")]
     async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<String>>) -> BoxWebSocketUpgraded {
         ws_broadcast(
+            "default".to_string(),
             websocket,
             sender.clone(),
             name.0,
-            |req_session, msg| async move {
+            true,
+            HashMap::new(),
+            |req_session, msg, _ext| async move {
                 println!("service recv:{}:{}", req_session, msg);
                 if msg == "client_b send:hi again" {
                     COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -68,7 +72,7 @@ impl Api {
                     ignore_self: false,
                 })
             },
-            |_| async move {},
+            |_, _| async move {},
         )
     }
 }

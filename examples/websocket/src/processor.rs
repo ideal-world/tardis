@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use tardis::basic::result::TardisResult;
 use tardis::tokio::sync::broadcast::Sender;
@@ -115,30 +117,34 @@ impl Page {
         ws_echo(
             websocket,
             name.0,
-            |req_session, msg| async move {
+            HashMap::new(),
+            |req_session, msg, _| async move {
                 let resp = format!("echo:{msg} by {req_session}");
                 Some(resp)
             },
-            |_| async move {},
+            |_, _| async move {},
         )
     }
 
     #[oai(path = "/ws/broadcast/:name", method = "get")]
     async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<String>>) -> BoxWebSocketUpgraded {
         ws_broadcast(
+            "default".to_string(),
             websocket,
             sender.clone(),
             name.0,
-            |req_session, msg| async move {
+            false,
+            HashMap::from([("some_key".to_string(), "ext_value".to_string())]),
+            |req_session, msg, ext| async move {
                 let exmaple_msg = TardisFuns::json.str_to_obj::<WebsocketExample>(&msg).unwrap();
                 Some(TardisWebsocketResp {
-                    msg: TardisFuns::json.obj_to_string(&TardisResult::Ok(format!("echo:{}", exmaple_msg.msg))).unwrap(),
+                    msg: TardisFuns::json.obj_to_string(&TardisResult::Ok(format!("echo:{}, ext info:{}", exmaple_msg.msg, ext.get("some_key").unwrap()))).unwrap(),
                     from_seesion: req_session,
                     to_seesions: if exmaple_msg.to.is_empty() { vec![] } else { vec![exmaple_msg.to] },
                     ignore_self: true,
                 })
             },
-            |_| async move {},
+            |_, _| async move {},
         )
     }
 }
