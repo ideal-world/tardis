@@ -62,12 +62,8 @@ jobs:
       - name: Check clippy
         run: cargo clippy --all --all-features
 
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          # https://github.com/actions-rs/tarpaulin/issues/15
-          version: 0.18.0
-          args: "--all-features"
+      - name: Run test
+        run: cargo test --all-features
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
