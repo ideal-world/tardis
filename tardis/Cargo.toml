@@ -62,6 +62,8 @@ config = { version = "0.13" }
 regex = { version = "1.5" }
 url = { version = "2.2" }
 openssl = { version = "0.10", features = ["vendored"] }
+moka = { version = "0.9", features = ["future"] }
+
 # Log
 log = { version = "0.4" }
 tracing = { version = "0.1" }
