@@ -1,9 +1,6 @@
 use futures::{Future, SinkExt, StreamExt};
-use log::{info, trace};
-use poem::web::{
-    websocket::{BoxWebSocketUpgraded, CloseCode, Message, WebSocket},
-    Data,
-};
+use log::trace;
+use poem::web::websocket::{BoxWebSocketUpgraded, CloseCode, Message, WebSocket};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast::Sender;
 use tracing::warn;
@@ -58,14 +55,13 @@ where
         .boxed()
 }
 
-pub fn ws_broadcast<PF, PT, CF, CT>(websocket: WebSocket, sender: Data<&Sender<String>>, current_seesion: String, process_fun: PF, close_fun: CF) -> BoxWebSocketUpgraded
+pub fn ws_broadcast<PF, PT, CF, CT>(websocket: WebSocket, sender: Sender<String>, current_seesion: String, process_fun: PF, close_fun: CF) -> BoxWebSocketUpgraded
 where
     PF: Fn(String, String) -> PT + Send + Sync + 'static,
     PT: Future<Output = Option<TardisWebsocketResp>> + Send + 'static,
     CF: Fn(Option<(CloseCode, String)>) -> CT + Send + Sync + 'static,
     CT: Future<Output = ()> + Send + 'static,
 {
-    let sender = sender.clone();
     let mut receiver = sender.subscribe();
     websocket
         .on_upgrade(move |socket| async move {
