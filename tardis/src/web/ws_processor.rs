@@ -12,7 +12,7 @@ use tokio::sync::{broadcast::Sender, Mutex};
 
 use crate::TardisFuns;
 
-const WS_CACHE_SIZE: u32 = u32::MAX;
+const WS_CACHE_SIZE: u32 = 1000000;
 
 lazy_static! {
     static ref CACHES: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(WS_CACHE_SIZE as usize).unwrap())));
