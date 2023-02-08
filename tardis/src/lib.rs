@@ -131,7 +131,7 @@ pub use futures;
 #[cfg(feature = "future")]
 pub use futures_util;
 pub use log;
-pub use moka;
+pub use lru;
 pub use rand;
 pub use regex;
 pub use serde;

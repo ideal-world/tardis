@@ -179,7 +179,7 @@ async fn test_websocket() -> TardisResult<()> {
         })
         .await?;
 
-    sleep(Duration::from_millis(2000)).await;
+    sleep(Duration::from_millis(500)).await;
     assert_eq!(ERROR_COUNTER.load(Ordering::SeqCst), 1);
     assert_eq!(SUB_COUNTER.load(Ordering::SeqCst), 4);
     assert_eq!(NON_SUB_COUNTER.load(Ordering::SeqCst), 3);
@@ -199,7 +199,6 @@ impl Api {
         let sender = SENDERS.read().await.get(&group.0).unwrap().clone();
         if group.0 == "g1" {
             ws_broadcast(
-                "g1".to_string(),
                 vec![name.0],
                 true,
                 HashMap::new(),
@@ -220,7 +219,6 @@ impl Api {
             )
         } else if group.0 == "g2" {
             ws_broadcast(
-                "g2".to_string(),
                 vec![name.0],
                 false,
                 HashMap::new(),
@@ -241,7 +239,6 @@ impl Api {
             )
         } else if group.0 == "gerror" {
             ws_broadcast(
-                "gerror".to_string(),
                 vec![name.0],
                 false,
                 HashMap::new(),

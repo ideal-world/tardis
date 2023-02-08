@@ -129,7 +129,6 @@ impl Page {
     #[oai(path = "/ws/broadcast/:name", method = "get")]
     async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<String>>) -> BoxWebSocketUpgraded {
         ws_broadcast(
-            "default".to_string(),
             vec![name.0],
             false,
             HashMap::from([("some_key".to_string(), "ext_value".to_string())]),

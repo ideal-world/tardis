@@ -1,21 +1,22 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::sync::Arc;
+use std::{collections::HashMap, num::NonZeroUsize};
 
 use futures::{Future, SinkExt, StreamExt};
 use log::trace;
-use moka::future::Cache;
+use log::warn;
+use lru::LruCache;
 use poem::web::websocket::{BoxWebSocketUpgraded, CloseCode, Message, WebSocket};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::{broadcast::Sender, RwLock};
-use tracing::warn;
+use tokio::sync::{broadcast::Sender, Mutex};
 
 use crate::TardisFuns;
 
-lazy_static! {
-    static ref CACHES: Arc<RwLock<HashMap<String, Cache<String, bool>>>> = Arc::new(RwLock::new(HashMap::new()));
-}
+const WS_CACHE_SIZE: u32 = u32::MAX;
 
-const WS_CACHE_TTL_SEC: u64 = 30;
+lazy_static! {
+    static ref CACHES: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(WS_CACHE_SIZE as usize).unwrap())));
+}
 
 pub fn ws_echo<PF, PT, CF, CT>(avatars: String, ext: HashMap<String, String>, websocket: WebSocket, process_fun: PF, close_fun: CF) -> BoxWebSocketUpgraded
 where
@@ -58,7 +59,6 @@ where
 }
 
 pub fn ws_broadcast<PF, PT, CF, CT>(
-    topic: String,
     avatars: Vec<String>,
     subscribe_mode: bool,
     ext: HashMap<String, String>,
@@ -134,9 +134,7 @@ where
                 }
             });
 
-            if !subscribe_mode && !CACHES.read().await.contains_key(&topic) {
-                CACHES.write().await.insert(topic.clone(), Cache::builder().time_to_live(Duration::from_secs(WS_CACHE_TTL_SEC)).build());
-            }
+            let cache = CACHES.clone();
 
             tokio::spawn(async move {
                 while let Ok(resp_msg) = receiver.recv().await {
@@ -151,12 +149,10 @@ where
                     {
                         if !subscribe_mode {
                             let id = format!("{}{:?}", resp.id, &current_avatars);
-                            let cache = CACHES.read().await;
-                            let cache = cache.get(&topic.clone()).unwrap();
-                            if cache.contains_key(&id) {
+                            let mut lock = cache.lock().await;
+                            if lock.put(id.clone(), true).is_some() {
                                 continue;
                             }
-                            cache.insert(id.clone(), true).await;
                         }
                         if let Err(error) = sink.send(Message::Text(resp.msg.to_string())).await {
                             if error.to_string() != "Connection closed normally" {
