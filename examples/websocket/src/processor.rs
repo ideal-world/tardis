@@ -103,7 +103,7 @@ impl Page {
         
         sendForm.addEventListener("submit", function(event) {
             event.preventDefault();
-            ws.send(JSON.stringify({"to": recNameInput.value, "msg": msgInput.value}));
+            ws.send(JSON.stringify({"from_avatar": nameInput.value, "msg": {"to": recNameInput.value, "msg": msgInput.value}}));
             recNameInput.value = "";
             msgInput.value = "";
         });
@@ -115,9 +115,9 @@ impl Page {
     #[oai(path = "/ws/echo/:name", method = "get")]
     async fn ws_echo(&self, name: Path<String>, websocket: WebSocket) -> BoxWebSocketUpgraded {
         ws_echo(
-            websocket,
             name.0,
             HashMap::new(),
+            websocket,
             |req_session, msg, _| async move {
                 let resp = format!("echo:{msg} by {req_session}");
                 Some(resp)
@@ -130,18 +130,17 @@ impl Page {
     async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<String>>) -> BoxWebSocketUpgraded {
         ws_broadcast(
             "default".to_string(),
-            websocket,
-            sender.clone(),
-            name.0,
+            vec![name.0],
             false,
             HashMap::from([("some_key".to_string(), "ext_value".to_string())]),
-            |req_session, msg, ext| async move {
-                let exmaple_msg = TardisFuns::json.str_to_obj::<WebsocketExample>(&msg).unwrap();
+            websocket,
+            sender.clone(),
+            |req_msg, ext| async move {
+                let exmaple_msg = TardisFuns::json.json_to_obj::<WebsocketExample>(req_msg.msg).unwrap();
                 Some(TardisWebsocketResp {
-                    msg: TardisFuns::json.obj_to_string(&TardisResult::Ok(format!("echo:{}, ext info:{}", exmaple_msg.msg, ext.get("some_key").unwrap()))).unwrap(),
-                    from_seesion: req_session,
-                    to_seesions: if exmaple_msg.to.is_empty() { vec![] } else { vec![exmaple_msg.to] },
-                    ignore_self: true,
+                    msg: TardisFuns::json.obj_to_json(&TardisResult::Ok(format!("echo:{}, ext info:{}", exmaple_msg.msg, ext.get("some_key").unwrap()))).unwrap(),
+                    to_avatars: if exmaple_msg.to.is_empty() { vec![] } else { vec![exmaple_msg.to] },
+                    ignore_avatars: vec![],
                 })
             },
             |_, _| async move {},

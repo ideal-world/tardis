@@ -1,8 +1,10 @@
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::log::info;
+use crate::TardisFuns;
 use futures::{Future, SinkExt, StreamExt};
 use log::{trace, warn};
+use serde::Serialize;
 use tokio::sync::broadcast::{self, Sender};
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
@@ -76,10 +78,15 @@ impl TardisWSClient {
         Ok(TardisWSClient { tx: tx_clone })
     }
 
-    pub async fn send(&mut self, msg: String) -> TardisResult<()> {
+    pub async fn send_raw(&self, msg: String) -> TardisResult<()> {
         self.tx
             .send(msg.clone())
             .map(|_| {})
             .map_err(|error| TardisError::format_error(&format!("[Tardis.WSClient] Failed to send message {msg}: {error}"), "500-tardis-ws-client-send-error"))
+    }
+
+    pub async fn send_obj<T: ?Sized + Serialize>(&self, msg: &T) -> TardisResult<()> {
+        let msg = TardisFuns::json.obj_to_string(msg).unwrap();
+        self.send_raw(msg).await
     }
 }

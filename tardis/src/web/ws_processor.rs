@@ -17,15 +17,7 @@ lazy_static! {
 
 const WS_CACHE_TTL_SEC: u64 = 30;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct TardisWebsocketResp {
-    pub msg: String,
-    pub from_seesion: String,
-    pub to_seesions: Vec<String>,
-    pub ignore_self: bool,
-}
-
-pub fn ws_echo<PF, PT, CF, CT>(websocket: WebSocket, current_seesion: String, ext: HashMap<String, String>, process_fun: PF, close_fun: CF) -> BoxWebSocketUpgraded
+pub fn ws_echo<PF, PT, CF, CT>(avatars: String, ext: HashMap<String, String>, websocket: WebSocket, process_fun: PF, close_fun: CF) -> BoxWebSocketUpgraded
 where
     PF: Fn(String, String, HashMap<String, String>) -> PT + Send + Sync + 'static,
     PT: Future<Output = Option<String>> + Send + 'static,
@@ -37,11 +29,11 @@ where
             while let Some(Ok(message)) = socket.next().await {
                 match message {
                     Message::Text(text) => {
-                        trace!("[Tardis.WebServer] WS echo receive: {} by {}", text, &current_seesion);
-                        if let Some(msg) = process_fun(current_seesion.clone(), text, ext.clone()).await {
-                            trace!("[Tardis.WebServer] WS echo send: {} to {}", msg, &current_seesion);
+                        trace!("[Tardis.WebServer] WS echo receive: {} by {}", text, &avatars);
+                        if let Some(msg) = process_fun(avatars.clone(), text, ext.clone()).await {
+                            trace!("[Tardis.WebServer] WS echo send: {} to {}", msg, &avatars);
                             if let Err(error) = socket.send(Message::Text(msg.clone())).await {
-                                warn!("[Tardis.WebServer] WS echo send failed, message {msg} to {}: {error}", &current_seesion);
+                                warn!("[Tardis.WebServer] WS echo send failed, message {msg} to {}: {error}", &avatars);
                                 break;
                             }
                         }
@@ -67,16 +59,16 @@ where
 
 pub fn ws_broadcast<PF, PT, CF, CT>(
     topic: String,
-    websocket: WebSocket,
-    sender: Sender<String>,
-    current_seesion: String,
+    avatars: Vec<String>,
     subscribe_mode: bool,
     ext: HashMap<String, String>,
+    websocket: WebSocket,
+    sender: Sender<String>,
     process_fun: PF,
     close_fun: CF,
 ) -> BoxWebSocketUpgraded
 where
-    PF: Fn(String, String, HashMap<String, String>) -> PT + Send + Sync + 'static,
+    PF: Fn(TardisWebsocketReq, HashMap<String, String>) -> PT + Send + Sync + 'static,
     PT: Future<Output = Option<TardisWebsocketResp>> + Send + 'static,
     CF: Fn(Option<(CloseCode, String)>, HashMap<String, String>) -> CT + Send + Sync + 'static,
     CT: Future<Output = ()> + Send + 'static,
@@ -84,28 +76,43 @@ where
     let mut receiver = sender.subscribe();
     websocket
         .on_upgrade(move |socket| async move {
-            let current_seesion_clone = current_seesion.clone();
+            let current_avatars = avatars.clone();
             let (mut sink, mut stream) = socket.split();
 
             tokio::spawn(async move {
                 while let Some(Ok(message)) = stream.next().await {
                     match message {
                         Message::Text(text) => {
-                            trace!("[Tardis.WebServer] WS broadcast receive: {} by {}", text, current_seesion);
-                            if let Some(resp) = process_fun(current_seesion.clone(), text, ext.clone()).await {
-                                trace!("[Tardis.WebServer] WS broadcast send: {} to {:?}", resp.msg, resp.to_seesions);
-                                let send_msg = if !subscribe_mode {
-                                    let mut value = TardisFuns::json.obj_to_json(&resp).unwrap();
-                                    value.as_object_mut().unwrap().insert("id".to_string(), Value::String(TardisFuns::field.nanoid()));
-                                    value.to_string()
-                                } else {
-                                    TardisFuns::json.obj_to_string(&resp).unwrap()
-                                };
-                                if let Err(error) = sender.send(send_msg) {
-                                    warn!(
-                                        "[Tardis.WebServer] WS broadcast send to channel failed, message {} to {:?}: {error}",
-                                        resp.msg, resp.to_seesions
-                                    );
+                            trace!("[Tardis.WebServer] WS broadcast receive: {} by {:?}", text, avatars);
+                            match TardisFuns::json.str_to_obj::<TardisWebsocketReq>(&text) {
+                                Ok(req_msg) => {
+                                    if let Some(resp_msg) = process_fun(req_msg.clone(), ext.clone()).await {
+                                        trace!(
+                                            "[Tardis.WebServer] WS broadcast send to channel: {} to {:?} ignore {:?}",
+                                            resp_msg.msg,
+                                            resp_msg.to_avatars,
+                                            resp_msg.ignore_avatars
+                                        );
+                                        let send_msg = TardisWebsocketInnerResp {
+                                            id: TardisFuns::field.nanoid(),
+                                            msg: resp_msg.msg,
+                                            from_avatar: req_msg.from_avatar,
+                                            to_avatars: resp_msg.to_avatars,
+                                            event: req_msg.event,
+                                            ignore_self: req_msg.ignore_self.unwrap_or(true),
+                                            ignore_avatars: resp_msg.ignore_avatars,
+                                        };
+                                        if let Err(error) = sender.send(TardisFuns::json.obj_to_string(&send_msg).unwrap()) {
+                                            warn!(
+                                                "[Tardis.WebServer] WS broadcast send to channel: {} to {:?} ignore {:?} failed: {error}",
+                                                send_msg.msg, send_msg.to_avatars, send_msg.ignore_avatars
+                                            );
+                                            break;
+                                        }
+                                    }
+                                }
+                                Err(_) => {
+                                    warn!("[Tardis.WebServer] WS broadcast receive: {} by {:?} error: message not illegal", text, avatars);
                                     break;
                                 }
                             }
@@ -132,13 +139,18 @@ where
             }
 
             tokio::spawn(async move {
-                while let Ok(resp_str) = receiver.recv().await {
-                    let resp = TardisFuns::json.str_to_obj::<TardisWebsocketResp>(&resp_str).unwrap();
-                    if (resp.to_seesions.is_empty() && (!resp.ignore_self || resp.from_seesion != current_seesion_clone)) || resp.to_seesions.contains(&current_seesion_clone) {
+                while let Ok(resp_msg) = receiver.recv().await {
+                    let resp = TardisFuns::json.str_to_obj::<TardisWebsocketInnerResp>(&resp_msg).unwrap();
+                    if
+                    // send to all avatars or except self
+                    resp.to_avatars.is_empty() &&  resp.ignore_avatars.is_empty() && (!resp.ignore_self || !current_avatars.contains(&resp.from_avatar))
+                        // send to targets that match the current avatars
+                        || !resp.to_avatars.is_empty() && resp.to_avatars.iter().any(|avatar| current_avatars.contains(avatar))
+                        // send to targets that NOT match the current avatars
+                        || !resp.ignore_avatars.is_empty() && resp.ignore_avatars.iter().all(|avatar| current_avatars.contains(avatar))
+                    {
                         if !subscribe_mode {
-                            let resp = TardisFuns::json.str_to_json(&resp_str).unwrap();
-                            let id = resp.get("id").unwrap().as_str().unwrap();
-                            let id = format!("{id}{}", &current_seesion_clone);
+                            let id = format!("{}{:?}", resp.id, &current_avatars);
                             let cache = CACHES.read().await;
                             let cache = cache.get(&topic.clone()).unwrap();
                             if cache.contains_key(&id) {
@@ -146,9 +158,12 @@ where
                             }
                             cache.insert(id.clone(), true).await;
                         }
-                        if let Err(error) = sink.send(Message::Text(resp.msg.clone())).await {
+                        if let Err(error) = sink.send(Message::Text(resp.msg.to_string())).await {
                             if error.to_string() != "Connection closed normally" {
-                                warn!("[Tardis.WebServer] WS broadcast send failed, message {} to {:?}: {error}", resp.msg, resp.to_seesions);
+                                warn!(
+                                    "[Tardis.WebServer] WS broadcast send: {} to {:?} ignore {:?} failed: {error}",
+                                    resp.msg, resp.to_avatars, resp.ignore_avatars
+                                );
                             }
                             break;
                         }
@@ -157,4 +172,31 @@ where
             });
         })
         .boxed()
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct TardisWebsocketReq {
+    pub msg: Value,
+    pub from_avatar: String,
+    pub to_avatars: Option<Vec<String>>,
+    pub event: Option<String>,
+    pub ignore_self: Option<bool>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct TardisWebsocketResp {
+    pub msg: Value,
+    pub to_avatars: Vec<String>,
+    pub ignore_avatars: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+struct TardisWebsocketInnerResp {
+    pub id: String,
+    pub msg: Value,
+    pub from_avatar: String,
+    pub to_avatars: Vec<String>,
+    pub event: Option<String>,
+    pub ignore_self: bool,
+    pub ignore_avatars: Vec<String>,
 }
