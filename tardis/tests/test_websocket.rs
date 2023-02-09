@@ -181,8 +181,8 @@ async fn test_websocket() -> TardisResult<()> {
 
     sleep(Duration::from_millis(500)).await;
     assert_eq!(ERROR_COUNTER.load(Ordering::SeqCst), 1);
-    assert_eq!(SUB_COUNTER.load(Ordering::SeqCst), 4);
-    assert_eq!(NON_SUB_COUNTER.load(Ordering::SeqCst), 3);
+    assert_eq!(SUB_COUNTER.load(Ordering::SeqCst), 6);
+    assert_eq!(NON_SUB_COUNTER.load(Ordering::SeqCst), 5);
 
     Ok(())
 }

@@ -77,6 +77,8 @@ where
     let mut receiver = sender.subscribe();
     websocket
         .on_upgrade(move |socket| async move {
+            let inst_id = TardisFuns::field.nanoid();
+            let current_inst_id = inst_id.clone();
             let current_avatars = avatars.clone();
             let (mut sink, mut stream) = socket.split();
 
@@ -87,7 +89,14 @@ where
                             trace!("[Tardis.WebServer] WS broadcast receive: {} by {:?}", text, avatars);
                             match TardisFuns::json.str_to_obj::<TardisWebsocketReq>(&text) {
                                 Ok(req_msg) => {
-                                    if !avatars.contains(&req_msg.from_avatar) && !mgr_node {
+                                    if !mgr_node && req_msg.spec_inst_id.is_some() {
+                                        warn!(
+                                            "[Tardis.WebServer] WS broadcast receive: {} by {:?} failed: spec_inst_id can only be specified on the management node",
+                                            text, avatars
+                                        );
+                                        break;
+                                    }
+                                    if !mgr_node && !avatars.contains(&req_msg.from_avatar) {
                                         warn!("[Tardis.WebServer] WS broadcast receive: {} by {:?} failed: from_avatar is not illegal", text, avatars);
                                         break;
                                     }
@@ -106,6 +115,7 @@ where
                                             event: req_msg.event,
                                             ignore_self: req_msg.ignore_self.unwrap_or(true),
                                             ignore_avatars: resp_msg.ignore_avatars,
+                                            from_inst_id: if let Some(spec_inst_id) = req_msg.spec_inst_id { spec_inst_id } else { inst_id.clone() },
                                         };
                                         if let Err(error) = sender.send(TardisFuns::json.obj_to_string(&send_msg).unwrap()) {
                                             warn!(
@@ -145,12 +155,16 @@ where
                 while let Ok(resp_msg) = receiver.recv().await {
                     let resp = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&resp_msg).unwrap();
                     if
-                    // send to all avatars or except self
-                    resp.to_avatars.is_empty() &&  resp.ignore_avatars.is_empty() && (!resp.ignore_self || !current_avatars.contains(&resp.from_avatar))
-                        // send to targets that match the current avatars
-                        || !resp.to_avatars.is_empty() && resp.to_avatars.iter().any(|avatar| current_avatars.contains(avatar))
+                    // except self
+                    (!resp.ignore_self || current_inst_id != resp.from_inst_id)
+                        && (
+                            // send to all
+                            resp.to_avatars.is_empty() && resp.ignore_avatars.is_empty()
+                             // send to targets that match the current avatars
+                           || !resp.to_avatars.is_empty() && resp.to_avatars.iter().any(|avatar| current_avatars.contains(avatar))
                         // send to targets that NOT match the current avatars
                         || !resp.ignore_avatars.is_empty() && resp.ignore_avatars.iter().all(|avatar| current_avatars.contains(avatar))
+                        )
                     {
                         if !subscribe_mode {
                             let id = format!("{}{:?}", resp.id, &current_avatars);
@@ -187,6 +201,7 @@ pub struct TardisWebsocketReq {
     pub to_avatars: Option<Vec<String>>,
     pub event: Option<String>,
     pub ignore_self: Option<bool>,
+    pub spec_inst_id: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -200,6 +215,7 @@ pub struct TardisWebsocketResp {
 pub struct TardisWebsocketMessage {
     pub id: String,
     pub msg: Value,
+    pub from_inst_id: String,
     pub from_avatar: String,
     pub to_avatars: Vec<String>,
     pub event: Option<String>,
@@ -215,6 +231,7 @@ impl TardisWebsocketMessage {
             to_avatars: to_avatars,
             event: self.event,
             ignore_self: Some(self.ignore_self),
+            spec_inst_id: Some(self.from_inst_id),
         }
     }
 }
