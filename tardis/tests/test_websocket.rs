@@ -200,6 +200,7 @@ impl Api {
         if group.0 == "g1" {
             ws_broadcast(
                 vec![name.0],
+                false,
                 true,
                 HashMap::new(),
                 websocket,
@@ -221,6 +222,7 @@ impl Api {
             ws_broadcast(
                 vec![name.0],
                 false,
+                false,
                 HashMap::new(),
                 websocket,
                 sender,
@@ -240,6 +242,7 @@ impl Api {
         } else if group.0 == "gerror" {
             ws_broadcast(
                 vec![name.0],
+                false,
                 false,
                 HashMap::new(),
                 websocket,

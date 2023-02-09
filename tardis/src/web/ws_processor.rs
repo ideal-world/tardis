@@ -60,6 +60,7 @@ where
 
 pub fn ws_broadcast<PF, PT, CF, CT>(
     avatars: Vec<String>,
+    mgr_node: bool,
     subscribe_mode: bool,
     ext: HashMap<String, String>,
     websocket: WebSocket,
@@ -86,6 +87,10 @@ where
                             trace!("[Tardis.WebServer] WS broadcast receive: {} by {:?}", text, avatars);
                             match TardisFuns::json.str_to_obj::<TardisWebsocketReq>(&text) {
                                 Ok(req_msg) => {
+                                    if !avatars.contains(&req_msg.from_avatar) && !mgr_node {
+                                        warn!("[Tardis.WebServer] WS broadcast receive: {} by {:?} failed: from_avatar is not illegal", text, avatars);
+                                        break;
+                                    }
                                     if let Some(resp_msg) = process_fun(req_msg.clone(), ext.clone()).await {
                                         trace!(
                                             "[Tardis.WebServer] WS broadcast send to channel: {} to {:?} ignore {:?}",
@@ -93,7 +98,7 @@ where
                                             resp_msg.to_avatars,
                                             resp_msg.ignore_avatars
                                         );
-                                        let send_msg = TardisWebsocketInnerResp {
+                                        let send_msg = TardisWebsocketMessage {
                                             id: TardisFuns::field.nanoid(),
                                             msg: resp_msg.msg,
                                             from_avatar: req_msg.from_avatar,
@@ -138,7 +143,7 @@ where
 
             tokio::spawn(async move {
                 while let Ok(resp_msg) = receiver.recv().await {
-                    let resp = TardisFuns::json.str_to_obj::<TardisWebsocketInnerResp>(&resp_msg).unwrap();
+                    let resp = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&resp_msg).unwrap();
                     if
                     // send to all avatars or except self
                     resp.to_avatars.is_empty() &&  resp.ignore_avatars.is_empty() && (!resp.ignore_self || !current_avatars.contains(&resp.from_avatar))
@@ -154,7 +159,12 @@ where
                                 continue;
                             }
                         }
-                        if let Err(error) = sink.send(Message::Text(resp.msg.to_string())).await {
+                        let resp_msg = if mgr_node {
+                            TardisFuns::json.obj_to_string(&resp).unwrap()
+                        } else {
+                            resp.msg.to_string()
+                        };
+                        if let Err(error) = sink.send(Message::Text(resp_msg)).await {
                             if error.to_string() != "Connection closed normally" {
                                 warn!(
                                     "[Tardis.WebServer] WS broadcast send: {} to {:?} ignore {:?} failed: {error}",
@@ -187,7 +197,7 @@ pub struct TardisWebsocketResp {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-struct TardisWebsocketInnerResp {
+pub struct TardisWebsocketMessage {
     pub id: String,
     pub msg: Value,
     pub from_avatar: String,
@@ -195,4 +205,16 @@ struct TardisWebsocketInnerResp {
     pub event: Option<String>,
     pub ignore_self: bool,
     pub ignore_avatars: Vec<String>,
+}
+
+impl TardisWebsocketMessage {
+    pub fn into_req(self, msg: Value, current_avatar: String, to_avatars: Option<Vec<String>>) -> TardisWebsocketReq {
+        TardisWebsocketReq {
+            msg: msg,
+            from_avatar: current_avatar,
+            to_avatars: to_avatars,
+            event: self.event,
+            ignore_self: Some(self.ignore_self),
+        }
+    }
 }
