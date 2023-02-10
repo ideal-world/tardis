@@ -183,7 +183,7 @@ where
                                         continue;
                                     } else if req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) {
                                         let del_avatar = req_msg.msg.as_str().unwrap();
-                                        insts_in_send.write().await.get_mut(&inst_id).unwrap().retain(|value| *value != del_avatar.to_string());
+                                        insts_in_send.write().await.get_mut(&inst_id).unwrap().retain(|value| *value != del_avatar);
                                         trace!("[Tardis.WebServer] WS message delete avatar {},{} to {}", msg_id, del_avatar, &inst_id);
                                         continue;
                                     }
@@ -239,19 +239,22 @@ where
                 while let Ok(resp_msg) = receiver.recv().await {
                     let resp = TardisFuns::json.str_to_obj::<TardisWebsocketMgrMessage>(&resp_msg).unwrap();
                     let current_avatars = insts_in_receive.read().await.get(&current_receive_inst_id).unwrap().clone();
-                    if (
-                        // only self
-                        ( resp.echo && current_receive_inst_id == resp.from_inst_id)
+                    // // only self
+                    if resp.echo && current_receive_inst_id != resp.from_inst_id {
+                        continue;
+                    }
                     // except self
-                     ||  (!resp.ignore_self || current_receive_inst_id != resp.from_inst_id)
-                    ) && (
-                        // send to all
-                        resp.to_avatars.is_empty() && resp.ignore_avatars.is_empty()
+                    if resp.ignore_self && current_receive_inst_id == resp.from_inst_id {
+                        continue;
+                    }
+                    if
+                    // send to all
+                    resp.to_avatars.is_empty() && resp.ignore_avatars.is_empty()
                              // send to targets that match the current avatars
                            || !resp.to_avatars.is_empty() && resp.to_avatars.iter().any(|avatar| current_avatars.contains(avatar))
                         // send to targets that NOT match the current avatars
                         || !resp.ignore_avatars.is_empty() && resp.ignore_avatars.iter().all(|avatar| current_avatars.contains(avatar))
-                    ) {
+                    {
                         if !subscribe_mode {
                             let id = format!("{}{:?}", resp.id, &current_avatars);
                             let mut lock = cache.lock().await;
@@ -324,9 +327,9 @@ pub struct TardisWebsocketMessage {
 impl TardisWebsocketMgrMessage {
     pub fn into_req(self, msg: Value, current_avatar: String, to_avatars: Option<Vec<String>>) -> TardisWebsocketReq {
         TardisWebsocketReq {
-            msg: msg,
+            msg,
             from_avatar: current_avatar,
-            to_avatars: to_avatars,
+            to_avatars,
             event: self.event,
             ignore_self: Some(self.ignore_self),
             spec_inst_id: Some(self.from_inst_id),

@@ -45,7 +45,7 @@ async fn test_normal() -> TardisResult<()> {
     // message not illegal test
     let error_client_a = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/gerror/a", move |msg| async move {
         println!("client_not_found recv:{}", msg);
-        assert_eq!(msg, r#"{"msg":"message not illegal","event":"__SYS_ERROR__"}"#);
+        assert_eq!(msg, r#"{"msg":"message not illegal","event":"__sys_error__"}"#);
         ERROR_COUNTER.fetch_add(1, Ordering::SeqCst);
         None
     })
