@@ -1,6 +1,11 @@
 [workspace]
 members = ["tardis-macros", "tardis", "examples/*"]
 
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+
 [workspace.package]
 version = "0.1.0-alpha41"
 authors = ["gudaoxuri <i@sunisle.org>"]

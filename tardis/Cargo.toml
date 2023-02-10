@@ -12,10 +12,6 @@ license.workspace = true
 edition.workspace = true
 readme = "README.md"
 
-[profile.release]
-lto = true
-codegen-units = 1
-
 [lib]
 name = "tardis"
 path = "src/lib.rs"
