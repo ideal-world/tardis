@@ -217,7 +217,7 @@ async fn test_cache_client() -> TardisResult<()> {
     .await
 }
 
-async fn test_concurrent() -> TardisResult<()> {
+async fn _test_concurrent() -> TardisResult<()> {
     let threads: Vec<i32> = (0..100).collect();
 
     let _ = threads

@@ -1,33 +1,52 @@
+use std::sync::Arc;
+
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::log::info;
 use crate::TardisFuns;
+use futures::stream::SplitSink;
 use futures::{Future, SinkExt, StreamExt};
 use log::{trace, warn};
 use serde::Serialize;
-use tokio::sync::broadcast::{self, Sender};
-use tokio_tungstenite::connect_async;
-use tokio_tungstenite::tungstenite::Message;
+use tokio::net::TcpStream;
+use tokio::sync::Mutex;
+use tokio_tungstenite::tungstenite::{self, Error, Message};
+use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use url::Url;
 
-pub struct TardisWSClient {
-    tx: Sender<std::string::String>,
+pub struct TardisWSClient<F, T>
+where
+    F: Fn(String) -> T + Send + Sync + 'static,
+    T: Future<Output = Option<String>> + Send + 'static,
+{
+    str_url: String,
+    fun: F,
+    write: Mutex<Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>>,
 }
 
-impl TardisWSClient {
-    pub async fn init<F, T>(str_url: &str, fun: F) -> TardisResult<TardisWSClient>
-    where
-        F: Fn(String) -> T + Send + Sync + 'static,
-        T: Future<Output = Option<String>> + Send + 'static,
-    {
-        let (tx, mut rx) = broadcast::channel(1024);
-        let tx_clone = tx.clone();
+impl<F, T> TardisWSClient<F, T>
+where
+    F: Fn(String) -> T + Send + Sync + Copy + 'static,
+    T: Future<Output = Option<String>> + Send + 'static,
+{
+    pub async fn init(str_url: &str, fun: F) -> TardisResult<TardisWSClient<F, T>> {
+        Self::do_init(str_url, fun, false).await
+    }
+
+    async fn do_init(str_url: &str, fun: F, retry: bool) -> TardisResult<TardisWSClient<F, T>> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.WSClient] Invalid url {str_url}"), "406-tardis-ws-url-error"))?;
         info!("[Tardis.WSClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
-        let (client, _) = connect_async(url.clone()).await.unwrap_or_else(|_| panic!("[Tardis.WSClient] Failed to connect {str_url}"));
+        let (client, _) = connect_async(url.clone()).await.map_err(|error| {
+            if !retry {
+                TardisError::format_error(&format!("[Tardis.WSClient] Failed to connect {str_url} {error}"), "500-tardis-ws-client-connect-error")
+            } else {
+                TardisError::format_error(&format!("[Tardis.WSClient] Failed to reconnect {str_url} {error}"), "500-tardis-ws-client-reconnect-error")
+            }
+        })?;
         info!("[Tardis.WSClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
-        let (mut write, mut read) = client.split();
-
+        let (write, mut read) = client.split();
+        let write = Arc::new(Mutex::new(write));
+        let reply = write.clone();
         tokio::spawn(async move {
             while let Some(Ok(text)) = read.next().await {
                 match text {
@@ -35,7 +54,7 @@ impl TardisWSClient {
                         trace!("[Tardis.WSClient] WS receive: {}", text);
                         if let Some(resp) = fun(text).await {
                             trace!("[Tardis.WSClient] WS send: {}", resp);
-                            if let Err(error) = tx.send(resp.clone()) {
+                            if let Err(error) = reply.lock().await.send(Message::Text(resp.clone())).await {
                                 warn!("[Tardis.WSClient] Failed to send message {resp}: {error}");
                                 break;
                             }
@@ -59,34 +78,48 @@ impl TardisWSClient {
                 }
             }
         });
-        tokio::spawn(async move {
-            loop {
-                match rx.recv().await {
-                    Ok(resp) => {
-                        if let Err(error) = write.send(Message::Text(resp.clone())).await {
-                            warn!("[Tardis.WSClient] Failed to send message {resp}: {error}");
-                            break;
-                        }
-                    }
-                    Err(error) => {
-                        warn!("[Tardis.WSClient] Failed to send message: {error}");
-                        break;
-                    }
-                }
-            }
-        });
-        Ok(TardisWSClient { tx: tx_clone })
+        Ok(TardisWSClient {
+            str_url: str_url.to_string(),
+            fun,
+            write: Mutex::new(write),
+        })
+    }
+
+    pub async fn send_obj<E: ?Sized + Serialize>(&self, msg: &E) -> TardisResult<()> {
+        let msg = TardisFuns::json.obj_to_string(msg).unwrap();
+        self.send_raw(msg).await
     }
 
     pub async fn send_raw(&self, msg: String) -> TardisResult<()> {
-        self.tx
-            .send(msg.clone())
-            .map(|_| {})
-            .map_err(|error| TardisError::format_error(&format!("[Tardis.WSClient] Failed to send message {msg}: {error}"), "500-tardis-ws-client-send-error"))
+        if let Err(error) = self.do_send(msg.clone()).await {
+            warn!("[Tardis.WSClient] Failed to send message {}: {}", msg.clone(), error);
+            match error {
+                Error::AlreadyClosed | Error::Io(_) => {
+                    if let Err(error) = self.reconnect().await {
+                        Err(error)
+                    } else {
+                        self.do_send(msg.clone())
+                            .await
+                            .map_err(|error| TardisError::format_error(&format!("[Tardis.WSClient] Failed to send message {msg}: {error}"), "500-tardis-ws-client-send-error"))
+                    }
+                }
+                _ => Err(TardisError::format_error(
+                    &format!("[Tardis.WSClient] Failed to send message {msg}: {error}"),
+                    "500-tardis-ws-client-send-error",
+                )),
+            }
+        } else {
+            Ok(())
+        }
     }
 
-    pub async fn send_obj<T: ?Sized + Serialize>(&self, msg: &T) -> TardisResult<()> {
-        let msg = TardisFuns::json.obj_to_string(msg).unwrap();
-        self.send_raw(msg).await
+    pub async fn do_send(&self, msg: String) -> Result<(), tungstenite::Error> {
+        self.write.lock().await.lock().await.send(Message::Text(msg.clone())).await
+    }
+
+    async fn reconnect(&self) -> TardisResult<()> {
+        let new_client = Self::do_init(&self.str_url, self.fun, true).await?;
+        *self.write.lock().await = new_client.write.lock().await.clone();
+        Ok(())
     }
 }

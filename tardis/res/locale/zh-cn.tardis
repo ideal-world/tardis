@@ -69,6 +69,7 @@
 
 406-tardis-ws-url-error	Websocket Url解析错误
 500-tardis-ws-client-send-error	Websocket客户端消息发送错误
+500-tardis-ws-client-reconnect-error	Websocket客户端连接重试错误
 500-tardis-ws-client-close-error	Websocket客户端关闭错误
 
 -1-tardis-reldb-error	SQL执行错误

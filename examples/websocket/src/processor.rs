@@ -136,10 +136,10 @@ impl Page {
             websocket,
             sender.clone(),
             |req_msg, ext| async move {
-                let exmaple_msg = TardisFuns::json.json_to_obj::<WebsocketExample>(req_msg.msg).unwrap();
+                let example_msg = TardisFuns::json.json_to_obj::<WebsocketExample>(req_msg.msg).unwrap();
                 Some(TardisWebsocketResp {
-                    msg: TardisFuns::json.obj_to_json(&TardisResult::Ok(format!("echo:{}, ext info:{}", exmaple_msg.msg, ext.get("some_key").unwrap()))).unwrap(),
-                    to_avatars: if exmaple_msg.to.is_empty() { vec![] } else { vec![exmaple_msg.to] },
+                    msg: TardisFuns::json.obj_to_json(&TardisResult::Ok(format!("echo:{}, ext info:{}", example_msg.msg, ext.get("some_key").unwrap()))).unwrap(),
+                    to_avatars: if example_msg.to.is_empty() { vec![] } else { vec![example_msg.to] },
                     ignore_avatars: vec![],
                 })
             },
