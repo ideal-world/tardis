@@ -46,7 +46,7 @@ impl Page {
             sendForm.hidden = false;
             msgsArea.hidden = false;
             msgInput.focus();
-            ws = new WebSocket("ws://" + location.host + "/ws/echo/" + nameInput.value);
+            ws = new WebSocket("wss://" + location.host + "/ws/echo/" + nameInput.value);
             ws.onmessage = function(event) {
                 msgsArea.value += event.data + "\r\n";
             }
@@ -95,7 +95,7 @@ impl Page {
             sendForm.hidden = false;
             msgsArea.hidden = false;
             msgInput.focus();
-            ws = new WebSocket("ws://" + location.host + "/ws/broadcast/" + nameInput.value);
+            ws = new WebSocket("wss://" + location.host + "/ws/broadcast/" + nameInput.value);
             ws.onmessage = function(event) {
                 msgsArea.value += event.data + "\r\n";
             }

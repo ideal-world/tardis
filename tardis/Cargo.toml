@@ -58,7 +58,8 @@ config = { version = "0.13" }
 regex = { version = "1.5" }
 url = { version = "2.2" }
 openssl = { version = "0.10", features = ["vendored"] }
-lru = { version ="0.9.0"}
+lru = { version = "0.9.0" }
+native-tls = { version = "0.2" }
 
 # Log
 log = { version = "0.4" }
@@ -116,7 +117,9 @@ poem = { version = "1.3", features = [
 reqwest = { version = "0.11", features = ["json"], optional = true }
 
 # Websocket Client
-tokio-tungstenite = { version = "0.18", features= ["default", "__rustls-tls"], optional = true }
+tokio-tungstenite = { version = "0.18", features = [
+    "native-tls",
+], optional = true }
 
 # Redis
 redis = { version = "0.22", features = [

@@ -7,11 +7,12 @@ use crate::TardisFuns;
 use futures::stream::SplitSink;
 use futures::{Future, SinkExt, StreamExt};
 use log::{trace, warn};
+use native_tls::TlsConnector;
 use serde::Serialize;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::{self, Error, Message};
-use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};
 use url::Url;
 
 pub struct TardisWSClient<F, T>
@@ -36,7 +37,17 @@ where
     async fn do_init(str_url: &str, fun: F, retry: bool) -> TardisResult<TardisWSClient<F, T>> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.WSClient] Invalid url {str_url}"), "406-tardis-ws-url-error"))?;
         info!("[Tardis.WSClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
-        let (client, _) = connect_async(url.clone()).await.map_err(|error| {
+        let connect = if !str_url.starts_with("wss") {
+            tokio_tungstenite::connect_async(url.clone()).await
+        } else {
+            tokio_tungstenite::connect_async_tls_with_config(
+                url.clone(),
+                None,
+                Some(Connector::NativeTls(TlsConnector::builder().danger_accept_invalid_certs(true).build().unwrap())),
+            )
+            .await
+        };
+        let (client, _) = connect.map_err(|error| {
             if !retry {
                 TardisError::format_error(&format!("[Tardis.WSClient] Failed to connect {str_url} {error}"), "500-tardis-ws-client-connect-error")
             } else {
