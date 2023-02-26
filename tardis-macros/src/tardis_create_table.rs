@@ -101,7 +101,7 @@ fn create_single_col_token_statement(field: Field) -> Result<TokenStream> {
 }
 fn map_type_to_create_table_(ident: &Ident, attribute: &mut Punctuated<TokenStream, Dot>) -> Result<()> {
     let map = get_type_map();
-    
+
     if let Some(tk) = map.get(&ident.to_string()) {
         attribute.push(tk.clone());
         Ok(())
