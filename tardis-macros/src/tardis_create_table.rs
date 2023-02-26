@@ -1,24 +1,17 @@
-
-use std::collections::HashMap;
-use crate::macro_helpers::helpers::{ConvertVariableHelpers};
-use darling::util::SpannedValue;
-use darling::{FromAttributes, FromField, FromMeta};
-use proc_macro2::{Ident, Span, TokenStream};
+use crate::macro_helpers::helpers::ConvertVariableHelpers;
+use darling::FromField;
+use proc_macro2::{Ident, TokenStream};
 use quote::{quote, ToTokens};
-use std::ops::Deref;
-use std::process::id;
+use std::collections::HashMap;
 use syn::punctuated::Punctuated;
-use syn::token::{Comma, Dot};
-use syn::ImplItem::Method;
-use syn::{
-    parse_macro_input, Attribute, AttributeArgs, Block, Data, Field, Fields, GenericArgument, ImplItemMethod, ItemImpl, ItemStruct, Meta, PathArguments, Result, Stmt, Type,
-};
+use syn::token::Dot;
+use syn::{Attribute, Data, Error, Field, Fields, GenericArgument, ImplItemMethod, ItemImpl, ItemStruct, Meta, PathArguments, Result, Stmt, Type};
 
 #[derive(FromField, Debug)]
 #[darling(attributes(sea_orm))]
 struct CreateTableMeta {
     ident: Option<Ident>,
-    ty: syn::Type,
+    ty: Type,
     #[darling(default)]
     primary_key: bool,
     #[darling(default)]
@@ -70,7 +63,7 @@ fn create_single_col_token_statement(field: Field) -> Result<TokenStream> {
     let mut attribute: Punctuated<_, Dot> = Punctuated::new();
     if let Some(ident) = field_create_table_meta.ident {
         if let Type::Path(path) = field_create_table_meta.ty {
-            eprintln!("Type===={path:?}");
+            // eprintln!("Type===={path:?}");
             if let Some(path) = path.path.segments.first() {
                 if path.ident == "Option" {
                     field_create_table_meta.is_null = true;
@@ -79,7 +72,7 @@ fn create_single_col_token_statement(field: Field) -> Result<TokenStream> {
                             if let GenericArgument::Type(path_type) = patharg {
                                 if let Type::Path(path) = path_type {
                                     if let Some(ident) = path.path.get_ident() {
-                                        map_type_to_create_table_(ident, &mut attribute);
+                                        map_type_to_create_table_(ident, &mut attribute)?;
                                     }
                                 }
                             }
@@ -89,8 +82,7 @@ fn create_single_col_token_statement(field: Field) -> Result<TokenStream> {
                 }
             }
             if let Some(ident) = path.path.get_ident() {
-                map_type_to_create_table_(ident, &mut attribute);
-                eprintln!("ident===={ident:?}");
+                map_type_to_create_table_(ident, &mut attribute)?;
             }
         }
 
@@ -107,11 +99,24 @@ fn create_single_col_token_statement(field: Field) -> Result<TokenStream> {
         Ok(quote! {})
     }
 }
-fn map_type_to_create_table_(ident: &Ident, attribute: &mut Punctuated<TokenStream, Dot>) {
-    let mut map:HashMap<String,TokenStream>=HashMap::new();
-    map.insert("String".to_string(),quote!(string()));
-    if ident == "String" {
-        attribute.push(quote!(string()));
+fn map_type_to_create_table_(ident: &Ident, attribute: &mut Punctuated<TokenStream, Dot>) -> Result<()> {
+    let map = get_type_map();
+    
+    if let Some(tk) = map.get(&ident.to_string()) {
+        attribute.push(tk.clone());
+        Ok(())
+    } else {
+        Err(Error::new(ident.span(), "type is not impl!"))
     }
-    map.get(&ident.to_string());
+}
+fn get_type_map() -> HashMap<String, TokenStream> {
+    #[cfg(feature = "reldb-postgres")]
+    {
+        let mut map: HashMap<String, TokenStream> = HashMap::new();
+        map.insert("String".to_string(), quote!(string()));
+        map.insert("i64".to_string(), quote!(big_integer()));
+        map.insert("bool".to_string(), quote!(boolean()));
+
+        return map;
+    }
 }
