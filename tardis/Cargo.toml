@@ -28,6 +28,7 @@ reldb-postgres = [
     "reldb-core",
     "sea-orm/postgres-array",
     "sea-orm/sqlx-postgres",
+    "tardis-macros/reldb-postgres",
 ]
 reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql"]
 reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
@@ -67,7 +68,7 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # macros
-tardis-macros = { version = "0.1.0-alpha34", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-alpha34", path = "../tardis-macros", optional = true , features =["reldb-postgres"]}
 
 # Tokio
 tokio = { version = "1.18", features = [

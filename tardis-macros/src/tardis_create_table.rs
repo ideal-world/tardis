@@ -16,6 +16,8 @@ struct CreateTableMeta {
     primary_key: bool,
     #[darling(default)]
     is_null: bool,
+    ///以下字段为了兼容 sea_orm 原来可用参数
+    #[warn(dead_code)]
     #[darling(default)]
     auto_increment: bool,
 }
@@ -27,7 +29,7 @@ pub(crate) fn create_table(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Re
     match data {
         Data::Struct(struct_impl) => {
             let col_token = create_col_token_statement(struct_impl.fields)?;
-            Ok(quote! {fn create_table_statement(db: DbBackend) -> ::tardis::db::sea_orm::sea_query::TableCreateStatement {
+            Ok(quote! {fn tardis_create_table_statement(db: DbBackend) -> ::tardis::db::sea_orm::sea_query::TableCreateStatement {
                 let mut builder = ::tardis::db::sea_orm::sea_query::Table::create();
                 builder
                     .table(Entity.table_ref())
@@ -63,22 +65,16 @@ fn create_single_col_token_statement(field: Field) -> Result<TokenStream> {
     let mut attribute: Punctuated<_, Dot> = Punctuated::new();
     if let Some(ident) = field_create_table_meta.ident {
         if let Type::Path(path) = field_create_table_meta.ty {
-            // eprintln!("Type===={path:?}");
             if let Some(path) = path.path.segments.first() {
                 if path.ident == "Option" {
                     field_create_table_meta.is_null = true;
                     if let PathArguments::AngleBracketed(patharg) = &path.arguments {
-                        if let Some(patharg) = patharg.args.first() {
-                            if let GenericArgument::Type(path_type) = patharg {
-                                if let Type::Path(path) = path_type {
-                                    if let Some(ident) = path.path.get_ident() {
-                                        map_type_to_create_table_(ident, &mut attribute)?;
-                                    }
-                                }
+                        if let Some(GenericArgument::Type(Type::Path(path))) = patharg.args.first() {
+                            if let Some(ident) = path.path.get_ident() {
+                                map_type_to_create_table_(ident, &mut attribute)?;
                             }
                         }
                     }
-                } else {
                 }
             }
             if let Some(ident) = path.path.get_ident() {

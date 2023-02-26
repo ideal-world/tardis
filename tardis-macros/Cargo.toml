@@ -16,6 +16,9 @@ name = "tardis_macros"
 path = "src/lib.rs"
 proc_macro = true
 
+[features]
+reldb-postgres=[]
+
 [dependencies]
 syn = { version = "1", features = ["full", "extra-traits"] }
 quote = "1"

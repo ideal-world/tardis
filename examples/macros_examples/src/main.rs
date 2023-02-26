@@ -14,7 +14,7 @@ pub struct Model {
     pub id: String,
     pub number: i64,
     pub can_be_null: Option<String>,
-    pub _bool: bool,
+    // pub _bool: bool,
     pub own_paths: String,
 }
 
@@ -26,7 +26,7 @@ impl TardisActiveModel for ActiveModel {
     }
     ///调用macros自动生成的方法 create_table_statement
     fn create_table_statement(db: DbBackend) -> TableCreateStatement {
-        create_table_statement(db)
+        tardis_create_table_statement(db)
     }
 }
 
