@@ -204,8 +204,8 @@ async fn test_dyn_avatar() -> TardisResult<()> {
         let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMgrMessage>(&msg).unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
-            let from_avator = receive_msg.from_avatar.clone();
-            return Some(TardisFuns::json.obj_to_string(&receive_msg.into_req(json! {"c"}, from_avator.clone(), Some(vec![from_avator]))).unwrap());
+            let from_avatar = receive_msg.from_avatar.clone();
+            return Some(TardisFuns::json.obj_to_string(&receive_msg.into_req(json! {"c"}, from_avatar.clone(), Some(vec![from_avatar]))).unwrap());
         }
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
             assert!(1 == 2);
@@ -279,7 +279,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
         })
         .await?;
 
-    // fech info
+    // fetch info
     a_client
         .send_obj(&TardisWebsocketReq {
             msg: json! {""},
