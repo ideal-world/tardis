@@ -39,8 +39,8 @@ pub(crate) fn create_table(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Re
                 builder.to_owned()
             }})
         }
-        Data::Enum(_) => Err(syn::Error::new_spanned(&ident, "enum is not support!")),
-        Data::Union(_) => Err(syn::Error::new_spanned(&ident, "union is not support!")),
+        Data::Enum(_) => Err(Error::new(ident.span(), "enum is not support!")),
+        Data::Union(_) => Err(Error::new(ident.span(), "union is not support!")),
     }
 }
 
