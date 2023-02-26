@@ -105,6 +105,8 @@ fn map_type_to_create_table_(ident: &Ident, attribute: &mut Punctuated<TokenStre
         Err(Error::new(ident.span(), "type is not impl!"))
     }
 }
+/// postgres https://docs.rs/sqlx/latest/sqlx/postgres/types/index.html
+/// todo 完善所有的基础类型
 fn get_type_map() -> HashMap<String, TokenStream> {
     #[cfg(feature = "reldb-postgres")]
     {
@@ -112,6 +114,7 @@ fn get_type_map() -> HashMap<String, TokenStream> {
         map.insert("String".to_string(), quote!(string()));
         map.insert("i64".to_string(), quote!(big_integer()));
         map.insert("bool".to_string(), quote!(boolean()));
+        map.insert("i16".to_string(), quote!(small_integer()));
 
         return map;
     }
