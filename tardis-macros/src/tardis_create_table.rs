@@ -22,7 +22,8 @@ struct CreateTableMeta {
     #[darling(default)]
     //todo 兼容支持自定义类型
     column_type:Option<String>,
-    ///以下字段为了兼容 sea_orm 原来可用参数 没有用到
+    
+    //以下字段为了兼容 sea_orm 原来可用参数 没有用到
     #[warn(dead_code)]
     #[darling(default)]
     auto_increment: bool,
@@ -36,6 +37,10 @@ struct CreateTableMeta {
     indexed:bool,
     #[darling(default)]
     ignore:bool,
+    #[darling(default)]
+    select_as:Option<String>,
+    #[darling(default)]
+    save_as:Option<String>,
 }
 
 pub(crate) fn create_table(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Result<TokenStream> {

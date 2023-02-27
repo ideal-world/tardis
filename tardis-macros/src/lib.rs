@@ -8,8 +8,9 @@ pub fn struct_copy(args: TokenStream, input: TokenStream) -> TokenStream {
     unimplemented!()
 }
 
-/// 生成建表语句,兼容sea_orm
-/// see [tardis::db::relbd_client::TardisActiveModel::create_table_statement]
+/// 生成建表语句,兼容sea_orm \
+/// see [tardis::db::relbd_client::TardisActiveModel::create_table_statement] \
+/// 
 #[proc_macro_derive(DeriveCreateTable, attributes(sea_orm))]
 #[allow(non_snake_case)]
 pub fn TardisCreateTable(input: TokenStream) -> TokenStream {
