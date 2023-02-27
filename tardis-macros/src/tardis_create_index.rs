@@ -1,4 +1,4 @@
-use crate::macro_helpers::helpers::ConvertVariableHelpers;
+use crate::macro_helpers::helpers::{ConvertVariableHelpers, TypeToTokenHelpers};
 use darling::{FromAttributes, FromField, FromMeta};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
@@ -82,10 +82,9 @@ fn single_create_index_statement(indexMetas: &Vec<CreateIndexMeta>) -> Result<To
         }
     }
     let name = if let Some(name) = name {
-        let ident = Ident::new(&name, Span::call_site());
-        quote! {#ident}
+        TypeToTokenHelpers::string_literal(&Some(name))
     } else {
         quote! {&format!("idx-{}-idx1", Entity.table_name())}
     };
-    Ok(quote! {Index::create().name(#name).table(Entity).#column.to_owned()})
+    Ok(quote! {::tardis::db::sea_orm::sea_query::Index::create().name(#name).table(Entity).#column.to_owned()})
 }

@@ -2,7 +2,7 @@ use tardis::basic::dto::TardisContext;
 use tardis::chrono::Utc;
 use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
-use tardis::db::sea_orm::sea_query::{IndexCreateStatement, TableCreateStatement};
+use tardis::db::sea_orm::sea_query::IndexCreateStatement;
 use tardis::db::sea_orm::*;
 use tardis::{chrono, DeriveTableIndex};
 
@@ -15,7 +15,9 @@ pub struct Model {
     #[sea_orm(column_name = "number8")]
     pub number_i8_for_test: i8,
     pub number16: i16,
+    #[index(index_id="index_id_2")]
     pub number32: i32,
+    #[index]
     pub number64: i64,
     // pub number_f32: f32,
     // pub number_f64: f64,
