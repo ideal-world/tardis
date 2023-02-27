@@ -16,11 +16,26 @@ struct CreateTableMeta {
     #[darling(default)]
     primary_key: bool,
     #[darling(default)]
-    is_null: bool,
-    ///以下字段为了兼容 sea_orm 原来可用参数
+    nullable: bool,
+    #[darling(default)]
+    extra:Option<String>,
+    #[darling(default)]
+    //todo 兼容支持自定义类型
+    column_type:Option<String>,
+    ///以下字段为了兼容 sea_orm 原来可用参数 没有用到
     #[warn(dead_code)]
     #[darling(default)]
     auto_increment: bool,
+    #[darling(default)]
+    column_name:Option<String>,
+    #[darling(default)]
+    default_value:Option<String>,
+    #[darling(default)]
+    unique:bool,
+    #[darling(default)]
+    indexed:bool,
+    #[darling(default)]
+    ignore:bool,
 }
 
 pub(crate) fn create_table(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Result<TokenStream> {
@@ -77,7 +92,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                             if let Some(_) = path.path.get_ident() {
                                 return create_single_col_token_statement(CreateTableMeta {
                                     ty: Type::Path(path.clone()),
-                                    is_null: true,
+                                    nullable: true,
                                     ..field
                                 });
                             }
@@ -108,11 +123,14 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
             }
         }
 
-        if !field.is_null {
+        if !field.nullable {
             attribute.push(quote!(not_null()))
         }
         if field.primary_key {
             attribute.push(quote!(primary_key()))
+        }
+        if let Some(ext)=field.extra{
+            attribute.push(quote!(extra(#ext.to_string())))
         }
 
         let ident = Ident::new(ConvertVariableHelpers::underscore_to_camel(ident.to_string()).as_ref(), ident.span());
