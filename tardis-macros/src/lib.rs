@@ -22,8 +22,17 @@ pub fn TardisCreateTable(input: TokenStream) -> TokenStream {
         Err(err) => err.to_compile_error().into(),
     }
 }
-
+DeriveTableIndex
 //todo 扩展sea_orm 自动生成创建索引语句
+#[proc_macro_derive(DeriveCreateTable, attributes(index))]
+#[allow(non_snake_case)]
+pub fn TardisCreateTable(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, data, attrs, .. } = parse_macro_input!(input as DeriveInput);
+    match tardis_create_table::create_table(ident, data, attrs) {
+        Ok(stream) => stream.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
 
 pub(crate) mod macro_helpers;
 mod tardis_create_table;

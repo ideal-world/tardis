@@ -23,7 +23,8 @@ struct CreateTableMeta {
     //todo 兼容支持自定义类型
     column_type: Option<String>,
 
-    //以下字段为了兼容 sea_orm 原来可用参数 没有用到
+    //The following fields are not used temporarily
+    // in order to be compatible with the original available parameters of sea_orm
     #[warn(dead_code)]
     #[darling(default)]
     auto_increment: bool,
@@ -90,7 +91,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
     if let Some(ident) = field_clone.ident {
         if let Type::Path(field_type) = field_clone.ty {
             if let Some(path) = field_type.path.segments.last() {
-                //判断各类包装类型 such as `Option<inner_type>` `Vec<inner_type>` `DateTime<inner_type>`
+                //judge packaging types such as `Option<inner_type>` `Vec<inner_type>` `DateTime<inner_type>`
                 if path.ident == "Option" {
                     if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
                         if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
@@ -120,7 +121,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                         }
                     }
                 } else if let Some(ident) = field_type.path.get_ident() {
-                    //基础类型
+                    // basic type
                     map_type_to_create_table_(ident, &mut attribute, None)?;
                 } else {
                     return Err(Error::new(path.span(), "[path.segments] not support Type!"));
@@ -155,7 +156,8 @@ fn map_type_to_create_table_(ident: &Ident, attribute: &mut Punctuated<TokenStre
         Err(Error::new(ident.span(), "type is not impl!"))
     }
 }
-/// 转换类型参考 https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/
+/// Conversion type reference https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/ \
+/// for developer: if you want support more type,just add type map.
 fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
     let mut map: HashMap<String, TokenStream> = HashMap::new();
     #[cfg(feature = "reldb-postgres")]
