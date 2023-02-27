@@ -20,7 +20,7 @@ struct CreateTableMeta {
     #[darling(default)]
     extra: Option<String>,
     #[darling(default)]
-    //todo 兼容支持自定义类型
+    //todo Compatible supports custom types
     column_type: Option<String>,
 
     //The following fields are not used temporarily
@@ -175,6 +175,32 @@ fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
                 map.insert("i16".to_string(), quote!(small_integer()));
                 map.insert("i32".to_string(), quote!(integer()));
                 map.insert("i64".to_string(), quote!(big_integer()));
+                map.insert("f32".to_string(), quote!(float()));
+                map.insert("f64".to_string(), quote!(double()));
+                map.insert("bool".to_string(), quote!(boolean()));
+            }
+            _ => {}
+        }
+    }
+    #[cfg(feature = "reldb-mysql")]
+    {
+        match segments_type {
+            Some("Vec") => {
+                map.insert("u8".to_string(), quote!(binary()));
+            }
+            Some("DateTime") => {
+                map.insert("Utc".to_string(), quote!(timestamp()));
+            }
+            None => {
+                map.insert("String".to_string(), quote!(string()));
+                map.insert("i8".to_string(), quote!(tiny_integer()));
+                map.insert("u8".to_string(), quote!(tiny_unsigned()));
+                map.insert("i16".to_string(), quote!(small_integer()));
+                map.insert("u16".to_string(), quote!(small_unsigned()));
+                map.insert("i32".to_string(), quote!(integer()));
+                map.insert("u32".to_string(), quote!(unsigned()));
+                map.insert("i64".to_string(), quote!(big_integer()));
+                map.insert("u64".to_string(), quote!(big_unsigned()));
                 map.insert("f32".to_string(), quote!(float()));
                 map.insert("f64".to_string(), quote!(double()));
                 map.insert("bool".to_string(), quote!(boolean()));

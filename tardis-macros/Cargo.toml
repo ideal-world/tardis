@@ -18,6 +18,7 @@ proc_macro = true
 
 [features]
 reldb-postgres=[]
+reldb-mysql=[]
 
 [dependencies]
 syn = { version = "1", features = ["full", "extra-traits"] }

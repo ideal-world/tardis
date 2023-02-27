@@ -4,8 +4,9 @@ use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
 use tardis::db::sea_orm::sea_query::{IndexCreateStatement, TableCreateStatement};
 use tardis::db::sea_orm::*;
-use tardis::{chrono, DeriveCreateTable};
+use tardis::{chrono, DeriveTableIndex};
 
+//run `cargo expand example_for_derive_table_index > derive_create_index_expand.rs`
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, DeriveTableIndex)]
 #[sea_orm(table_name = "examples")]
 pub struct Model {
@@ -44,3 +45,7 @@ impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
+
+// Index::create().name(&format!("idx-{}-idx1", Entity.table_name())).table(Entity).col(Column::Ext1Idx).to_owned(),
+// Index::create().name(&format!("idx-{}-idx2", Entity.table_name())).table(Entity).col(Column::Ext2Idx).to_owned(),
+// Index::create().name(&format!("idx-{}-idx3", Entity.table_name())).table(Entity).col(Column::Ext3Idx).to_owned(),

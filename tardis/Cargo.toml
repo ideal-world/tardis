@@ -30,7 +30,7 @@ reldb-postgres = [
     "sea-orm/sqlx-postgres",
     "tardis-macros/reldb-postgres",
 ]
-reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql"]
+reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql", "tardis-macros/reldb-mysql"]
 reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
 reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
