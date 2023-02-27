@@ -13,7 +13,7 @@ use tardis::{chrono, DeriveCreateTable};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
-    #[sea_orm(column_name="number8")]
+    #[sea_orm(column_name = "number8")]
     pub number_i8_for_test: i8,
     pub number16: i16,
     pub number32: i32,
@@ -24,8 +24,8 @@ pub struct Model {
     pub can_bool: bool,
     pub can_be_null: Option<String>,
     #[sea_orm(column_type = "Text")]
-    pub be_text:String,
-    #[sea_orm(extra="DEFAULT CURRENT_TIMESTAMP")]
+    pub be_text: String,
+    #[sea_orm(extra = "DEFAULT CURRENT_TIMESTAMP")]
     pub create_time: chrono::DateTime<Utc>,
     pub own_paths: String,
 }

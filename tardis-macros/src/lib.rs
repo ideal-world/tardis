@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, AttributeArgs, DeriveInput, ItemImpl};
+use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_attribute]
 pub fn struct_copy(args: TokenStream, input: TokenStream) -> TokenStream {

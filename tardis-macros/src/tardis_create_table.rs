@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Dot;
-use syn::{Attribute, Data, Error, Field, Fields, GenericArgument, ItemStruct, Meta, PathArguments, Result, Stmt, Type};
+use syn::{Attribute, Data, Error, Fields, GenericArgument, PathArguments, Result, Type};
 
 #[derive(FromField, Debug, Clone)]
 #[darling(attributes(sea_orm))]
@@ -18,29 +18,29 @@ struct CreateTableMeta {
     #[darling(default)]
     nullable: bool,
     #[darling(default)]
-    extra:Option<String>,
+    extra: Option<String>,
     #[darling(default)]
     //todo 兼容支持自定义类型
-    column_type:Option<String>,
-    
+    column_type: Option<String>,
+
     //以下字段为了兼容 sea_orm 原来可用参数 没有用到
     #[warn(dead_code)]
     #[darling(default)]
     auto_increment: bool,
     #[darling(default)]
-    column_name:Option<String>,
+    column_name: Option<String>,
     #[darling(default)]
-    default_value:Option<String>,
+    default_value: Option<String>,
     #[darling(default)]
-    unique:bool,
+    unique: bool,
     #[darling(default)]
-    indexed:bool,
+    indexed: bool,
     #[darling(default)]
-    ignore:bool,
+    ignore: bool,
     #[darling(default)]
-    select_as:Option<String>,
+    select_as: Option<String>,
     #[darling(default)]
-    save_as:Option<String>,
+    save_as: Option<String>,
 }
 
 pub(crate) fn create_table(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Result<TokenStream> {
@@ -94,7 +94,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                 if path.ident == "Option" {
                     if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
                         if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
-                            if let Some(_) = path.path.get_ident() {
+                            if path.path.get_ident().is_some() {
                                 return create_single_col_token_statement(CreateTableMeta {
                                     ty: Type::Path(path.clone()),
                                     nullable: true,
@@ -134,7 +134,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
         if field.primary_key {
             attribute.push(quote!(primary_key()))
         }
-        if let Some(ext)=field.extra{
+        if let Some(ext) = field.extra {
             attribute.push(quote!(extra(#ext.to_string())))
         }
 
