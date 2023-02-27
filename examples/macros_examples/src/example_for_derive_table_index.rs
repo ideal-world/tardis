@@ -23,6 +23,7 @@ pub struct Model {
     pub can_bool: bool,
     pub can_be_null: Option<String>,
     #[sea_orm(column_type = "Text")]
+    #[index(name = "asdf")]
     pub be_text: String,
     #[sea_orm(extra = "DEFAULT CURRENT_TIMESTAMP")]
     pub create_time: chrono::DateTime<Utc>,

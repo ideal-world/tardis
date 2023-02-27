@@ -1,11 +1,10 @@
 use crate::macro_helpers::helpers::ConvertVariableHelpers;
-use darling::FromField;
-use proc_macro2::{Ident, TokenStream};
+use darling::{FromAttributes, FromField, FromMeta};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use std::collections::HashMap;
 use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::token::Dot;
+use syn::token::{Comma, Dot};
 use syn::{Attribute, Data, Error, Fields, GenericArgument, PathArguments, Result, Type};
 
 #[derive(FromField, Debug, Clone)]
@@ -15,6 +14,8 @@ struct CreateIndexMeta {
     ty: Type,
     #[darling(default = "default_index_id")]
     index_id: String,
+    #[darling(default)]
+    name: Option<String>,
 }
 fn default_index_id() -> String {
     "index_id_1".to_string()
@@ -39,13 +40,52 @@ pub(crate) fn create_index(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Re
 }
 
 fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
+    let mut statement: Punctuated<TokenStream, Comma> = Punctuated::new();
+    let mut map: HashMap<String, Box<Vec<CreateIndexMeta>>> = HashMap::new();
     for field in fields {
-        let field_create_index_meta: CreateIndexMeta = match CreateIndexMeta::from_field(&field) {
-            Ok(field) => field,
-            Err(err) => {
-                return Ok(err.write_errors());
+        for attr in field.attrs.clone() {
+            if let Some(ident) = attr.path.get_ident() {
+                if ident == "index" {
+                    // eprintln!("{:?}====={:?}", field.ident, attr.path.get_ident());
+                    let field_create_index_meta: CreateIndexMeta = match CreateIndexMeta::from_field(&field) {
+                        Ok(field) => field,
+                        Err(err) => {
+                            return Ok(err.write_errors());
+                        }
+                    };
+                    if let Some(vec) = map.get_mut(&field_create_index_meta.index_id) {
+                        vec.push(field_create_index_meta)
+                    } else {
+                        map.insert(field_create_index_meta.index_id.clone(), Box::new(vec![field_create_index_meta]));
+                    }
+                    // out of attr for loop, into next field
+                    break;
+                }
             }
-        };
+        }
     }
-    Ok(quote! {})
+    for k in map.keys() {
+        statement.push(single_create_index_statement(map.get(k).unwrap())?);
+    }
+    Ok(quote! {#statement})
+}
+fn single_create_index_statement(indexMetas: &Vec<CreateIndexMeta>) -> Result<TokenStream> {
+    let mut column: Punctuated<TokenStream, Dot> = Punctuated::new();
+    let mut name = None;
+    for indexMeta in indexMetas {
+        if let Some(ident) = indexMeta.ident.clone() {
+            let ident = Ident::new(ConvertVariableHelpers::underscore_to_camel(ident.to_string()).as_ref(), ident.span());
+            column.push(quote!(col(Column::#ident)))
+        }
+        if name.is_none() && indexMeta.name.is_some() {
+            name = indexMeta.name.clone();
+        }
+    }
+    let name = if let Some(name) = name {
+        let ident = Ident::new(&name, Span::call_site());
+        quote! {#ident}
+    } else {
+        quote! {&format!("idx-{}-idx1", Entity.table_name())}
+    };
+    Ok(quote! {Index::create().name(#name).table(Entity).#column.to_owned()})
 }
