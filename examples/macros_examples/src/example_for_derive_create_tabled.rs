@@ -6,7 +6,8 @@ use tardis::db::sea_orm::sea_query::TableCreateStatement;
 use tardis::db::sea_orm::*;
 use tardis::{chrono, DeriveCreateTable};
 
-//run `cargo expand ExampleForDeriveCreateTabled > DeriveCreateTableExpand.rs` to see automatically generated method tardis_create_table_statement
+//run `cargo expand example_for_derive_create_tabled > derive_create_tabled_expand.rs` \
+// to see automatically generated method tardis_create_table_statement
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, DeriveCreateTable)]
 #[sea_orm(table_name = "examples")]
 pub struct Model {

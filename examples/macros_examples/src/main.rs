@@ -1,5 +1,5 @@
 
 
 fn main() {}
-mod ExampleForDeriveCreateTabled;
+mod example_for_derive_create_tabled;
 

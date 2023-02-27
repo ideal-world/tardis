@@ -1,5 +1,5 @@
 [package]
-name = "macros_test"
+name = "macros_examples"
 version = "0.1.0"
 edition = "2021"
 

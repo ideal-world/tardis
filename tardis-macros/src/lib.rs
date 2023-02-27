@@ -10,7 +10,9 @@ pub fn struct_copy(args: TokenStream, input: TokenStream) -> TokenStream {
 
 /// 生成建表语句,兼容sea_orm \
 /// see [tardis::db::relbd_client::TardisActiveModel::create_table_statement] \
-/// 
+/// 根据sea_orm自动生成tardis_create_table_statement方法，
+/// 可以在 TardisActiveModel::create_table_statement 方法中直接调用 \
+/// 示例 see [macros_examples::example_for_derive_create_tabled]
 #[proc_macro_derive(DeriveCreateTable, attributes(sea_orm))]
 #[allow(non_snake_case)]
 pub fn TardisCreateTable(input: TokenStream) -> TokenStream {
