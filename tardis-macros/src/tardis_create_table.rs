@@ -29,17 +29,19 @@ pub(crate) fn create_table(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Re
     match data {
         Data::Struct(struct_impl) => {
             let col_token = create_col_token_statement(struct_impl.fields)?;
-            Ok(quote! {fn tardis_create_table_statement(db: DbBackend) -> ::tardis::db::sea_orm::sea_query::TableCreateStatement {
-                let mut builder = ::tardis::db::sea_orm::sea_query::Table::create();
-                builder
-                    .table(Entity.table_ref())
-                    .if_not_exists()
-                    .#col_token;
-                if db == DatabaseBackend::MySql {
-                    builder.engine("InnoDB").character_set("utf8mb4").collate("utf8mb4_0900_as_cs");
-                }
-                builder.to_owned()
-            }})
+            Ok(
+                quote! {fn tardis_create_table_statement(db: DbBackend) -> ::tardis::db::sea_orm::sea_query::TableCreateStatement {
+                    let mut builder = ::tardis::db::sea_orm::sea_query::Table::create();
+                    builder
+                        .table(Entity.table_ref())
+                        .if_not_exists()
+                        .#col_token;
+                    if db == DatabaseBackend::MySql {
+                        builder.engine("InnoDB").character_set("utf8mb4").collate("utf8mb4_0900_as_cs");
+                    }
+                    builder.to_owned()
+                }},
+            )
         }
         Data::Enum(_) => Err(Error::new(ident.span(), "enum is not support!")),
         Data::Union(_) => Err(Error::new(ident.span(), "union is not support!")),
