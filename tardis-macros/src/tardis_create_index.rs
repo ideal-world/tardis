@@ -16,6 +16,14 @@ struct CreateIndexMeta {
     index_id: String,
     #[darling(default)]
     name: Option<String>,
+    #[darling(default)]
+    primary: bool,
+    #[darling(default)]
+    unique: bool,
+    #[darling(default)]
+    full_text: bool,
+    #[darling(default)]
+    index_type:Option<IndexType>,
 }
 fn default_index_id() -> String {
     "index_id_1".to_string()
@@ -69,22 +77,58 @@ fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
     }
     Ok(quote! {#statement})
 }
-fn single_create_index_statement(indexMetas: &Vec<CreateIndexMeta>) -> Result<TokenStream> {
+fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<TokenStream> {
+    let mut create_statement: Punctuated<TokenStream, Dot> = Punctuated::new();
     let mut column: Punctuated<TokenStream, Dot> = Punctuated::new();
     let mut name = None;
-    for indexMeta in indexMetas {
-        if let Some(ident) = indexMeta.ident.clone() {
+    let mut primary = false;
+    let mut unique = false;
+    let mut full_text = false;
+
+    for index_meta in index_metas {
+        if let Some(ident) = index_meta.ident.clone() {
             let ident = Ident::new(ConvertVariableHelpers::underscore_to_camel(ident.to_string()).as_ref(), ident.span());
+            //add Column
             column.push(quote!(col(Column::#ident)))
         }
-        if name.is_none() && indexMeta.name.is_some() {
-            name = indexMeta.name.clone();
+        if name.is_none() && index_meta.name.is_some() {
+            name = index_meta.name.clone();
+        }
+        if index_meta.primary {
+            primary = true;
+        }
+        if index_meta.unique {
+            unique = true;
+        }
+        if index_meta.full_text {
+            full_text = true;
         }
     }
-    let name = if let Some(name) = name {
-        TypeToTokenHelpers::string_literal(&Some(name))
+
+    if primary {
+        create_statement.push(quote!(primary()))
+    }
+    if unique {
+        create_statement.push(quote!(unique()))
+    }
+    if full_text {
+        create_statement.push(quote!(full_text()))
+    }
+
+    let all_statement = if create_statement.is_empty() {
+        quote! {#column}
     } else {
-        quote! {&format!("idx-{}-idx1", Entity.table_name())}
+        quote! {#column.#create_statement}
     };
-    Ok(quote! {::tardis::db::sea_orm::sea_query::Index::create().name(#name).table(Entity).#column.to_owned()})
+    if column.is_empty() {
+        Ok(quote! {})
+    } else {
+        let name = if let Some(name) = name {
+            TypeToTokenHelpers::string_literal(&Some(name))
+        } else {
+            //todo 随机生成name
+            quote! {&format!("idx-{}-idx1", Entity.table_name())}
+        };
+        Ok(quote! {::tardis::db::sea_orm::sea_query::Index::create().name(#name).table(Entity).#all_statement.to_owned()})
+    }
 }
