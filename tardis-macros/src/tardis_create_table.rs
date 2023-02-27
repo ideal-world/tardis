@@ -4,10 +4,11 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{quote, ToTokens};
 use std::collections::HashMap;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::token::Dot;
-use syn::{Attribute, Data, Error, Field, Fields, GenericArgument, ImplItemMethod, ItemImpl, ItemStruct, Meta, PathArguments, Result, Stmt, Type};
+use syn::{Attribute, Data, Error, Field, Fields, GenericArgument, ItemStruct, Meta, PathArguments, Result, Stmt, Type};
 
-#[derive(FromField, Debug)]
+#[derive(FromField, Debug, Clone)]
 #[darling(attributes(sea_orm))]
 struct CreateTableMeta {
     ident: Option<Ident>,
@@ -51,73 +52,110 @@ pub(crate) fn create_table(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Re
 fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
     let mut result: Punctuated<_, Dot> = Punctuated::new();
     for field in fields {
-        let stream = create_single_col_token_statement(field)?;
+        let field_create_table_meta: CreateTableMeta = match CreateTableMeta::from_field(&field) {
+            Ok(field) => field,
+            Err(err) => {
+                return Ok(err.write_errors());
+            }
+        };
+        let stream = create_single_col_token_statement(field_create_table_meta)?;
         result.push(stream);
     }
     Ok(result.into_token_stream())
 }
 
-fn create_single_col_token_statement(field: Field) -> Result<TokenStream> {
-    let mut field_create_table_meta: CreateTableMeta = match CreateTableMeta::from_field(&field) {
-        Ok(field) => field,
-        Err(err) => {
-            return Ok(err.write_errors());
-        }
-    };
+fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStream> {
+    let field_clone = field.clone();
     let mut attribute: Punctuated<_, Dot> = Punctuated::new();
-    if let Some(ident) = field_create_table_meta.ident {
-        if let Type::Path(path) = field_create_table_meta.ty {
-            if let Some(path) = path.path.segments.first() {
+    if let Some(ident) = field_clone.ident {
+        if let Type::Path(field_type) = field_clone.ty {
+            if let Some(path) = field_type.path.segments.last() {
+                //判断各类包装类型 such as `Option<inner_type>` `Vec<inner_type>` `DateTime<inner_type>`
                 if path.ident == "Option" {
-                    field_create_table_meta.is_null = true;
-                    if let PathArguments::AngleBracketed(patharg) = &path.arguments {
-                        if let Some(GenericArgument::Type(Type::Path(path))) = patharg.args.first() {
-                            if let Some(ident) = path.path.get_ident() {
-                                map_type_to_create_table_(ident, &mut attribute)?;
+                    if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
+                        if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
+                            if let Some(_) = path.path.get_ident() {
+                                return create_single_col_token_statement(CreateTableMeta {
+                                    ty: Type::Path(path.clone()),
+                                    is_null: true,
+                                    ..field
+                                });
                             }
                         }
                     }
+                } else if path.ident == "Vec" {
+                    if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
+                        if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
+                            if let Some(ident) = path.path.get_ident() {
+                                map_type_to_create_table_(ident, &mut attribute, Some("Vec"))?;
+                            }
+                        }
+                    }
+                } else if path.ident == "DateTime" {
+                    if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
+                        if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
+                            if let Some(ident) = path.path.get_ident() {
+                                map_type_to_create_table_(ident, &mut attribute, Some("DateTime"))?;
+                            }
+                        }
+                    }
+                } else if let Some(ident) = field_type.path.get_ident() {
+                    //基础类型
+                    map_type_to_create_table_(ident, &mut attribute, None)?;
+                } else {
+                    return Err(Error::new(path.span(), "[path.segments] not support Type!"));
                 }
-            }
-            if let Some(ident) = path.path.get_ident() {
-                map_type_to_create_table_(ident, &mut attribute)?;
             }
         }
 
-        if !field_create_table_meta.is_null {
+        if !field.is_null {
             attribute.push(quote!(not_null()))
         }
-        if field_create_table_meta.primary_key {
+        if field.primary_key {
             attribute.push(quote!(primary_key()))
         }
 
-        let ident = Ident::new(&ConvertVariableHelpers::underscore_to_camel(ident.to_string()), ident.span());
+        let ident = Ident::new(ConvertVariableHelpers::underscore_to_camel(ident.to_string()).as_ref(), ident.span());
         Ok(quote! {col(::tardis::db::sea_orm::sea_query::ColumnDef::new(Column::#ident).#attribute)})
     } else {
         Ok(quote! {})
     }
 }
-fn map_type_to_create_table_(ident: &Ident, attribute: &mut Punctuated<TokenStream, Dot>) -> Result<()> {
-    let map = get_type_map();
+fn map_type_to_create_table_(ident: &Ident, attribute: &mut Punctuated<TokenStream, Dot>, segments_type: Option<&str>) -> Result<()> {
+    let map: HashMap<String, TokenStream> = get_type_map(segments_type);
 
-    if let Some(tk) = map.get(&ident.to_string()) {
-        attribute.push(tk.clone());
+    let ident_string = ident.to_string();
+    if let Some(tk) = map.get::<str>(ident_string.as_ref()) {
+        attribute.push((*tk).clone());
         Ok(())
     } else {
         Err(Error::new(ident.span(), "type is not impl!"))
     }
 }
-/// postgres https://docs.rs/sqlx/latest/sqlx/postgres/types/index.html
-/// todo 完善所有的基础类型
-fn get_type_map() -> HashMap<String, TokenStream> {
+/// 转换类型参考 https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/
+fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
+    let mut map: HashMap<String, TokenStream> = HashMap::new();
     #[cfg(feature = "reldb-postgres")]
     {
-        let mut map: HashMap<String, TokenStream> = HashMap::new();
-        map.insert("String".to_string(), quote!(string()));
-        map.insert("i64".to_string(), quote!(big_integer()));
-        map.insert("bool".to_string(), quote!(boolean()));
-        map.insert("i16".to_string(), quote!(small_integer()));
-
-        return map;
+        match segments_type {
+            Some("Vec") => {
+                map.insert("u8".to_string(), quote!(binary()));
+            }
+            Some("DateTime") => {
+                map.insert("Utc".to_string(), quote!(timestamp_with_time_zone()));
+            }
+            None => {
+                map.insert("String".to_string(), quote!(string()));
+                map.insert("i8".to_string(), quote!(tiny_integer()));
+                map.insert("i16".to_string(), quote!(small_integer()));
+                map.insert("i32".to_string(), quote!(integer()));
+                map.insert("i64".to_string(), quote!(big_integer()));
+                map.insert("f32".to_string(), quote!(float()));
+                map.insert("f64".to_string(), quote!(double()));
+                map.insert("bool".to_string(), quote!(boolean()));
+            }
+            _ => {}
+        }
     }
+    map
 }

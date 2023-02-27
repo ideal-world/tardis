@@ -1,9 +1,10 @@
 use tardis::basic::dto::TardisContext;
+use tardis::chrono::Utc;
 use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
 use tardis::db::sea_orm::sea_query::TableCreateStatement;
 use tardis::db::sea_orm::*;
-use tardis::DeriveCreateTable;
+use tardis::{chrono, DeriveCreateTable};
 
 fn main() {}
 
@@ -12,9 +13,16 @@ fn main() {}
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
-    pub number: i64,
+    pub number8: i8,
+    pub number16: i16,
+    pub number32: i32,
+    pub number64: i64,
+    // pub number_f32: f32,
+    // pub number_f64: f64,
+    pub number_u8: Vec<u8>,
+    pub can_bool: bool,
     pub can_be_null: Option<String>,
-    // pub _bool: bool,
+    pub create_time: chrono::DateTime<Utc>,
     pub own_paths: String,
 }
 
