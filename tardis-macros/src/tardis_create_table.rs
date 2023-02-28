@@ -295,7 +295,7 @@ fn map_type_to_db_type(custom_column_type: &str, span: Span) -> Result<TokenStre
         "UUID" | "Uuid" | "uuid" => {
             quote!(uuid())
         }
-        "Cidr" | "cidr" => {
+        "CIDR" | "Cidr" | "cidr" => {
             quote!(cidr())
         }
         "Inet" | "inet" => {
