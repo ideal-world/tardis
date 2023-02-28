@@ -8,11 +8,12 @@ pub fn struct_copy(args: TokenStream, input: TokenStream) -> TokenStream {
     unimplemented!()
 }
 
-/// Generate table creation statement, compatible with sea_orm \
-/// see [tardis::db::relbd_client::TardisActiveModel::create_table_statement] \
+/// # DeriveCreateTable
+/// Generate table creation statement, compatible with `sea_orm`.
+/// see [tardis::db::relbd_client::TardisActiveModel::create_table_statement]. \
 /// According to sea_orm automatically generates `tardis_create_table_Statement` method,
-/// you can be directly called in the `TardisActiveModel::create_table_statement` method  \
-///  see [macros_examples::example_for_derive_create_tabled]
+/// you can be directly called in the `TardisActiveModel::create_table_statement` method.  \
+/// example see [macros_examples::example_for_derive_create_tabled].
 #[proc_macro_derive(DeriveCreateTable, attributes(sea_orm))]
 #[allow(non_snake_case)]
 pub fn TardisCreateTable(input: TokenStream) -> TokenStream {
@@ -23,11 +24,24 @@ pub fn TardisCreateTable(input: TokenStream) -> TokenStream {
     }
 }
 
-///Generate index creation statement, compatible with sea_orm \
-/// see [tardis::db::relbd_client::TardisActiveModel::create_index_statement] \
+/// # DeriveTableIndex
+/// Generate index creation statement, compatible with `sea_orm`.
+/// see [tardis::db::relbd_client::TardisActiveModel::create_index_statement]. \
 /// According to sea_orm automatically generates `tardis_create_index_Statement` method,
-/// you can be directly called in the `TardisActiveModel::create_index_statement` method  \
-///  see [macros_examples::example_for_derive_create_index]
+/// you can be directly called in the `TardisActiveModel::create_index_statement` method.  \
+/// example see [macros_examples::example_for_derive_create_index].
+///
+/// ## index_id parameter
+/// if you want generate different index statement, you must use `index_id` parameter to distinguish. \
+/// Same index_id, if there are different variable assignments, only the first one will take effect. \
+/// For example,the name of the generated statement is name1 instead of name2.
+/// ```ignore
+/// #[index(index_id="1",name="name1")]
+/// name1:String,
+/// #[index(index_id="1",name="name2")]
+/// name2:String,
+/// ```
+///
 #[proc_macro_derive(DeriveTableIndex, attributes(index))]
 #[allow(non_snake_case)]
 pub fn TardisCreateIndex(input: TokenStream) -> TokenStream {
