@@ -373,7 +373,23 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         D: FromQueryResult,
     {
-        let result = D::find_by_statement(db.get_database_backend().build(select_statement)).one(db).await;
+        Self::do_get_dto_inner(db.get_database_backend().build(select_statement), db).await
+    }
+
+    pub(self) async fn get_dto_by_sql_inner<C, D>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<Option<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        Self::do_get_dto_inner(Statement::from_sql_and_values(db.get_database_backend(), sql, params), db).await
+    }
+
+    async fn do_get_dto_inner<C, D>(select_statement: Statement, db: &C) -> TardisResult<Option<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        let result = D::find_by_statement(select_statement).one(db).await;
         match result {
             Ok(r) => TardisResult::Ok(r),
             Err(error) => TardisResult::Err(TardisError::from(error)),
@@ -385,7 +401,23 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         D: FromQueryResult,
     {
-        let result = D::find_by_statement(db.get_database_backend().build(select_statement)).all(db).await;
+        Self::do_find_dtos_inner(db.get_database_backend().build(select_statement), db).await
+    }
+
+    pub(self) async fn find_dtos_by_sql_inner<C, D>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<Vec<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        Self::do_find_dtos_inner(Statement::from_sql_and_values(db.get_database_backend(), sql, params), db).await
+    }
+
+    async fn do_find_dtos_inner<C, D>(select_statement: Statement, db: &C) -> TardisResult<Vec<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        let result = D::find_by_statement(select_statement).all(db).await;
         match result {
             Ok(r) => TardisResult::Ok(r),
             Err(error) => TardisResult::Err(TardisError::from(error)),
@@ -397,15 +429,30 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         D: FromQueryResult,
     {
-        let statement = db.get_database_backend().build(select_statement);
-        let select_sql = format!("{} LIMIT {} OFFSET {}", statement.sql, page_size, (page_number - 1) * page_size);
+        Self::do_paginate_dtos_inner(db.get_database_backend().build(select_statement), page_number, page_size, db).await
+    }
+
+    pub(self) async fn paginate_dtos_by_sql_inner<C, D>(sql: &str, params: Vec<Value>, page_number: u64, page_size: u64, db: &C) -> TardisResult<(Vec<D>, u64)>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        Self::do_paginate_dtos_inner(Statement::from_sql_and_values(db.get_database_backend(), sql, params), page_number, page_size, db).await
+    }
+
+    async fn do_paginate_dtos_inner<C, D>(select_statement: Statement, page_number: u64, page_size: u64, db: &C) -> TardisResult<(Vec<D>, u64)>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        let select_sql = format!("{} LIMIT {} OFFSET {}", select_statement.sql, page_size, (page_number - 1) * page_size);
         let query_statement = Statement {
             sql: select_sql,
-            values: statement.values,
-            db_backend: statement.db_backend,
+            values: select_statement.values.clone(),
+            db_backend: select_statement.db_backend,
         };
         let query_result = D::find_by_statement(query_statement).all(db).await?;
-        let count_result = TardisRelDBClient::count_inner(select_statement, db).await?;
+        let count_result = TardisRelDBClient::do_count_inner(select_statement, db).await?;
         Ok((query_result, count_result))
     }
 
@@ -413,16 +460,29 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
-        let statement = db.get_database_backend().build(select_statement);
+        Self::do_count_inner(db.get_database_backend().build(select_statement), db).await
+    }
+
+    pub(self) async fn count_by_sql_inner<C>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<u64>
+    where
+        C: ConnectionTrait,
+    {
+        Self::do_count_inner(Statement::from_sql_and_values(db.get_database_backend(), sql, params), db).await
+    }
+
+    async fn do_count_inner<C>(select_statement: Statement, db: &C) -> TardisResult<u64>
+    where
+        C: ConnectionTrait,
+    {
         let count_sql = format!(
             "SELECT COUNT(1) AS count FROM ( {} ) _{}",
-            statement.sql,
+            select_statement.sql,
             SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
         );
         let count_statement = Statement {
             sql: count_sql.clone(),
-            values: statement.values,
-            db_backend: statement.db_backend,
+            values: select_statement.values,
+            db_backend: select_statement.db_backend,
         };
         let count_result = CountResp::find_by_statement(count_statement).one(db).await?;
         match count_result {
@@ -718,6 +778,25 @@ impl TardisRelDBlConnection {
         }
     }
 
+    /// Get a record, return a custom structure / 获取一条记录，返回自定义结构体
+    ///
+    /// # Arguments
+    ///
+    ///  * `sql` - sql of the query / 查询SQL
+    ///  * `params` - params of the query / 查询参数
+    ///
+    /// ```
+    pub async fn get_dto_by_sql<D>(&self, sql: &str, params: Vec<Value>) -> TardisResult<Option<D>>
+    where
+        D: FromQueryResult,
+    {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::get_dto_by_sql_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::get_dto_by_sql_inner(sql, params, self.conn.as_ref()).await
+        }
+    }
+
     /// Get multiple rows and return a custom structure / 获取多条记录，返回自定义结构体
     ///
     /// # Arguments
@@ -745,6 +824,24 @@ impl TardisRelDBlConnection {
             TardisRelDBClient::find_dtos_inner(select_statement, tx).await
         } else {
             TardisRelDBClient::find_dtos_inner(select_statement, self.conn.as_ref()).await
+        }
+    }
+
+    /// Get multiple rows and return a custom structure / 获取多条记录，返回自定义结构体
+    ///
+    /// # Arguments
+    ///
+    ///  * `sql` - sql of the query / 查询SQL
+    ///  * `params` - params of the query / 查询参数
+    ///
+    pub async fn find_dtos_by_sql<D>(&self, sql: &str, params: Vec<Value>) -> TardisResult<Vec<D>>
+    where
+        D: FromQueryResult,
+    {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::find_dtos_by_sql_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::find_dtos_by_sql_inner(sql, params, self.conn.as_ref()).await
         }
     }
 
@@ -781,6 +878,27 @@ impl TardisRelDBlConnection {
         }
     }
 
+    /// Paging to get multiple records and the total number of records, returning a custom structure / 分页获取多条记录及总记录数，返回自定义结构体
+    ///
+    /// # Arguments
+    ///
+    ///  * `sql` - sql of the query / 查询SQL
+    ///  * `params` - params of the query / 查询参数
+    ///  * `page_number` -  Current page number, starting from 1 / 当前页码，从1开始
+    ///  * `page_size` -  Number of records per page / 每页记录数
+    ///
+    /// ```
+    pub async fn paginate_dtos_by_sql<D>(&self, sql: &str, params: Vec<Value>, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
+    where
+        D: FromQueryResult,
+    {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::paginate_dtos_by_sql_inner(sql, params, page_number, page_size, tx).await
+        } else {
+            TardisRelDBClient::paginate_dtos_by_sql_inner(sql, params, page_number, page_size, self.conn.as_ref()).await
+        }
+    }
+
     /// Get number of records / 获取记录数量
     ///
     /// # Arguments
@@ -805,6 +923,22 @@ impl TardisRelDBlConnection {
             TardisRelDBClient::count_inner(select_statement, tx).await
         } else {
             TardisRelDBClient::count_inner(select_statement, self.conn.as_ref()).await
+        }
+    }
+
+    /// Get number of records / 获取记录数量
+    ///
+    /// # Arguments
+    ///
+    ///  * `sql` - sql of the query / 查询SQL
+    ///  * `params` - params of the query / 查询参数
+    ///
+    /// ```
+    pub async fn count_by_sql(&self, sql: &str, params: Vec<Value>) -> TardisResult<u64> {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::count_by_sql_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::count_by_sql_inner(sql, params, self.conn.as_ref()).await
         }
     }
 
