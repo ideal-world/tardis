@@ -22,6 +22,8 @@ struct CreateIndexMeta {
     #[darling(default)]
     full_text: bool,
     #[darling(default)]
+    if_not_exists: bool,
+    #[darling(default)]
     index_type: Option<String>,
 }
 fn default_index_id() -> String {
@@ -82,6 +84,7 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
     let mut primary = false;
     let mut unique = false;
     let mut full_text = false;
+    let mut if_not_exists = false;
     let mut index_type = (None, Span::call_site());
 
     for index_meta in index_metas {
@@ -105,6 +108,9 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
             if index_meta.full_text {
                 full_text = true;
             }
+            if index_meta.if_not_exists {
+                if_not_exists = true;
+            }
         }
     }
 
@@ -116,6 +122,9 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
     }
     if full_text {
         create_statement.push(quote!(full_text()))
+    }
+    if if_not_exists {
+        create_statement.push(quote!(if_not_exists()))
     }
 
     if let (Some(index_type), span) = index_type {
