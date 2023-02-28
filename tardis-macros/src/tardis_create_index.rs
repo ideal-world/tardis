@@ -23,6 +23,27 @@ struct CreateIndexMeta {
     full_text: bool,
     #[darling(default)]
     if_not_exists: bool,
+    /// # Index Types
+    /// Index type value needs to be one of the following: \
+    /// BTree: `index_type = "BTree"` \
+    /// FullText: `index_type = "FullText"` \
+    /// Gin: `index_type = "Gin"` \
+    /// Hash: `index_type = "Hash"` \
+    /// Custom: `index_type = "Custom(you custom type)"` \
+    ///
+    /// example for custom:
+    /// ```ignore
+    /// #[derive(Clone, Debug, DeriveEntityModel, DeriveTableIndex)]
+    /// #[sea_orm(table_name = "examples")]
+    /// pub struct Model {
+    ///     #[sea_orm(primary_key)]
+    ///     pub id: String,
+    ///     #[index(index_id = "index_id_1", index_type = "Custom(Test)")]
+    ///     pub custom_index_col: String,
+    /// }
+    ///
+    /// //impl Iden for Test ...
+    /// ```
     #[darling(default)]
     index_type: Option<String>,
 }
@@ -148,24 +169,7 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
         Ok(quote! {::tardis::db::sea_orm::sea_query::Index::create().name(#name).table(Entity).#all_statement.to_owned()})
     }
 }
-/// # Index Types
-/// support index_type = "BTree" \
-/// index_type = "FullText" \
-/// index_type = "Gin" \
-/// index_type = "Hash" \
-/// and Custom: index_type = "Custom(you custom type)"
-/// ```ignore
-/// #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, DeriveTableIndex)]
-/// #[sea_orm(table_name = "examples")]
-/// pub struct Model {
-///     #[sea_orm(primary_key)]
-///     pub id: String,
-///     #[index(index_id = "index_id_1", index_type = "Custom(Test)")]
-///     pub custom_index_col: String,
-/// }
-///
-/// //impl Iden for Test ...
-/// ```
+/// Map index type method
 fn index_type_map(index_type: &str, span: Span, create_statement: &mut Punctuated<TokenStream, Dot>) -> Result<()> {
     #[cfg(feature = "reldb-postgres")]
     match index_type {
