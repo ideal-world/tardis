@@ -20,13 +20,15 @@ struct CreateTableMeta {
     #[darling(default)]
     extra: Option<String>,
     #[darling(default)]
-    column_type: Option<String>,
+    custom_type: Option<String>,
 
     //The following fields are not used temporarily
     // in order to be compatible with the original available parameters of sea_orm
     #[warn(dead_code)]
     #[darling(default)]
     auto_increment: bool,
+    #[darling(default)]
+    column_type: Option<String>,
     #[darling(default)]
     column_name: Option<String>,
     #[darling(default)]
@@ -88,9 +90,9 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
     let field_clone = field.clone();
     let mut attribute: Punctuated<_, Dot> = Punctuated::new();
     if let Some(ident) = field_clone.ident {
-        // Priority according to column_ Type specifies the corresponding database type to be created/优先根据column_type指定创建对应数据库类型
-        if let Some(column_type) = field.column_type {
-            let db_type = map_type_to_db_type(&column_type, ident.span())?;
+        // Priority according to custom_type specifies the corresponding database type to be created/优先根据custom_type指定创建对应数据库类型
+        if let Some(custom_column_type) = field.custom_type {
+            let db_type = map_type_to_db_type(&custom_column_type, ident.span())?;
             attribute.push(db_type);
         } else {
             //Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
@@ -216,8 +218,8 @@ fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
     }
     map
 }
-fn map_type_to_db_type(column_type: &str, span: Span) -> Result<TokenStream> {
-    let result = match column_type {
+fn map_type_to_db_type(custom_column_type: &str, span: Span) -> Result<TokenStream> {
+    let result = match custom_column_type {
         "Char" | "char" => {
             quote!(char())
         }
@@ -303,7 +305,7 @@ fn map_type_to_db_type(column_type: &str, span: Span) -> Result<TokenStream> {
             quote!(mac_address())
         }
         _ => {
-            return Err(Error::new(span, format!("column_type:{column_type} is a not support custom type!")));
+            return Err(Error::new(span, format!("column_type:{custom_column_type} is a not support custom type!")));
         }
     };
     Ok(result)
