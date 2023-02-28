@@ -5,13 +5,12 @@ use quote::quote;
 use std::collections::HashMap;
 use syn::punctuated::Punctuated;
 use syn::token::{Comma, Dot};
-use syn::{Attribute, Data, Error, Fields, LitStr, Result, Type};
+use syn::{Attribute, Data, Error, Fields, Result};
 
 #[derive(FromField, Debug, Clone)]
 #[darling(attributes(index))]
 struct CreateIndexMeta {
     ident: Option<Ident>,
-    ty: Type,
     #[darling(default = "default_index_id")]
     index_id: String,
     #[darling(default)]

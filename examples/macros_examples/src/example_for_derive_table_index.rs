@@ -1,11 +1,10 @@
 use std::fmt::Write;
 use tardis::basic::dto::TardisContext;
-use tardis::chrono::Utc;
 use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
 use tardis::db::sea_orm::sea_query::IndexCreateStatement;
 use tardis::db::sea_orm::*;
-use tardis::{chrono, serde_json, DeriveTableIndex};
+use tardis::DeriveTableIndex;
 
 //run `cargo expand example_for_derive_table_index > derive_create_index_expand.rs`
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, DeriveTableIndex)]
