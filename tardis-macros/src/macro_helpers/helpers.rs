@@ -23,6 +23,16 @@ impl TypeToTokenHelpers {
         }
     }
 
+    pub(crate) fn str_literal(s: &Option<impl AsRef<str>>) -> proc_macro2::TokenStream {
+        match s {
+            Some(s) => {
+                let s = s.as_ref();
+                quote!(#s)
+            }
+            None => quote!(""),
+        }
+    }
+
     pub(crate) fn optional_literal_string(s: &Option<impl AsRef<str>>) -> proc_macro2::TokenStream {
         match s {
             Some(s) => {

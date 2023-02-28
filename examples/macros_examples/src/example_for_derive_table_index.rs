@@ -1,10 +1,11 @@
+use std::fmt::Write;
 use tardis::basic::dto::TardisContext;
 use tardis::chrono::Utc;
 use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
 use tardis::db::sea_orm::sea_query::IndexCreateStatement;
 use tardis::db::sea_orm::*;
-use tardis::{chrono, DeriveTableIndex};
+use tardis::{chrono, serde_json, DeriveTableIndex};
 
 //run `cargo expand example_for_derive_table_index > derive_create_index_expand.rs`
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, DeriveTableIndex)]
@@ -12,23 +13,15 @@ use tardis::{chrono, DeriveTableIndex};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
-    #[sea_orm(column_name = "number8")]
-    pub number_i8_for_test: i8,
-    pub number16: i16,
-    #[index(index_id="index_id_2")]
+    #[index(index_id = "index_id_2")]
     pub number32: i32,
-    #[index]
+    #[index(unique)]
     pub number64: i64,
-    // pub number_f32: f32,
-    // pub number_f64: f64,
-    pub number_u8: Vec<u8>,
-    pub can_bool: bool,
+    #[index(full_text, index_id = "index_id_3")]
     pub can_be_null: Option<String>,
-    #[sea_orm(column_type = "Text")]
     #[index(name = "asdf")]
     pub be_text: String,
-    #[sea_orm(extra = "DEFAULT CURRENT_TIMESTAMP")]
-    pub create_time: chrono::DateTime<Utc>,
+    #[index(index_id = "index_id_2", index_type = "Custom(GiST)", full_text)]
     pub own_paths: String,
 }
 
@@ -49,6 +42,10 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
-// Index::create().name(&format!("idx-{}-idx1", Entity.table_name())).table(Entity).col(Column::Ext1Idx).to_owned(),
-// Index::create().name(&format!("idx-{}-idx2", Entity.table_name())).table(Entity).col(Column::Ext2Idx).to_owned(),
-// Index::create().name(&format!("idx-{}-idx3", Entity.table_name())).table(Entity).col(Column::Ext3Idx).to_owned(),
+struct GiST;
+
+impl Iden for GiST {
+    fn unquoted(&self, s: &mut dyn Write) {
+        s.write_str("GiST").expect("TODO: panic message");
+    }
+}

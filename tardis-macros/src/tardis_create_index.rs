@@ -1,11 +1,11 @@
 use crate::macro_helpers::helpers::{ConvertVariableHelpers, TypeToTokenHelpers};
-use darling::{FromAttributes, FromField, FromMeta};
+use darling::FromField;
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::quote;
 use std::collections::HashMap;
 use syn::punctuated::Punctuated;
 use syn::token::{Comma, Dot};
-use syn::{Attribute, Data, Error, Fields, GenericArgument, PathArguments, Result, Type};
+use syn::{Attribute, Data, Error, Fields, LitStr, Result, Type};
 
 #[derive(FromField, Debug, Clone)]
 #[darling(attributes(index))]
@@ -23,7 +23,7 @@ struct CreateIndexMeta {
     #[darling(default)]
     full_text: bool,
     #[darling(default)]
-    index_type:Option<IndexType>,
+    index_type: Option<String>,
 }
 fn default_index_id() -> String {
     "index_id_1".to_string()
@@ -54,7 +54,6 @@ fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
         for attr in field.attrs.clone() {
             if let Some(ident) = attr.path.get_ident() {
                 if ident == "index" {
-                    // eprintln!("{:?}====={:?}", field.ident, attr.path.get_ident());
                     let field_create_index_meta: CreateIndexMeta = match CreateIndexMeta::from_field(&field) {
                         Ok(field) => field,
                         Err(err) => {
@@ -84,24 +83,29 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
     let mut primary = false;
     let mut unique = false;
     let mut full_text = false;
+    let mut index_type = (None, Span::call_site());
 
     for index_meta in index_metas {
         if let Some(ident) = index_meta.ident.clone() {
             let ident = Ident::new(ConvertVariableHelpers::underscore_to_camel(ident.to_string()).as_ref(), ident.span());
             //add Column
-            column.push(quote!(col(Column::#ident)))
-        }
-        if name.is_none() && index_meta.name.is_some() {
-            name = index_meta.name.clone();
-        }
-        if index_meta.primary {
-            primary = true;
-        }
-        if index_meta.unique {
-            unique = true;
-        }
-        if index_meta.full_text {
-            full_text = true;
+            column.push(quote!(col(Column::#ident)));
+
+            if name.is_none() && index_meta.name.is_some() {
+                name = index_meta.name.clone();
+            }
+            if index_type.0.is_none() && index_meta.index_type.is_some() {
+                index_type = (index_meta.index_type.clone(), ident.span());
+            }
+            if index_meta.primary {
+                primary = true;
+            }
+            if index_meta.unique {
+                unique = true;
+            }
+            if index_meta.full_text {
+                full_text = true;
+            }
         }
     }
 
@@ -115,6 +119,10 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
         create_statement.push(quote!(full_text()))
     }
 
+    if let (Some(index_type), span) = index_type {
+        index_type_map(&index_type, span, &mut create_statement)?;
+    }
+
     let all_statement = if create_statement.is_empty() {
         quote! {#column}
     } else {
@@ -124,11 +132,60 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
         Ok(quote! {})
     } else {
         let name = if let Some(name) = name {
-            TypeToTokenHelpers::string_literal(&Some(name))
+            TypeToTokenHelpers::str_literal(&Some(name))
         } else {
-            //todo 随机生成name
-            quote! {&format!("idx-{}-idx1", Entity.table_name())}
+            let nano_id = &nanoid::nanoid!(4);
+            quote! {&format!("idx-{}-idx{}", Entity.table_name(),#nano_id)}
         };
         Ok(quote! {::tardis::db::sea_orm::sea_query::Index::create().name(#name).table(Entity).#all_statement.to_owned()})
     }
+}
+/// # Index Types
+/// support index_type = "BTree" \
+/// index_type = "FullText" \
+/// index_type = "Gin" \
+/// index_type = "Hash" \
+/// and Custom: index_type = "Custom(you custom type)"
+/// ```ignore
+/// #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, DeriveTableIndex)]
+/// #[sea_orm(table_name = "examples")]
+/// pub struct Model {
+///     #[sea_orm(primary_key)]
+///     pub id: String,
+///     #[index(index_id = "index_id_1", index_type = "Custom(Test)")]
+///     pub custom_index_col: String,
+/// }
+///
+/// //impl Iden for Test ...
+/// ```
+fn index_type_map(index_type: &str, span: Span, create_statement: &mut Punctuated<TokenStream, Dot>) -> Result<()> {
+    #[cfg(feature = "reldb-postgres")]
+    match index_type {
+        "BTree" | "b_tree" => {
+            create_statement.push(quote!(index_type(::tardis::db::sea_orm::sea_query::IndexType::BTree)));
+        }
+        "FullText" | "full_text" => {
+            create_statement.push(quote!(full_text()));
+        }
+        "Gin" | "GIN" | "gin" => {
+            create_statement.push(quote!(full_text()));
+        }
+        "Hash" | "hash" => {
+            create_statement.push(quote!(index_type(::tardis::db::sea_orm::sea_query::IndexType::Hash)));
+        }
+        _ => {
+            if index_type.starts_with("Custom") || index_type.starts_with("custom") {
+                if let Some(paren) = index_type.find('(') {
+                    let custom_index_type = &index_type[paren + 1..index_type.len() - 1];
+                    let custom_index_type = Ident::new(custom_index_type, span);
+                    eprintln!("{custom_index_type:?}");
+                    let custom_statement = quote!(#custom_index_type{});
+                    create_statement.push(quote!(index_type(::tardis::db::sea_orm::sea_query::IndexType::Custom(::std::sync::Arc::new(#custom_statement)))));
+                    return Ok(());
+                };
+            }
+            return Err(Error::new(span, "not supported index_type!"));
+        }
+    }
+    Ok(())
 }
