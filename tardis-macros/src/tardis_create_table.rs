@@ -1,6 +1,6 @@
 use crate::macro_helpers::helpers::ConvertVariableHelpers;
 use darling::FromField;
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use std::collections::HashMap;
 use syn::punctuated::Punctuated;
@@ -20,7 +20,6 @@ struct CreateTableMeta {
     #[darling(default)]
     extra: Option<String>,
     #[darling(default)]
-    //todo Compatible supports custom types
     column_type: Option<String>,
 
     //The following fields are not used temporarily
@@ -89,46 +88,52 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
     let field_clone = field.clone();
     let mut attribute: Punctuated<_, Dot> = Punctuated::new();
     if let Some(ident) = field_clone.ident {
-        if let Type::Path(field_type) = field_clone.ty {
-            if let Some(path) = field_type.path.segments.last() {
-                //judge packaging types such as `Option<inner_type>` `Vec<inner_type>` `DateTime<inner_type>`
-                if path.ident == "Option" {
-                    if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
-                        if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
-                            if path.path.get_ident().is_some() {
-                                return create_single_col_token_statement(CreateTableMeta {
-                                    ty: Type::Path(path.clone()),
-                                    nullable: true,
-                                    ..field
-                                });
+        // Priority according to column_ Type specifies the corresponding database type to be created/优先根据column_type指定创建对应数据库类型
+        if let Some(column_type) = field.column_type {
+            let db_type = map_type_to_db_type(&column_type, ident.span())?;
+            attribute.push(db_type);
+        } else {
+            //Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
+            if let Type::Path(field_type) = field_clone.ty {
+                if let Some(path) = field_type.path.segments.last() {
+                    //judge packaging types such as `Option<inner_type>` `Vec<inner_type>` `DateTime<inner_type>`
+                    if path.ident == "Option" {
+                        if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
+                            if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
+                                if path.path.get_ident().is_some() {
+                                    return create_single_col_token_statement(CreateTableMeta {
+                                        ty: Type::Path(path.clone()),
+                                        nullable: true,
+                                        ..field
+                                    });
+                                }
                             }
                         }
-                    }
-                } else if path.ident == "Vec" {
-                    if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
-                        if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
-                            if let Some(ident) = path.path.get_ident() {
-                                map_type_to_create_table_(ident, &mut attribute, Some("Vec"))?;
+                    } else if path.ident == "Vec" {
+                        if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
+                            if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
+                                if let Some(ident) = path.path.get_ident() {
+                                    map_type_to_create_table_(ident, &mut attribute, Some("Vec"))?;
+                                }
                             }
                         }
-                    }
-                } else if path.ident == "DateTime" {
-                    if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
-                        if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
-                            if let Some(ident) = path.path.get_ident() {
-                                map_type_to_create_table_(ident, &mut attribute, Some("DateTime"))?;
+                    } else if path.ident == "DateTime" {
+                        if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
+                            if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
+                                if let Some(ident) = path.path.get_ident() {
+                                    map_type_to_create_table_(ident, &mut attribute, Some("DateTime"))?;
+                                }
                             }
                         }
+                    } else if let Some(ident) = field_type.path.get_ident() {
+                        // basic type
+                        map_type_to_create_table_(ident, &mut attribute, None)?;
+                    } else {
+                        return Err(Error::new(path.span(), "[path.segments] not support type!"));
                     }
-                } else if let Some(ident) = field_type.path.get_ident() {
-                    // basic type
-                    map_type_to_create_table_(ident, &mut attribute, None)?;
-                } else {
-                    return Err(Error::new(path.span(), "[path.segments] not support Type!"));
                 }
             }
         }
-
         if !field.nullable {
             attribute.push(quote!(not_null()))
         }
@@ -145,6 +150,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
         Ok(quote! {})
     }
 }
+
 fn map_type_to_create_table_(ident: &Ident, attribute: &mut Punctuated<TokenStream, Dot>, segments_type: Option<&str>) -> Result<()> {
     let map: HashMap<String, TokenStream> = get_type_map(segments_type);
 
@@ -209,4 +215,96 @@ fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
         }
     }
     map
+}
+fn map_type_to_db_type(column_type: &str, span: Span) -> Result<TokenStream> {
+    let result = match column_type {
+        "Char" | "char" => {
+            quote!(char())
+        }
+        "String" | "string" => {
+            quote!(string())
+        }
+        "Text" | "text" => {
+            quote!(text())
+        }
+        "TinyInteger" | "tiny_integer" => {
+            quote!(tiny_integer())
+        }
+        "SmallInteger" | "small_integer" => {
+            quote!(small_integer())
+        }
+        "Integer" | "integer" => {
+            quote!(integer())
+        }
+        "BigInteger" | "big_integer" => {
+            quote!(big_integer())
+        }
+        "TinyUnsigned" | "tiny_unsigned" => {
+            quote!(tiny_unsigned())
+        }
+        "SmallUnsigned" | "small_unsigned" => {
+            quote!(small_unsigned())
+        }
+        "Unsigned" | "unsigned" => {
+            quote!(unsigned())
+        }
+        "BigUnsigned" | "big_unsigned" => {
+            quote!(big_unsigned())
+        }
+        "Float" | "float" => {
+            quote!(float())
+        }
+        "Double" | "double" => {
+            quote!(double())
+        }
+        "Decimal" | "decimal" => {
+            quote!(decimal())
+        }
+        "DateTime" | "date_time" => {
+            quote!(date_time())
+        }
+        "Timestamp" | "timestamp" => {
+            quote!(timestamp())
+        }
+        "TimestampWithTimeZone" | "timestamp_with_time_zone" => {
+            quote!(timestamp_with_time_zone())
+        }
+        "Time" | "time" => {
+            quote!(time())
+        }
+        "Date" | "date" => {
+            quote!(date())
+        }
+        "Binary" | "binary" => {
+            quote!(binary())
+        }
+        "Boolean" | "boolean" => {
+            quote!(boolean())
+        }
+        "Money" | "money" => {
+            quote!(money())
+        }
+        "Json" | "json" => {
+            quote!(json())
+        }
+        "JsonBinary" | "json_binary" => {
+            quote!(json_binary())
+        }
+        "UUID" | "Uuid" | "uuid" => {
+            quote!(uuid())
+        }
+        "Cidr" | "cidr" => {
+            quote!(cidr())
+        }
+        "Inet" | "inet" => {
+            quote!(inet())
+        }
+        "MacAddress" | "mac_address" => {
+            quote!(mac_address())
+        }
+        _ => {
+            return Err(Error::new(span, format!("column_type:{column_type} is a not support custom type!")));
+        }
+    };
+    Ok(result)
 }

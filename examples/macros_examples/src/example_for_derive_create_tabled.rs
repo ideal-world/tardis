@@ -23,8 +23,10 @@ pub struct Model {
     pub number_u8: Vec<u8>,
     pub can_bool: bool,
     pub can_be_null: Option<String>,
-    #[sea_orm(column_type = "Text")]
+    #[sea_orm(column_type = "text")]
     pub be_text: String,
+    #[sea_orm(column_type = "uuid")]
+    pub be_uuid: String,
     #[sea_orm(extra = "DEFAULT CURRENT_TIMESTAMP")]
     pub create_time: chrono::DateTime<Utc>,
     pub own_paths: String,
