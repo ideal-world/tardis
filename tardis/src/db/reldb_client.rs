@@ -1450,6 +1450,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///                 .to_owned(),
     ///         ]
     ///     }
+    /// ```
     fn create_index_statement() -> Vec<IndexCreateStatement> {
         vec![]
     }
