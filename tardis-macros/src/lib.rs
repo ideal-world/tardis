@@ -13,7 +13,8 @@ pub fn struct_copy(args: TokenStream, input: TokenStream) -> TokenStream {
 /// see [tardis::db::relbd_client::TardisActiveModel::create_table_statement]. \
 /// According to sea_orm automatically generates `tardis_create_table_Statement` method,
 /// you can be directly called in the `TardisActiveModel::create_table_statement` method.  \
-/// example see [macros_examples::example_for_derive_create_tabled].
+/// example see [macros_examples::example_for_derive_create_tabled]. \
+/// Optional attr see [tardis_create_table::CreateTableMeta]
 #[proc_macro_derive(DeriveCreateTable, attributes(sea_orm))]
 #[allow(non_snake_case)]
 pub fn TardisCreateTable(input: TokenStream) -> TokenStream {

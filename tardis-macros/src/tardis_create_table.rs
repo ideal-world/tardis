@@ -19,8 +19,14 @@ struct CreateTableMeta {
     nullable: bool,
     #[darling(default)]
     extra: Option<String>,
+    /// custom type , optional see [sea-query::tabled::column::ColumnDef]/[map_type_to_db_type]
     #[darling(default)]
     custom_type: Option<String>,
+    /// custom len , when enabled, it needs to be used with custom_type attribute. \
+    /// And it will only be enabled when a specific type. \
+    /// such as `char(len)`
+    #[darling(default)]
+    custom_len: Option<u32>,
 
     //The following fields are not used temporarily
     // in order to be compatible with the original available parameters of sea_orm
@@ -92,7 +98,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
     if let Some(ident) = field_clone.ident {
         // Priority according to custom_type specifies the corresponding database type to be created/优先根据custom_type指定创建对应数据库类型
         if let Some(custom_column_type) = field.custom_type {
-            let db_type = map_type_to_db_type(&custom_column_type, ident.span())?;
+            let db_type = map_type_to_db_type(&custom_column_type, field.custom_len, ident.span())?;
             attribute.push(db_type);
         } else {
             //Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
@@ -218,13 +224,21 @@ fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
     }
     map
 }
-fn map_type_to_db_type(custom_column_type: &str, span: Span) -> Result<TokenStream> {
+fn map_type_to_db_type(custom_column_type: &str, custom_len: Option<u32>, span: Span) -> Result<TokenStream> {
     let result = match custom_column_type {
         "Char" | "char" => {
-            quote!(char())
+            if let Some(len) = custom_len {
+                quote!(char_len(#len))
+            } else {
+                quote!(char())
+            }
         }
         "String" | "string" => {
-            quote!(string())
+            if let Some(len) = custom_len {
+                quote!(string_len(#len))
+            } else {
+                quote!(string())
+            }
         }
         "Text" | "text" => {
             quote!(text())
@@ -278,7 +292,32 @@ fn map_type_to_db_type(custom_column_type: &str, span: Span) -> Result<TokenStre
             quote!(date())
         }
         "Binary" | "binary" => {
-            quote!(binary())
+            if let Some(len) = custom_len {
+                quote!(binary_len(#len))
+            } else {
+                quote!(binary())
+            }
+        }
+        "VarBinary" | "var_binary" => {
+            if let Some(len) = custom_len {
+                quote!(var_binary(#len))
+            } else {
+                return Err(Error::new(span, "column_type:var_binary must have custom_len!".to_string()));
+            }
+        }
+        "Bit" | "bit" => {
+            if let Some(len) = custom_len {
+                quote!(bit(Some(#len)))
+            } else {
+                quote!(bit(None))
+            }
+        }
+        "VarBit" | "varbit" => {
+            if let Some(len) = custom_len {
+                quote!(varbit(#len))
+            } else {
+                return Err(Error::new(span, "column_type:varbit must have custom_len!".to_string()));
+            }
         }
         "Boolean" | "boolean" => {
             quote!(boolean())
