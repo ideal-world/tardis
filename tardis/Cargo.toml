@@ -58,7 +58,7 @@ config = { version = "0.13" }
 regex = { version = "1.5" }
 url = { version = "2.2" }
 openssl = { version = "0.10", features = ["vendored"] }
-lru = { version = "0.9.0" }
+lru = { version = "0.10.0" }
 native-tls = { version = "0.2" }
 
 # Tardis Macros
@@ -96,7 +96,7 @@ sea-orm = { version = "0.11", features = [
     "debug-print",
 ], optional = true }
 sqlx = { version = "0.6", features = ["any"], optional = true }
-sqlparser = { version = "0.30", optional = true }
+sqlparser = { version = "0.32", optional = true }
 
 # Web Server
 poem-openapi = { version = "2", features = [
