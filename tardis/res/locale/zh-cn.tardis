@@ -58,6 +58,7 @@
 
 -1-tardis-cache-error	缓存处理错误
 406-tardis-cache-url-error	缓存Url解析错误
+500-tardis-cache-pool-error	缓存连接池错误
 
 -1-tardis-search-error	搜索处理错误
 400-tardis-search-id-not-exist	搜索记录缺少_id字段

@@ -35,7 +35,7 @@ reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
 web-client = ["rt-tokio", "reqwest"]
 ws-client = ["rt-tokio", "tokio-tungstenite"]
-cache = ["futures-util", "redis"]
+cache = ["futures-util", "redis", "deadpool-redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 mail = ["lettre"]
 os = ["rt-tokio", "async-trait", "anyhow", "rust-s3"]
@@ -61,13 +61,13 @@ openssl = { version = "0.10", features = ["vendored"] }
 lru = { version = "0.9.0" }
 native-tls = { version = "0.2" }
 
+# Tardis Macros
+tardis-macros = { version = "0.1.0-alpha34", path = "../tardis-macros", optional = true }
+
 # Log
 log = { version = "0.4" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-# macros
-tardis-macros = { version = "0.1.0-alpha34", path = "../tardis-macros", optional = true }
 
 # Tokio
 tokio = { version = "1.18", features = [
@@ -126,6 +126,7 @@ redis = { version = "0.22", features = [
     "tokio-comp",
     "tokio-native-tls-comp",
 ], optional = true }
+deadpool-redis = { version = "0.11", optional = true }
 
 # Rabbit
 lapin = { version = "2.0", optional = true }
