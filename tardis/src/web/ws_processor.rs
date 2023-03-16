@@ -20,7 +20,7 @@ pub const WS_SYSTEM_EVENT_ERROR: &str = "__sys_error__";
 pub const WS_CACHE_SIZE: u32 = 1000000;
 
 lazy_static! {
-    // Single instance reply Guard
+    // Single instance reply guard
     static ref REPLY_ONCE_GUARD: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(WS_CACHE_SIZE as usize).unwrap())));
     // Websocket instance Id -> Avatars
     static ref WS_INSTS_MAPPING_AVATARS: Arc<RwLock<HashMap<String, Vec<String>>>> = Arc::new(RwLock::new(HashMap::new()));
