@@ -17,7 +17,7 @@ async fn main() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     env::set_var("PROFILE", "default");
     // Initial configuration
-    TardisFuns::init("config").await?;
+    TardisFuns::init(Some("config")).await?;
 
     TardisFuns::web_server().add_route_with_ws(Page, 100).await.start().await
 }

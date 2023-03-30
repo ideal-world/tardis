@@ -7,7 +7,7 @@ use tardis::TardisFuns;
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     // Initial configuration
-    TardisFuns::init("").await?;
+    TardisFuns::init(None).await?;
 
     // Simple get request
     let response = TardisFuns::web_client().get_to_str("http://httpbin.org/get", None).await?;

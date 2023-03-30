@@ -327,7 +327,7 @@ impl TardisFuns {
     /// env::set_var("PROFILE", "test");
     /// TardisFuns::init("proj/config").await;
     /// ```
-    pub async fn init(relative_path: &str) -> TardisResult<()> {
+    pub async fn init(relative_path: Option<&str>) -> TardisResult<()> {
         TardisLogger::init()?;
         let config = TardisConfig::init(relative_path).await?;
         TardisFuns::init_conf(config).await

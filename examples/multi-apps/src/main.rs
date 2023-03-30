@@ -36,7 +36,7 @@ async fn main() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug");
     env::set_var("PROFILE", "default");
 
-    TardisFuns::init("config").await?;
+    TardisFuns::init(Some("config")).await?;
     let web_server = TardisFuns::web_server();
     initializer::init(web_server).await?;
     web_server.start().await

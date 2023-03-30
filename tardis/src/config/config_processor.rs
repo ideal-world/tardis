@@ -33,7 +33,7 @@ use super::config_dto::TardisConfig;
 /// 1. Environment variables starting with TARDIS
 ///
 impl TardisConfig {
-    pub(crate) async fn init(relative_path: &str) -> TardisResult<TardisConfig> {
+    pub(crate) async fn init(relative_path: Option<&str>) -> TardisResult<TardisConfig> {
         let profile = fetch_profile();
         let parent_path = env::current_dir().expect("[Tardis.Config] Current path get error");
 
@@ -84,25 +84,18 @@ impl TardisConfig {
         );
         debug!("=====[Tardis.Config] Content=====\n{:#?}\n=====", &config.fw);
 
-        if !relative_path.is_empty() {
+        if let Some(relative_path) = relative_path {
             TardisLocale::init(Path::new(relative_path))?;
         }
         Ok(config)
     }
 
-    async fn do_init(relative_path: &str, profile: &str, _conf_center: Option<(Vec<String>, FileFormat)>) -> TardisResult<TardisConfig> {
-        if relative_path.is_empty() {
-            return Ok(TardisConfig {
-                cs: HashMap::new(),
-                fw: FrameworkConfig::default(),
-            });
-        }
+    async fn do_init(relative_path: Option<&str>, profile: &str, _conf_center: Option<(Vec<String>, FileFormat)>) -> TardisResult<TardisConfig> {
         let mut conf = ConfigBuilder::<AsyncState>::default();
 
-        let path = Path::new(relative_path);
-
         // Fetch from local file
-        if !relative_path.is_empty() {
+        if relative_path.is_some() {
+            let path = Path::new(relative_path.unwrap_or(""));
             let file = path.join("conf-default");
             debug!("[Tardis.Config] Fetch local file: {:?}", file);
             conf = conf.add_source(File::from(file).required(true));
@@ -139,7 +132,7 @@ impl TardisConfig {
             }
             Err(error) => match error {
                 ConfigError::NotFound(_) => {
-                    info!("[Tardis.Config] No [cs] configuration found");
+                    info!("[Tardis.Config] No [cs] configuration found,use default configuration");
                 }
                 _ => return Err(error.into()),
             },
@@ -150,12 +143,21 @@ impl TardisConfig {
             }
             Err(error) => match error {
                 ConfigError::NotFound(_) => {
-                    info!("[Tardis.Config] No [csm] configuration found");
+                    info!("[Tardis.Config] No [csm] configuration found,use default configuration");
                 }
                 _ => return Err(error.into()),
             },
         }
-        let framework_config = conf.get::<FrameworkConfig>("fw")?;
+        let framework_config = match conf.get::<FrameworkConfig>("fw") {
+            Ok(fw) => fw,
+            Err(error) => match error {
+                ConfigError::NotFound(_) => {
+                    info!("[Tardis.Config] No [fw] configuration found,use default configuration");
+                    FrameworkConfig::default()
+                }
+                _ => return Err(error.into()),
+            },
+        };
 
         env::set_var("RUST_BACKTRACE", if framework_config.adv.backtrace { "1" } else { "0" });
 

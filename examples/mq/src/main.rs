@@ -23,7 +23,7 @@ async fn main() -> TardisResult<()> {
     env::set_var("PROFILE", "default");
 
     // Initial configuration
-    TardisFuns::init("config").await?;
+    TardisFuns::init(Some("config")).await?;
 
     let client = TardisFuns::mq();
 
