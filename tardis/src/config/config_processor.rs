@@ -91,6 +91,12 @@ impl TardisConfig {
     }
 
     async fn do_init(relative_path: &str, profile: &str, _conf_center: Option<(Vec<String>, FileFormat)>) -> TardisResult<TardisConfig> {
+        if relative_path.is_empty() {
+            return Ok(TardisConfig {
+                cs: HashMap::new(),
+                fw: FrameworkConfig::default(),
+            });
+        }
         let mut conf = ConfigBuilder::<AsyncState>::default();
 
         let path = Path::new(relative_path);
