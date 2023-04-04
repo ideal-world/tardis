@@ -97,7 +97,7 @@
 //!
 //! ### More examples
 //!
-//! ```
+//! ```ignore
 //! |-- examples  
 //!   |-- reldb              Relational database usage example
 //!   |-- web-basic          Web service Usage Example
