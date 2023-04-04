@@ -447,7 +447,7 @@ impl TardisFuns {
         }
         #[cfg(feature = "web-client")]
         {
-            if TardisFuns::fw_config().search.enabled {
+            if TardisFuns::fw_config().search.enabled && !TardisFuns::fw_config().search.url.is_empty() {
                 let search_clients = TardisSearchClient::init_by_conf(TardisFuns::fw_config())?;
                 unsafe {
                     replace(&mut TARDIS_INST.search, Some(search_clients));
