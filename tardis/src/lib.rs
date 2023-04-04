@@ -893,6 +893,24 @@ impl TardisFuns {
         }
     }
 
+    /// Use the message queue feature / 使用消息队列功能
+    ///
+    /// This feature needs to be enabled #[cfg(feature = "mq")] .
+    ///
+    /// 本功能需要启用 #[cfg(feature = "mq")] .
+    ///
+    /// # Steps to use / 使用步骤
+    ///
+    /// 1. Initialize the mq configuration / 初始化队列配置 @see [init](Self::init)
+    /// 2. Call this function to complete various mq processing operations / 调用本函数完成各种队列处理操作
+    /// E.g.
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// // publish a message / 发布一条消息
+    /// TardisFuns::mq().publish("mq_topic_user_add", String::from("message content")).await.unwrap();
+    /// // subscript topic and consume message / 订阅频道并且消费消息
+    /// funs.mq().subscribe("mq_topic_user_add", |(_, _)| async { Ok(()) }).await?;
+    /// ```
     #[cfg(feature = "mq")]
     pub fn mq() -> &'static TardisMQClient {
         Self::mq_by_module("")
