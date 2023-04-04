@@ -95,7 +95,7 @@
 //! }
 //! ```
 //!
-//! ### use sqlparser::ast::Action::Usage;More examples
+//! ### More examples
 //!
 //!> |-- examples  
 //!>   |-- reldb              Relational database usage example
@@ -760,40 +760,62 @@ impl TardisFuns {
     /// 2. Call this function to complete various cache processing operations / 调用本函数完成各种缓存处理操作
     /// E.g.
     /// ```ignore
-    /// use tardis::basic::error::TardisError;
-    /// use tardis::TardisFuns;
     /// use std::collections::HashMap;
+    /// use tardis::basic::error::TardisError;
+    /// use tardis::basic::result::{TardisResult, TARDIS_RESULT_ACCEPTED_CODE, TARDIS_RESULT_SUCCESS_CODE};
+    /// use tardis::serde::{Deserialize, Serialize};
+    /// use tardis::TardisFuns;
+    /// use tardis::web::web_resp::{TardisApiResult, TardisResp};
+    /// use reqwest::StatusCode;
+    /// 
+    /// struct TodoResp {
+    ///     id: i64,
+    ///     code: TrimString,
+    ///     description: String,
+    ///     done: bool,
+    /// }
     /// // Initiate a get request / 发起 Get 请求
     /// let res_object = TardisFuns::web_client()
-    ///     .get(
-    ///         "https://www.xxx.com/query",
-    ///         Some(vec![
-    ///             (String::from("Content-Encoding"), String::from("gzip")),
-    ///             (String::from("Content-Type"), String::from("text/html")),
-    ///             (String::from("charset"), String::from("utf-8")),
-    ///         ]),
-    ///     )
+    ///     .get::<TardisResp<TodoResp>>("https://www.xxx.com/query", Some([("User-Agent".to_string(), "Tardis".to_string())].iter().cloned().collect()))
     ///     .await
     ///     .unwrap();
+    /// assert_eq!(response.code, 200);
+    /// assert_eq!(response.body.as_ref().unwrap().code, TARDIS_RESULT_SUCCESS_CODE);
+    /// assert_eq!(response.body.as_ref().unwrap().data.as_ref().unwrap().code.to_string(), "code1");
     /// // Initiate a get request return string / 发起 Get 请求并返回字符串
-    /// let res_object = TardisFuns::web_client()
-    ///     .get_to_str("https://www.xxx.com/query")
-    ///     .await
-    ///     .unwrap();
+    /// let response = TardisFuns::web_client().
+    /// get_to_str("https://www.xxx.com", Some([("User-Agent".to_string(), "Tardis".to_string())].iter().cloned().collect()))
+    /// .await
+    /// .unwrap();
+    /// assert_eq!(response.code, StatusCode::OK.as_u16());
+    /// assert!(response.body.unwrap().contains("xxx"));
     /// // Initiate a post request return string / 发起 Post 请求并返回字符串
-    /// let res_object = TardisFuns::web_client()
-    ///     .post_obj_to_str(
-    ///         "https://www.xxx.com/update",
-    ///         &HashMap::from([
-    ///             ("title", "title"),
-    ///             ("content", "content"),
-    ///             ("key", "key"),
-    ///             ("op", "add"),
-    ///             ("ts", "Mon, 03 Apr 2023 08:42:19 GMT"),
-    ///         ])
-    ///     )
-    ///     .await
-    ///     .unwrap();
+    /// let request = serde_json::json!({
+    ///     "lang": "rust",
+    ///     "body": "json"
+    /// });
+    /// let response = TardisFuns::web_client().post_obj_to_str("https://www.xxx.com", &request, None).await?;
+    /// assert_eq!(response.code, StatusCode::OK.as_u16());
+    /// assert!(response.body.unwrap().contains(r#"data": "{\"body\":\"json\",\"lang\":\"rust\"}"#));
+    /// 
+    /// // Initiate a post request return the custom struct / 发起 Post 请求并返回自定义结构
+    /// #[derive(Debug, Serialize, Deserialize)]
+    /// struct Post {
+    ///     id: Option<i32>,
+    ///     title: String,
+    ///     body: String,
+    ///     #[serde(rename = "userId")]
+    ///     user_id: i32,
+    /// }
+    /// let new_post = Post {
+    ///     id: None,
+    ///     title: "idealworld".into(),
+    ///     body: "http://idealworld.group/".into(),
+    ///     user_id: 1,
+    /// };
+    /// let response = TardisFuns::web_client().post::<Post, Post>("https://jsonplaceholder.typicode.com/posts", &new_post, None).await?;
+    /// assert_eq!(response.code, StatusCode::CREATED.as_u16());
+    /// assert_eq!(response.body.unwrap().body, "http://idealworld.group/");
     /// ```
     #[cfg(feature = "web-client")]
     pub fn web_client() -> &'static TardisWebClient {
@@ -908,7 +930,7 @@ impl TardisFuns {
     /// use tardis::TardisFuns;
     /// // publish a message / 发布一条消息
     /// TardisFuns::mq().publish("mq_topic_user_add", String::from("message content")).await.unwrap();
-    /// // subscript topic and consume message / 订阅频道并且消费消息
+    /// // listen topic and consume message / 监听频道并且消费消息
     /// funs.mq().subscribe("mq_topic_user_add", |(_, _)| async { Ok(()) }).await?;
     /// ```
     #[cfg(feature = "mq")]
