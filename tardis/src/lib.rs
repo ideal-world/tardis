@@ -982,7 +982,7 @@ impl TardisFuns {
     /// ```ignore
     /// use tardis::TardisFuns;
     /// TardisFuns::search().create_index("test_index").await.unwrap();
-    /// let id = TardisFuns::search().create_record("test_index", r#"{"user":{"id":1,"name":"张三","open":false}}"#).await.unwrap();
+    /// let id = TardisFuns::search().create_record("test_index", r#"{"user":{"id":1, "name":"张三", "open":false}}"#).await.unwrap();
     /// assert_eq!(TardisFuns::search().get_record("test_index", &id).await.unwrap(), r#"{"user":{"id":4,"name":"Tom","open":true}}"#);
     /// TardisFuns::search().simple_search("test_index", "张三").await.unwrap();
     /// ```
