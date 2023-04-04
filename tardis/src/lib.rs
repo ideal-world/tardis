@@ -475,14 +475,14 @@ impl TardisFuns {
     }
 
     /// Build single Module by the specified code / 通过指定的 code 构造单模块实例
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `code` - The specified code in the custom configuration / 配置中指定的模块名
     /// * `lang` - The specified language (if project support multi-language) / 指定语种（如果项目支持多语种）
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     ///  ```ignore
     /// use tardis::TardisFuns;
     /// let funs = TardisFuns::inst("product".to_string(), None);
@@ -492,14 +492,14 @@ impl TardisFuns {
     }
 
     /// Build single module with db connect by the specified code / 通过指定的 code 构造携带数据库连接的单模块实例
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `code` - The specified code in the custom configuration / 配置中指定的模块名
     /// * `lang` - The specified language (if project support multi-language) / 指定语种（如果项目支持多语种）
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     ///  ```ignore
     /// use tardis::TardisFuns;
     /// let funs = TardisFuns::inst_with_db_conn("product".to_string(), None);
@@ -767,7 +767,7 @@ impl TardisFuns {
     /// use tardis::TardisFuns;
     /// use tardis::web::web_resp::{TardisApiResult, TardisResp};
     /// use reqwest::StatusCode;
-    /// 
+    ///
     /// struct TodoResp {
     ///     id: i64,
     ///     code: TrimString,
@@ -797,7 +797,7 @@ impl TardisFuns {
     /// let response = TardisFuns::web_client().post_obj_to_str("https://www.xxx.com", &request, None).await?;
     /// assert_eq!(response.code, StatusCode::OK.as_u16());
     /// assert!(response.body.unwrap().contains(r#"data": "{\"body\":\"json\",\"lang\":\"rust\"}"#));
-    /// 
+    ///
     /// // Initiate a post request return the custom struct / 发起 Post 请求并返回自定义结构
     /// #[derive(Debug, Serialize, Deserialize)]
     /// struct Post {
@@ -1106,7 +1106,7 @@ impl TardisFuns {
 }
 
 /// Single module objects  / 单模块对象
-/// 
+///
 /// # Initialization / 初始化
 ///
 /// ## Build objects extracted through the TardisFuns portal / 通过 TardisFuns 提取出对象
@@ -1115,9 +1115,9 @@ impl TardisFuns {
 /// use tardis::TardisFuns;
 /// let funs = TardisFuns::inst("product".to_string(), None);
 /// ```
-/// 
+///
 /// ## Or build with db connect
-/// 
+///
 /// ```ignore
 /// use tardis::TardisFuns;
 /// let funs = TardisFuns::inst_with_db_conn("product".to_string(), None);
@@ -1130,7 +1130,6 @@ pub struct TardisFunsInst {
 }
 
 impl TardisFunsInst {
-
     pub(crate) fn new(code: String, lang: Option<String>) -> Self {
         Self {
             module_code: code.to_lowercase(),
