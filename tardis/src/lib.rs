@@ -269,26 +269,27 @@ use crate::web::web_server::TardisWebServer;
 /// TardisFuns::mq();
 /// ```
 pub struct TardisFuns {
-    custom_config: Option<HashMap<String, Value>>,
-    _custom_config_cached: Option<HashMap<String, Box<dyn Any>>>,
+    custom_config: Option<HashMap<ModuleCode, Value>>,
+    _custom_config_cached: Option<HashMap<ModuleCode, Box<dyn Any>>>,
     framework_config: Option<FrameworkConfig>,
     #[cfg(feature = "reldb-core")]
-    reldb: Option<HashMap<String, TardisRelDBClient>>,
+    reldb: Option<HashMap<ModuleCode, TardisRelDBClient>>,
     #[cfg(feature = "web-server")]
     web_server: Option<TardisWebServer>,
     #[cfg(feature = "web-client")]
-    web_client: Option<HashMap<String, TardisWebClient>>,
+    web_client: Option<HashMap<ModuleCode, TardisWebClient>>,
     #[cfg(feature = "cache")]
-    cache: Option<HashMap<String, TardisCacheClient>>,
+    cache: Option<HashMap<ModuleCode, TardisCacheClient>>,
     #[cfg(feature = "mq")]
-    mq: Option<HashMap<String, TardisMQClient>>,
+    mq: Option<HashMap<ModuleCode, TardisMQClient>>,
     #[cfg(feature = "web-client")]
-    search: Option<HashMap<String, TardisSearchClient>>,
+    search: Option<HashMap<ModuleCode, TardisSearchClient>>,
     #[cfg(feature = "mail")]
-    mail: Option<HashMap<String, TardisMailClient>>,
+    mail: Option<HashMap<ModuleCode, TardisMailClient>>,
     #[cfg(feature = "os")]
-    os: Option<HashMap<String, TardisOSClient>>,
+    os: Option<HashMap<ModuleCode, TardisOSClient>>,
 }
+type ModuleCode = String;
 
 static mut TARDIS_INST: TardisFuns = TardisFuns {
     custom_config: None,
@@ -475,10 +476,36 @@ impl TardisFuns {
         Ok(())
     }
 
+    /// Build single Module by the specified code / 通过指定的 code 构造单模块实例
+    ///
+    /// # Arguments
+    ///
+    /// * `code` - The specified code in the custom configuration / 配置中指定的模块名
+    /// * `lang` - The specified language (if project support multi-language) / 指定语种（如果项目支持多语种）
+    ///
+    /// # Examples
+    ///
+    ///  ```ignore
+    /// use tardis::TardisFuns;
+    /// let funs = TardisFuns::inst("product".to_string(), None);
+    /// ```
     pub fn inst(code: String, lang: Option<String>) -> TardisFunsInst {
         TardisFunsInst::new(code, lang)
     }
 
+    /// Build single module with db connect by the specified code / 通过指定的 code 构造携带数据库连接的单模块实例
+    ///
+    /// # Arguments
+    ///
+    /// * `code` - The specified code in the custom configuration / 配置中指定的模块名
+    /// * `lang` - The specified language (if project support multi-language) / 指定语种（如果项目支持多语种）
+    ///
+    /// # Examples
+    ///
+    ///  ```ignore
+    /// use tardis::TardisFuns;
+    /// let funs = TardisFuns::inst_with_db_conn("product".to_string(), None);
+    /// ```
     #[cfg(feature = "reldb-core")]
     pub fn inst_with_db_conn(code: String, lang: Option<String>) -> TardisFunsInst {
         TardisFunsInst::new_with_db_conn(code, lang)
@@ -510,6 +537,7 @@ impl TardisFuns {
         }
     }
 
+    /// Get default language in the custom configuration / 从自定义配置中获取默认语言
     pub fn default_lang() -> Option<String> {
         unsafe {
             match &TARDIS_INST.framework_config {
@@ -722,6 +750,75 @@ impl TardisFuns {
         }
     }
 
+    /// Use the web  client feature / 使用web客户端功能
+    ///
+    /// This feature needs to be enabled #[cfg(feature = "web-client")] .
+    ///
+    /// 本功能需要启用 #[cfg(feature = "web-client")] .
+    ///
+    /// # Steps to use / 使用步骤
+    ///
+    /// 1. Initialize the cache configuration / 初始化缓存配置 @see [init](Self::init)
+    /// 2. Call this function to complete various cache processing operations / 调用本函数完成各种缓存处理操作
+    /// E.g.
+    /// ```ignore
+    /// use std::collections::HashMap;
+    /// use tardis::basic::error::TardisError;
+    /// use tardis::basic::result::{TardisResult, TARDIS_RESULT_ACCEPTED_CODE, TARDIS_RESULT_SUCCESS_CODE};
+    /// use tardis::serde::{Deserialize, Serialize};
+    /// use tardis::TardisFuns;
+    /// use tardis::web::web_resp::{TardisApiResult, TardisResp};
+    /// use reqwest::StatusCode;
+    ///
+    /// struct TodoResp {
+    ///     id: i64,
+    ///     code: TrimString,
+    ///     description: String,
+    ///     done: bool,
+    /// }
+    /// // Initiate a get request / 发起 Get 请求
+    /// let res_object = TardisFuns::web_client()
+    ///     .get::<TardisResp<TodoResp>>("https://www.xxx.com/query", Some([("User-Agent".to_string(), "Tardis".to_string())].iter().cloned().collect()))
+    ///     .await
+    ///     .unwrap();
+    /// assert_eq!(response.code, 200);
+    /// assert_eq!(response.body.as_ref().unwrap().code, TARDIS_RESULT_SUCCESS_CODE);
+    /// assert_eq!(response.body.as_ref().unwrap().data.as_ref().unwrap().code.to_string(), "code1");
+    /// // Initiate a get request return string / 发起 Get 请求并返回字符串
+    /// let response = TardisFuns::web_client().
+    /// get_to_str("https://www.xxx.com", Some([("User-Agent".to_string(), "Tardis".to_string())].iter().cloned().collect()))
+    /// .await
+    /// .unwrap();
+    /// assert_eq!(response.code, StatusCode::OK.as_u16());
+    /// assert!(response.body.unwrap().contains("xxx"));
+    /// // Initiate a post request return string / 发起 Post 请求并返回字符串
+    /// let request = serde_json::json!({
+    ///     "lang": "rust",
+    ///     "body": "json"
+    /// });
+    /// let response = TardisFuns::web_client().post_obj_to_str("https://www.xxx.com", &request, None).await?;
+    /// assert_eq!(response.code, StatusCode::OK.as_u16());
+    /// assert!(response.body.unwrap().contains(r#"data": "{\"body\":\"json\",\"lang\":\"rust\"}"#));
+    ///
+    /// // Initiate a post request return the custom struct / 发起 Post 请求并返回自定义结构
+    /// #[derive(Debug, Serialize, Deserialize)]
+    /// struct Post {
+    ///     id: Option<i32>,
+    ///     title: String,
+    ///     body: String,
+    ///     #[serde(rename = "userId")]
+    ///     user_id: i32,
+    /// }
+    /// let new_post = Post {
+    ///     id: None,
+    ///     title: "idealworld".into(),
+    ///     body: "http://idealworld.group/".into(),
+    ///     user_id: 1,
+    /// };
+    /// let response = TardisFuns::web_client().post::<Post, Post>("https://jsonplaceholder.typicode.com/posts", &new_post, None).await?;
+    /// assert_eq!(response.code, StatusCode::CREATED.as_u16());
+    /// assert_eq!(response.body.unwrap().body, "http://idealworld.group/");
+    /// ```
     #[cfg(feature = "web-client")]
     pub fn web_client() -> &'static TardisWebClient {
         Self::web_client_by_module("")
@@ -820,6 +917,24 @@ impl TardisFuns {
         }
     }
 
+    /// Use the message queue feature / 使用消息队列功能
+    ///
+    /// This feature needs to be enabled #[cfg(feature = "mq")] .
+    ///
+    /// 本功能需要启用 #[cfg(feature = "mq")] .
+    ///
+    /// # Steps to use / 使用步骤
+    ///
+    /// 1. Initialize the mq configuration / 初始化队列配置 @see [init](Self::init)
+    /// 2. Call this function to complete various mq processing operations / 调用本函数完成各种队列处理操作
+    /// E.g.
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// // publish a message / 发布一条消息
+    /// TardisFuns::mq().publish("mq_topic_user_add", String::from("message content")).await.unwrap();
+    /// // listen topic and consume message / 监听频道并且消费消息
+    /// funs.mq().subscribe("mq_topic_user_add", |(_, _)| async { Ok(()) }).await?;
+    /// ```
     #[cfg(feature = "mq")]
     pub fn mq() -> &'static TardisMQClient {
         Self::mq_by_module("")
@@ -869,7 +984,7 @@ impl TardisFuns {
     /// ```ignore
     /// use tardis::TardisFuns;
     /// TardisFuns::search().create_index("test_index").await.unwrap();
-    /// let id = TardisFuns::search().create_record("test_index", r#"{"user":{"id":1,"name":"张三","open":false}}"#).await.unwrap();
+    /// let id = TardisFuns::search().create_record("test_index", r#"{"user":{"id":1, "name":"张三", "open":false}}"#).await.unwrap();
     /// assert_eq!(TardisFuns::search().get_record("test_index", &id).await.unwrap(), r#"{"user":{"id":4,"name":"Tom","open":true}}"#);
     /// TardisFuns::search().simple_search("test_index", "张三").await.unwrap();
     /// ```
@@ -992,6 +1107,23 @@ impl TardisFuns {
     }
 }
 
+/// Single module objects  / 单模块对象
+///
+/// # Initialization / 初始化
+///
+/// ## Build objects extracted through the TardisFuns portal / 通过 TardisFuns 提取出对象
+///    
+///  ```ignore
+/// use tardis::TardisFuns;
+/// let funs = TardisFuns::inst("product".to_string(), None);
+/// ```
+///
+/// ## Or build with db connect
+///
+/// ```ignore
+/// use tardis::TardisFuns;
+/// let funs = TardisFuns::inst_with_db_conn("product".to_string(), None);
+/// ```
 pub struct TardisFunsInst {
     module_code: String,
     err: TardisErrorWithExt,
