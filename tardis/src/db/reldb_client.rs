@@ -20,7 +20,7 @@ use url::Url;
 use crate::basic::dto::TardisContext;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::FrameworkConfig;
+use crate::config::config_dto::{CompatibleType, FrameworkConfig};
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
 use crate::log::info;
 use crate::serde::{Deserialize, Serialize};
@@ -130,6 +130,7 @@ use crate::TardisFuns;
 /// ```
 pub struct TardisRelDBClient {
     con: Arc<DatabaseConnection>,
+    compatible_type: CompatibleType,
 }
 
 impl TardisRelDBClient {
@@ -144,13 +145,22 @@ impl TardisRelDBClient {
                 conf.db.min_connections,
                 conf.db.connect_timeout_sec,
                 conf.db.idle_timeout_sec,
+                conf.db.compatible_type.clone(),
             )
             .await?,
         );
         for (k, v) in &conf.db.modules {
             clients.insert(
                 k.to_string(),
-                TardisRelDBClient::init(&v.url, v.max_connections, v.min_connections, v.connect_timeout_sec, v.idle_timeout_sec).await?,
+                TardisRelDBClient::init(
+                    &v.url,
+                    v.max_connections,
+                    v.min_connections,
+                    v.connect_timeout_sec,
+                    v.idle_timeout_sec,
+                    v.compatible_type.clone(),
+                )
+                .await?,
             );
         }
         Ok(clients)
@@ -163,6 +173,7 @@ impl TardisRelDBClient {
         min_connections: u32,
         connect_timeout_sec: Option<u64>,
         idle_timeout_sec: Option<u64>,
+        compatible_type: CompatibleType,
     ) -> TardisResult<TardisRelDBClient> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.RelDBClient] Invalid url {str_url}"), "406-tardis-reldb-url-error"))?;
         info!(
@@ -253,7 +264,10 @@ impl TardisRelDBClient {
             url.port().unwrap_or(0),
             min_connections
         );
-        Ok(TardisRelDBClient { con: Arc::new(con) })
+        Ok(TardisRelDBClient {
+            con: Arc::new(con),
+            compatible_type,
+        })
     }
 
     /// Get database instance implementation / 获取数据库实例的实现
@@ -272,13 +286,13 @@ impl TardisRelDBClient {
     pub async fn init_basic_tables(&self) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] Initializing basic tables");
         let tx = self.con.begin().await?;
-        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"));
+        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"), self.compatible_type.clone());
         TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
         TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         for function_sql in create_all.2 {
             TardisRelDBClient::execute_one_inner(&function_sql, Vec::new(), &tx).await?;
         }
-        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None);
+        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None, self.compatible_type.clone());
         TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
         TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         tx.commit().await?;
@@ -1364,7 +1378,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///  * `db` -  database instance type / 数据库实例类型
     ///  * `update_time_field` -  update time field / 更新字段
     /// ```
-    fn init(db: DbBackend, update_time_field: Option<&str>) -> (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>) {
+    fn init(db: DbBackend, update_time_field: Option<&str>, compatible_type: CompatibleType) -> (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>) {
         let create_table_statement = Self::create_table_statement(db);
         let create_index_statement = Self::create_index_statement();
         if let Some(table_name) = create_table_statement.get_table_name() {
@@ -1377,7 +1391,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
                 | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
                 _ => unimplemented!(),
             };
-            let create_function_sql = Self::create_function_sqls(db, &table_name, update_time_field);
+            let create_function_sql = Self::create_function_sqls(db, &table_name, update_time_field, compatible_type);
             return (create_table_statement, create_index_statement, create_function_sql);
         }
         (create_table_statement, create_index_statement, Vec::new())
@@ -1456,39 +1470,55 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     }
 
     /// Create functions / 创建函数
-    fn create_function_sqls(db: DbBackend, table_name: &str, update_time_field: Option<&str>) -> Vec<String> {
+    fn create_function_sqls(db: DbBackend, table_name: &str, update_time_field: Option<&str>, compatible_type: CompatibleType) -> Vec<String> {
         if db == DbBackend::Postgres {
             if let Some(update_time_field) = update_time_field {
-                return Self::create_function_postgresql_auto_update_time(table_name, update_time_field);
+                return Self::create_function_postgresql_auto_update_time(table_name, update_time_field, compatible_type);
             }
         }
         vec![]
     }
 
-    fn create_function_postgresql_auto_update_time(table_name: &str, update_time_field: &str) -> Vec<String> {
-        vec![
-            format!(
-                r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_ITME_{}()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.{} = now();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';"###,
-                update_time_field.replace('-', "_"),
-                update_time_field
-            ),
-            format!(
-                r###"CREATE OR REPLACE TRIGGER TARDIS_ATUO_UPDATE_TIME_ON
-    BEFORE UPDATE
-    ON
-        {}
-    FOR EACH ROW
-EXECUTE PROCEDURE TARDIS_AUTO_UPDATE_ITME_{}();"###,
-                table_name,
-                update_time_field.replace('-', "_")
-            ),
-        ]
+    fn create_function_postgresql_auto_update_time(table_name: &str, update_time_field: &str, compatible_type: CompatibleType) -> Vec<String> {
+        match compatible_type {
+            crate::config::config_dto::CompatibleType::None => {
+                vec![
+                    format!(
+                        r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_TIME_{}()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.{} = now();
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';"###,
+                        update_time_field.replace('-', "_"),
+                        update_time_field
+                    ),
+                    format!(
+                        r###"CREATE OR REPLACE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
+            BEFORE UPDATE
+            ON
+                {}
+            FOR EACH ROW
+        EXECUTE PROCEDURE TARDIS_AUTO_UPDATE_TIME_{}();"###,
+                        table_name,
+                        update_time_field.replace('-', "_")
+                    ),
+                ]
+            }
+            crate::config::config_dto::CompatibleType::Oracle => vec![format!(
+                r###"CREATE OR REPLACE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
+            BEFORE UPDATE
+            ON
+                {}
+            FOR EACH ROW
+            BEGIN
+                NEW.{}= now();
+                RETURN NEW;
+            END;"###,
+                table_name, update_time_field
+            )],
+        }
     }
 }
 
