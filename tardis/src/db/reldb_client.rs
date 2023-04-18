@@ -275,6 +275,12 @@ impl TardisRelDBClient {
         self.con.get_database_backend()
     }
 
+    /// Get database compatible type / 获取数据库兼容类型
+    /// eg. porlardb is compatible with Oracle
+    pub fn compatible_type(&self) -> CompatibleType {
+        self.compatible_type.clone()
+    }
+
     /// Get database connection
     ///
     /// 获取数据库操作连接
