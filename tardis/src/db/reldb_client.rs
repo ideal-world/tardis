@@ -1466,29 +1466,46 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     }
 
     fn create_function_postgresql_auto_update_time(table_name: &str, update_time_field: &str) -> Vec<String> {
-        vec![
-            format!(
-                r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_ITME_{}()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.{} = now();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';"###,
-                update_time_field.replace('-', "_"),
-                update_time_field
-            ),
-            format!(
-                r###"CREATE OR REPLACE TRIGGER TARDIS_ATUO_UPDATE_TIME_ON
-    BEFORE UPDATE
-    ON
-        {}
-    FOR EACH ROW
-EXECUTE PROCEDURE TARDIS_AUTO_UPDATE_ITME_{}();"###,
-                table_name,
-                update_time_field.replace('-', "_")
-            ),
-        ]
+        let fw_config = TardisFuns::fw_config();
+        match fw_config.db.compatible_type {
+            crate::config::config_dto::CompatibleType::None => {
+                vec![
+                    format!(
+                        r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_TIME_{}()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.{} = now();
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';"###,
+                        update_time_field.replace('-', "_"),
+                        update_time_field
+                    ),
+                    format!(
+                        r###"CREATE OR REPLACE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
+            BEFORE UPDATE
+            ON
+                {}
+            FOR EACH ROW
+        EXECUTE PROCEDURE TARDIS_AUTO_UPDATE_TIME_{}();"###,
+                        table_name,
+                        update_time_field.replace('-', "_")
+                    ),
+                ]
+            }
+            crate::config::config_dto::CompatibleType::Oracle => vec![format!(
+                r###"CREATE OR REPLACE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
+            BEFORE UPDATE
+            ON
+                {}
+            FOR EACH ROW
+            BEGIN
+                NEW.{}= now();
+                RETURN NEW;
+            END;"###,
+                table_name, update_time_field
+            )],
+        }
     }
 }
 
