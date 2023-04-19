@@ -287,7 +287,7 @@ pub struct TardisFuns {
     #[cfg(feature = "mail")]
     mail: Option<HashMap<ModuleCode, TardisMailClient>>,
     #[cfg(feature = "os")]
-    os: Option<HashMap<ModuleCode, TardisOSClient>>,
+    os: Option<HashMap<ModuleCode, TardisOSClient>>
 }
 type ModuleCode = String;
 

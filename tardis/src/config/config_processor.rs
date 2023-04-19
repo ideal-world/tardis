@@ -14,7 +14,7 @@ use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
 use crate::log::{debug, info};
 
-use super::config_dto::TardisConfig;
+use super::config_dto::{ConfCenterConfig, TardisConfig};
 
 /// Configuration handle / 配置处理
 ///
@@ -53,26 +53,7 @@ impl TardisConfig {
                         "",
                     ));
                 }
-                let format = match conf_center.format.as_ref().unwrap_or(&"toml".to_string()).to_lowercase().as_str() {
-                    "toml" => FileFormat::Toml,
-                    "json" => FileFormat::Json,
-                    "yaml" => FileFormat::Yaml,
-                    _ => {
-                        return Err(TardisError::format_error(
-                            "[Tardis.Config] The file format of config center only supports [toml,json,yaml]",
-                            "",
-                        ))
-                    }
-                };
-                info!(
-                    "[Tardis.Config] Enabled config center: [{}] {} , start refetching configuration",
-                    conf_center.kind, conf_center.url
-                );
-                let conf_center_urls = match conf_center.kind.to_lowercase().as_str() {
-                    "nacos" => crate::config::config_nacos::ConfNacosProcessor::fetch_conf_urls(&profile, &config.fw.app.id, conf_center).await?,
-                    _ => return Err(TardisError::format_error("[Tardis.Config] The kind of config center only supports [nacos]", "")),
-                };
-                TardisConfig::do_init(relative_path, &profile, Some((conf_center_urls, format))).await?
+                TardisConfig::do_init(relative_path, &profile, Some((&conf_center, &config.fw.app.id))).await?
             } else {
                 config
             };
@@ -90,7 +71,7 @@ impl TardisConfig {
         Ok(config)
     }
 
-    async fn do_init(relative_path: Option<&str>, profile: &str, _conf_center: Option<(Vec<String>, FileFormat)>) -> TardisResult<TardisConfig> {
+    async fn do_init(relative_path: Option<&str>, profile: &str, _conf_center: Option<(&ConfCenterConfig, &str)>) -> TardisResult<TardisConfig> {
         let mut conf = ConfigBuilder::<AsyncState>::default();
 
         // Fetch from local file
@@ -109,14 +90,47 @@ impl TardisConfig {
         #[cfg(feature = "conf-remote")]
         {
             // Fetch from remote
-            if let Some(conf_center) = _conf_center {
-                for conf_center_url in conf_center.0 {
+            if let Some((conf_center, app_id)) = _conf_center {
+                let format = match conf_center.format.as_ref().unwrap_or(&"toml".to_string()).to_lowercase().as_str() {
+                    "toml" => FileFormat::Toml,
+                    "json" => FileFormat::Json,
+                    "yaml" => FileFormat::Yaml,
+                    _ => {
+                        return Err(TardisError::format_error(
+                            "[Tardis.Config] The file format of config center only supports [toml,json,yaml]",
+                            "",
+                        ))
+                    }
+                };
+                info!(
+                    "[Tardis.Config] Enabled config center: [{}] {} , start refetching configuration",
+                    conf_center.kind, conf_center.url
+                );
+                let mut conf_center_processor: Box<dyn ConfCenterProcess> = match conf_center.kind.to_lowercase().as_str() {
+                    "nacos" => Box::new(crate::config::config_nacos::ConfNacosProcessor::new(conf_center)),
+                    _ => return Err(TardisError::format_error("[Tardis.Config] The kind of config center only supports [nacos]", "")),
+                };
+                let conf_center_url_list = conf_center_processor.fetch_conf_urls(app_id, profile).await?;
+                for conf_center_url in &conf_center_url_list {
                     debug!("[Tardis.Config] Fetch remote file: {}", conf_center_url);
                     conf = conf.add_async_source(HttpSource {
-                        url: conf_center_url,
-                        format: conf_center.1,
+                        url: conf_center_url.clone(),
+                        format,
                     });
                 }
+                tokio::spawn(async move {
+                    use std::time::Duration;
+                    loop {
+                        tokio::time::sleep(Duration::from_secs(30)).await;
+                        // for conf_center_url in conf_center_processor.fetch_conf_urls(app_id, profile).await.unwrap() {
+                        //     debug!("[Tardis.Config] Fetch remote file: {}", &conf_center_url);
+                        //     conf = conf.add_async_source(HttpSource {
+                        //         url: conf_center_url,
+                        //         format,
+                        //     });
+                        // }
+                    }
+                });
             }
         }
 
@@ -197,7 +211,8 @@ pub(crate) struct HttpSource<F: config::Format> {
 #[cfg(feature = "conf-remote")]
 #[async_trait]
 pub(crate) trait ConfCenterProcess {
-    async fn fetch_conf_urls(profile: &str, app_id: &str, config: &super::config_dto::ConfCenterConfig) -> TardisResult<Vec<String>>;
+    async fn fetch_conf_urls(&mut self, profile: &str, app_id: &str) -> TardisResult<Vec<String>>;
+    async fn fetch_conf_listener_urls(&mut self, profile: &str, app_id: &str, content_md5: Option<&str>) -> TardisResult<Vec<String>>;
 }
 
 #[cfg(feature = "conf-remote")]

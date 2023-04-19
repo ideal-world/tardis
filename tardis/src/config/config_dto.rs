@@ -691,6 +691,16 @@ pub struct ConfCenterConfig {
     pub group: Option<String>,
     pub format: Option<String>,
     pub namespace: Option<String>,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub(crate) update_listener: Option<tokio::sync::broadcast::Sender<()>>
+}
+
+impl ConfCenterConfig {
+    pub fn listen_update(&mut self) -> tokio::sync::watch::Sender<()> {
+        let (tx, rx) = tokio::sync::broadcast::channel(());
+        self.update_listener = Some(rx);
+        tx
+    }
 }
 
 impl Default for ConfCenterConfig {
@@ -703,6 +713,7 @@ impl Default for ConfCenterConfig {
             format: Some("toml".to_string()),
             group: Some("default".to_string()),
             namespace: None,
+            update_listener: None
         }
     }
 }
