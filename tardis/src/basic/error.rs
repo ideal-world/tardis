@@ -50,6 +50,10 @@ impl TardisError {
         Self::error("401", msg, locale_code)
     }
 
+    pub fn forbidden(msg: &str, locale_code: &str) -> TardisError {
+        Self::error("403", msg, locale_code)
+    }
+
     pub fn not_found(msg: &str, locale_code: &str) -> TardisError {
         Self::error("404", msg, locale_code)
     }

@@ -5,7 +5,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_basic_locale() -> TardisResult<()> {
-    TardisFuns::init("tests/config").await?;
+    TardisFuns::init(Some("tests/config")).await?;
 
     assert_eq!(TardisLocale::get_message("404", "", "zh-cn")?, "找不到资源");
     assert_eq!(TardisLocale::get_message("404", "", "en")?, "Not found resource");

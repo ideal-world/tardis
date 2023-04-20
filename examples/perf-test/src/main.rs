@@ -17,7 +17,7 @@ mod processor;
 async fn main() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info");
     // Initial
-    TardisFuns::init("config").await?;
+    TardisFuns::init(Some("config")).await?;
     initializer::init().await?;
     // Register the processor and start the web service
     TardisFuns::web_server().add_route(TodoApi).await.start().await

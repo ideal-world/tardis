@@ -110,7 +110,7 @@ impl TardisWebServer {
             api_serv = api_serv.extra_request_header::<String, _>(ExtraHeader::new(name).description(desc));
         }
         let ui_serv = api_serv.rapidoc();
-        let spec_serv = api_serv.spec();
+        let spec_serv = api_serv.spec_yaml();
         let mut route = Route::new();
         route = route.nest("/", api_serv);
         if let Some(ui_path) = &module.ui_path {

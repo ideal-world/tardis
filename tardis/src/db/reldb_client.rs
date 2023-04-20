@@ -20,7 +20,7 @@ use url::Url;
 use crate::basic::dto::TardisContext;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::FrameworkConfig;
+use crate::config::config_dto::{CompatibleType, FrameworkConfig};
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
 use crate::log::info;
 use crate::serde::{Deserialize, Serialize};
@@ -130,6 +130,7 @@ use crate::TardisFuns;
 /// ```
 pub struct TardisRelDBClient {
     con: Arc<DatabaseConnection>,
+    compatible_type: CompatibleType,
 }
 
 impl TardisRelDBClient {
@@ -144,13 +145,22 @@ impl TardisRelDBClient {
                 conf.db.min_connections,
                 conf.db.connect_timeout_sec,
                 conf.db.idle_timeout_sec,
+                conf.db.compatible_type.clone(),
             )
             .await?,
         );
         for (k, v) in &conf.db.modules {
             clients.insert(
                 k.to_string(),
-                TardisRelDBClient::init(&v.url, v.max_connections, v.min_connections, v.connect_timeout_sec, v.idle_timeout_sec).await?,
+                TardisRelDBClient::init(
+                    &v.url,
+                    v.max_connections,
+                    v.min_connections,
+                    v.connect_timeout_sec,
+                    v.idle_timeout_sec,
+                    v.compatible_type.clone(),
+                )
+                .await?,
             );
         }
         Ok(clients)
@@ -163,6 +173,7 @@ impl TardisRelDBClient {
         min_connections: u32,
         connect_timeout_sec: Option<u64>,
         idle_timeout_sec: Option<u64>,
+        compatible_type: CompatibleType,
     ) -> TardisResult<TardisRelDBClient> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.RelDBClient] Invalid url {str_url}"), "406-tardis-reldb-url-error"))?;
         info!(
@@ -253,12 +264,21 @@ impl TardisRelDBClient {
             url.port().unwrap_or(0),
             min_connections
         );
-        Ok(TardisRelDBClient { con: Arc::new(con) })
+        Ok(TardisRelDBClient {
+            con: Arc::new(con),
+            compatible_type,
+        })
     }
 
     /// Get database instance implementation / 获取数据库实例的实现
     pub fn backend(&self) -> DbBackend {
         self.con.get_database_backend()
+    }
+
+    /// Get database compatible type / 获取数据库兼容类型
+    /// eg. porlardb is compatible with Oracle
+    pub fn compatible_type(&self) -> CompatibleType {
+        self.compatible_type.clone()
     }
 
     /// Get database connection
@@ -272,13 +292,13 @@ impl TardisRelDBClient {
     pub async fn init_basic_tables(&self) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] Initializing basic tables");
         let tx = self.con.begin().await?;
-        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"));
+        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"), self.compatible_type.clone());
         TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
         TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         for function_sql in create_all.2 {
             TardisRelDBClient::execute_one_inner(&function_sql, Vec::new(), &tx).await?;
         }
-        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None);
+        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None, self.compatible_type.clone());
         TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
         TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         tx.commit().await?;
@@ -346,7 +366,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
-        trace!("[Tardis.RelDBClient] Quering one sql {}, params:{:?}", sql, params);
+        trace!("[Tardis.RelDBClient] Querying one sql {}, params:{:?}", sql, params);
         let query_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
         let result = db.query_one(query_stmt).await;
         match result {
@@ -359,7 +379,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
-        trace!("[Tardis.RelDBClient] Quering all sql {}, params:{:?}", sql, params);
+        trace!("[Tardis.RelDBClient] Querying all sql {}, params:{:?}", sql, params);
         let query_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
         let result = db.query_all(query_stmt).await;
         match result {
@@ -373,7 +393,23 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         D: FromQueryResult,
     {
-        let result = D::find_by_statement(db.get_database_backend().build(select_statement)).one(db).await;
+        Self::do_get_dto_inner(db.get_database_backend().build(select_statement), db).await
+    }
+
+    pub(self) async fn get_dto_by_sql_inner<C, D>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<Option<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        Self::do_get_dto_inner(Statement::from_sql_and_values(db.get_database_backend(), sql, params), db).await
+    }
+
+    async fn do_get_dto_inner<C, D>(select_statement: Statement, db: &C) -> TardisResult<Option<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        let result = D::find_by_statement(select_statement).one(db).await;
         match result {
             Ok(r) => TardisResult::Ok(r),
             Err(error) => TardisResult::Err(TardisError::from(error)),
@@ -385,7 +421,23 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         D: FromQueryResult,
     {
-        let result = D::find_by_statement(db.get_database_backend().build(select_statement)).all(db).await;
+        Self::do_find_dtos_inner(db.get_database_backend().build(select_statement), db).await
+    }
+
+    pub(self) async fn find_dtos_by_sql_inner<C, D>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<Vec<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        Self::do_find_dtos_inner(Statement::from_sql_and_values(db.get_database_backend(), sql, params), db).await
+    }
+
+    async fn do_find_dtos_inner<C, D>(select_statement: Statement, db: &C) -> TardisResult<Vec<D>>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        let result = D::find_by_statement(select_statement).all(db).await;
         match result {
             Ok(r) => TardisResult::Ok(r),
             Err(error) => TardisResult::Err(TardisError::from(error)),
@@ -397,15 +449,30 @@ impl TardisRelDBClient {
         C: ConnectionTrait,
         D: FromQueryResult,
     {
-        let statement = db.get_database_backend().build(select_statement);
-        let select_sql = format!("{} LIMIT {} OFFSET {}", statement.sql, page_size, (page_number - 1) * page_size);
+        Self::do_paginate_dtos_inner(db.get_database_backend().build(select_statement), page_number, page_size, db).await
+    }
+
+    pub(self) async fn paginate_dtos_by_sql_inner<C, D>(sql: &str, params: Vec<Value>, page_number: u64, page_size: u64, db: &C) -> TardisResult<(Vec<D>, u64)>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        Self::do_paginate_dtos_inner(Statement::from_sql_and_values(db.get_database_backend(), sql, params), page_number, page_size, db).await
+    }
+
+    async fn do_paginate_dtos_inner<C, D>(select_statement: Statement, page_number: u64, page_size: u64, db: &C) -> TardisResult<(Vec<D>, u64)>
+    where
+        C: ConnectionTrait,
+        D: FromQueryResult,
+    {
+        let select_sql = format!("{} LIMIT {} OFFSET {}", select_statement.sql, page_size, (page_number - 1) * page_size);
         let query_statement = Statement {
             sql: select_sql,
-            values: statement.values,
-            db_backend: statement.db_backend,
+            values: select_statement.values.clone(),
+            db_backend: select_statement.db_backend,
         };
         let query_result = D::find_by_statement(query_statement).all(db).await?;
-        let count_result = TardisRelDBClient::count_inner(select_statement, db).await?;
+        let count_result = TardisRelDBClient::do_count_inner(select_statement, db).await?;
         Ok((query_result, count_result))
     }
 
@@ -413,16 +480,29 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
-        let statement = db.get_database_backend().build(select_statement);
+        Self::do_count_inner(db.get_database_backend().build(select_statement), db).await
+    }
+
+    pub(self) async fn count_by_sql_inner<C>(sql: &str, params: Vec<Value>, db: &C) -> TardisResult<u64>
+    where
+        C: ConnectionTrait,
+    {
+        Self::do_count_inner(Statement::from_sql_and_values(db.get_database_backend(), sql, params), db).await
+    }
+
+    async fn do_count_inner<C>(select_statement: Statement, db: &C) -> TardisResult<u64>
+    where
+        C: ConnectionTrait,
+    {
         let count_sql = format!(
             "SELECT COUNT(1) AS count FROM ( {} ) _{}",
-            statement.sql,
+            select_statement.sql,
             SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
         );
         let count_statement = Statement {
             sql: count_sql.clone(),
-            values: statement.values,
-            db_backend: statement.db_backend,
+            values: select_statement.values,
+            db_backend: select_statement.db_backend,
         };
         let count_result = CountResp::find_by_statement(count_statement).one(db).await?;
         match count_result {
@@ -718,6 +798,25 @@ impl TardisRelDBlConnection {
         }
     }
 
+    /// Get a record, return a custom structure / 获取一条记录，返回自定义结构体
+    ///
+    /// # Arguments
+    ///
+    ///  * `sql` - sql of the query / 查询SQL
+    ///  * `params` - params of the query / 查询参数
+    ///
+    /// ```
+    pub async fn get_dto_by_sql<D>(&self, sql: &str, params: Vec<Value>) -> TardisResult<Option<D>>
+    where
+        D: FromQueryResult,
+    {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::get_dto_by_sql_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::get_dto_by_sql_inner(sql, params, self.conn.as_ref()).await
+        }
+    }
+
     /// Get multiple rows and return a custom structure / 获取多条记录，返回自定义结构体
     ///
     /// # Arguments
@@ -745,6 +844,24 @@ impl TardisRelDBlConnection {
             TardisRelDBClient::find_dtos_inner(select_statement, tx).await
         } else {
             TardisRelDBClient::find_dtos_inner(select_statement, self.conn.as_ref()).await
+        }
+    }
+
+    /// Get multiple rows and return a custom structure / 获取多条记录，返回自定义结构体
+    ///
+    /// # Arguments
+    ///
+    ///  * `sql` - sql of the query / 查询SQL
+    ///  * `params` - params of the query / 查询参数
+    ///
+    pub async fn find_dtos_by_sql<D>(&self, sql: &str, params: Vec<Value>) -> TardisResult<Vec<D>>
+    where
+        D: FromQueryResult,
+    {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::find_dtos_by_sql_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::find_dtos_by_sql_inner(sql, params, self.conn.as_ref()).await
         }
     }
 
@@ -781,6 +898,27 @@ impl TardisRelDBlConnection {
         }
     }
 
+    /// Paging to get multiple records and the total number of records, returning a custom structure / 分页获取多条记录及总记录数，返回自定义结构体
+    ///
+    /// # Arguments
+    ///
+    ///  * `sql` - sql of the query / 查询SQL
+    ///  * `params` - params of the query / 查询参数
+    ///  * `page_number` -  Current page number, starting from 1 / 当前页码，从1开始
+    ///  * `page_size` -  Number of records per page / 每页记录数
+    ///
+    /// ```
+    pub async fn paginate_dtos_by_sql<D>(&self, sql: &str, params: Vec<Value>, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
+    where
+        D: FromQueryResult,
+    {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::paginate_dtos_by_sql_inner(sql, params, page_number, page_size, tx).await
+        } else {
+            TardisRelDBClient::paginate_dtos_by_sql_inner(sql, params, page_number, page_size, self.conn.as_ref()).await
+        }
+    }
+
     /// Get number of records / 获取记录数量
     ///
     /// # Arguments
@@ -805,6 +943,22 @@ impl TardisRelDBlConnection {
             TardisRelDBClient::count_inner(select_statement, tx).await
         } else {
             TardisRelDBClient::count_inner(select_statement, self.conn.as_ref()).await
+        }
+    }
+
+    /// Get number of records / 获取记录数量
+    ///
+    /// # Arguments
+    ///
+    ///  * `sql` - sql of the query / 查询SQL
+    ///  * `params` - params of the query / 查询参数
+    ///
+    /// ```
+    pub async fn count_by_sql(&self, sql: &str, params: Vec<Value>) -> TardisResult<u64> {
+        if let Some(tx) = &self.tx {
+            TardisRelDBClient::count_by_sql_inner(sql, params, tx).await
+        } else {
+            TardisRelDBClient::count_by_sql_inner(sql, params, self.conn.as_ref()).await
         }
     }
 
@@ -1230,7 +1384,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///  * `db` -  database instance type / 数据库实例类型
     ///  * `update_time_field` -  update time field / 更新字段
     /// ```
-    fn init(db: DbBackend, update_time_field: Option<&str>) -> (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>) {
+    fn init(db: DbBackend, update_time_field: Option<&str>, compatible_type: CompatibleType) -> (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>) {
         let create_table_statement = Self::create_table_statement(db);
         let create_index_statement = Self::create_index_statement();
         if let Some(table_name) = create_table_statement.get_table_name() {
@@ -1243,7 +1397,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
                 | sea_query::TableRef::DatabaseSchemaTableAlias(_, _, t, _) => t.to_string(),
                 _ => unimplemented!(),
             };
-            let create_function_sql = Self::create_function_sqls(db, &table_name, update_time_field);
+            let create_function_sql = Self::create_function_sqls(db, &table_name, update_time_field, compatible_type);
             return (create_table_statement, create_index_statement, create_function_sql);
         }
         (create_table_statement, create_index_statement, Vec::new())
@@ -1316,44 +1470,61 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///                 .to_owned(),
     ///         ]
     ///     }
+    /// ```
     fn create_index_statement() -> Vec<IndexCreateStatement> {
         vec![]
     }
 
     /// Create functions / 创建函数
-    fn create_function_sqls(db: DbBackend, table_name: &str, update_time_field: Option<&str>) -> Vec<String> {
+    fn create_function_sqls(db: DbBackend, table_name: &str, update_time_field: Option<&str>, compatible_type: CompatibleType) -> Vec<String> {
         if db == DbBackend::Postgres {
             if let Some(update_time_field) = update_time_field {
-                return Self::create_function_postgresql_auto_update_time(table_name, update_time_field);
+                return Self::create_function_postgresql_auto_update_time(table_name, update_time_field, compatible_type);
             }
         }
         vec![]
     }
 
-    fn create_function_postgresql_auto_update_time(table_name: &str, update_time_field: &str) -> Vec<String> {
-        vec![
-            format!(
-                r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_ITME_{}()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.{} = now();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';"###,
-                update_time_field.replace('-', "_"),
-                update_time_field
-            ),
-            format!(
-                r###"CREATE OR REPLACE TRIGGER TARDIS_ATUO_UPDATE_TIME_ON
-    BEFORE UPDATE
-    ON
-        {}
-    FOR EACH ROW
-EXECUTE PROCEDURE TARDIS_AUTO_UPDATE_ITME_{}();"###,
-                table_name,
-                update_time_field.replace('-', "_")
-            ),
-        ]
+    fn create_function_postgresql_auto_update_time(table_name: &str, update_time_field: &str, compatible_type: CompatibleType) -> Vec<String> {
+        match compatible_type {
+            crate::config::config_dto::CompatibleType::None => {
+                vec![
+                    format!(
+                        r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_TIME_{}()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.{} = now();
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';"###,
+                        update_time_field.replace('-', "_"),
+                        update_time_field
+                    ),
+                    format!(
+                        r###"CREATE OR REPLACE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
+            BEFORE UPDATE
+            ON
+                {}
+            FOR EACH ROW
+        EXECUTE PROCEDURE TARDIS_AUTO_UPDATE_TIME_{}();"###,
+                        table_name,
+                        update_time_field.replace('-', "_")
+                    ),
+                ]
+            }
+            crate::config::config_dto::CompatibleType::Oracle => vec![format!(
+                r###"CREATE OR REPLACE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
+            BEFORE UPDATE
+            ON
+                {}
+            FOR EACH ROW
+            BEGIN
+                NEW.{}= now();
+                RETURN NEW;
+            END;"###,
+                table_name, update_time_field
+            )],
+        }
     }
 }
 

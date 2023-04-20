@@ -11,12 +11,12 @@ use tardis::TardisFuns;
 async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug");
 
-    TardisFuns::init("tests/config").await?;
+    TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 2);
 
     env::set_var("PROFILE", "remote");
-    TardisFuns::init("tests/config").await?;
+    TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_remote");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
     assert_eq!(
@@ -26,14 +26,14 @@ async fn test_config_with_remote() -> TardisResult<()> {
 
     env::set_var("PROFILE", "remote");
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
-    TardisFuns::init("tests/config").await?;
+    TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_remote");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
     assert_eq!(TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url, "postgres://postgres@m1.proj");
 
     env::set_var("PROFILE", "remote");
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
-    TardisFuns::init("tests/config").await?;
+    TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_remote");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
     assert_eq!(TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url, "postgres://postgres@m1.proj");
@@ -41,7 +41,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("PROFILE", "remote");
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
     env::set_var("Tardis_CS.PROJECT_NAME", "测试_env");
-    TardisFuns::init("tests/config").await?;
+    TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_env");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
     assert_eq!(TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url, "postgres://postgres@m1.proj");

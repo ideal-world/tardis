@@ -210,7 +210,7 @@ async fn test_cache_client() -> TardisResult<()> {
         client.flushdb().await?;
         assert!(!client.exists("flush_test").await?);
 
-        // test_concurrent().await?;
+        // _test_concurrent().await?;
 
         Ok(())
     })

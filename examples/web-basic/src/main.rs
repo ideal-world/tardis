@@ -16,7 +16,7 @@ async fn main() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug");
     env::set_var("PROFILE", "default");
     // Initial configuration
-    TardisFuns::init("config").await?;
+    TardisFuns::init(Some("config")).await?;
     // Register the processor and start the web service
     TardisFuns::web_server().add_route(Api).await.start().await
 }

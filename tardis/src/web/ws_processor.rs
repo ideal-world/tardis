@@ -20,9 +20,10 @@ pub const WS_SYSTEM_EVENT_ERROR: &str = "__sys_error__";
 pub const WS_CACHE_SIZE: u32 = 1000000;
 
 lazy_static! {
-    static ref CACHES: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(WS_CACHE_SIZE as usize).unwrap())));
-    // Instance Id -> Avatars
-    static ref INSTS: Arc<RwLock<HashMap<String, Vec<String>>>> = Arc::new(RwLock::new(HashMap::new()));
+    // Single instance reply guard
+    static ref REPLY_ONCE_GUARD: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(WS_CACHE_SIZE as usize).unwrap())));
+    // Websocket instance Id -> Avatars
+    static ref WS_INSTS_MAPPING_AVATARS: Arc<RwLock<HashMap<String, Vec<String>>>> = Arc::new(RwLock::new(HashMap::new()));
 }
 
 pub fn ws_echo<PF, PT, CF, CT>(avatars: String, ext: HashMap<String, String>, websocket: WebSocket, process_fun: PF, close_fun: CF) -> BoxWebSocketUpgraded
@@ -113,10 +114,10 @@ where
         .on_upgrade(move |socket| async move {
             let inst_id = TardisFuns::field.nanoid();
             let current_receive_inst_id = inst_id.clone();
-            INSTS.write().await.insert(inst_id.clone(), avatars);
+            WS_INSTS_MAPPING_AVATARS.write().await.insert(inst_id.clone(), avatars);
             let (mut sink, mut stream) = socket.split();
 
-            let insts_in_send = INSTS.clone();
+            let insts_in_send = WS_INSTS_MAPPING_AVATARS.clone();
             tokio::spawn(async move {
                 while let Some(Ok(message)) = stream.next().await {
                     match message {
@@ -232,14 +233,14 @@ where
                 }
             });
 
-            let cache = CACHES.clone();
-            let insts_in_receive = INSTS.clone();
+            let reply_once_guard = REPLY_ONCE_GUARD.clone();
+            let insts_in_receive = WS_INSTS_MAPPING_AVATARS.clone();
 
             tokio::spawn(async move {
                 while let Ok(resp_msg) = receiver.recv().await {
                     let resp = TardisFuns::json.str_to_obj::<TardisWebsocketMgrMessage>(&resp_msg).unwrap();
                     let current_avatars = insts_in_receive.read().await.get(&current_receive_inst_id).unwrap().clone();
-                    // // only self
+                    // only self
                     if resp.echo && current_receive_inst_id != resp.from_inst_id {
                         continue;
                     }
@@ -257,7 +258,7 @@ where
                     {
                         if !subscribe_mode {
                             let id = format!("{}{:?}", resp.id, &current_avatars);
-                            let mut lock = cache.lock().await;
+                            let mut lock = reply_once_guard.lock().await;
                             if lock.put(id.clone(), true).is_some() {
                                 continue;
                             }
@@ -318,12 +319,6 @@ pub struct TardisWebsocketMgrMessage {
     pub ignore_avatars: Vec<String>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct TardisWebsocketMessage {
-    pub msg: Value,
-    pub event: Option<String>,
-}
-
 impl TardisWebsocketMgrMessage {
     pub fn into_req(self, msg: Value, current_avatar: String, to_avatars: Option<Vec<String>>) -> TardisWebsocketReq {
         TardisWebsocketReq {
@@ -335,6 +330,12 @@ impl TardisWebsocketMgrMessage {
             spec_inst_id: Some(self.from_inst_id),
         }
     }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct TardisWebsocketMessage {
+    pub msg: Value,
+    pub event: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
