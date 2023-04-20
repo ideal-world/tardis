@@ -19,7 +19,7 @@ path = "src/lib.rs"
 [features]
 default = ["rt-tokio", "tardis-macros"]
 rt-tokio = ["tokio"]
-conf-remote = ["web-client", "async-trait"]
+conf-remote = ["web-client", "async-trait", "rust-crypto"]
 crypto = ["rust-crypto", "rsa"]
 crypto-with-sm = ["crypto", "libsm", "num-bigint"]
 future = ["rt-tokio", "futures", "async-stream", "futures-util", "async-trait"]

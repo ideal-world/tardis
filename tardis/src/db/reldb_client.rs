@@ -153,16 +153,6 @@ impl TardisRelDBClient {
                 TardisRelDBClient::init(&v.url, v.max_connections, v.min_connections, v.connect_timeout_sec, v.idle_timeout_sec).await?,
             );
         }
-        #[cfg(feature = "conf-remote")]
-        {
-            if let Some(conf_center_config) = &conf.conf_center {
-                if let Some(listener) = conf_center_config.update_listener {
-                    tokio::spawn(async move {
-                        listener.await;
-                    })
-                }
-            }
-        }
         Ok(clients)
     }
 

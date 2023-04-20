@@ -692,14 +692,31 @@ pub struct ConfCenterConfig {
     pub format: Option<String>,
     pub namespace: Option<String>,
     #[serde(skip_serializing, skip_deserializing)]
-    pub(crate) update_listener: Option<tokio::sync::broadcast::Sender<()>>
+    pub(crate) update_listener: tokio::sync::broadcast::Sender<()>
 }
 
+#[cfg(feature = "conf-remote")]
 impl ConfCenterConfig {
-    pub fn listen_update(&mut self) -> tokio::sync::watch::Sender<()> {
-        let (tx, rx) = tokio::sync::broadcast::channel(());
-        self.update_listener = Some(rx);
-        tx
+    /// Subscribe to configuration updates / 订阅配置更新
+    pub fn subscribe_config_update(&self) -> tokio::sync::broadcast::Receiver<()> {
+        self.update_listener.subscribe()
+    }
+    /// Reload configuration on remote configuration change / 远程配置变更时重新加载配置
+    pub fn reload_on_remote_config_change(&self, tardis_config: TardisConfig) {
+        let mut rx = self.subscribe_config_update();
+        let _config_listen_update_handle = tokio::spawn(async move {
+            while (rx.recv().await).is_ok() {
+                match TardisFuns::init_conf(tardis_config.clone()).await {
+                    Ok(_) => {
+                        log::info!("[Tardis.config] Configuration update succeeded");
+                    }
+                    Err(e) => {
+                        log::error!("[Tardis.config] Configuration update failed: {}", e);
+                    }
+                }
+            }
+        });
+            
     }
 }
 
@@ -713,7 +730,7 @@ impl Default for ConfCenterConfig {
             format: Some("toml".to_string()),
             group: Some("default".to_string()),
             namespace: None,
-            update_listener: None
+            update_listener: tokio::sync::broadcast::channel(1).0
         }
     }
 }

@@ -1,11 +1,11 @@
-#[cfg(feature = "conf-remote")]
-use async_trait::async_trait;
 use config::builder::AsyncState;
-use config::{ConfigBuilder, ConfigError, Environment, File, FileFormat};
+use config::{ConfigBuilder, ConfigError, Environment, File};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
+#[cfg(feature = "conf-remote")]
+use {async_trait::async_trait, config::FileFormat, tokio::task::JoinHandle};
 
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
@@ -42,22 +42,20 @@ impl TardisConfig {
             parent_path, relative_path, profile
         );
 
-        let mut config = TardisConfig::do_init(relative_path, &profile, None).await?;
+        let config = TardisConfig::do_init(relative_path, &profile, None).await?;
 
         #[cfg(feature = "conf-remote")]
-        {
-            config = if let Some(conf_center) = &config.fw.conf_center {
-                if config.fw.app.id.is_empty() {
-                    return Err(TardisError::format_error(
-                        "[Tardis.Config] The [fw.app.id] must be set when the config center is enabled",
-                        "",
-                    ));
-                }
-                TardisConfig::do_init(relative_path, &profile, Some((&conf_center, &config.fw.app.id))).await?
-            } else {
-                config
-            };
-        }
+        let config = if let Some(conf_center) = &config.fw.conf_center {
+            if config.fw.app.id.is_empty() {
+                return Err(TardisError::format_error(
+                    "[Tardis.Config] The [fw.app.id] must be set when the config center is enabled",
+                    "",
+                ));
+            }
+            TardisConfig::do_init(relative_path, &profile, Some((conf_center, &config.fw.app.id))).await?
+        } else {
+            config
+        };
 
         info!(
             "[Tardis.Config] Initialized, base path:{:?}, relative path:{:?}, profile:{}",
@@ -107,30 +105,12 @@ impl TardisConfig {
                     conf_center.kind, conf_center.url
                 );
                 let mut conf_center_processor: Box<dyn ConfCenterProcess> = match conf_center.kind.to_lowercase().as_str() {
-                    "nacos" => Box::new(crate::config::config_nacos::ConfNacosProcessor::new(conf_center)),
+                    "nacos" => Box::new(crate::config::config_nacos::ConfNacosProcessor::init(conf_center, profile, app_id).await?),
                     _ => return Err(TardisError::format_error("[Tardis.Config] The kind of config center only supports [nacos]", "")),
                 };
-                let conf_center_url_list = conf_center_processor.fetch_conf_urls(app_id, profile).await?;
-                for conf_center_url in &conf_center_url_list {
-                    debug!("[Tardis.Config] Fetch remote file: {}", conf_center_url);
-                    conf = conf.add_async_source(HttpSource {
-                        url: conf_center_url.clone(),
-                        format,
-                    });
+                for source in conf_center_processor.as_mut().get_sources(format) {
+                    conf = conf.add_async_source(source);
                 }
-                tokio::spawn(async move {
-                    use std::time::Duration;
-                    loop {
-                        tokio::time::sleep(Duration::from_secs(30)).await;
-                        // for conf_center_url in conf_center_processor.fetch_conf_urls(app_id, profile).await.unwrap() {
-                        //     debug!("[Tardis.Config] Fetch remote file: {}", &conf_center_url);
-                        //     conf = conf.add_async_source(HttpSource {
-                        //         url: conf_center_url,
-                        //         format,
-                        //     });
-                        // }
-                    }
-                });
             }
         }
 
@@ -204,15 +184,31 @@ impl TardisConfig {
 #[cfg(feature = "conf-remote")]
 #[derive(std::fmt::Debug)]
 pub(crate) struct HttpSource<F: config::Format> {
-    url: String,
-    format: F,
+    pub url: String,
+    pub format: F,
+    pub md5_tx: tokio::sync::watch::Sender<Option<String>>,
 }
 
 #[cfg(feature = "conf-remote")]
-#[async_trait]
-pub(crate) trait ConfCenterProcess {
-    async fn fetch_conf_urls(&mut self, profile: &str, app_id: &str) -> TardisResult<Vec<String>>;
-    async fn fetch_conf_listener_urls(&mut self, profile: &str, app_id: &str, content_md5: Option<&str>) -> TardisResult<Vec<String>>;
+impl<F: config::Format> HttpSource<F> {
+    pub(crate) fn new(url: String, format: F) -> Self {
+        let (md5_tx, _) = tokio::sync::watch::channel(None);
+        HttpSource { url, format, md5_tx }
+    }
+}
+pub(crate) trait ConfCenterProcessListener {
+    fn has_changed(&self) -> bool;
+    fn init() -> TardisResult<Self>
+    where
+        Self: Sized;
+}
+
+#[cfg(feature = "conf-remote")]
+// temporarily dont need async_trait
+// #[async_trait]
+pub(crate) trait ConfCenterProcess: Sync + Send + std::fmt::Debug {
+    fn get_sources(&mut self, format: FileFormat) -> Vec<HttpSource<FileFormat>>;
+    fn watch(self) -> JoinHandle<()>;
 }
 
 #[cfg(feature = "conf-remote")]
@@ -232,6 +228,19 @@ where
                 .text()
                 .await
                 .map_err(|error| ConfigError::Foreign(Box::new(error)))
+                .map(|text| {
+                    use crypto::digest::Digest;
+                    let mut md5 = crypto::md5::Md5::new();
+                    md5.input_str(&text);
+                    let md5 = md5.result_str();
+                    match self.md5_tx.send(Some(md5)) {
+                        Ok(_) => {}
+                        Err(_) => {
+                            log::warn!("[Tardis.Config] Update listener error: md5 watcher channel closed");
+                        }
+                    }
+                    text
+                })
                 .and_then(|text| self.format.parse(Some(&self.url), &text).map_err(|error| ConfigError::Foreign(error))),
             _ => Err(ConfigError::Message(format!(
                 "[Tardis.Config] Fetch remote file: {} error {}",
