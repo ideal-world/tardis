@@ -10,7 +10,7 @@ use tardis::TardisFuns;
 #[ignore]
 async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug");
-
+    env::set_current_dir("./tardis").unwrap();
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 2);
