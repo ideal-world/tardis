@@ -5,13 +5,30 @@ use std::env;
 use tardis::basic::result::TardisResult;
 use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
+use tardis::config::config_nacos::{
+    nacos_client::{
+        NacosClient,
+        NacosConfigDescriptor
+    }
+};
 
 #[tokio::test]
-#[ignore]
+// #[ignore]
 async fn test_config_with_remote() -> TardisResult<()> {
+    use std::fs::*;
     env::set_var("RUST_LOG", "debug");
-    env::set_current_dir("./tardis").unwrap();
+    env::set_var("PROFILE", "remote");
+
+    // env::set_current_dir("./tardis").unwrap();
     TardisFuns::init(Some("tests/config")).await?;
+
+    let fw_config = TardisFuns::fw_config().conf_center.as_ref().unwrap();
+    let mut client: NacosClient = NacosClient::new(&fw_config.url);
+    client.login(&fw_config.username, &fw_config.password).await?;
+    let remote_cfg = NacosConfigDescriptor::new("conf-remote-1", "DEFAULT_GROUP");
+    let pub_result = client.publish_config(&remote_cfg, &mut File::open("./config/remote-config/conf-remote-1.toml").unwrap()).await.unwrap();
+    assert!(pub_result);
+
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 2);
 

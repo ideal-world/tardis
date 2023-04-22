@@ -8,15 +8,17 @@ use tokio::task::JoinHandle;
 use super::{config_dto::ConfCenterConfig, config_processor::ConfCenterProcess};
 use crate::basic::result::TardisResult;
 use crate::config::config_processor::HttpSource;
+use crate::config::config_utils::config_foreign_err;
 
-pub(crate) mod nacos_client;
+pub mod nacos_client;
 #[derive(Debug)]
 /// Config from Nacos,
 /// A handle corresponding to a remote config
 pub(crate) struct ConfNacosConfigHandle {
     // pub base_url: String,
-    pub profile: String,
-    pub app_id: String,
+    // pub profile: String,
+    // pub app_id: String,
+    pub data_id: String,
     // pub access_token: String,
     pub tenant: Option<String>,
     pub group: String,
@@ -26,9 +28,25 @@ pub(crate) struct ConfNacosConfigHandle {
 }
 
 impl ConfNacosConfigHandle {
-    fn get_nacos_config_descriptor(&self) -> nacos_client::NacosConfigDescriptor<'_> {
+    fn new(
+        profile: Option<&str>,
+        app_id: &str,
+        tenant: Option<&str>,
+        group: &str,
+        nacos_client: &Arc<nacos_client::NacosClient>,
+    ) -> Self {
+        let data_id = format!("{}-{}", app_id, profile.unwrap_or("default"));
+        Self {
+            data_id,
+            tenant: tenant.map(str::to_string),
+            group: group.to_string(),
+            nacos_client: nacos_client.clone(),
+            md5_watcher: None,
+        }
+    }
+    fn get_nacos_config_descriptor<'a>(&'a self) -> nacos_client::NacosConfigDescriptor<'a> {
         nacos_client::NacosConfigDescriptor {
-            data_id: &format!("{}-{}", self.app_id, self.profile),
+            data_id: &self.data_id,
             group: &self.group,
             tenant: self.tenant.as_deref(),
         }
@@ -91,7 +109,7 @@ impl ConfNacosConfigHandle {
                     let new_cfg = self.nacos_client.listen_config(&self.get_nacos_config_descriptor()).await.map_err(config_foreign_err);
                     
                     
-                    if new_cfg.as_ref().map(String::is_empty).unwrap_or(true) {
+                    if new_cfg.ok().flatten().as_ref().map(String::is_empty).unwrap_or(true) {
                         tokio::time::sleep(POLL_PERIOD).await;
                         continue;
                     } else {
@@ -123,27 +141,13 @@ impl<'a> ConfNacosProcessor<'a> {
     pub async fn init(config: &'a ConfCenterConfig, profile: &'a str, app_id: &'a str) -> TardisResult<ConfNacosProcessor<'a>> {
         let mut client = nacos_client::NacosClient::new(&config.url);
         client.login(&config.username, &config.password).await.map_err(|error|ConfigError::Foreign(Box::new(error)))?;
-        let client = Arc::new(client);
+        let nacos_client = Arc::new(client);
         let group = config.group.as_deref().unwrap_or("DEFAULT_GROUP");
         let tenant = config.namespace.as_deref();
-        let default_config_handle = ConfNacosConfigHandle {
-            profile: "default".to_owned(),
-            app_id: app_id.to_owned(),
-            tenant: tenant.map(|s| s.to_owned()),
-            group: group.to_owned(),
-            md5_watcher: None,
-            nacos_client: client.clone(),
-        };
+        let default_config_handle = ConfNacosConfigHandle::new(None, app_id, tenant, group, &nacos_client);
         let config_handle = if !profile.is_empty() {
             // let (tx, rx) = tokio::sync::watch::channel(None);
-            Some(ConfNacosConfigHandle {
-                profile: profile.to_owned(),
-                app_id: app_id.to_owned(),
-                tenant: tenant.map(|s| s.to_owned()),
-                group: group.to_owned(),
-                md5_watcher: None,
-                nacos_client: client.clone(),
-            })
+            Some(ConfNacosConfigHandle::new(Some(profile), app_id, tenant, group, &nacos_client))
         } else {
             None
         };

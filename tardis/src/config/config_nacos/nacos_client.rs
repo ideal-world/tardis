@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Write, io::Read};
 
 use derive_more::Display;
-use futures::TryFutureExt;
+// use futures::TryFutureExt;
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
 
