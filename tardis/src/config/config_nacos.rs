@@ -1,38 +1,42 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use config::ConfigError;
-use serde::Deserialize;
 use tokio::task::JoinHandle;
 
 use self::nacos_client::NacosClientError;
 
 use super::{config_dto::ConfCenterConfig, config_processor::ConfCenterProcess};
 use crate::basic::result::TardisResult;
-use crate::config::config_processor::HttpSource;
 use crate::config::config_utils::config_foreign_err;
-use crate::TARDIS_INST;
-
 pub mod nacos_client;
 #[derive(Debug)]
 /// Config from Nacos,
-/// A handle corresponding to a remote config
-pub(crate) struct ConfNacosConfigHandle<F: config::Format> 
-{
-    // pub base_url: String,
-    // pub profile: String,
-    // pub app_id: String,
-    pub data_id: String,
-    // pub access_token: String,
-    pub tenant: Option<String>,
-    pub group: String,
-    pub nacos_client: Arc<nacos_client::NacosClient>,
-    pub format: Arc<F>,
-    /// md5 reciever of remote config
-    pub md5: Arc<tokio::sync::Mutex<Option<String>>>,
+/// A source corresponding to a remote config
+pub(crate) struct ConfNacosConfigSource<F: config::Format> {
+    data_id: String,
+    tenant: Option<String>,
+    group: String,
+    /// nacos client
+    nacos_client: Arc<nacos_client::NacosClient>,
+    format: Arc<F>,
+    /// md5 of config content
+    md5: Arc<tokio::sync::Mutex<Option<String>>>,
 }
 
-impl<F: config::Format> Clone for ConfNacosConfigHandle<F> {
+impl<F: config::Format> std::fmt::Display for ConfNacosConfigSource<F>
+where
+    F: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ConfNacosConfigSource {{ data_id: {}, tenant: {:?}, group: {}, nacos_client: {}, format: {:?} }}",
+            self.data_id, self.tenant, self.group, self.nacos_client, self.format,
+        )
+    }
+}
+
+impl<F: config::Format> Clone for ConfNacosConfigSource<F> {
     fn clone(&self) -> Self {
         Self {
             data_id: self.data_id.clone(),
@@ -45,10 +49,12 @@ impl<F: config::Format> Clone for ConfNacosConfigHandle<F> {
     }
 }
 
-impl<F: config::Format> ConfNacosConfigHandle<F>
-where F: Send + Sync + std::fmt::Debug + 'static,
- {
-    fn new(profile: Option<&str>, app_id: &str, tenant: Option<&str>, group: &str, format:Arc<F>, nacos_client: &Arc<nacos_client::NacosClient>) -> Self {
+impl<F: config::Format> ConfNacosConfigSource<F>
+where
+    F: Send + Sync + std::fmt::Debug + 'static,
+{
+    /// create a new config source
+    fn new(profile: Option<&str>, app_id: &str, tenant: Option<&str>, group: &str, format: Arc<F>, nacos_client: &Arc<nacos_client::NacosClient>) -> Self {
         let data_id = format!("{}-{}", app_id, profile.unwrap_or("default"));
         Self {
             data_id,
@@ -59,6 +65,8 @@ where F: Send + Sync + std::fmt::Debug + 'static,
             md5: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
+
+    /// get a nacos config descriptor of this source
     fn get_nacos_config_descriptor(&self) -> nacos_client::NacosConfigDescriptor<'_> {
         nacos_client::NacosConfigDescriptor {
             data_id: &self.data_id,
@@ -67,7 +75,7 @@ where F: Send + Sync + std::fmt::Debug + 'static,
             md5: self.md5.clone(),
         }
     }
-    fn watch(self, update_notifier: tokio::sync::broadcast::Sender<()>) -> JoinHandle<()> {
+    fn watch(self, update_notifier: tokio::sync::mpsc::Sender<()>) -> JoinHandle<()> {
         let task = async move {
             loop {
                 log::debug!("[Tardis.config] Nacos Remote Lisener start for {:?}", &self);
@@ -79,16 +87,17 @@ where F: Send + Sync + std::fmt::Debug + 'static,
                     tokio::time::sleep(self.nacos_client.poll_period).await;
                     continue;
                 } else {
-                    match update_notifier.send(()) {
+                    match update_notifier.send(()).await {
                         Ok(_) => {
+                            // tardis will be reboot, stop watching
                             log::debug!("[Tardis.config] Nacos Remote config updated, send update notifier")
                         }
-                        Err(_) => {
-                            // if receiver dropped, stop watching
-                            log::debug!("[Tardis.config] Nacos Remote config updated, but no receiver found, stop watching");
-                            break;
+                        Err(e) => {
+                            // if receiver dropped, stop watching, since tardis wont be reboot anyway
+                            log::debug!("[Tardis.config] Nacos Remote config updated, but no receiver found, stop watching, error: {e}");
                         }
                     }
+                    break;
                 }
             }
         };
@@ -97,28 +106,27 @@ where F: Send + Sync + std::fmt::Debug + 'static,
 }
 
 #[async_trait::async_trait]
-impl<F: config::Format> config::AsyncSource for ConfNacosConfigHandle<F>
+impl<F: config::Format> config::AsyncSource for ConfNacosConfigSource<F>
 where
     F: Send + Sync + std::fmt::Debug + 'static,
 {
     async fn collect(&self) -> Result<config::Map<String, config::Value>, ConfigError> {
+        log::info!("[Tardis.config] Nacos Remote config server response: {}", &self);
         match self.nacos_client.get_config(&self.get_nacos_config_descriptor()).await {
-            Ok((status, config_text)) => {
-                match status.as_u16() {
-                    200 => {
-                        log::debug!("[Tardis.config] Nacos Remote config server response: {}", config_text);
-                        self.format.parse(None, &config_text).map_err(|error| ConfigError::Foreign(error))
-                    },
-                    404 => {
-                        log::warn!("[Tardis.config] Nacos Remote config not found");
-                        return Ok(config::Map::new());
-                    }
-                    _ => {
-                        log::warn!("[Tardis.config] Nacos Remote config server error: {}", status);
-                        return Ok(config::Map::new());
-                    }
+            Ok((status, config_text)) => match status.as_u16() {
+                200 => {
+                    log::debug!("[Tardis.config] Nacos Remote config server response: {}", config_text);
+                    self.format.parse(None, &config_text).map_err(|error| ConfigError::Foreign(error))
                 }
-            }
+                404 => {
+                    log::warn!("[Tardis.config] Nacos Remote config not found");
+                    return Ok(config::Map::new());
+                }
+                _ => {
+                    log::warn!("[Tardis.config] Nacos Remote config server error: {}", status);
+                    return Ok(config::Map::new());
+                }
+            },
             Err(NacosClientError::ReqwestError(e)) => {
                 if e.status().map(|s| u16::from(s) == 404).unwrap_or(false) {
                     log::warn!("[Tardis.config] Nacos Remote config server error: {}", e);
@@ -126,60 +134,60 @@ where
                 } else {
                     return Err(ConfigError::Foreign(Box::new(e)));
                 }
-            },
+            }
             Err(e) => return Err(ConfigError::Foreign(Box::new(e))),
         }
     }
 }
+
+/// # Nacos config processor
+/// implement ConfProcess for Naocs
 #[derive(Debug)]
-pub(crate) struct ConfNacosProcessor<'a, F: config::Format>
-where F: Send + Sync + std::fmt::Debug + 'static,
- {
-    pub(crate) conf_center_config: &'a ConfCenterConfig,
-    pub(crate) default_config_handle: ConfNacosConfigHandle<F>,
-    pub(crate) config_handle: Option<ConfNacosConfigHandle<F>>,
+pub(crate) struct ConfNacosProcessor<F: config::Format>
+where
+    F: Send + Sync + std::fmt::Debug + 'static,
+{
+    /// *-default config source
+    pub(crate) default_config_source: ConfNacosConfigSource<F>,
+    /// *-{profile} config source, it could be none
+    pub(crate) config_source: Option<ConfNacosConfigSource<F>>,
 }
 
-impl<'a, F: config::Format> ConfNacosProcessor<'a, F>
-where F: Send + Sync + std::fmt::Debug + 'static,
- {
-    pub async fn init(config: &'a ConfCenterConfig, profile: &'a str, app_id: &'a str, format: &Arc<F>) -> TardisResult<ConfNacosProcessor<'a, F>> {
+impl<F: config::Format> ConfNacosProcessor<F>
+where
+    F: Send + Sync + std::fmt::Debug + 'static,
+{
+    pub async fn init(config: &ConfCenterConfig, profile: &str, app_id: &str, format: &Arc<F>) -> TardisResult<ConfNacosProcessor<F>> {
         let mut client = nacos_client::NacosClient::new(&config.url);
         client.login(&config.username, &config.password).await.map_err(|error| ConfigError::Foreign(Box::new(error)))?;
         let nacos_client = Arc::new(client);
         let group = config.group.as_deref().unwrap_or("DEFAULT_GROUP");
         let tenant = config.namespace.as_deref();
-        let default_config_handle = ConfNacosConfigHandle::new(None, app_id, tenant, group, format.clone(), &nacos_client);
-        let config_handle = if !profile.is_empty() {
+        let default_config_source = ConfNacosConfigSource::new(None, app_id, tenant, group, format.clone(), &nacos_client);
+        let config_source = if !profile.is_empty() {
             // let (tx, rx) = tokio::sync::watch::channel(None);
-            Some(ConfNacosConfigHandle::new(Some(profile), app_id, tenant, group, format.clone(), &nacos_client))
+            Some(ConfNacosConfigSource::new(Some(profile), app_id, tenant, group, format.clone(), &nacos_client))
         } else {
             None
         };
         Ok(Self {
-            conf_center_config: config,
-            default_config_handle,
-            config_handle,
+            default_config_source,
+            config_source,
         })
     }
 }
 
-// #[async_trait]
-impl<'a, F: config::Format> ConfCenterProcess for ConfNacosProcessor<'a, F>
+impl<F: config::Format> ConfCenterProcess for ConfNacosProcessor<F>
 where
     F: Send + Sync + std::fmt::Debug + 'static,
 {
-    fn watch(self) -> JoinHandle<()> {
+    fn listen(self, reload_notifier: &tokio::sync::mpsc::Sender<()>) -> JoinHandle<()> {
         let ConfNacosProcessor {
-            conf_center_config,
-            default_config_handle,
-            config_handle,
+            default_config_source,
+            config_source,
         } = self;
-        let update_notifier = conf_center_config.update_listener.clone();
-        let h1 = default_config_handle.watch(update_notifier);
-        let update_notifier = conf_center_config.update_listener.clone();
-
-        let maybe_h2 = config_handle.map(|h| h.watch(update_notifier));
+        let h1 = default_config_source.watch(reload_notifier.clone());
+        let maybe_h2 = config_source.map(|h| h.watch(reload_notifier.clone()));
         tokio::spawn(async move {
             h1.await.unwrap();
             if let Some(h2) = maybe_h2 {
@@ -187,19 +195,12 @@ where
             }
         })
     }
-    fn get_sources(&mut self) -> Vec<ConfNacosConfigHandle<F>> {
-        let default_src = self.default_config_handle.clone();
+    fn get_sources(&mut self) -> Vec<ConfNacosConfigSource<F>> {
+        let default_src = self.default_config_source.clone();
         let mut sources = vec![default_src];
-        sources.extend(self.config_handle.as_ref().map(Clone::clone));
+        sources.extend(self.config_source.as_ref().map(Clone::clone));
         sources
     }
 
-
-    type Source = ConfNacosConfigHandle<F>;
-}
-
-#[derive(Deserialize)]
-struct AuthResponse {
-    #[serde(rename(deserialize = "accessToken"))]
-    pub access_token: String,
+    type Source = ConfNacosConfigSource<F>;
 }

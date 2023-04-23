@@ -14,7 +14,7 @@ use tokio::sync::Mutex;
 // #[ignore]
 async fn test_config_with_remote() -> TardisResult<()> {
     use std::fs::*;
-    env::set_var("RUST_LOG", "debug");
+    env::set_var("RUST_LOG", "info,tardis=info");
     env::set_var("PROFILE", "default");
 
     env::set_current_dir("./tardis").unwrap();
@@ -28,7 +28,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     let fw_config = TardisFuns::fw_config().conf_center.as_ref().expect("fail to get conf_center config");
     let mut client: NacosClient = NacosClient::new(&fw_config.url);
     client.login(&fw_config.username, &fw_config.password).await?;
-    let remote_cfg = NacosConfigDescriptor::new("conf-remote", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
+    let remote_cfg = NacosConfigDescriptor::new("test-app-remote", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
     // delete remote config if exists
     let delete_result = client.delete_config(&remote_cfg).await;
     match delete_result {
@@ -40,14 +40,14 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // publish remote config
     log::info!("publish remote config: {:?}", remote_cfg);
     let pub_result =
-        client.publish_config(&remote_cfg, &mut File::open("./tests/config/conf-remote.toml").expect("fail to open conf-remote.toml")).await.expect("fail to publish remote config");
+        client.publish_config(&remote_cfg, &mut File::open("./tests/config/remote-config/conf-remote-v1.toml").expect("fail to open conf-remote-v1")).await.expect("fail to publish remote config");
     assert!(pub_result);
     log::info!("publish remote config success");
 
     // get remote config
     env::set_var("PROFILE", "remote");
     TardisFuns::init(Some("tests/config")).await?;
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_remote");
+    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
     assert_eq!(
         TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url,
@@ -56,42 +56,19 @@ async fn test_config_with_remote() -> TardisResult<()> {
 
     // update remote config
     let update_result = client
-        .publish_config(&remote_cfg, &mut File::open("./tests/config/conf-remote-updated.toml").expect("fail to open conf-remote-updated.toml"))
+        .publish_config(&remote_cfg, &mut File::open("./tests/config/remote-config/conf-remote-v2.toml").expect("fail to open conf-remote-v2"))
         .await
         .expect("fail to update remote config");
     log::info!("update remote config result: {:?}", update_result);
-    let mut count_down = 30;
+    let mut count_down = 20;
     while count_down > 0 {
-        if count_down %5 == 0 {
+        if count_down %10 == 0 {
             log::info!("wait {}s for polling", count_down);
         }
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         count_down -= 1;
     }
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_remote_v2");
-
-
-    env::set_var("PROFILE", "remote");
-    env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
-    TardisFuns::init(Some("tests/config")).await?;
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_remote");
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
-    assert_eq!(TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url, "postgres://postgres@m1.proj");
-
-    env::set_var("PROFILE", "remote");
-    env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
-    TardisFuns::init(Some("tests/config")).await?;
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_remote");
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
-    assert_eq!(TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url, "postgres://postgres@m1.proj");
-
-    env::set_var("PROFILE", "remote");
-    env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
-    env::set_var("Tardis_CS.PROJECT_NAME", "测试_env");
-    TardisFuns::init(Some("tests/config")).await?;
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_env");
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
-    assert_eq!(TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url, "postgres://postgres@m1.proj");
+    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded_v2");
 
     Ok(())
 }

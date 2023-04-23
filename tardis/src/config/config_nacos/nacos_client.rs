@@ -1,10 +1,10 @@
-use std::{collections::HashMap, fmt::Write, io::Read, sync::Arc};
+use std::{collections::HashMap, fmt::Display, io::Read, sync::Arc};
 
 use derive_more::Display;
 // use futures::TryFutureExt;
+use crypto::{digest::Digest, md5::Md5};
 use reqwest::{Error as ReqwestError, StatusCode};
 use serde::{Deserialize, Serialize};
-use crypto::{digest::Digest, md5::Md5};
 
 const ACCESS_TOKEN_FIELD: &str = "accessToken";
 
@@ -27,10 +27,20 @@ pub struct NacosClient {
     reqwest_client: reqwest::Client,
 }
 
+impl Display for NacosClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "NacosClient {{ base_url: {}, poll_period: {:?}, access_token: {:?} }}",
+            self.base_url, self.poll_period, self.access_token,
+        )
+    }
+}
+
 impl Default for NacosClient {
     fn default() -> Self {
         Self {
-            base_url: "http://localhost:8848/nacos/".to_owned(),
+            base_url: "http://localhost:8848/nacos".to_owned(),
             poll_period: std::time::Duration::from_secs(5),
             access_token: None,
             reqwest_client: reqwest::Client::new(),
@@ -39,6 +49,7 @@ impl Default for NacosClient {
 }
 
 impl NacosClient {
+    /// create a new nacos client
     pub fn new(base_url: impl Into<String>) -> Self {
         Self {
             base_url: base_url.into(),
@@ -46,9 +57,12 @@ impl NacosClient {
         }
     }
 
-    pub fn access_token_as_query<'a>(&'a self) -> Vec<(&'a str, &'a str)> {
+    /// take access token as reqwest acceptable query
+    fn access_token_as_query(&self) -> Vec<(&str, &str)> {
         self.access_token.as_ref().map(|token| (ACCESS_TOKEN_FIELD, token.as_str())).into_iter().collect()
     }
+
+    /// authenticate with username and password
     pub async fn login(&mut self, username: &str, password: &str) -> Result<&mut Self, reqwest::Error> {
         let url = format!("{}/v1/auth/login", self.base_url);
         let mut params = HashMap::new();
@@ -59,6 +73,7 @@ impl NacosClient {
         Ok(self)
     }
 
+    /// publish config by a nacos config descriptor and some content implement `Read`
     pub async fn publish_config(&mut self, descriptor: &NacosConfigDescriptor<'_>, content: &mut impl Read) -> Result<bool, NacosClientError> {
         use NacosClientError::*;
         let url = format!("{}/v1/cs/configs", self.base_url);
@@ -66,22 +81,12 @@ impl NacosClient {
         let mut content_buf = String::new();
         content.read_to_string(&mut content_buf).map_err(IoError)?;
         params.insert("content", content_buf);
-        let resp = 
-        self.reqwest_client
-            .post(&url)
-            .query(descriptor)
-            .query(&self.access_token_as_query())
-            .form(&params)
-            .send()
-            .await;
+        let resp = self.reqwest_client.post(&url).query(descriptor).query(&self.access_token_as_query()).form(&params).send().await;
         log::debug!("publish_config resp: {:?}", resp);
-        resp
-            .map_err(ReqwestError)?
-            .json::<bool>()
-            .await
-            .map_err(ReqwestError)
+        resp.map_err(ReqwestError)?.json::<bool>().await.map_err(ReqwestError)
     }
 
+    /// get config by a nacos config descriptor
     pub async fn get_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<(StatusCode, String), NacosClientError> {
         use NacosClientError::*;
         let url = format!("{}/v1/cs/configs", self.base_url);
@@ -89,14 +94,19 @@ impl NacosClient {
         match resp {
             Ok(resp) => {
                 let status = resp.status();
-                let text = resp.text().await.map_err(ReqwestError)?;
-                descriptor.update_md5(&text).await;
-                Ok((status, text))
+                if status.is_success() {
+                    let text = resp.text().await.map_err(ReqwestError)?;
+                    descriptor.update_md5(&text).await;
+                    Ok((status, text))
+                } else {
+                    Err(ReqwestError(resp.error_for_status().unwrap_err()))
+                }
             }
             Err(e) => Err(ReqwestError(e)),
         }
     }
 
+    /// delete config by a nacos config descriptor
     pub async fn delete_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<bool, NacosClientError> {
         use NacosClientError::*;
         let auth_url = format!("{}/v1/cs/configs", self.base_url);
@@ -112,20 +122,21 @@ impl NacosClient {
             .map_err(ReqwestError)
     }
 
-    /// listen config change, if updated, return Some(true)
+    /// listen config change, if updated, return Ok(true), if not updated, return Ok(false)
     pub async fn listen_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<bool, NacosClientError> {
         use NacosClientError::*;
         {
             let md5 = descriptor.md5.lock().await;
             if md5.is_none() {
-                return Ok(false)
+                return Ok(false);
             }
         }
         let url = format!("{}/v1/cs/configs/listener", self.base_url);
         let mut params = HashMap::new();
         params.insert("Listening-Configs", descriptor.as_listening_configs().await);
         log::debug!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
-        let resp = self.reqwest_client
+        let resp = self
+            .reqwest_client
             .post(&url)
             .header("Long-Pulling-Timeout", self.poll_period.as_millis().to_string())
             .query(&self.access_token_as_query())
@@ -134,19 +145,11 @@ impl NacosClient {
             .await
             .map_err(ReqwestError)?;
         log::debug!("[Tardis.Config] listen_config resp: {:?}", resp);
-        let result = resp
-            .text()
-            .await
-            .map_err(ReqwestError)?
-            ;
-        let result = if result.is_empty() {
-            None
-        } else {
-            Some(result)
-        };
+        let result = resp.text().await.map_err(ReqwestError)?;
+        let result = if result.is_empty() { None } else { Some(result) };
         if let Some(config_text) = &result {
             {
-                log::debug!("[Tardis.Config] Listening-Configs {} updated", config_text);
+                log::info!("[Tardis.Config] Listening-Configs {} updated", config_text);
                 Ok(true)
             }
         } else {
@@ -156,6 +159,8 @@ impl NacosClient {
     }
 }
 
+/// # Nacos config descriptor
+/// it's a descriptor corresponding to a config in nacos, it stores content's md5 value
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NacosConfigDescriptor<'a> {
@@ -163,38 +168,42 @@ pub struct NacosConfigDescriptor<'a> {
     pub group: &'a str,
     pub tenant: Option<&'a str>,
     #[serde(skip)]
-    pub md5: Arc<tokio::sync::Mutex<Option<String>>>
-    // #[serde(rename(serialize = "type"))]
-    // pub tp: Option<String>,
+    pub md5: Arc<tokio::sync::Mutex<Option<String>>>,
 }
 
 impl<'a> NacosConfigDescriptor<'a> {
+    /// create a new config descriptor
     pub fn new(data_id: &'a str, group: &'a str, md5: &Arc<tokio::sync::Mutex<Option<String>>>) -> Self {
         Self {
             data_id,
             group,
             tenant: None,
-            md5: md5.clone()
+            md5: md5.clone(),
         }
     }
 
+    /// update md5 value by content
     pub async fn update_md5(&self, content: &str) {
         let mut encoder = Md5::new();
         encoder.input_str(content);
-        self.md5.lock().await.replace(encoder.result_str());
+        let result = encoder.result_str();
+        self.md5.lock().await.replace(result);
     }
 
-    /// data format: dataId%02Group%02contentMD5%02tenant%01 or dataId%02Group%02contentMD5%01
+    /// data format: `dataId%02Group%02contentMD5%02tenant%01` or `dataId%02Group%02contentMD5%01`
+    /// 
+    /// md5 value could be empty string
+    /// 
     /// refer: https://nacos.io/zh-cn/docs/open-api.html
     pub async fn as_listening_configs(&self) -> String {
         let spliter = 0x02 as char;
-        let end = 0x01 as char;
+        let terminator = 0x01 as char;
         // if md5 is none then it will be empty string
         let md5 = self.md5.lock().await.take().unwrap_or_default();
         let mut buf = vec![self.data_id, self.group, &md5];
         buf.extend(self.tenant.iter());
         let mut result = buf.join(&spliter.to_string());
-        result.push(end);
+        result.push(terminator);
         result
     }
 }

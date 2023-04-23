@@ -6,7 +6,7 @@ use std::env;
 use std::path::Path;
 use std::sync::Arc;
 #[cfg(feature = "conf-remote")]
-use {async_trait::async_trait, config::FileFormat, tokio::task::JoinHandle};
+use {config::FileFormat, tokio::task::JoinHandle};
 
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
@@ -105,17 +105,13 @@ impl TardisConfig {
                     "[Tardis.Config] Enabled config center: [{}] {} , start refetching configuration",
                     conf_center.kind, conf_center.url
                 );
+                let reload_notifier = conf_center.reload_on_remote_config_change(relative_path);
                 match conf_center.kind.to_lowercase().as_str() {
                     "nacos" => {
-                        let mut processor = crate::config::config_nacos::ConfNacosProcessor::init(
-                            conf_center, 
-                            profile, 
-                            app_id, 
-                            &Arc::new(format)
-                        ).await?;
+                        let mut processor = crate::config::config_nacos::ConfNacosProcessor::init(conf_center, profile, app_id, &Arc::new(format)).await?;
                         conf = processor.add_to_config(conf);
-                        processor.watch();
-                    },
+                        processor.listen(&reload_notifier);
+                    }
                     _ => return Err(TardisError::format_error("[Tardis.Config] The kind of config center only supports [nacos]", "")),
                 };
             }
@@ -188,25 +184,6 @@ impl TardisConfig {
     }
 }
 
-#[cfg(feature = "conf-remote")]
-#[derive(std::fmt::Debug)]
-pub(crate) struct HttpSource<F: config::Format> {
-    pub processor: Box<dyn ConfCenterClient>,
-    pub format: F,
-    // pub md5: Arc<tokio::sync::Mutex<Option<String>>>,
-}
-
-#[async_trait]
-pub trait ConfCenterClient: Sync + Send + std::fmt::Debug {
-    async fn fetch(&mut self, format: FileFormat) -> TardisResult<config::Map<String, config::Value>>;
-}
-
-#[cfg(feature = "conf-remote")]
-impl<F: config::Format> HttpSource<F> {
-    pub(crate) fn new(processor: impl ConfCenterProcess, format: F) -> Self {
-        todo!()
-    }
-}
 pub(crate) trait ConfCenterProcessListener {
     fn has_changed(&self) -> bool;
     fn init() -> TardisResult<Self>
@@ -218,51 +195,18 @@ pub(crate) trait ConfCenterProcessListener {
 // temporarily dont need async_trait
 // #[async_trait]
 pub(crate) trait ConfCenterProcess: Sync + Send + std::fmt::Debug {
+    /// Source type of this config-center processor
     type Source: config::AsyncSource + std::marker::Send + std::marker::Sync + 'static;
+    /// Get all sources of this config-center processor
     fn get_sources(&mut self) -> Vec<Self::Source>;
-    fn watch(self) -> JoinHandle<()>;
+    /// listen the config-center processor change
+    fn listen(self, reload_notifier: &tokio::sync::mpsc::Sender<()>) -> JoinHandle<()>;
+    /// Add all sources to config
     fn add_to_config(&mut self, mut conf: ConfigBuilder<AsyncState>) -> ConfigBuilder<AsyncState> {
         for s in self.get_sources() {
             conf = conf.add_async_source(s);
         }
         conf
-    }
-}
-
-#[cfg(feature = "conf-remote")]
-#[async_trait]
-impl<F> config::AsyncSource for HttpSource<F>
-where
-    F: config::Format + Send + Sync + std::fmt::Debug + 'static,
-{
-    async fn collect(&self) -> Result<config::Map<String, config::Value>, ConfigError> {
-        todo!()
-        // let response = reqwest::get(&self.url).await.map_err(|error| ConfigError::Foreign(Box::new(error)))?;
-        // match response.status().as_u16() {
-        //     404 => {
-        //         log::warn!("[Tardis.Config] Fetch remote file: {} not found", &self.url);
-        //         Ok(config::Map::default())
-        //     }
-        //     200 => {
-        //         let config_text = response
-        //         .text()
-        //         .await
-        //         .map_err(|error| ConfigError::Foreign(Box::new(error)))?;
-        //         let mut md5 = crypto::md5::Md5::new();  
-        //         md5.input_str(&config_text);
-        //         let md5 = md5.result_str();
-        //         {
-        //             let mut md5_mutex = self.md5.lock().await;
-        //             md5_mutex.replace(md5);
-        //         }
-        //         self.format.parse(Some(&self.url), &config_text).map_err(|error| ConfigError::Foreign(error))
-        //     },
-        //     _ => Err(ConfigError::Message(format!(
-        //         "[Tardis.Config] Fetch remote file: {} error {}",
-        //         &self.url,
-        //         response.status().as_u16()
-        //     ))),
-        // }
     }
 }
 

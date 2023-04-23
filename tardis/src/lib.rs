@@ -334,12 +334,6 @@ impl TardisFuns {
         TardisLogger::init()?;
         let config = TardisConfig::init(relative_path).await?;
         TardisFuns::init_conf(config.clone()).await?;
-        #[cfg(feature = "conf-remote")]
-        {
-            if let Some(conf_center) = config.fw.conf_center.as_ref() { 
-                conf_center.reload_on_remote_config_change(relative_path);
-            }
-        }
         Ok(())
     }
 

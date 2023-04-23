@@ -691,37 +691,38 @@ pub struct ConfCenterConfig {
     pub group: Option<String>,
     pub format: Option<String>,
     pub namespace: Option<String>,
-    #[serde(skip_serializing, skip_deserializing)]
-    pub(crate) update_listener: tokio::sync::broadcast::Sender<()>
 }
 
 #[cfg(feature = "conf-remote")]
 impl ConfCenterConfig {
-    /// Subscribe to configuration updates / 订阅配置更新
-    pub fn subscribe_config_update(&self) -> tokio::sync::broadcast::Receiver<()> {
-        self.update_listener.subscribe()
-    }
     /// Reload configuration on remote configuration change / 远程配置变更时重新加载配置
-    pub fn reload_on_remote_config_change(&self, relative_path: Option<&str>) {
+    #[must_use]
+    pub fn reload_on_remote_config_change(&self, relative_path: Option<&str>) -> tokio::sync::mpsc::Sender<()> {
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
         let relative_path = relative_path.map(str::to_string);
-        let mut rx = self.subscribe_config_update();
-        let _config_listen_update_handle = tokio::spawn(async move {
-            while (rx.recv().await).is_ok() {
-                if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
-                    match TardisFuns::init_conf(config).await {
-                        Ok(_) => {
-                            log::info!("[Tardis.config] Configuration update succeeded");
-                        }
-                        Err(e) => {
-                            log::error!("[Tardis.config] Configuration update failed: {}", e);
-                        }
-                    }
-                } else {
-                    log::error!("[Tardis.config] Configuration update failed: Failed to load configuration");
+        tokio::spawn(async move {
+            match rx.recv().await {
+                Some(_) => {}
+                None => {
+                    log::debug!("[Tardis.config] Configuration update channel closed");
+                    return;
                 }
+            };
+            if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
+                match TardisFuns::init_conf(config).await {
+                    Ok(_) => {
+                        log::info!("[Tardis.config] Configuration update succeeded");
+                    }
+                    Err(e) => {
+                        log::error!("[Tardis.config] Configuration update failed: {}", e);
+                    }
+                }
+            } else {
+                log::error!("[Tardis.config] Configuration update failed: Failed to load configuration");
             }
+            log::debug!("[Tardis.config] Configuration update listener closed")
         });
-            
+        tx
     }
 }
 
@@ -735,7 +736,6 @@ impl Default for ConfCenterConfig {
             format: Some("toml".to_string()),
             group: Some("default".to_string()),
             namespace: None,
-            update_listener: tokio::sync::broadcast::channel(1).0
         }
     }
 }
