@@ -121,7 +121,7 @@ impl NacosClient {
         params.insert("Listening-Configs", descriptor.as_listening_configs().await);
         log::debug!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
         let resp = self.reqwest_client
-            .get(&url)
+            .post(&url)
             .header("Long-Pulling-Timeout", self.poll_period.as_millis().to_string())
             .query(&self.access_token_as_query())
             .query(&params)
