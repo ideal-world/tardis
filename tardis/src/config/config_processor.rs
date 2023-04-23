@@ -105,12 +105,14 @@ impl TardisConfig {
                     "[Tardis.Config] Enabled config center: [{}] {} , start refetching configuration",
                     conf_center.kind, conf_center.url
                 );
+                // listen reload signal
                 let reload_notifier = conf_center.reload_on_remote_config_change(relative_path);
                 match conf_center.kind.to_lowercase().as_str() {
                     "nacos" => {
                         let mut processor = crate::config::config_nacos::ConfNacosProcessor::init(conf_center, profile, app_id, &Arc::new(format)).await?;
                         conf = processor.add_to_config(conf);
-                        processor.listen(&reload_notifier);
+                        // listen update, if update, send reload signal
+                        processor.listen_update(&reload_notifier);
                     }
                     _ => return Err(TardisError::format_error("[Tardis.Config] The kind of config center only supports [nacos]", "")),
                 };
@@ -200,7 +202,7 @@ pub(crate) trait ConfCenterProcess: Sync + Send + std::fmt::Debug {
     /// Get all sources of this config-center processor
     fn get_sources(&mut self) -> Vec<Self::Source>;
     /// listen the config-center processor change
-    fn listen(self, reload_notifier: &tokio::sync::mpsc::Sender<()>) -> JoinHandle<()>;
+    fn listen_update(self, reload_notifier: &tokio::sync::mpsc::Sender<()>) -> JoinHandle<()>;
     /// Add all sources to config
     fn add_to_config(&mut self, mut conf: ConfigBuilder<AsyncState>) -> ConfigBuilder<AsyncState> {
         for s in self.get_sources() {

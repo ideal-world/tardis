@@ -75,7 +75,7 @@ where
             md5: self.md5.clone(),
         }
     }
-    fn watch(self, update_notifier: tokio::sync::mpsc::Sender<()>) -> JoinHandle<()> {
+    fn listen_update(self, update_notifier: tokio::sync::mpsc::Sender<()>) -> JoinHandle<()> {
         let task = async move {
             loop {
                 log::debug!("[Tardis.config] Nacos Remote Lisener start for {:?}", &self);
@@ -181,13 +181,13 @@ impl<F: config::Format> ConfCenterProcess for ConfNacosProcessor<F>
 where
     F: Send + Sync + std::fmt::Debug + 'static,
 {
-    fn listen(self, reload_notifier: &tokio::sync::mpsc::Sender<()>) -> JoinHandle<()> {
+    fn listen_update(self, reload_notifier: &tokio::sync::mpsc::Sender<()>) -> JoinHandle<()> {
         let ConfNacosProcessor {
             default_config_source,
             config_source,
         } = self;
-        let h1 = default_config_source.watch(reload_notifier.clone());
-        let maybe_h2 = config_source.map(|h| h.watch(reload_notifier.clone()));
+        let h1 = default_config_source.listen_update(reload_notifier.clone());
+        let maybe_h2 = config_source.map(|h| h.listen_update(reload_notifier.clone()));
         tokio::spawn(async move {
             h1.await.unwrap();
             if let Some(h2) = maybe_h2 {
