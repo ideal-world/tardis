@@ -115,7 +115,12 @@ impl NacosClient {
     /// listen config change, if updated, return Some(true)
     pub async fn listen_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<bool, NacosClientError> {
         use NacosClientError::*;
-
+        {
+            let md5 = descriptor.md5.lock().await;
+            if md5.is_none() {
+                return Ok(false)
+            }
+        }
         let url = format!("{}/v1/cs/configs/listener", self.base_url);
         let mut params = HashMap::new();
         params.insert("Listening-Configs", descriptor.as_listening_configs().await);
@@ -134,7 +139,6 @@ impl NacosClient {
             .await
             .map_err(ReqwestError)?
             ;
-        log::debug!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
         let result = if result.is_empty() {
             None
         } else {
@@ -143,8 +147,7 @@ impl NacosClient {
         if let Some(config_text) = &result {
             {
                 log::debug!("[Tardis.Config] Listening-Configs {} updated", config_text);
-                let md5 = descriptor.md5.lock().await;
-                Ok(md5.is_some())
+                Ok(true)
             }
         } else {
             // not updated
