@@ -16,9 +16,8 @@ group = "DEFAULT_GROUP"
 
 # test-app-remote in remote
 [cs]
-project_name = "测试_romote_remote"
+project_name = "测试_romote_remote_v2"
 level_num = 3
-
 [csm.m1]
 [csm.m1.db_proj]
 url = "ENC(9EE184E87EA31E6588C08BBC0F7C0E276DE482F7CEE914CBDA05DF619607A24E)"

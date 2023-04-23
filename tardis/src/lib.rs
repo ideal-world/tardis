@@ -337,7 +337,7 @@ impl TardisFuns {
         #[cfg(feature = "conf-remote")]
         {
             if let Some(conf_center) = config.fw.conf_center.as_ref() { 
-                conf_center.reload_on_remote_config_change(config.clone()) 
+                conf_center.reload_on_remote_config_change(relative_path);
             }
         }
         Ok(())

@@ -6,7 +6,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// Configuration of Tardis / Tardis的配置
-#[derive(Serialize, Clone)]
+#[derive(Default, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct TardisConfig {
     /// Project custom configuration / 项目自定义的配置
@@ -702,17 +702,22 @@ impl ConfCenterConfig {
         self.update_listener.subscribe()
     }
     /// Reload configuration on remote configuration change / 远程配置变更时重新加载配置
-    pub fn reload_on_remote_config_change(&self, tardis_config: TardisConfig) {
+    pub fn reload_on_remote_config_change(&self, relative_path: Option<&str>) {
+        let relative_path = relative_path.map(str::to_string);
         let mut rx = self.subscribe_config_update();
         let _config_listen_update_handle = tokio::spawn(async move {
             while (rx.recv().await).is_ok() {
-                match TardisFuns::init_conf(tardis_config.clone()).await {
-                    Ok(_) => {
-                        log::info!("[Tardis.config] Configuration update succeeded");
+                if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
+                    match TardisFuns::init_conf(config).await {
+                        Ok(_) => {
+                            log::info!("[Tardis.config] Configuration update succeeded");
+                        }
+                        Err(e) => {
+                            log::error!("[Tardis.config] Configuration update failed: {}", e);
+                        }
                     }
-                    Err(e) => {
-                        log::error!("[Tardis.config] Configuration update failed: {}", e);
-                    }
+                } else {
+                    log::error!("[Tardis.config] Configuration update failed: Failed to load configuration");
                 }
             }
         });
