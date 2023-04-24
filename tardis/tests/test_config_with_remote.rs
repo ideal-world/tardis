@@ -16,8 +16,8 @@ async fn test_config_with_remote() -> TardisResult<()> {
     use std::fs::*;
     env::set_var("RUST_LOG", "info,tardis=info");
     env::set_var("PROFILE", "default");
-
-    env::set_current_dir("./tardis").unwrap();
+    // for debug only
+    // env::set_current_dir("./tardis").unwrap();
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 2);
