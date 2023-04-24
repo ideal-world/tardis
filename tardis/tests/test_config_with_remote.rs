@@ -31,14 +31,22 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // get auth
     client.login(&fw_config.username, &fw_config.password).await?;
     // going to put test-app-default into remote
-    let remote_cfg = NacosConfigDescriptor::new("test-app-default", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
+    let remote_cfg_default = NacosConfigDescriptor::new("test-app-default", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
+    let remote_cfg_remote = NacosConfigDescriptor::new("test-app-remote", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
     // 1. delete remote config if exists
-    let delete_result = client.delete_config(&remote_cfg).await.inspect_err(|e| log::warn!("delete remote config failed: {}", e));
+    let _delete_result = client.delete_config(&remote_cfg_default).await.and_then(|e| {
+        log::warn!("delete remote config failed: {}", e);
+        Ok(false)
+    }).unwrap();
+    let _delete_result = client.delete_config(&remote_cfg_remote).await.and_then(|e| {
+        log::warn!("delete remote config failed: {}", e);
+        Ok(false)
+    }).unwrap();
     // 2. publish remote config
-    log::info!("publish remote config: {:?}", remote_cfg);
+    log::info!("publish remote config: {:?}", remote_cfg_default);
     let pub_result = client
         .publish_config(
-            &remote_cfg,
+            &remote_cfg_default,
             &mut File::open("./tests/config/remote-config/conf-remote-v1.toml").expect("fail to open conf-remote-v1"),
         )
         .await
@@ -57,9 +65,12 @@ async fn test_config_with_remote() -> TardisResult<()> {
     );
 
     // 4. update remote config
+    // wait for 5s
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    // upload config
     let update_result = client
         .publish_config(
-            &remote_cfg,
+            &remote_cfg_default,
             &mut File::open("./tests/config/remote-config/conf-remote-v2.toml").expect("fail to open conf-remote-v2"),
         )
         .await
@@ -68,7 +79,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // 4.1 wait for polling, and tardis will reboot since the remote config has been updated
     let mut count_down = 20;
     while count_down > 0 {
-        if count_down % 10 == 0 {
+        if count_down % 5 == 0 {
             log::info!("wait {}s for polling", count_down);
         }
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
