@@ -82,7 +82,7 @@ impl NacosClient {
         content.read_to_string(&mut content_buf).map_err(IoError)?;
         params.insert("content", content_buf);
         let resp = self.reqwest_client.post(&url).query(descriptor).query(&self.access_token_as_query()).form(&params).send().await;
-        log::debug!("publish_config resp: {:?}", resp);
+        log::debug!("[Tardis.Config] publish_config resp: {:?}", resp);
         resp.map_err(ReqwestError)?.json::<bool>().await.map_err(ReqwestError)
     }
 
@@ -200,10 +200,13 @@ impl<'a> NacosConfigDescriptor<'a> {
         let spliter = 0x02 as char;
         let terminator = 0x01 as char;
         // if md5 is none then it will be empty string
-        let md5 = self.md5.lock().await.take().unwrap_or_default();
-        let mut buf = vec![self.data_id, self.group, &md5];
-        buf.extend(self.tenant.iter());
-        let mut result = buf.join(&spliter.to_string());
+        let mut result = {
+            let md5_guard = self.md5.lock().await;
+            let md5 = md5_guard.as_ref().map(String::as_str).unwrap_or("");
+            let mut buf = vec![self.data_id, self.group, md5];
+            buf.extend(self.tenant.iter());
+            buf.join(&spliter.to_string())
+        };
         result.push(terminator);
         result
     }
