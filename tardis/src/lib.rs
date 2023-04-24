@@ -333,8 +333,7 @@ impl TardisFuns {
     pub async fn init(relative_path: Option<&str>) -> TardisResult<()> {
         TardisLogger::init()?;
         let config = TardisConfig::init(relative_path).await?;
-        TardisFuns::init_conf(config.clone()).await?;
-        Ok(())
+        TardisFuns::init_conf(config).await
     }
 
     /// Initialize log / 初始化日志
