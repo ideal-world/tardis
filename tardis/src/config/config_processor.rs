@@ -1,12 +1,14 @@
 use config::builder::AsyncState;
+#[cfg(feature = "conf-remote")]
+use {
+    config::FileFormat,
+    std::sync::Arc
+};
 use config::{ConfigBuilder, ConfigError, Environment, File};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
-use std::sync::Arc;
-#[cfg(feature = "conf-remote")]
-use {config::FileFormat, tokio::task::JoinHandle};
 
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;

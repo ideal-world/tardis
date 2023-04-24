@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Display, io::Read, sync::Arc};
 use derive_more::Display;
 // use futures::TryFutureExt;
 use crypto::{digest::Digest, md5::Md5};
-use reqwest::{Error as ReqwestError, StatusCode};
+use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
 
 const ACCESS_TOKEN_FIELD: &str = "accessToken";
@@ -20,7 +20,7 @@ impl std::error::Error for NacosClientError {}
 /// for request nacos openapi, see https://nacos.io/zh-cn/docs/open-api.html
 #[derive(Debug, Clone)]
 pub struct NacosClient {
-    base_url: String,
+    pub base_url: String,
     /// listener poll period, default 5s
     pub poll_period: std::time::Duration,
     access_token: Option<String>,
@@ -87,7 +87,7 @@ impl NacosClient {
     }
 
     /// get config by a nacos config descriptor
-    pub async fn get_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<(StatusCode, String), NacosClientError> {
+    pub async fn get_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<String, NacosClientError> {
         use NacosClientError::*;
         let url = format!("{}/v1/cs/configs", self.base_url);
         let resp = self.reqwest_client.get(&url).query(descriptor).query(&self.access_token_as_query()).send().await;
@@ -98,7 +98,7 @@ impl NacosClient {
                 if status.is_success() {
                     let text = resp.text().await.map_err(ReqwestError)?;
                     descriptor.update_md5(&text).await;
-                    Ok((status, text))
+                    Ok(text)
                 } else {
                     Err(ReqwestError(resp.error_for_status().unwrap_err()))
                 }
@@ -111,7 +111,7 @@ impl NacosClient {
     pub async fn delete_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<bool, NacosClientError> {
         use NacosClientError::*;
         let auth_url = format!("{}/v1/cs/configs", self.base_url);
-        reqwest::Client::new()
+        self.reqwest_client
             .delete(&auth_url)
             .query(descriptor)
             .query(&self.access_token_as_query())
@@ -139,6 +139,8 @@ impl NacosClient {
         let resp = self
             .reqwest_client
             .post(&url)
+            // refer: https://nacos.io/zh-cn/docs/open-api.html
+            // doc says it's `pulling` instead of `polling`
             .header("Long-Pulling-Timeout", self.poll_period.as_millis().to_string())
             .query(&self.access_token_as_query())
             .query(&params)
@@ -192,9 +194,9 @@ impl<'a> NacosConfigDescriptor<'a> {
     }
 
     /// data format: `dataId%02Group%02contentMD5%02tenant%01` or `dataId%02Group%02contentMD5%01`
-    /// 
+    ///
     /// md5 value could be empty string
-    /// 
+    ///
     /// refer: https://nacos.io/zh-cn/docs/open-api.html
     pub async fn as_listening_configs(&self) -> String {
         let spliter = 0x02 as char;

@@ -112,25 +112,19 @@ where
     async fn collect(&self) -> Result<config::Map<String, config::Value>, ConfigError> {
         log::debug!("[Tardis.config] Nacos Remote config server response: {}", &self);
         match self.nacos_client.get_config(&self.get_nacos_config_descriptor()).await {
-            Ok((status, config_text)) => match status.as_u16() {
-                200 => {
-                    log::trace!("[Tardis.config] Nacos Remote config server response: {}", config_text);
-                    self.format.parse(None, &config_text).map_err(|error| ConfigError::Foreign(error))
-                }
-                _ => {
-                    log::warn!("[Tardis.config] Nacos Remote config server response with status: {}", status);
-                    return Ok(config::Map::new());
-                }
+            Ok(config_text) => {
+                log::trace!("[Tardis.config] Nacos Remote config server response: {}", config_text);
+                self.format.parse(None, &config_text).map_err(|error| ConfigError::Foreign(error))
             },
             Err(NacosClientError::ReqwestError(e)) => {
                 if e.status().map(|s| u16::from(s) == 404).unwrap_or(false) {
-                    log::warn!("[Tardis.config] Nacos Remote config server error: {}", e);
+                    log::warn!("[Tardis.config] Nacos Remote config not found: {}, config: {}", e, &self);
                     return Ok(config::Map::new());
                 } else {
-                    return Err(ConfigError::Foreign(Box::new(e)));
+                    return Err(config_foreign_err(e));
                 }
             }
-            Err(e) => return Err(ConfigError::Foreign(Box::new(e))),
+            Err(e) => return Err(config_foreign_err(e)),
         }
     }
 }
@@ -157,7 +151,7 @@ where
         let mut client = nacos_client::NacosClient::new(&config.url);
         // set polling interval, default to 5s
         client.poll_period = std::time::Duration::from_millis(config.config_change_polling_interval.unwrap_or(5000));
-        client.login(&config.username, &config.password).await.map_err(|error| ConfigError::Foreign(Box::new(error)))?;
+        client.login(&config.username, &config.password).await.map_err(config_foreign_err)?;
         let nacos_client = Arc::new(client);
         // default group is DEFAULT_GROUP
         let group = config.group.as_deref().unwrap_or("DEFAULT_GROUP");
