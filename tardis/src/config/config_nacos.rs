@@ -111,19 +111,15 @@ where
     F: Send + Sync + std::fmt::Debug + 'static,
 {
     async fn collect(&self) -> Result<config::Map<String, config::Value>, ConfigError> {
-        log::info!("[Tardis.config] Nacos Remote config server response: {}", &self);
+        log::debug!("[Tardis.config] Nacos Remote config server response: {}", &self);
         match self.nacos_client.get_config(&self.get_nacos_config_descriptor()).await {
             Ok((status, config_text)) => match status.as_u16() {
                 200 => {
-                    log::debug!("[Tardis.config] Nacos Remote config server response: {}", config_text);
+                    log::trace!("[Tardis.config] Nacos Remote config server response: {}", config_text);
                     self.format.parse(None, &config_text).map_err(|error| ConfigError::Foreign(error))
                 }
-                404 => {
-                    log::warn!("[Tardis.config] Nacos Remote config not found");
-                    return Ok(config::Map::new());
-                }
                 _ => {
-                    log::warn!("[Tardis.config] Nacos Remote config server error: {}", status);
+                    log::warn!("[Tardis.config] Nacos Remote config server response with status: {}", status);
                     return Ok(config::Map::new());
                 }
             },
@@ -157,15 +153,19 @@ impl<F: config::Format> ConfNacosProcessor<F>
 where
     F: Send + Sync + std::fmt::Debug + 'static,
 {
+    /// create a new nacos config processor
     pub async fn init(config: &ConfCenterConfig, profile: &str, app_id: &str, format: &Arc<F>) -> TardisResult<ConfNacosProcessor<F>> {
         let mut client = nacos_client::NacosClient::new(&config.url);
+        // set polling interval, default to 5s
+        client.poll_period = std::time::Duration::from_millis(config.config_change_polling_interval.unwrap_or(5000));
         client.login(&config.username, &config.password).await.map_err(|error| ConfigError::Foreign(Box::new(error)))?;
         let nacos_client = Arc::new(client);
+        // default group is DEFAULT_GROUP
         let group = config.group.as_deref().unwrap_or("DEFAULT_GROUP");
         let tenant = config.namespace.as_deref();
+        // there are two config source, *-{profile} could be empty
         let default_config_source = ConfNacosConfigSource::new(None, app_id, tenant, group, format.clone(), &nacos_client);
         let config_source = if !profile.is_empty() {
-            // let (tx, rx) = tokio::sync::watch::channel(None);
             Some(ConfNacosConfigSource::new(Some(profile), app_id, tenant, group, format.clone(), &nacos_client))
         } else {
             None

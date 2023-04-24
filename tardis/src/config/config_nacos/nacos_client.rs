@@ -94,6 +94,7 @@ impl NacosClient {
         match resp {
             Ok(resp) => {
                 let status = resp.status();
+                // only update md5 when status is success
                 if status.is_success() {
                     let text = resp.text().await.map_err(ReqwestError)?;
                     descriptor.update_md5(&text).await;

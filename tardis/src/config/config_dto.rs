@@ -691,6 +691,8 @@ pub struct ConfCenterConfig {
     pub group: Option<String>,
     pub format: Option<String>,
     pub namespace: Option<String>,
+    /// config change polling interval, in milliseconds / 配置变更轮询间隔，单位毫秒
+    pub config_change_polling_interval: Option<u64>,
 }
 
 #[cfg(feature = "conf-remote")]
@@ -736,6 +738,7 @@ impl Default for ConfCenterConfig {
             format: Some("toml".to_string()),
             group: Some("default".to_string()),
             namespace: None,
+            config_change_polling_interval: Some(5000),
         }
     }
 }
