@@ -186,13 +186,6 @@ impl TardisConfig {
     }
 }
 
-pub(crate) trait ConfCenterProcessListener {
-    fn has_changed(&self) -> bool;
-    fn init() -> TardisResult<Self>
-    where
-        Self: Sized;
-}
-
 #[cfg(feature = "conf-remote")]
 // temporarily dont need async_trait
 // #[async_trait]
