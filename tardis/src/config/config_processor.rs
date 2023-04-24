@@ -107,15 +107,13 @@ impl TardisConfig {
                 );
                 // listen reload signal
                 let reload_notifier = conf_center.reload_on_remote_config_change(relative_path);
-                match conf_center.kind.to_lowercase().as_str() {
-                    "nacos" => {
-                        let mut processor = crate::config::config_nacos::ConfNacosProcessor::init(conf_center, profile, app_id, &Arc::new(format)).await?;
-                        conf = processor.add_to_config(conf);
-                        // listen update, if update, send reload signal
-                        processor.listen_update(&reload_notifier);
-                    }
+                let processor: Box<dyn ConfCenterProcess> = match conf_center.kind.to_lowercase().as_str() {
+                    "nacos" => Box::new(crate::config::config_nacos::ConfNacosProcessor::init(conf_center, profile, app_id, &Arc::new(format)).await?),
                     _ => return Err(TardisError::format_error("[Tardis.Config] The kind of config center only supports [nacos]", "")),
                 };
+                conf = processor.register_to_config(conf);
+                // listen update, if update, send reload signal
+                processor.listen_update(&reload_notifier);
             }
         }
 
@@ -190,19 +188,10 @@ impl TardisConfig {
 // temporarily dont need async_trait
 // #[async_trait]
 pub(crate) trait ConfCenterProcess: Sync + Send + std::fmt::Debug {
-    /// Source type of this config-center processor
-    type Source: config::AsyncSource + std::marker::Send + std::marker::Sync + 'static;
-    /// Get all sources of this config-center processor
-    fn get_sources(&mut self) -> Vec<Self::Source>;
     /// listen the config-center processor change
-    fn listen_update(self, reload_notifier: &tokio::sync::mpsc::Sender<()>) -> JoinHandle<()>;
+    fn listen_update(&self, reload_notifier: &tokio::sync::mpsc::Sender<()>);
     /// Add all sources to config
-    fn add_to_config(&mut self, mut conf: ConfigBuilder<AsyncState>) -> ConfigBuilder<AsyncState> {
-        for s in self.get_sources() {
-            conf = conf.add_async_source(s);
-        }
-        conf
-    }
+    fn register_to_config(&self, conf: ConfigBuilder<AsyncState>) -> ConfigBuilder<AsyncState>;
 }
 
 #[cfg(feature = "crypto")]

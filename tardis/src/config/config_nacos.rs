@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use config::ConfigError;
-use tokio::task::JoinHandle;
 
 use self::nacos_client::NacosClientError;
 
@@ -75,7 +74,7 @@ where
             md5: self.md5.clone(),
         }
     }
-    fn listen_update(self, update_notifier: tokio::sync::mpsc::Sender<()>) -> JoinHandle<()> {
+    fn listen_update(self, update_notifier: tokio::sync::mpsc::Sender<()>) {
         let task = async move {
             loop {
                 log::debug!("[Tardis.config] Nacos Remote Lisener start for {:?}", &self);
@@ -101,7 +100,7 @@ where
                 }
             }
         };
-        tokio::spawn(task)
+        tokio::spawn(task);
     }
 }
 
@@ -181,26 +180,15 @@ impl<F: config::Format> ConfCenterProcess for ConfNacosProcessor<F>
 where
     F: Send + Sync + std::fmt::Debug + 'static,
 {
-    fn listen_update(self, reload_notifier: &tokio::sync::mpsc::Sender<()>) -> JoinHandle<()> {
-        let ConfNacosProcessor {
-            default_config_source,
-            config_source,
-        } = self;
-        let h1 = default_config_source.listen_update(reload_notifier.clone());
-        let maybe_h2 = config_source.map(|h| h.listen_update(reload_notifier.clone()));
-        tokio::spawn(async move {
-            h1.await.unwrap();
-            if let Some(h2) = maybe_h2 {
-                h2.await.unwrap();
-            }
-        })
+    fn listen_update(&self, reload_notifier: &tokio::sync::mpsc::Sender<()>) {
+        self.default_config_source.clone().listen_update(reload_notifier.clone());
+        if let Some(h) = self.config_source.clone() { h.listen_update(reload_notifier.clone()) }
     }
-    fn get_sources(&mut self) -> Vec<ConfNacosConfigSource<F>> {
-        let default_src = self.default_config_source.clone();
-        let mut sources = vec![default_src];
-        sources.extend(self.config_source.as_ref().map(Clone::clone));
-        sources
+    fn register_to_config(&self, mut conf: config::ConfigBuilder<config::builder::AsyncState>) -> config::ConfigBuilder<config::builder::AsyncState> {
+        conf = conf.add_async_source(self.default_config_source.clone());
+        if let Some(config_source) = self.config_source.as_ref() {
+            conf = conf.add_async_source(config_source.clone());
+        }
+        conf
     }
-
-    type Source = ConfNacosConfigSource<F>;
 }
