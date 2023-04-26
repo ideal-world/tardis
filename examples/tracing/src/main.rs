@@ -12,18 +12,15 @@ mod processor;
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     let mut threads = Vec::new();
-    tracing_subscriber::fmt()
-        .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
-        .with_max_level(tracing::Level::DEBUG)
-        .with_thread_ids(true)
-        .try_init().unwrap();
+    tracing_subscriber::fmt().with_span_events(FmtSpan::NEW | FmtSpan::CLOSE).with_max_level(tracing::Level::DEBUG).with_thread_ids(true).try_init().unwrap();
 
     for idx in 0..10 {
         let thread = tokio::spawn(async move {
             let kind = TaskKind::try_from((random::<u32>() % 4) + 1).unwrap();
             let params = gen_params(&kind);
             processor::dispatch(kind, params).await.unwrap();
-        }).instrument(tracing::info_span!("task", idx));
+        })
+        .instrument(tracing::info_span!("task", idx));
         threads.push(thread);
     }
 
@@ -40,20 +37,20 @@ fn gen_params(kind: &TaskKind) -> HashMap<String, String> {
             params.insert("user_id".to_string(), mock_user_id());
             params.insert("email".to_string(), mock_email());
             params.insert("content".to_string(), mock_content());
-        },
+        }
         TaskKind::SendSms => {
             params.insert("user_id".to_string(), mock_user_id());
             params.insert("phone".to_string(), mock_phone_num());
             params.insert("content".to_string(), mock_content());
-        },
+        }
         TaskKind::SendPush => {
             params.insert("user_id".to_string(), mock_user_id());
             params.insert("token".to_string(), mock_token());
             params.insert("content".to_string(), mock_content());
-        },
+        }
         TaskKind::ExportExcel => {
             params.insert("import_path".to_string(), mock_data_path());
-        },
+        }
         TaskKind::GenerateImage => {
             params.insert("export_url".to_string(), mock_img_url());
         }

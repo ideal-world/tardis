@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use tardis::tokio::time::{sleep, Duration};
-use tracing::{instrument};
-use tardis::basic::{result::TardisResult, error::TardisError};
 use tardis::async_trait::async_trait;
+use tardis::basic::{error::TardisError, result::TardisResult};
+use tardis::tokio::time::{sleep, Duration};
+use tracing::instrument;
 
 #[derive(Debug)]
 pub enum TaskKind {
@@ -22,10 +22,7 @@ impl TryFrom<u32> for TaskKind {
             3 => Ok(TaskKind::SendPush),
             4 => Ok(TaskKind::ExportExcel),
             5 => Ok(TaskKind::GenerateImage),
-            _ => Err(TardisError::not_implemented(
-                "[Tardis.Task] Unsupported Task kind",
-                "501-tardis-os-kind-error",
-            ))
+            _ => Err(TardisError::not_implemented("[Tardis.Task] Unsupported Task kind", "501-tardis-os-kind-error")),
         }
     }
 }
@@ -107,7 +104,7 @@ pub async fn dispatch(task_kind: TaskKind, params: HashMap<String, String>) -> T
         TaskKind::SendSms => SendSmsTask.handle(params).await,
         TaskKind::SendPush => SendPushTask.handle(params).await,
         TaskKind::ExportExcel => ExportExcelTask.handle(params).await,
-        TaskKind::GenerateImage => GenerateImageTask.handle(params).await
+        TaskKind::GenerateImage => GenerateImageTask.handle(params).await,
     }
 }
 
