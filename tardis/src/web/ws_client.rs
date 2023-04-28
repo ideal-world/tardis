@@ -17,8 +17,8 @@ use url::Url;
 
 pub struct TardisWSClient<F, T>
 where
-    F: Fn(String) -> T + Send + Sync + 'static,
-    T: Future<Output = Option<String>> + Send + 'static,
+    F: Fn(Message) -> T + Send + Sync + 'static,
+    T: Future<Output = Option<Message>> + Send + 'static,
 {
     str_url: String,
     fun: F,
@@ -27,8 +27,8 @@ where
 
 impl<F, T> TardisWSClient<F, T>
 where
-    F: Fn(String) -> T + Send + Sync + Copy + 'static,
-    T: Future<Output = Option<String>> + Send + 'static,
+    F: Fn(Message) -> T + Send + Sync + Copy + 'static,
+    T: Future<Output = Option<Message>> + Send + 'static,
 {
     pub async fn init(str_url: &str, fun: F) -> TardisResult<TardisWSClient<F, T>> {
         Self::do_init(str_url, fun, false).await
@@ -59,32 +59,13 @@ where
         let write = Arc::new(Mutex::new(write));
         let reply = write.clone();
         tokio::spawn(async move {
-            while let Some(Ok(text)) = read.next().await {
-                match text {
-                    Message::Text(text) => {
-                        trace!("[Tardis.WSClient] WS receive: {}", text);
-                        if let Some(resp) = fun(text).await {
-                            trace!("[Tardis.WSClient] WS send: {}", resp);
-                            if let Err(error) = reply.lock().await.send(Message::Text(resp.clone())).await {
-                                warn!("[Tardis.WSClient] Failed to send message {resp}: {error}");
-                                break;
-                            }
-                        }
-                    }
-                    Message::Binary(_) => {
-                        trace!("[Tardis.WSClient] WS receive: the binary type is not implemented");
-                    }
-                    Message::Ping(_) => {
-                        trace!("[Tardis.WSClient] WS receive: the ping type is not implemented");
-                    }
-                    Message::Pong(_) => {
-                        trace!("[Tardis.WSClient] WS receive: the pong type is not implemented");
-                    }
-                    Message::Close(_) => {
-                        trace!("[Tardis.WSClient] WS receive: the close type is not implemented");
-                    }
-                    Message::Frame(_) => {
-                        trace!("[Tardis.WSClient] WS receive: the frame type is not implemented");
+            while let Some(Ok(message)) = read.next().await {
+                trace!("[Tardis.WSClient] WS receive: {}", message);
+                if let Some(resp) = fun(message).await {
+                    trace!("[Tardis.WSClient] WS send: {}", resp);
+                    if let Err(error) = reply.lock().await.send(resp).await {
+                        warn!("[Tardis.WSClient] Failed to send message : {error}");
+                        break;
                     }
                 }
             }
@@ -97,25 +78,30 @@ where
     }
 
     pub async fn send_obj<E: ?Sized + Serialize>(&self, msg: &E) -> TardisResult<()> {
-        let msg = TardisFuns::json.obj_to_string(msg).unwrap();
-        self.send_raw(msg).await
+        let message = TardisFuns::json.obj_to_string(msg).unwrap();
+        self.send_text(message).await
     }
 
-    pub async fn send_raw(&self, msg: String) -> TardisResult<()> {
-        if let Err(error) = self.do_send(msg.clone()).await {
-            warn!("[Tardis.WSClient] Failed to send message {}: {}", msg.clone(), error);
+    pub async fn send_text(&self, message: String) -> TardisResult<()> {
+        let message = Message::Text(message.clone());
+        self.send_with_retry(message).await
+    }
+
+    pub async fn send_with_retry(&self, message: Message) -> TardisResult<()> {
+        if let Err(error) = self.do_send(message.clone()).await {
+            warn!("[Tardis.WSClient] Failed to send message {}: {}", message.clone(), error);
             match error {
                 Error::AlreadyClosed | Error::Io(_) => {
                     if let Err(error) = self.reconnect().await {
                         Err(error)
                     } else {
-                        self.do_send(msg.clone())
+                        self.do_send(message.clone())
                             .await
-                            .map_err(|error| TardisError::format_error(&format!("[Tardis.WSClient] Failed to send message {msg}: {error}"), "500-tardis-ws-client-send-error"))
+                            .map_err(|error| TardisError::format_error(&format!("[Tardis.WSClient] Failed to send message {message}: {error}"), "500-tardis-ws-client-send-error"))
                     }
                 }
                 _ => Err(TardisError::format_error(
-                    &format!("[Tardis.WSClient] Failed to send message {msg}: {error}"),
+                    &format!("[Tardis.WSClient] Failed to send message {message}: {error}"),
                     "500-tardis-ws-client-send-error",
                 )),
             }
@@ -124,8 +110,8 @@ where
         }
     }
 
-    pub async fn do_send(&self, msg: String) -> Result<(), tungstenite::Error> {
-        self.write.lock().await.lock().await.send(Message::Text(msg.clone())).await
+    pub async fn do_send(&self, message: Message) -> Result<(), tungstenite::Error> {
+        self.write.lock().await.lock().await.send(message).await
     }
 
     async fn reconnect(&self) -> TardisResult<()> {

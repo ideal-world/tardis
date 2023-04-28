@@ -17,6 +17,7 @@ use tardis::TardisFuns;
 use tokio::sync::broadcast::Sender;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
+use tokio_tungstenite::tungstenite::Message;
 
 lazy_static! {
     static ref SENDERS: Arc<RwLock<HashMap<String, Sender<String>>>> = Arc::new(RwLock::new(HashMap::new()));
@@ -44,18 +45,22 @@ async fn test_normal() -> TardisResult<()> {
 
     // message not illegal test
     let error_client_a = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/gerror/a", move |msg| async move {
-        println!("client_not_found recv:{}", msg);
-        assert_eq!(msg, r#"{"msg":"message not illegal","event":"__sys_error__"}"#);
-        ERROR_COUNTER.fetch_add(1, Ordering::SeqCst);
+        if let Message::Text(msg) = msg {
+            println!("client_not_found recv:{}", msg);
+            assert_eq!(msg, r#"{"msg":"message not illegal","event":"__sys_error__"}"#);
+            ERROR_COUNTER.fetch_add(1, Ordering::SeqCst);
+        }
         None
     })
     .await?;
-    error_client_a.send_raw("hi".to_string()).await?;
+    error_client_a.send_text("hi".to_string()).await?;
     // not found test
     let error_client_b = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/gxxx/a", move |msg| async move {
-        println!("client_not_found recv:{}", msg);
-        assert_eq!(msg, "Websocket connection error: group not found");
-        ERROR_COUNTER.fetch_add(1, Ordering::SeqCst);
+        if let Message::Text(msg) = msg {
+            println!("client_not_found recv:{}", msg);
+            assert_eq!(msg, "Websocket connection error: group not found");
+            ERROR_COUNTER.fetch_add(1, Ordering::SeqCst);
+        }
         None
     })
     .await?;
@@ -69,40 +74,50 @@ async fn test_normal() -> TardisResult<()> {
 
     // subscribe mode test
     let sub_client_a = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g1/a", move |msg| async move {
-        println!("client_a recv:{}", msg);
-        assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
-        SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
+        if let Message::Text(msg) = msg {
+            println!("client_a recv:{}", msg);
+            assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
+            SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
+        }
         None
     })
     .await?;
     let sub_client_b1 = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g1/b", move |msg| async move {
-        println!("client_b1 recv:{}", msg);
-        assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
-        SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
-        Some(
-            TardisFuns::json
-                .obj_to_string(&TardisWebsocketReq {
-                    msg: json! {"client_b send:hi again"},
-                    from_avatar: "b".to_string(),
-                    ..Default::default()
-                })
-                .unwrap(),
-        )
+        if let Message::Text(msg) = msg {
+            println!("client_b1 recv:{}", msg);
+            assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
+            SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
+            Some(Message::Text(
+                TardisFuns::json
+                    .obj_to_string(&TardisWebsocketReq {
+                        msg: json! {"client_b send:hi again"},
+                        from_avatar: "b".to_string(),
+                        ..Default::default()
+                    })
+                    .unwrap(),
+            ))
+        } else {
+            None
+        }
     })
     .await?;
     let sub_client_b2 = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g1/b", move |msg| async move {
-        println!("client_b2 recv:{}", msg);
-        assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
-        SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
-        Some(
-            TardisFuns::json
-                .obj_to_string(&TardisWebsocketReq {
-                    msg: json! {"client_b send:hi again"},
-                    from_avatar: "b".to_string(),
-                    ..Default::default()
-                })
-                .unwrap(),
-        )
+        if let Message::Text(msg) = msg {
+            println!("client_b2 recv:{}", msg);
+            assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
+            SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
+            Some(Message::Text(
+                TardisFuns::json
+                    .obj_to_string(&TardisWebsocketReq {
+                        msg: json! {"client_b send:hi again"},
+                        from_avatar: "b".to_string(),
+                        ..Default::default()
+                    })
+                    .unwrap(),
+            ))
+        } else {
+            None
+        }
     })
     .await?;
     sub_client_a
@@ -129,42 +144,53 @@ async fn test_normal() -> TardisResult<()> {
 
     // non-subscribe mode test
     let non_sub_client_a = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g2/a", move |msg| async move {
-        println!("client_a recv:{}", msg);
-        assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
-        NON_SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
+        if let Message::Text(msg) = msg {
+            println!("client_a recv:{}", msg);
+            assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
+            NON_SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
+        }
         None
     })
     .await?;
     let non_sub_client_b1 = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g2/b", move |msg| async move {
-        println!("client_b1 recv:{}", msg);
-        assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
-        NON_SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
-        Some(
-            TardisFuns::json
-                .obj_to_string(&TardisWebsocketReq {
-                    msg: json! {"client_b send:hi again"},
-                    from_avatar: "b".to_string(),
-                    ..Default::default()
-                })
-                .unwrap(),
-        )
+        if let Message::Text(msg) = msg {
+            println!("client_b1 recv:{}", msg);
+            assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
+            NON_SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
+            Some(Message::Text(
+                TardisFuns::json
+                    .obj_to_string(&TardisWebsocketReq {
+                        msg: json! {"client_b send:hi again"},
+                        from_avatar: "b".to_string(),
+                        ..Default::default()
+                    })
+                    .unwrap(),
+            ))
+        } else {
+            None
+        }
     })
     .await?;
     let non_sub_client_b2 = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g2/b", move |msg| async move {
-        println!("client_b2 recv:{}", msg);
-        assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
-        NON_SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
-        Some(
-            TardisFuns::json
-                .obj_to_string(&TardisWebsocketReq {
-                    msg: json! {"client_b send:hi again"},
-                    from_avatar: "b".to_string(),
-                    ..Default::default()
-                })
-                .unwrap(),
-        )
+        if let Message::Text(msg) = msg {
+            println!("client_b2 recv:{}", msg);
+            assert_eq!(msg, r#"{"msg":"service send:\"hi\"","event":null}"#);
+            NON_SUB_COUNTER.fetch_add(1, Ordering::SeqCst);
+            Some(Message::Text(
+                TardisFuns::json
+                    .obj_to_string(&TardisWebsocketReq {
+                        msg: json! {"client_b send:hi again"},
+                        from_avatar: "b".to_string(),
+                        ..Default::default()
+                    })
+                    .unwrap(),
+            ))
+        } else {
+            None
+        }
     })
     .await?;
+
     non_sub_client_a
         .send_obj(&TardisWebsocketReq {
             msg: json! {"hi"},
@@ -201,22 +227,26 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     static DEL_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/_/true", move |msg| async move {
-        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMgrMessage>(&msg).unwrap();
-        if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
-            ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
-            let from_avatar = receive_msg.from_avatar.clone();
-            return Some(TardisFuns::json.obj_to_string(&receive_msg.into_req(json! {"c"}, from_avatar.clone(), Some(vec![from_avatar]))).unwrap());
-        }
-        if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
-            assert!(1 == 2);
-            DEL_COUNTER.fetch_add(1, Ordering::SeqCst);
+        if let Message::Text(msg) = msg {
+            let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMgrMessage>(&msg).unwrap();
+            if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
+                ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
+                let from_avatar = receive_msg.from_avatar.clone();
+                return Some(Message::Text(
+                    TardisFuns::json.obj_to_string(&receive_msg.into_req(json! {"c"}, from_avatar.clone(), Some(vec![from_avatar]))).unwrap(),
+                ));
+            }
+            if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
+                assert!(1 == 2);
+                DEL_COUNTER.fetch_add(1, Ordering::SeqCst);
+            }
         }
         None
     })
     .await?;
 
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
-        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&msg).unwrap();
+        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&msg.to_text().unwrap()).unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
             assert!(1 == 2);
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -230,7 +260,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     .await?;
 
     let a_client = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
-        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&msg).unwrap();
+        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&msg.to_text().unwrap()).unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
             assert!(1 == 2);
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -249,7 +279,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     .await?;
 
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
-        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&msg).unwrap();
+        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&msg.to_text().unwrap()).unwrap();
         if receive_msg.msg.as_str().unwrap() == "a" {
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
             assert!(1 == 2);
