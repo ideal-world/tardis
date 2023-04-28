@@ -82,7 +82,7 @@ impl TardisMailClient {
                     .singlepart(SinglePart::builder().header(header::ContentType::TEXT_HTML).body(html_body.to_string())),
             )?
         } else {
-            email.body(req.txt_body.clone())?
+            email.header(header::ContentType::TEXT_PLAIN).body(req.txt_body.clone())?
         };
         trace!(
             "[Tardis.MailClient] Sending email:{}, from: {}, to: {}",
