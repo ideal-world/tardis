@@ -4,10 +4,10 @@ use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
 use tardis::db::sea_orm::sea_query::IndexCreateStatement;
 use tardis::db::sea_orm::*;
-use tardis::DeriveTableIndex;
+use tardis::TardisCreateIndex;
 
-//run `cargo expand example_for_derive_table_index > derive_create_index_expand.rs`
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, DeriveTableIndex)]
+// run `cargo expand example_for_derive_table_index > derive_create_index_expand.rs`
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, TardisCreateIndex)]
 #[sea_orm(table_name = "examples")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]

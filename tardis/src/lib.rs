@@ -141,7 +141,7 @@ use serde::de::DeserializeOwned;
 pub use serde_json;
 use serde_json::Value;
 #[cfg(feature = "tardis-macros")]
-pub use tardis_macros::{DeriveCreateTable, DeriveTableIndex};
+pub use tardis_macros::{TardisCreateIndex, TardisCreateTable};
 #[cfg(feature = "test")]
 pub use testcontainers;
 #[cfg(feature = "rt-tokio")]

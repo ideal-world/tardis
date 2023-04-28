@@ -190,7 +190,6 @@ fn index_type_map(index_type: &str, span: Span, create_statement: &mut Punctuate
                 if let Some(paren) = index_type.find('(') {
                     let custom_index_type = &index_type[paren + 1..index_type.len() - 1];
                     let custom_index_type = Ident::new(custom_index_type, span);
-                    eprintln!("{custom_index_type:?}");
                     let custom_statement = quote!(#custom_index_type{});
                     create_statement.push(quote!(index_type(::tardis::db::sea_orm::sea_query::IndexType::Custom(::std::sync::Arc::new(#custom_statement)))));
                     return Ok(());
