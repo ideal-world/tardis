@@ -19,4 +19,8 @@ impl TardisCryptoBase64 {
     pub fn encode(&self, data: &str) -> String {
         general_purpose::STANDARD.encode(data)
     }
+
+    pub fn encode_raw<T: AsRef<[u8]>>(&self, data: T) -> String {
+        general_purpose::STANDARD.encode(data)
+    }
 }
