@@ -50,27 +50,27 @@ async fn test_web_client() -> TardisResult<()> {
     let res = reqwest::get("http://httpbin.org/get").await?;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let response = TardisFuns::web_client().get_to_str("https://www.baidu.com", Some([("User-Agent".to_string(), "Tardis".to_string())].iter().cloned().collect())).await?;
+    let response = TardisFuns::web_client().get_to_str("https://www.baidu.com", Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec())).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains("baidu"));
 
-    let response = TardisFuns::web_client().get_to_str("http://httpbin.org/get", Some([("User-Agent".to_string(), "Tardis".to_string())].iter().cloned().collect())).await?;
+    let response = TardisFuns::web_client().get_to_str("http://httpbin.org/get", Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec())).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains("Tardis"));
 
     let response = TardisFuns::web_client()
         .delete_to_void(
             "https://httpbin.org/delete",
-            Some([("User-Agent".to_string(), "Tardis".to_string())].iter().cloned().collect()),
+            Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec()),
         )
         .await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
 
-    let response = TardisFuns::web_client().post_str_to_str("https://httpbin.org/post", &"Raw body contents".to_string(), None).await?;
+    let response = TardisFuns::web_client().post_str_to_str("https://httpbin.org/post", "Raw body contents", None).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains(r#"data": "Raw body contents"#));
 
-    let response = TardisFuns::web_client().post_str_to_str("https://httpbin.org/post", &"Raw body contents".to_string(), None).await?;
+    let response = TardisFuns::web_client().post_str_to_str("https://httpbin.org/post", "Raw body contents", None).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains(r#"data": "Raw body contents"#));
 

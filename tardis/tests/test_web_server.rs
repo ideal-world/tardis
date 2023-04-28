@@ -536,7 +536,7 @@ async fn test_security() -> TardisResult<()> {
                             "todo".to_string(),
                             WebServerModuleConfig {
                                 name: "todo app".to_string(),
-                                doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].iter().cloned().collect(),
+                                doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].to_vec(),
                                 ..Default::default()
                             },
                         ),
@@ -722,7 +722,7 @@ impl TodosApi {
     }
 
     #[oai(path = "/todos/:id/err", method = "get")]
-    async fn get_by_error(&self, id: Path<i64>) -> TardisApiResult<TodoResp> {
+    async fn get_by_error(&self, _id: Path<i64>) -> TardisApiResult<TodoResp> {
         TardisResp::err(TardisError::conflict("异常", ""))
     }
 }

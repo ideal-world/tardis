@@ -246,7 +246,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     .await?;
 
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
-        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&msg.to_text().unwrap()).unwrap();
+        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(msg.to_text().unwrap()).unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
             assert!(1 == 2);
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -260,7 +260,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     .await?;
 
     let a_client = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
-        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&msg.to_text().unwrap()).unwrap();
+        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(msg.to_text().unwrap()).unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
             assert!(1 == 2);
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -279,7 +279,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     .await?;
 
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
-        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(&msg.to_text().unwrap()).unwrap();
+        let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(msg.to_text().unwrap()).unwrap();
         if receive_msg.msg.as_str().unwrap() == "a" {
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
             assert!(1 == 2);
@@ -389,7 +389,7 @@ impl Api {
                 sender,
                 |req_msg, _ext| async move {
                     println!("service gerror recv:{}:{}", req_msg.from_avatar, req_msg.msg);
-                    return None;
+                    None
                 },
                 |_, _| async move {},
             )
@@ -398,7 +398,7 @@ impl Api {
                 name.0,
                 HashMap::new(),
                 websocket,
-                |_, _, _| async move { Some(format!("Websocket connection error: group not found")) },
+                |_, _, _| async move { Some("Websocket connection error: group not found".to_string()) },
                 |_, _| async move {},
             )
         }
