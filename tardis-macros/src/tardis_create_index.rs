@@ -1,4 +1,4 @@
-use crate::macro_helpers::helpers::{ConvertVariableHelpers, TypeToTokenHelpers};
+use crate::macro_helpers::helpers::{default_doc, ConvertVariableHelpers, TypeToTokenHelpers};
 use darling::FromField;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
@@ -33,7 +33,7 @@ struct CreateIndexMeta {
     ///
     /// example for custom:
     /// ```ignore
-    /// #[derive(Clone, Debug, DeriveEntityModel, DeriveTableIndex)]
+    /// #[derive(Clone, Debug, DeriveEntityModel, TardisCreateIndex)]
     /// #[sea_orm(table_name = "examples")]
     /// pub struct Model {
     ///     #[sea_orm(primary_key)]
@@ -57,8 +57,9 @@ pub(crate) fn create_index(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Re
     match data {
         Data::Struct(struct_impl) => {
             let col_token = create_col_token_statement(struct_impl.fields)?;
-
-            Ok(quote! {fn tardis_create_index_statement() -> Vec<::tardis::db::sea_orm::sea_query::IndexCreateStatement> {
+            let doc = default_doc();
+            Ok(quote! {#doc
+                fn tardis_create_index_statement() -> Vec<::tardis::db::sea_orm::sea_query::IndexCreateStatement> {
                 vec![
                     #col_token
                     ]
@@ -164,7 +165,7 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
             TypeToTokenHelpers::str_literal(&Some(name))
         } else {
             let nano_id = &nanoid::nanoid!(4);
-            quote! {&format!("idx-{}-idx{}", Entity.table_name(),#nano_id)}
+            quote! {&format!("idx-{}_{}", Entity.table_name(),#nano_id)}
         };
         Ok(quote! {::tardis::db::sea_orm::sea_query::Index::create().name(#name).table(Entity).#all_statement.to_owned()})
     }

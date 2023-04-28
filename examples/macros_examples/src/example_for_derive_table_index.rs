@@ -6,7 +6,8 @@ use tardis::db::sea_orm::sea_query::IndexCreateStatement;
 use tardis::db::sea_orm::*;
 use tardis::TardisCreateIndex;
 
-// run `cargo expand example_for_derive_table_index > derive_create_index_expand.rs`
+// run `cargo expand example_for_derive_table_index > derive_create_index_expand.rs` \
+// to see automatically generated method tardis_create_index_statement()
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, TardisCreateIndex)]
 #[sea_orm(table_name = "examples")]
 pub struct Model {
