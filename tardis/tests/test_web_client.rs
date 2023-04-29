@@ -58,12 +58,7 @@ async fn test_web_client() -> TardisResult<()> {
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains("Tardis"));
 
-    let response = TardisFuns::web_client()
-        .delete_to_void(
-            "https://httpbin.org/delete",
-            Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec()),
-        )
-        .await?;
+    let response = TardisFuns::web_client().delete_to_void("https://httpbin.org/delete", Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec())).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
 
     let response = TardisFuns::web_client().post_str_to_str("https://httpbin.org/post", "Raw body contents", None).await?;

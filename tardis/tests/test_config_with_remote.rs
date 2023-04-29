@@ -74,8 +74,6 @@ struct TestModuleConfig {
     db_proj: DatabaseConfig,
 }
 
-
-
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 struct DatabaseConfig {
