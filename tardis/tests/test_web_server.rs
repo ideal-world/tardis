@@ -721,7 +721,7 @@ impl TodosApi {
         TardisResp::accepted(format!("/todos/{}/status", id.0))
     }
 
-    #[oai(path = "/todos/:id/err", method = "get")]
+    #[oai(path = "/todos/:_id/err", method = "get")]
     async fn get_by_error(&self, _id: Path<i64>) -> TardisApiResult<TodoResp> {
         TardisResp::err(TardisError::conflict("异常", ""))
     }
