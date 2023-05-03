@@ -70,9 +70,6 @@ log = { version = "0.4" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# macros
-tardis-macros = { version = "0.1.0-alpha34", path = "../tardis-macros", optional = true }
-
 # Tokio
 tokio = { version = "1.18", features = [
     "macros",
