@@ -62,7 +62,7 @@ lru = { version = "0.10.0" }
 native-tls = { version = "0.2" }
 
 # Tardis Macros
-tardis-macros = { version = "0.1.0-beta3", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-beta4", path = "../tardis-macros", optional = true }
 
 # Log
 log = { version = "0.4" }
