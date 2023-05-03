@@ -24,7 +24,7 @@ reldb-mysql = []
 syn = { version = "1", features = ["full", "extra-traits"] }
 quote = "1"
 proc-macro2 = "1"
-darling = { verion = "1" }
+darling = { version = "0.14.4" }
 nanoid = { version = "0.4" }
 
 [dev-dependencies]
