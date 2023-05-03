@@ -62,6 +62,9 @@ openssl = { version = "0.10", features = ["vendored"] }
 lru = { version = "0.10.0" }
 native-tls = { version = "0.2" }
 
+# Tardis Macros
+tardis-macros = { version = "0.1.0-beta4", path = "../tardis-macros", optional = true }
+
 # Log
 log = { version = "0.4" }
 tracing = { version = "0.1" }
