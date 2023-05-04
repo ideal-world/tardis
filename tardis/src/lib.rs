@@ -1095,11 +1095,24 @@ impl TardisFuns {
 
     pub async fn shutdown() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
+        #[cfg(feature = "reldb-core")]
+        {
+            // reldb needn't shutdown
+            // connection will be closed by drop calling
+            // see: https://www.sea-ql.org/SeaORM/docs/install-and-config/connection/
+        }
         #[cfg(feature = "mq")]
         unsafe {
+            let mut set = tokio::task::JoinSet::new();
             if let Some(t) = &TARDIS_INST.mq {
                 for v in t.values() {
-                    v.close().await?;
+                    set.spawn(v.close());
+                    // v.close().await?;
+                }
+            }
+            while let Some(Ok(close_result)) = set.join_next().await {
+                if let Err(e) = close_result {
+                    log::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
                 }
             }
         }

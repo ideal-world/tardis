@@ -711,6 +711,12 @@ impl ConfCenterConfig {
                 }
             };
             if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
+                match TardisFuns::shutdown().await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("[Tardis.config] Tardis shutdown with error {}", e);
+                    }
+                }
                 match TardisFuns::init_conf(config).await {
                     Ok(_) => {
                         log::info!("[Tardis.config] Configuration update succeeded");

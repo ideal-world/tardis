@@ -77,7 +77,7 @@ where
     fn listen_update(self, update_notifier: tokio::sync::mpsc::Sender<()>) {
         let task = async move {
             loop {
-                log::debug!("[Tardis.config] Nacos Remote Lisener start for {:?}", &self);
+                log::debug!("[Tardis.config] Nacos Remote listener start for {:?}", &self);
                 // if request failed, wait for next poll
                 // if response is empty, remote config not yet updated, wait for next poll
                 let updated = self.nacos_client.listen_config(&self.get_nacos_config_descriptor()).await.map_err(config_foreign_err);

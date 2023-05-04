@@ -187,7 +187,7 @@ impl TardisConfig {
 }
 
 #[cfg(feature = "conf-remote")]
-// temporarily dont need async_trait
+// temporarily don't need async_trait
 // #[async_trait]
 pub(crate) trait ConfCenterProcess: Sync + Send + std::fmt::Debug {
     /// listen the config-center processor change

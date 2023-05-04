@@ -56,6 +56,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
 
     // 3. get remote config
     env::set_var("PROFILE", "remote");
+    TardisFuns::shutdown().await?;
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
