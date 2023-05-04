@@ -1,6 +1,6 @@
 name: LeakChecker
 
-on: [push, pull_request]
+on: [push, pull_request_target]
 
 jobs:
   hello_world_job:
