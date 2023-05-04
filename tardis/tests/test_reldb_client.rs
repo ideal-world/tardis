@@ -542,7 +542,7 @@ async fn test_data_dict(client: &TardisRelDBClient) -> TardisResult<()> {
 }
 
 async fn test_timezone(url: &str) -> TardisResult<()> {
-    let client_with_out_time_zone = TardisRelDBClient::init(&url, 10, 5, None, None, CompatibleType::None).await?;
+    let client_with_out_time_zone = TardisRelDBClient::init(url, 10, 5, None, None, CompatibleType::None).await?;
 
     match client_with_out_time_zone.backend() {
         DatabaseBackend::Postgres => {

@@ -1,3 +1,5 @@
+use std::iter::repeat;
+
 use crypto::mac::Mac;
 
 use crate::basic::result::TardisResult;
@@ -55,12 +57,19 @@ impl TardisCryptoDigest {
         Ok(hex::encode(Sm3Hash::new(data.as_bytes()).get_hash()))
     }
 
-    fn digest<A: crypto::digest::Digest>(&self, data: &str, mut algorithm: A) -> TardisResult<String> {
+    pub fn digest<A: crypto::digest::Digest>(&self, data: &str, mut algorithm: A) -> TardisResult<String> {
         algorithm.input_str(data);
         Ok(algorithm.result_str())
     }
 
-    fn digest_hmac<A: crypto::digest::Digest>(&self, data: &str, key: &str, algorithm: A) -> TardisResult<String> {
+    pub fn digest_raw<A: crypto::digest::Digest>(&self, data: &[u8], mut algorithm: A) -> TardisResult<Vec<u8>> {
+        algorithm.input(data);
+        let mut buf: Vec<u8> = repeat(0).take((algorithm.output_bits() + 7) / 8).collect();
+        algorithm.result(&mut buf);
+        Ok(buf)
+    }
+
+    pub fn digest_hmac<A: crypto::digest::Digest>(&self, data: &str, key: &str, algorithm: A) -> TardisResult<String> {
         let mut hmac = crypto::hmac::Hmac::new(algorithm, key.as_bytes());
         hmac.input(data.as_bytes());
         Ok(hex::encode(hmac.result().code()))

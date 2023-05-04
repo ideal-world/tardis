@@ -140,6 +140,8 @@ pub use serde;
 use serde::de::DeserializeOwned;
 pub use serde_json;
 use serde_json::Value;
+#[cfg(feature = "tardis-macros")]
+pub use tardis_macros::{TardisCreateIndex, TardisCreateTable};
 #[cfg(feature = "test")]
 pub use testcontainers;
 #[cfg(feature = "rt-tokio")]
@@ -857,8 +859,8 @@ impl TardisFuns {
     #[cfg(feature = "ws-client")]
     pub async fn ws_client<F, T>(str_url: &str, fun: F) -> TardisResult<web::ws_client::TardisWSClient<F, T>>
     where
-        F: Fn(String) -> T + Send + Sync + Copy + 'static,
-        T: futures::Future<Output = Option<String>> + Send + 'static,
+        F: Fn(tokio_tungstenite::tungstenite::Message) -> T + Send + Sync + Copy + 'static,
+        T: futures::Future<Output = Option<tokio_tungstenite::tungstenite::Message>> + Send + 'static,
     {
         web::ws_client::TardisWSClient::init(str_url, fun).await
     }

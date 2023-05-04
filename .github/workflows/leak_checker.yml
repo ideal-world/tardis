@@ -1,0 +1,16 @@
+name: LeakChecker
+
+on: [push, pull_request_target]
+
+jobs:
+  hello_world_job:
+    runs-on: ubuntu-latest
+    name: Scan Keywords
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Scan Keywords
+        uses: PPG007/keywords-scanner@v1.0
+        with:
+          keywords: ${{secrets.LEAK_WORDS}}
+          ignoreCase: true
