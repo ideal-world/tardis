@@ -5,6 +5,7 @@ use poem::{EndpointExt, Route};
 use poem_openapi::{ExtraHeader, OpenApi, OpenApiService, ServerObject};
 use tokio::time::Duration;
 
+use crate::TardisFuns;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
 use crate::log::info;
@@ -181,7 +182,21 @@ impl TardisWebServer {
             let server = poem::Server::new(bind).run_with_graceful_shutdown(
                 swap_route,
                 async move {
-                    let _ = tokio::signal::ctrl_c().await;
+                    let mut tardis_shutdown = unsafe { TardisFuns::subscribe_shutdown_signal() };
+                    tokio::select! {
+                        _ = tokio::signal::ctrl_c() => {
+                            log::debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
+                        },
+                        result = tardis_shutdown.recv() => {
+                            match result {
+                                Ok(_) => {},
+                                Err(e) => {
+                                    log::debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
+                                },
+                            }
+                            log::debug!("[Tardis.WebServer] WebServer shutdown (Tardis shutdown signal)");
+                        },
+                    };
                 },
                 Some(Duration::from_secs(5)),
             );

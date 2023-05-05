@@ -14,7 +14,7 @@ use tokio::sync::Mutex;
 // #[ignore]
 async fn test_config_with_remote() -> TardisResult<()> {
     use std::fs::*;
-    env::set_var("RUST_LOG", "info,tardis=info");
+    env::set_var("RUST_LOG", "info,tardis=debug");
     env::set_var("PROFILE", "default");
     // for debug only
     // env::set_current_dir("./tardis").unwrap();
@@ -55,8 +55,8 @@ async fn test_config_with_remote() -> TardisResult<()> {
     log::info!("publish remote config success");
 
     // 3. get remote config
-    env::set_var("PROFILE", "remote");
     TardisFuns::shutdown().await?;
+    env::set_var("PROFILE", "remote");
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);

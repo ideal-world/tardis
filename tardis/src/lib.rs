@@ -144,6 +144,7 @@ use serde_json::Value;
 pub use testcontainers;
 #[cfg(feature = "rt-tokio")]
 pub use tokio;
+use tokio::sync::broadcast;
 pub use url;
 
 use basic::error::TardisErrorWithExt;
@@ -271,6 +272,7 @@ use crate::web::web_server::TardisWebServer;
 pub struct TardisFuns {
     custom_config: Option<HashMap<ModuleCode, Value>>,
     _custom_config_cached: Option<HashMap<ModuleCode, Box<dyn Any>>>,
+    shutdown_signal_sender: Option<broadcast::Sender<()>>,
     framework_config: Option<FrameworkConfig>,
     #[cfg(feature = "reldb-core")]
     reldb: Option<HashMap<ModuleCode, TardisRelDBClient>>,
@@ -294,6 +296,7 @@ type ModuleCode = String;
 static mut TARDIS_INST: TardisFuns = TardisFuns {
     custom_config: None,
     _custom_config_cached: None,
+    shutdown_signal_sender: None,
     framework_config: None,
     #[cfg(feature = "reldb-core")]
     reldb: None,
@@ -398,6 +401,9 @@ impl TardisFuns {
     /// ```
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
         TardisLogger::init()?;
+        unsafe {
+            replace(&mut TARDIS_INST.shutdown_signal_sender, Some(broadcast::channel(1).0));
+        };
         unsafe {
             replace(&mut TARDIS_INST.custom_config, Some(conf.cs));
             replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
@@ -1093,8 +1099,23 @@ impl TardisFuns {
         }
     }
 
+    /// subscribe shutdown signal / 订阅关闭信号
+    /// # Safety
+    /// User shall ensure that Tardis instance has been initialized, otherwise it will panic when it trying to unwrap `shutdown_signal_sender` which is a None value. / 用户需确保Tardis实例已经初始化，否则在尝试unwrap`shutdown_signal_sender`时会panic，因为它是None值。
+    #[must_use]
+    pub(crate) unsafe fn subscribe_shutdown_signal() -> broadcast::Receiver<()> {
+        TARDIS_INST.shutdown_signal_sender.as_ref().unwrap().subscribe()
+    }
+
     pub async fn shutdown() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
+        unsafe {
+            if let Some(shutdow_signal_sender) = &TARDIS_INST.shutdown_signal_sender {
+                if shutdow_signal_sender.send(()).is_err() {
+                    log::debug!("[Tardis] Shutdown signal send failed: no receiver.");
+                }
+            }
+        }
         #[cfg(feature = "reldb-core")]
         {
             // reldb needn't shutdown
