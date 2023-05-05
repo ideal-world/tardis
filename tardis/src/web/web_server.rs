@@ -185,20 +185,12 @@ impl TardisWebServer {
                         .cert(self.config.tls_cert.clone().expect("[Tardis.WebServer] TLS cert clone error")),
                 ),
             );
-            let server = poem::Server::new(bind).run_with_graceful_shutdown(
-                swap_route,
-                graceful_shutdown_signal,
-                Some(Duration::from_secs(5)),
-            );
+            let server = poem::Server::new(bind).run_with_graceful_shutdown(swap_route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
             info!("{}", output_info);
             server.await?;
         } else {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port));
-            let server = poem::Server::new(bind).run_with_graceful_shutdown(
-                swap_route,
-                graceful_shutdown_signal,
-                Some(Duration::from_secs(5)),
-            );
+            let server = poem::Server::new(bind).run_with_graceful_shutdown(swap_route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
             info!("{}", output_info);
             server.await?;
         };
