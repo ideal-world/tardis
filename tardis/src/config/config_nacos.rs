@@ -115,7 +115,7 @@ where
             Ok(config_text) => {
                 log::trace!("[Tardis.config] Nacos Remote config server response: {}", config_text);
                 self.format.parse(None, &config_text).map_err(|error| ConfigError::Foreign(error))
-            },
+            }
             Err(NacosClientError::ReqwestError(e)) => {
                 if e.status().map(|s| u16::from(s) == 404).unwrap_or(false) {
                     log::warn!("[Tardis.config] Nacos Remote config not found: {}, config: {}", e, &self);
@@ -176,7 +176,9 @@ where
 {
     fn listen_update(&self, reload_notifier: &tokio::sync::mpsc::Sender<()>) {
         self.default_config_source.clone().listen_update(reload_notifier.clone());
-        if let Some(h) = self.config_source.clone() { h.listen_update(reload_notifier.clone()) }
+        if let Some(h) = self.config_source.clone() {
+            h.listen_update(reload_notifier.clone())
+        }
     }
     fn register_to_config(&self, mut conf: config::ConfigBuilder<config::builder::AsyncState>) -> config::ConfigBuilder<config::builder::AsyncState> {
         conf = conf.add_async_source(self.default_config_source.clone());

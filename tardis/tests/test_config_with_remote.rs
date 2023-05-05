@@ -34,14 +34,22 @@ async fn test_config_with_remote() -> TardisResult<()> {
     let remote_cfg_default = NacosConfigDescriptor::new("test-app-default", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
     let remote_cfg_remote = NacosConfigDescriptor::new("test-app-remote", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
     // 1. delete remote config if exists
-    let _delete_result = client.delete_config(&remote_cfg_default).await.and_then(|e| {
-        log::warn!("delete remote config failed: {}", e);
-        Ok(false)
-    }).unwrap();
-    let _delete_result = client.delete_config(&remote_cfg_remote).await.and_then(|e| {
-        log::warn!("delete remote config failed: {}", e);
-        Ok(false)
-    }).unwrap();
+    let _delete_result = client
+        .delete_config(&remote_cfg_default)
+        .await
+        .and_then(|e| {
+            log::warn!("delete remote config failed: {}", e);
+            Ok(false)
+        })
+        .unwrap();
+    let _delete_result = client
+        .delete_config(&remote_cfg_remote)
+        .await
+        .and_then(|e| {
+            log::warn!("delete remote config failed: {}", e);
+            Ok(false)
+        })
+        .unwrap();
     // 2. publish remote config
     log::info!("publish remote config: {:?}", remote_cfg_default);
     let pub_result = client
