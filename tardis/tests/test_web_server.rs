@@ -95,7 +95,7 @@ async fn test_web_server() -> TardisResult<()> {
     test_validate(web_url).await?;
     test_context(web_url).await?;
     test_security().await?;
-
+    TardisFuns::shutdown().await?;
     Ok(())
 }
 

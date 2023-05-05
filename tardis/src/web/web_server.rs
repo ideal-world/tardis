@@ -160,6 +160,23 @@ impl TardisWebServer {
 
         let mut swap_route = Route::new();
         std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
+        let graceful_shutdown_signal = async move {
+            let mut tardis_shutdown = unsafe { TardisFuns::subscribe_shutdown_signal() };
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                    log::debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
+                },
+                result = tardis_shutdown.recv() => {
+                    match result {
+                        Ok(_) => {},
+                        Err(e) => {
+                            log::debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
+                        },
+                    }
+                    log::debug!("[Tardis.WebServer] WebServer shutdown (Tardis shutdown signal)");
+                },
+            };
+        };
         if self.config.tls_key.is_some() {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port)).rustls(
                 RustlsConfig::new().fallback(
@@ -170,9 +187,7 @@ impl TardisWebServer {
             );
             let server = poem::Server::new(bind).run_with_graceful_shutdown(
                 swap_route,
-                async move {
-                    let _ = tokio::signal::ctrl_c().await;
-                },
+                graceful_shutdown_signal,
                 Some(Duration::from_secs(5)),
             );
             info!("{}", output_info);
@@ -181,23 +196,7 @@ impl TardisWebServer {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port));
             let server = poem::Server::new(bind).run_with_graceful_shutdown(
                 swap_route,
-                async move {
-                    let mut tardis_shutdown = unsafe { TardisFuns::subscribe_shutdown_signal() };
-                    tokio::select! {
-                        _ = tokio::signal::ctrl_c() => {
-                            log::debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
-                        },
-                        result = tardis_shutdown.recv() => {
-                            match result {
-                                Ok(_) => {},
-                                Err(e) => {
-                                    log::debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
-                                },
-                            }
-                            log::debug!("[Tardis.WebServer] WebServer shutdown (Tardis shutdown signal)");
-                        },
-                    };
-                },
+                graceful_shutdown_signal,
                 Some(Duration::from_secs(5)),
             );
             info!("{}", output_info);
