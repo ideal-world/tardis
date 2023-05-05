@@ -75,7 +75,7 @@ fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
     let mut map: HashMap<String, Box<Vec<CreateIndexMeta>>> = HashMap::new();
     for field in fields {
         for attr in field.attrs.clone() {
-            if let Some(ident) = attr.path.get_ident() {
+            if let Some(ident) = attr.path().get_ident() {
                 if ident == "index" {
                     let field_create_index_meta: CreateIndexMeta = match CreateIndexMeta::from_field(&field) {
                         Ok(field) => field,
