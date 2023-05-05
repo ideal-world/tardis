@@ -1,7 +1,7 @@
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::serde::de::DeserializeOwned;
-use crate::serde::{Deserialize, Serialize};
+use crate::serde::Serialize;
 use crate::serde_json::Value;
 use std::fs::File;
 use std::path::Path;
@@ -54,8 +54,8 @@ impl TardisJson {
     /// use tardis::TardisFuns;
     /// TardisFuns::json.str_to_obj::<TestConfig<DatabaseConfig>>(&json_str);
     /// ```
-    pub fn str_to_obj<'a, T: Deserialize<'a>>(&self, str: &'a str) -> TardisResult<T> {
-        let result = serde_json::from_str::<'a, T>(str);
+    pub fn str_to_obj<T: DeserializeOwned>(&self, str: &str) -> TardisResult<T> {
+        let result = serde_json::from_str(str);
         match result {
             Ok(r) => Ok(r),
             Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-str-to-obj-error")),
@@ -115,8 +115,8 @@ impl TardisJson {
     /// use tardis::TardisFuns;
     /// TardisFuns::json.str_to_json(&json_str);
     /// ```
-    pub fn str_to_json<'a>(&self, str: &'a str) -> TardisResult<Value> {
-        let result = serde_json::from_str::<'a, Value>(str);
+    pub fn str_to_json(&self, str: &str) -> TardisResult<Value> {
+        let result = serde_json::from_str(str);
         match result {
             Ok(r) => Ok(r),
             Err(error) => Err(TardisError::format_error(&format!("[Tardis.Json] {error:?}"), "406-tardis-json-str-to-json-error")),

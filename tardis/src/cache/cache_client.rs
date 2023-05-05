@@ -148,6 +148,11 @@ impl TardisCacheClient {
         self.get_connection().await?.lpush(key, value).await
     }
 
+    pub async fn rpush(&self, key: &str, value: &str) -> RedisResult<()> {
+        trace!("[Tardis.CacheClient] rpush, key:{}, value:{}", key, value);
+        self.get_connection().await?.rpush(key, value).await
+    }
+
     pub async fn lrangeall(&self, key: &str) -> RedisResult<Vec<String>> {
         trace!("[Tardis.CacheClient] lrangeall, key:{}", key);
         self.get_connection().await?.lrange(key, 0, -1).await
