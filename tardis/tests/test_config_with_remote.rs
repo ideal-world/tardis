@@ -11,7 +11,7 @@ use tardis::TardisFuns;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 #[tokio::test]
-// #[ignore]
+#[ignore = "need a nacos server or a nacos test-container"]
 async fn test_config_with_remote() -> TardisResult<()> {
     use std::fs::*;
     env::set_var("RUST_LOG", "info,tardis=debug");
