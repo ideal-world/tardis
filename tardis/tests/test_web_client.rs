@@ -47,14 +47,14 @@ async fn test_web_client() -> TardisResult<()> {
     })
     .await?;
 
-    let res = reqwest::get("http://postman-echo.com/get").await?;
+    let res = reqwest::get("https://postman-echo.com/get").await?;
     assert_eq!(res.status(), StatusCode::OK);
 
     let response = TardisFuns::web_client().get_to_str("https://www.baidu.com", Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec())).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains("baidu"));
 
-    let response = TardisFuns::web_client().get_to_str("http://postman-echo.com/get", Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec())).await?;
+    let response = TardisFuns::web_client().get_to_str("https://postman-echo.com/get", Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec())).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains("Tardis"));
 
