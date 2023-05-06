@@ -1134,7 +1134,7 @@ impl TardisFuns {
             let _ = &TARDIS_INST.mail.take();
         }
         #[cfg(feature = "os")]
-        {
+        unsafe {
             let _ = &TARDIS_INST.os.take();
         }
         #[cfg(feature = "reldb-core")]
