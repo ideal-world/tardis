@@ -161,18 +161,23 @@ impl TardisWebServer {
         let mut swap_route = Route::new();
         std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
         let graceful_shutdown_signal = async move {
-            let mut tardis_shutdown = unsafe { TardisFuns::subscribe_shutdown_signal() };
+            let tardis_shut_down_signal = async {
+                if let Some(mut rx) = TardisFuns::subscribe_shutdown_signal() {
+                    match rx.recv().await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            log::debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
+                        }
+                    }
+                } else {
+                    futures::future::pending::<()>().await;
+                }
+            };
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
                     log::debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
                 },
-                result = tardis_shutdown.recv() => {
-                    match result {
-                        Ok(_) => {},
-                        Err(e) => {
-                            log::debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
-                        },
-                    }
+                _ = tardis_shut_down_signal => {
                     log::debug!("[Tardis.WebServer] WebServer shutdown (Tardis shutdown signal)");
                 },
             };

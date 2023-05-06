@@ -1102,12 +1102,10 @@ impl TardisFuns {
         }
     }
 
-    /// subscribe shutdown signal / 订阅关闭信号
-    /// # Safety
-    /// User shall ensure that Tardis instance has been initialized, otherwise it will panic when it trying to unwrap `shutdown_signal_sender` which is a None value. / 用户需确保Tardis实例已经初始化，否则在尝试unwrap`shutdown_signal_sender`时会panic，因为它是None值。
+    /// subscribe shutdown signal / 订阅关闭信号 which is a None value.
     #[must_use]
-    pub(crate) unsafe fn subscribe_shutdown_signal() -> broadcast::Receiver<()> {
-        TARDIS_INST.shutdown_signal_sender.as_ref().unwrap().subscribe()
+    pub(crate) fn subscribe_shutdown_signal() -> Option<broadcast::Receiver<()>> {
+        unsafe { TARDIS_INST.shutdown_signal_sender.as_ref().map(broadcast::Sender::subscribe) }
     }
 
     pub async fn shutdown() -> TardisResult<()> {
