@@ -28,8 +28,9 @@ reldb-postgres = [
     "reldb-core",
     "sea-orm/postgres-array",
     "sea-orm/sqlx-postgres",
+    "tardis-macros/reldb-postgres",
 ]
-reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql"]
+reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql", "tardis-macros/reldb-mysql"]
 reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
 reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
@@ -39,6 +40,7 @@ cache = ["futures-util", "redis", "deadpool-redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 mail = ["lettre"]
 os = ["rt-tokio", "async-trait", "anyhow", "rust-s3"]
+fs = ["tokio/fs"]
 test = ["testcontainers"]
 
 [dependencies]
@@ -62,7 +64,7 @@ lru = { version = "0.10.0" }
 native-tls = { version = "0.2" }
 
 # Tardis Macros
-tardis-macros = { version = "0.1.0-alpha34", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-beta.5", path = "../tardis-macros", optional = true }
 
 # Log
 log = { version = "0.4" }
@@ -70,7 +72,7 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Tokio
-tokio = { version = "1.18", features = [
+tokio = { version = "1", features = [
     "macros",
     "rt-multi-thread",
     "signal",
@@ -150,7 +152,7 @@ testcontainers = { version = "0.14", optional = true }
 
 [dev-dependencies]
 # Common
-tokio = { version = "1.18", features = ["time", "rt", "macros"] }
+tokio = { version = "1", features = ["time", "rt", "macros"] }
 criterion = { version = "0.4" }
 
 [[test]]

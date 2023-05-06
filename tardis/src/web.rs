@@ -4,6 +4,9 @@ pub use poem;
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub use poem_openapi;
+#[cfg(feature = "ws-client")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ws-client")))]
+pub use tokio_tungstenite;
 
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]

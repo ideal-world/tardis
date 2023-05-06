@@ -98,7 +98,7 @@ async fn test_basic_json() -> TardisResult<()> {
     assert_eq!(user_info.roles[1].name, "用户");
     assert_eq!(user_info.org.as_ref().unwrap().code, "org1");
     assert_eq!(user_info.org.as_ref().unwrap().name, "组织1");
-    assert_eq!(user_info.status, true);
+    assert!(user_info.status);
     assert!(user_info.create_time.timestamp() <= Utc::now().timestamp());
 
     Ok(())
