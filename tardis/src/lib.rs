@@ -1117,11 +1117,32 @@ impl TardisFuns {
                 }
             }
         }
-        #[cfg(feature = "reldb-core")]
+        #[cfg(feature = "web-server")]
+        unsafe {
+            let _ = &TARDIS_INST.web_server.take();
+        }
+        #[cfg(feature = "web-client")]
+        unsafe {
+            let _ = &TARDIS_INST.web_client.take();
+        }
+        #[cfg(feature = "cache")]
+        unsafe {
+            let _ = &TARDIS_INST.cache.take();
+        }
+        #[cfg(feature = "mail")]
+        unsafe {
+            let _ = &TARDIS_INST.mail.take();
+        }
+        #[cfg(feature = "os")]
         {
+            let _ = &TARDIS_INST.os.take();
+        }
+        #[cfg(feature = "reldb-core")]
+        unsafe {
             // reldb needn't shutdown
             // connection will be closed by drop calling
             // see: https://www.sea-ql.org/SeaORM/docs/install-and-config/connection/
+            let _ = &TARDIS_INST.reldb.take();
         }
         #[cfg(feature = "mq")]
         unsafe {
@@ -1129,7 +1150,6 @@ impl TardisFuns {
             if let Some(t) = &TARDIS_INST.mq {
                 for v in t.values() {
                     set.spawn(v.close());
-                    // v.close().await?;
                 }
             }
             while let Some(Ok(close_result)) = set.join_next().await {
@@ -1137,6 +1157,7 @@ impl TardisFuns {
                     log::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
                 }
             }
+            let _ = &TARDIS_INST.mq.take();
         }
         Ok(())
     }
