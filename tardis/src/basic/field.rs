@@ -72,6 +72,11 @@ impl TardisField {
         nanoid::nanoid!(len)
     }
 
+    /// Generate NanoId / 生成NanoId
+    pub fn nanoid_custom(&self, len: usize, alphabet: &[char]) -> String {
+        nanoid::nanoid!(len, alphabet)
+    }
+
     /// Generate self-incrementing ID based on base62 code / 根据base62编码生成自增ID
     ///
     /// `BASE62` refers to Base64 encoding that does not contain `+`
