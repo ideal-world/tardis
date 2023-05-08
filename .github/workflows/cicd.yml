@@ -53,8 +53,8 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
 
-      - name: Install protoc
-        uses: dictav/action-protoc@v0.0.3
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
 
       - name: Cache rust
         uses: Swatinem/rust-cache@v2
