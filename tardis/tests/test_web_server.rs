@@ -666,7 +666,7 @@ async fn test_middleware() -> TardisResult<()> {
                 app: Default::default(),
                 web_server: WebServerConfig {
                     enabled: true,
-                    port: 8081,
+                    port: 8082,
                     modules: HashMap::from([
                         (
                             "todo".to_string(),
@@ -716,9 +716,9 @@ async fn test_middleware() -> TardisResult<()> {
         })
         .await?;
         TardisFuns::web_server()
-            .add_module("todo", TodosApi, vec![TodosApiMiddleware{}.boxed()])
+            .add_module("todo", TodosApi, vec![TodosApiMiddleware::boxed()])
             .await
-            .add_module_with_data::<_, String>("other", OtherApi, None, vec![])
+            .add_module_with_data::<_, String>("other", OtherApi, None, vec![TodosApiMiddleware::boxed()])
             .await
             .start()
             .await
@@ -883,11 +883,8 @@ impl OtherApi {
 
 struct TodosApiMiddleware;
 impl TodosApiMiddleware {
-    fn boxed<'a>(self) -> BoxMiddleware<'a, <TodosApiMiddleware as Middleware<BoxEndpoint<'a>>::Output>
-    where
-        Self: Sized + 'a,
-    {
-        Box::new(self)
+    fn boxed() -> BoxMiddleware<'static> {
+        Box::new(TodosApiMiddleware)
     }
 }
 
@@ -906,11 +903,13 @@ impl<E: Endpoint> Endpoint for TodosApiMWImpl<E> {
     type Output = Response;
 
     async fn call(&self, req: Request) -> poem::Result<Self::Output> {
+        info!("=====exec TodosApiMWImpl");
+        info!("=============={:?}", req.data::<TodoAddReq>());
         match self.0.call(req).await {
             Ok(resp) => {
                 let mut resp = resp.into_response();
                 let http_code = resp.status().as_u16();
-                println!("{:?}", resp.data::<TodoAddReq>());
+                info!("=============={:?}", resp.data::<TodoResp>());
                 // resp.set_body(
                 //     json!({
                 //         "code": bus_code,
