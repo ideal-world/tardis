@@ -19,7 +19,8 @@ async fn main() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug");
     env::set_var("PROFILE", "default");
     env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317");
-
+    env::set_var("OTEL_SERVICE_NAME", "tracing-otlp");
+    
     let fmt_layer = tracing_subscriber::fmt::layer();
 
     let telemetry_layer = tracing_opentelemetry::layer().with_tracer(create_otlp_tracer());
