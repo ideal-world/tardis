@@ -1,5 +1,6 @@
+use std::vec;
+
 use tardis::basic::result::TardisResult;
-use tardis::web::default_empty_mw::DefaultEmptyMW;
 use tardis::web::web_server::TardisWebServer;
 use tardis::TardisFuns;
 
@@ -8,6 +9,6 @@ use crate::domain::doc;
 
 pub async fn init(web_server: &TardisWebServer) -> TardisResult<()> {
     TardisFuns::reldb().conn().create_table_from_entity(doc::Entity).await?;
-    web_server.add_module::<_, DefaultEmptyMW>("doc", doc_api::DocApi, None).await;
+    web_server.add_module::<_>("doc", doc_api::DocApi, vec![]).await;
     Ok(())
 }

@@ -6,6 +6,10 @@ use std::collections::HashMap;
 use std::env;
 use std::time::Duration;
 
+use async_trait::async_trait;
+use poem::endpoint::BoxEndpoint;
+use poem::{IntoResponse, Middleware, Response};
+use tardis::web::web_server::BoxMiddleware;
 use testcontainers::clients;
 use tokio::time::sleep;
 
@@ -17,6 +21,7 @@ use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfi
 use tardis::serde::{Deserialize, Serialize};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::web::context_extractor::{TardisContextExtractor, TOKEN_FLAG};
+use tardis::web::poem::{Endpoint, Request};
 use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi, Tags};
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
 use tardis::TardisFuns;
@@ -95,6 +100,7 @@ async fn test_web_server() -> TardisResult<()> {
     test_validate(web_url).await?;
     test_context(web_url).await?;
     test_security().await?;
+    test_middleware().await?;
 
     Ok(())
 }
@@ -157,7 +163,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
         },
     })
     .await?;
-    TardisFuns::web_server().add_module("todo", TodosApi).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
+    TardisFuns::web_server().add_module("todo", TodosApi, vec![]).await.add_module_with_data::<_, String>("other", OtherApi, None, vec![]).await.start().await
 }
 
 async fn test_basic(url: &str) -> TardisResult<()> {
@@ -582,7 +588,7 @@ async fn test_security() -> TardisResult<()> {
             },
         })
         .await?;
-        TardisFuns::web_server().add_module("todo", TodosApi).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
+        TardisFuns::web_server().add_module("todo", TodosApi, vec![]).await.add_module_with_data::<_, String>("other", OtherApi, None, vec![]).await.start().await
     });
     sleep(Duration::from_millis(500)).await;
 
@@ -602,6 +608,139 @@ async fn test_security() -> TardisResult<()> {
         .unwrap();
     assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
     assert_eq!(response.data.unwrap(), "编码1");
+
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1").as_str(), None).await?.body.unwrap();
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
+    assert_eq!(response.data.unwrap().description, "测试");
+
+    // Business Error
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1/err").as_str(), None).await?.body.unwrap();
+    assert_eq!(response.code, TardisError::conflict("异常", "").code);
+    assert_eq!(
+        response.msg,
+        "[Tardis.WebServer] Security is enabled, detailed errors are hidden, please check the server logs"
+    );
+
+    // Not Found
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1/ss").as_str(), None).await?.body.unwrap();
+    assert_eq!(response.code, TardisError::not_found("", "").code);
+    assert_eq!(
+        response.msg,
+        "[Tardis.WebServer] Security is enabled, detailed errors are hidden, please check the server logs"
+    );
+
+    let response = TardisFuns::web_client()
+        .post::<ValidateReq, TardisResp<String>>(
+            format!("{url}/other/validate").as_str(),
+            &ValidateReq {
+                len: "1".to_string(),
+                eq: "11111".to_string(),
+                range: 444,
+                mail: "ss@ss.ss".to_string(),
+                contain: "gmail".to_string(),
+                phone: "18654110201".to_string(),
+                item_len: vec!["ddd".to_string()],
+                item_unique: vec!["ddd".to_string(), "ddd".to_string()],
+            },
+            None,
+        )
+        .await?
+        .body
+        .unwrap();
+    assert_eq!(response.code, TardisError::bad_request("", "").code);
+    assert_eq!(
+        response.msg,
+        "[Tardis.WebServer] Security is enabled, detailed errors are hidden, please check the server logs"
+    );
+
+    Ok(())
+}
+
+async fn test_middleware() -> TardisResult<()> {
+    let url = "https://localhost:8082";
+
+    tokio::spawn(async {
+        TardisFuns::init_conf(TardisConfig {
+            cs: Default::default(),
+            fw: FrameworkConfig {
+                app: Default::default(),
+                web_server: WebServerConfig {
+                    enabled: true,
+                    port: 8081,
+                    modules: HashMap::from([
+                        (
+                            "todo".to_string(),
+                            WebServerModuleConfig {
+                                name: "todo app".to_string(),
+                                doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].to_vec(),
+                                ..Default::default()
+                            },
+                        ),
+                        (
+                            "other".to_string(),
+                            WebServerModuleConfig {
+                                name: "other app".to_string(),
+                                ..Default::default()
+                            },
+                        ),
+                    ]),
+                    ..Default::default()
+                },
+                web_client: Default::default(),
+                cache: CacheConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                db: DBConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                mq: MQConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                search: SearchConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                mail: MailConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                os: OSConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        })
+        .await?;
+        TardisFuns::web_server()
+            .add_module("todo", TodosApi, vec![TodosApiMiddleware{}.boxed()])
+            .await
+            .add_module_with_data::<_, String>("other", OtherApi, None, vec![])
+            .await
+            .start()
+            .await
+    });
+    sleep(Duration::from_millis(500)).await;
+
+    // Normal
+    let response = TardisFuns::web_client()
+        .post::<TodoAddReq, TardisResp<String>>(
+            format!("{url}/todo/todos").as_str(),
+            &TodoAddReq {
+                code: "编码2".into(),
+                description: "测试".to_string(),
+                done: false,
+            },
+            None,
+        )
+        .await?
+        .body
+        .unwrap();
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
+    assert_eq!(response.data.unwrap(), "编码2");
 
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1").as_str(), None).await?.body.unwrap();
     assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
@@ -739,5 +878,49 @@ impl OtherApi {
     #[oai(path = "/context_in_header", method = "get")]
     async fn context_in_header(&self, ctx: TardisContextExtractor) -> TardisApiResult<String> {
         TardisResp::ok(ctx.0.roles.get(1).unwrap().to_string())
+    }
+}
+
+struct TodosApiMiddleware;
+impl TodosApiMiddleware {
+    fn boxed<'a>(self) -> BoxMiddleware<'a, <TodosApiMiddleware as Middleware<BoxEndpoint<'a>>::Output>
+    where
+        Self: Sized + 'a,
+    {
+        Box::new(self)
+    }
+}
+
+impl Middleware<BoxEndpoint<'static>> for TodosApiMiddleware {
+    type Output = BoxEndpoint<'static>;
+
+    fn transform(&self, ep: BoxEndpoint<'static>) -> Self::Output {
+        Box::new(TodosApiMWImpl(ep))
+    }
+}
+
+pub struct TodosApiMWImpl<E>(E);
+
+#[async_trait]
+impl<E: Endpoint> Endpoint for TodosApiMWImpl<E> {
+    type Output = Response;
+
+    async fn call(&self, req: Request) -> poem::Result<Self::Output> {
+        match self.0.call(req).await {
+            Ok(resp) => {
+                let mut resp = resp.into_response();
+                let http_code = resp.status().as_u16();
+                println!("{:?}", resp.data::<TodoAddReq>());
+                // resp.set_body(
+                //     json!({
+                //         "code": bus_code,
+                //         "msg": process_err_msg(bus_code.as_str(),msg),
+                //     })
+                //     .to_string(),
+                // );
+                Ok(resp)
+            }
+            Err(r) => Err(r),
+        }
     }
 }
