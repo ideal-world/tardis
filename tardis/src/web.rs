@@ -13,6 +13,9 @@ pub use tokio_tungstenite;
 pub mod context_extractor;
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
+pub mod default_empty_mw;
+#[cfg(feature = "web-server")]
+#[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub mod uniform_error_mw;
 #[cfg(feature = "web-client")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-client")))]

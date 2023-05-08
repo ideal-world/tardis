@@ -1,7 +1,10 @@
+use std::process::Output;
+
 use futures_util::lock::Mutex;
+use poem::endpoint::BoxEndpoint;
 use poem::listener::{Listener, RustlsCertificate, RustlsConfig, TcpListener};
-use poem::middleware::Cors;
-use poem::{EndpointExt, Route};
+use poem::middleware::{self, Cors};
+use poem::{EndpointExt, Middleware, Route};
 use poem_openapi::{ExtraHeader, OpenApi, OpenApiService, ServerObject};
 use tokio::time::Duration;
 
@@ -9,6 +12,8 @@ use crate::basic::result::TardisResult;
 use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
 use crate::log::info;
 use crate::web::uniform_error_mw::UniformError;
+
+use super::default_empty_mw::DefaultEmptyMW;
 
 pub struct TardisWebServer {
     app_name: String,
@@ -44,20 +49,22 @@ impl TardisWebServer {
     where
         T: OpenApi + 'static,
     {
-        self.add_route_with_data::<_, String>(apis, None).await
+        self.add_route_with_data::<_, String, DefaultEmptyMW>(apis, None, None).await
     }
 
     pub async fn add_route_with_ws<T>(&self, apis: T, capacity: usize) -> &Self
     where
         T: OpenApi + 'static,
     {
-        self.add_route_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>>(apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0)).await
+        self.add_route_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>, DefaultEmptyMW>(apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0), None)
+            .await
     }
 
-    pub async fn add_route_with_data<T, D>(&self, apis: T, data: Option<D>) -> &Self
+    pub async fn add_route_with_data<T, D, M>(&self, apis: T, data: Option<D>, middleware: Option<M>) -> &Self
     where
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
+        M: Middleware<Route, Output = BoxEndpoint<'static>>,
     {
         let module = WebServerModuleConfig {
             name: self.app_name.clone(),
@@ -67,38 +74,51 @@ impl TardisWebServer {
             ui_path: self.config.ui_path.clone(),
             spec_path: self.config.spec_path.clone(),
         };
-        self.do_add_module_with_data("", &module, apis, data).await
+        if let Some(middleware) = middleware {
+            self.do_add_module_with_data("", &module, apis, data, middleware).await
+        } else {
+            self.do_add_module_with_data("", &module, apis, data, DefaultEmptyMW).await
+        }
     }
 
-    pub async fn add_module<T>(&self, code: &str, apis: T) -> &Self
+    pub async fn add_module<T, M>(&self, code: &str, apis: T, middleware: Option<M>) -> &Self
     where
         T: OpenApi + 'static,
+        M: Middleware<Route, Output = BoxEndpoint<'static>>,
     {
-        self.add_module_with_data::<_, String>(code, apis, None).await
+        self.add_module_with_data::<_, String, M>(code, apis, None, middleware).await
     }
 
-    pub async fn add_module_with_ws<T>(&self, code: &str, apis: T, capacity: usize) -> &Self
+    pub async fn add_module_with_ws<T, M>(&self, code: &str, apis: T, capacity: usize, middleware: Option<M>) -> &Self
     where
         T: OpenApi + 'static,
+        M: Middleware<Route, Output = BoxEndpoint<'static>>,
     {
-        self.add_module_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>>(code, apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0)).await
+        self.add_module_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>, M>(code, apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0), middleware)
+            .await
     }
 
-    pub async fn add_module_with_data<T, D>(&self, code: &str, apis: T, data: Option<D>) -> &Self
+    pub async fn add_module_with_data<T, D, M>(&self, code: &str, apis: T, data: Option<D>, middleware: Option<M>) -> &Self
     where
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
+        M: Middleware<Route, Output = BoxEndpoint<'static>>,
     {
         let code = code.to_lowercase();
         let code = code.as_str();
         let module = self.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {code} not found"));
-        self.do_add_module_with_data(code, module, apis, data).await
+        if let Some(middleware) = middleware {
+            self.do_add_module_with_data(code, module, apis, data, middleware).await
+        } else {
+            self.do_add_module_with_data(code, module, apis, data, DefaultEmptyMW).await
+        }
     }
 
-    async fn do_add_module_with_data<T, D>(&self, code: &str, module: &WebServerModuleConfig, apis: T, data: Option<D>) -> &Self
+    async fn do_add_module_with_data<T, D, M>(&self, code: &str, module: &WebServerModuleConfig, apis: T, data: Option<D>, middleware: M) -> &Self
     where
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
+        M: Middleware<Route, Output = BoxEndpoint<'static>>,
     {
         info!("[Tardis.WebServer] Add module {}", code);
         let mut api_serv = OpenApiService::new(apis, &module.name, &module.version);
@@ -125,7 +145,7 @@ impl TardisWebServer {
         } else {
             Cors::new().allow_origin(&self.config.allowed_origin)
         };
-        let route = route.with(UniformError).with(cors);
+        let route = route.with(middleware).with(UniformError).with(cors);
         // Solved:  Cannot move out of *** which is behind a mutable reference
         // https://stackoverflow.com/questions/63353762/cannot-move-out-of-which-is-behind-a-mutable-reference
         let mut swap_route = Route::new();
