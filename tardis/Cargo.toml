@@ -35,7 +35,7 @@ reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
 reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
 web-client = ["rt-tokio", "reqwest"]
-ws-client = ["rt-tokio", "tokio-tungstenite"]
+ws-client = ["future", "tokio-tungstenite"]
 cache = ["futures-util", "redis", "deadpool-redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 mail = ["lettre"]
@@ -161,7 +161,7 @@ required-features = ["crypto"]
 
 [[test]]
 name = "test_config_with_remote"
-required-features = ["crypto", "conf-remote"]
+required-features = ["crypto", "web-server", "cache", "web-client", "conf-remote"]
 
 [[test]]
 name = "test_crypto"

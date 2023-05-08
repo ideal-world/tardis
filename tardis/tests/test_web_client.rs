@@ -17,7 +17,6 @@ async fn test_web_client() -> TardisResult<()> {
         fw: FrameworkConfig {
             app: Default::default(),
             web_server: Default::default(),
-            web_client: Default::default(),
             cache: CacheConfig {
                 enabled: false,
                 ..Default::default()
