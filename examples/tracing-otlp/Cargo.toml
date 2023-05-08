@@ -8,7 +8,6 @@ opentelemetry = { version = "=0.18", default-features = false, features = [ "tra
 opentelemetry-otlp = { version = "=0.11", features = ["reqwest-client", "reqwest-rustls", "http-proto", "tls"]}
 tonic = { version = "0.8", features = ["tls", "tls-roots"]}
 tracing = "0.1"
-tracing-actix-web = "0.7"
 tracing-opentelemetry = "=0.18"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tardis = { path = "../../tardis", features = ["future", "web-server", "reldb-postgres"] }
