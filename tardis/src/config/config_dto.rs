@@ -140,6 +140,8 @@ pub struct DBConfig {
     pub idle_timeout_sec: Option<u64>,
     /// Database module configuration / 数据库模块配置
     pub modules: HashMap<String, DBModuleConfig>,
+    /// Compatible database type / 兼容数据库类型
+    pub compatible_type: CompatibleType,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -155,6 +157,8 @@ pub struct DBModuleConfig {
     pub connect_timeout_sec: Option<u64>,
     /// Idle connection timeout / 空闲连接超时时间
     pub idle_timeout_sec: Option<u64>,
+    /// Compatible database type / 兼容数据库类型
+    pub compatible_type: CompatibleType,
 }
 
 impl Default for DBConfig {
@@ -167,6 +171,7 @@ impl Default for DBConfig {
             connect_timeout_sec: None,
             idle_timeout_sec: None,
             modules: Default::default(),
+            compatible_type: CompatibleType::None,
         }
     }
 }
@@ -179,8 +184,15 @@ impl Default for DBModuleConfig {
             min_connections: 5,
             connect_timeout_sec: None,
             idle_timeout_sec: None,
+            compatible_type: CompatibleType::None,
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum CompatibleType {
+    None,
+    Oracle,
 }
 
 /// Web service configuration / Web服务配置
@@ -711,6 +723,12 @@ impl ConfCenterConfig {
                 }
             };
             if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
+                match TardisFuns::shutdown().await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("[Tardis.config] Tardis shutdown with error {}", e);
+                    }
+                }
                 match TardisFuns::init_conf(config).await {
                     Ok(_) => {
                         log::info!("[Tardis.config] Configuration update succeeded");

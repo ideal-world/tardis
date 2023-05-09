@@ -2,6 +2,8 @@
 
 use std::env;
 
+use poem_openapi_derive::OpenApi;
+use reqwest::StatusCode;
 use tardis::basic::result::TardisResult;
 use tardis::config::config_dto::TardisConfig;
 use tardis::config::config_nacos::nacos_client::{NacosClient, NacosConfigDescriptor};
@@ -10,11 +12,29 @@ use tardis::TardisFuns;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+struct TestApi {
+    pub randown_key: String,
+}
+
+#[OpenApi]
+impl TestApi {
+    fn new() -> Self {
+        Self {
+            randown_key: format!("{:08x}", rand::random::<u32>()),
+        }
+    }
+    #[oai(path = "/hello", method = "get")]
+    async fn create(&self) -> tardis::web::web_resp::TardisApiResult<String> {
+        tardis::web::web_resp::TardisResp::ok(self.randown_key.clone())
+    }
+}
+
 #[tokio::test]
-// #[ignore]
+// #[ignore = "need a nacos server or a nacos test-container"]
 async fn test_config_with_remote() -> TardisResult<()> {
     use std::fs::*;
-    env::set_var("RUST_LOG", "info,tardis=info");
+    env::set_var("RUST_LOG", "info,tardis=debug");
     env::set_var("PROFILE", "default");
     // for debug only
     // env::set_current_dir("./tardis").unwrap();
@@ -34,14 +54,22 @@ async fn test_config_with_remote() -> TardisResult<()> {
     let remote_cfg_default = NacosConfigDescriptor::new("test-app-default", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
     let remote_cfg_remote = NacosConfigDescriptor::new("test-app-remote", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
     // 1. delete remote config if exists
-    let _delete_result = client.delete_config(&remote_cfg_default).await.and_then(|e| {
-        log::warn!("delete remote config failed: {}", e);
-        Ok(false)
-    }).unwrap();
-    let _delete_result = client.delete_config(&remote_cfg_remote).await.and_then(|e| {
-        log::warn!("delete remote config failed: {}", e);
-        Ok(false)
-    }).unwrap();
+    let _delete_result = client
+        .delete_config(&remote_cfg_default)
+        .await
+        .and_then(|e| {
+            log::warn!("delete remote config failed: {}", e);
+            Ok(false)
+        })
+        .unwrap();
+    let _delete_result = client
+        .delete_config(&remote_cfg_remote)
+        .await
+        .and_then(|e| {
+            log::warn!("delete remote config failed: {}", e);
+            Ok(false)
+        })
+        .unwrap();
     // 2. publish remote config
     log::info!("publish remote config: {:?}", remote_cfg_default);
     let pub_result = client
@@ -55,6 +83,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     log::info!("publish remote config success");
 
     // 3. get remote config
+    TardisFuns::shutdown().await?;
     env::set_var("PROFILE", "remote");
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded");
@@ -63,7 +92,18 @@ async fn test_config_with_remote() -> TardisResult<()> {
         TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url,
         "ENC(9EE184E87EA31E6588C08BBC0F7C0E276DE482F7CEE914CBDA05DF619607A24E)"
     );
-
+    // 3.1 test web server
+    let api = TestApi::new();
+    let key = api.randown_key.clone();
+    let server = TardisFuns::web_server();
+    server.add_route(api).await;
+    tokio::spawn(server.start());
+    // wait for server to start
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    // wait for server to start
+    let response = TardisFuns::web_client().get_to_str("http://localhost:8080/hello", None).await?;
+    assert_eq!(response.code, StatusCode::OK.as_u16());
+    assert!(response.body.unwrap().contains(&key));
     // 4. update remote config
     // wait for 5s
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
@@ -77,7 +117,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
         .expect("fail to update remote config");
     log::info!("update remote config result: {:?}", update_result);
     // 4.1 wait for polling, and tardis will reboot since the remote config has been updated
-    let mut count_down = 20;
+    let mut count_down = 15;
     while count_down > 0 {
         if count_down % 5 == 0 {
             log::info!("wait {}s for polling", count_down);
@@ -87,7 +127,23 @@ async fn test_config_with_remote() -> TardisResult<()> {
     }
     // 4.2 check if the local config has been updated
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded_v2");
-
+    // 5.1 test web client
+    let result = TardisFuns::web_client().get_to_str("https://postman-echo.com/get", None).await?;
+    assert_eq!(result.code, StatusCode::OK.as_u16());
+    // 5.2 test web server
+    let api = TestApi::new();
+    let key = api.randown_key.clone();
+    let server = TardisFuns::web_server();
+    server.add_route(api).await;
+    tokio::spawn(server.start());
+    // wait for server to start
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    // wait for server to start
+    let response = TardisFuns::web_client().get_to_str("http://localhost:8081/hello", None).await?;
+    assert_eq!(response.code, StatusCode::OK.as_u16());
+    assert!(response.body.unwrap().contains(&key));
+    // 5.3 test mq
+    TardisFuns::shutdown().await?;
     Ok(())
 }
 
@@ -111,16 +167,9 @@ impl Default for TestConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 struct TestModuleConfig {
     db_proj: DatabaseConfig,
-}
-
-impl Default for TestModuleConfig {
-    fn default() -> Self {
-        TestModuleConfig {
-            db_proj: DatabaseConfig::default(),
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

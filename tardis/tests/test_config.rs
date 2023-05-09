@@ -69,16 +69,9 @@ impl Default for TestConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 struct TestModuleConfig {
     db_proj: DatabaseConfig,
-}
-
-impl Default for TestModuleConfig {
-    fn default() -> Self {
-        TestModuleConfig {
-            db_proj: DatabaseConfig::default(),
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

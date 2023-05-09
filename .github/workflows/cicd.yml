@@ -1,6 +1,6 @@
 name: CICD
 
-on: [push]
+on: [push, pull_request]
 
 env:
   TARDIS_TEST_DISABLED_DOCKER: true

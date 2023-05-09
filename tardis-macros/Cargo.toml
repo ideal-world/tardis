@@ -16,9 +16,15 @@ name = "tardis_macros"
 path = "src/lib.rs"
 proc_macro = true
 
+[features]
+reldb-postgres = []
+reldb-mysql = []
+
 [dependencies]
-syn = { version = "1", features = ["full", "extra-traits"] }
+syn = { version = "2.0.15", features = ["full", "extra-traits"] }
 quote = "1"
 proc-macro2 = "1"
+darling = { version = "0.20.1" }
+nanoid = { version = "0.4" }
 
 [dev-dependencies]

@@ -1,14 +1,11 @@
 use config::builder::AsyncState;
-#[cfg(feature = "conf-remote")]
-use {
-    config::FileFormat,
-    std::sync::Arc
-};
 use config::{ConfigBuilder, ConfigError, Environment, File};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
+#[cfg(feature = "conf-remote")]
+use {config::FileFormat, std::sync::Arc};
 
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
@@ -187,7 +184,7 @@ impl TardisConfig {
 }
 
 #[cfg(feature = "conf-remote")]
-// temporarily dont need async_trait
+// temporarily don't need async_trait
 // #[async_trait]
 pub(crate) trait ConfCenterProcess: Sync + Send + std::fmt::Debug {
     /// listen the config-center processor change

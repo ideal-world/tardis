@@ -141,10 +141,14 @@ pub use serde;
 use serde::de::DeserializeOwned;
 pub use serde_json;
 use serde_json::Value;
+#[cfg(feature = "tardis-macros")]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+pub use tardis_macros::{TardisCreateIndex, TardisCreateTable};
 #[cfg(feature = "test")]
 pub use testcontainers;
 #[cfg(feature = "rt-tokio")]
 pub use tokio;
+use tokio::sync::broadcast;
 pub use url;
 
 use basic::error::TardisErrorWithExt;
@@ -273,6 +277,7 @@ use crate::web::web_server::TardisWebServer;
 pub struct TardisFuns {
     custom_config: Option<HashMap<ModuleCode, Value>>,
     _custom_config_cached: Option<HashMap<ModuleCode, Box<dyn Any>>>,
+    shutdown_signal_sender: Option<broadcast::Sender<()>>,
     framework_config: Option<FrameworkConfig>,
     inherit: Option<TardisFunsInherit>,
     #[cfg(feature = "reldb-core")]
@@ -297,6 +302,7 @@ type ModuleCode = String;
 static mut TARDIS_INST: TardisFuns = TardisFuns {
     custom_config: None,
     _custom_config_cached: None,
+    shutdown_signal_sender: None,
     framework_config: None,
     inherit: None,
     #[cfg(feature = "reldb-core")]
@@ -402,6 +408,9 @@ impl TardisFuns {
     /// ```
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
         TardisLogger::init()?;
+        unsafe {
+            replace(&mut TARDIS_INST.shutdown_signal_sender, Some(broadcast::channel(1).0));
+        };
         unsafe {
             replace(&mut TARDIS_INST.custom_config, Some(conf.cs));
             replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
@@ -867,8 +876,8 @@ impl TardisFuns {
     #[cfg(feature = "ws-client")]
     pub async fn ws_client<F, T>(str_url: &str, fun: F) -> TardisResult<web::ws_client::TardisWSClient<F, T>>
     where
-        F: Fn(String) -> T + Send + Sync + Copy + 'static,
-        T: futures::Future<Output = Option<String>> + Send + 'static,
+        F: Fn(tokio_tungstenite::tungstenite::Message) -> T + Send + Sync + Copy + 'static,
+        T: futures::Future<Output = Option<tokio_tungstenite::tungstenite::Message>> + Send + 'static,
     {
         web::ws_client::TardisWSClient::init(str_url, fun).await
     }
@@ -1103,17 +1112,63 @@ impl TardisFuns {
         }
     }
 
+    /// subscribe shutdown signal / 订阅关闭信号 which is a None value.
+    #[must_use]
+    pub(crate) fn subscribe_shutdown_signal() -> Option<broadcast::Receiver<()>> {
+        unsafe { TARDIS_INST.shutdown_signal_sender.as_ref().map(broadcast::Sender::subscribe) }
+    }
+
     pub async fn shutdown() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
-        #[cfg(feature = "mq")]
         unsafe {
-            if let Some(t) = &TARDIS_INST.mq {
-                for v in t.values() {
-                    v.close().await?;
+            if let Some(shutdow_signal_sender) = &TARDIS_INST.shutdown_signal_sender {
+                if shutdow_signal_sender.send(()).is_err() {
+                    log::debug!("[Tardis] Shutdown signal send failed: no receiver.");
                 }
             }
         }
-
+        #[cfg(feature = "web-server")]
+        unsafe {
+            let _ = &TARDIS_INST.web_server.take();
+        }
+        #[cfg(feature = "web-client")]
+        unsafe {
+            let _ = &TARDIS_INST.web_client.take();
+        }
+        #[cfg(feature = "cache")]
+        unsafe {
+            let _ = &TARDIS_INST.cache.take();
+        }
+        #[cfg(feature = "mail")]
+        unsafe {
+            let _ = &TARDIS_INST.mail.take();
+        }
+        #[cfg(feature = "os")]
+        unsafe {
+            let _ = &TARDIS_INST.os.take();
+        }
+        #[cfg(feature = "reldb-core")]
+        unsafe {
+            // reldb needn't shutdown
+            // connection will be closed by drop calling
+            // see: https://www.sea-ql.org/SeaORM/docs/install-and-config/connection/
+            let _ = &TARDIS_INST.reldb.take();
+        }
+        #[cfg(feature = "mq")]
+        unsafe {
+            let mut set = tokio::task::JoinSet::new();
+            if let Some(t) = &TARDIS_INST.mq {
+                for v in t.values() {
+                    set.spawn(v.close());
+                }
+            }
+            while let Some(Ok(close_result)) = set.join_next().await {
+                if let Err(e) = close_result {
+                    log::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
+                }
+            }
+            let _ = &TARDIS_INST.mq.take();
+        }
         Ok(())
     }
 
