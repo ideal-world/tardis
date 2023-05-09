@@ -47,14 +47,14 @@ impl TardisWebServer {
     where
         T: OpenApi + 'static,
     {
-        self.add_route_with_data::<_, String>(apis, None, vec![]).await
+        self.add_route_with_data::<_, String>(apis, None, None).await
     }
 
     pub async fn add_route_with_ws<T>(&self, apis: T, capacity: usize) -> &Self
     where
         T: OpenApi + 'static,
     {
-        self.add_route_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>>(apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0), vec![]).await
+        self.add_route_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>>(apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0), None).await
     }
 
     pub async fn add_route_with_data<T, D>(&self, apis: T, data: Option<D>, middlewares: impl IntoIterator<Item = BoxMiddleware<'static>>) -> &Self

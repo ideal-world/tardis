@@ -166,7 +166,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
         },
     })
     .await?;
-    TardisFuns::web_server().add_module("todo", TodosApi, vec![]).await.add_module_with_data::<_, String>("other", OtherApi, None, vec![]).await.start().await
+    TardisFuns::web_server().add_module("todo", TodosApi, None).await.add_module_with_data::<_, String>("other", OtherApi, None, None).await.start().await
 }
 
 async fn test_basic(url: &str) -> TardisResult<()> {
@@ -591,7 +591,7 @@ async fn test_security() -> TardisResult<()> {
             },
         })
         .await?;
-        TardisFuns::web_server().add_module("todo", TodosApi, vec![]).await.add_module_with_data::<_, String>("other", OtherApi, None, vec![]).await.start().await
+        TardisFuns::web_server().add_module("todo", TodosApi, vec![]).await.add_module_with_data::<_, String>("other", OtherApi, None, None).await.start().await
     });
     sleep(Duration::from_millis(500)).await;
 
@@ -721,7 +721,7 @@ async fn test_middleware() -> TardisResult<()> {
         TardisFuns::web_server()
             .add_module("todo", TodosApi, vec![TodosApiMiddleware1::boxed(), TodosApiMiddleware2::boxed()])
             .await
-            .add_module_with_data::<_, String>("other", OtherApi, None, vec![])
+            .add_module_with_data::<_, String>("other", OtherApi, None, None)
             .await
             .start()
             .await
