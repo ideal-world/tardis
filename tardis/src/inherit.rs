@@ -18,8 +18,9 @@ pub trait InheritableModule {
 //     pub web_server: Option<<TardisWebServer as InheritDrop>::Inherit>,
 // }
 
-macro_rules! impl_tardis_funs_inherit {
-    ($($module: ident, $module_ty: ty, $feat: literal);*) => {
+macro_rules! define_tardis_funs_inherit {
+    ($($feat: literal => $module: ident: $module_ty: ty);*) => {
+        #[derive(Default)]
         pub struct TardisFunsInherit {
             $(
                 #[cfg(feature = $feat)]
@@ -28,6 +29,7 @@ macro_rules! impl_tardis_funs_inherit {
         }
     };
 }
-impl_tardis_funs_inherit!{
-    web_server, TardisWebServer, "web-server"
+
+define_tardis_funs_inherit!{
+    "web-server" => web_server: TardisWebServer
 }

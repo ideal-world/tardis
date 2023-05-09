@@ -133,9 +133,9 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // 5.2 test web server
     let api = TestApi::new();
     let key = api.randown_key.clone();
-    let server = TardisFuns::web_server();
-    server.add_route(api).await;
-    tokio::spawn(server.start());
+    // let server = TardisFuns::web_server();
+    // server.add_route(api).await;
+    // tokio::spawn(server.start());
     // wait for server to start
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     // wait for server to start

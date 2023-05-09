@@ -132,7 +132,7 @@ pub use derive_more;
 pub use futures;
 #[cfg(feature = "future")]
 pub use futures_util;
-use inherit::{TardisFunsInherit, InheritableModule};
+use inherit::{InheritableModule, TardisFunsInherit};
 pub use log;
 pub use lru;
 pub use rand;
@@ -428,16 +428,14 @@ impl TardisFuns {
         #[cfg(feature = "web-server")]
         {
             if TardisFuns::fw_config().web_server.enabled {
-                let mut web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config())?;  
-                if let Some(inherit) = TardisFuns::inherit().and_then(|x|x.web_server.take()) {
-                    // start it as we already got its route info
-                    // let web_server = TardisFuns::web_server();
-                    web_server.load(inherit);
-                    tokio::spawn(web_server.start());
-                }
+                let mut web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config())?;
+                let start_instantly = TardisFuns::inherit().and_then(|x| x.web_server.take()).map(|x| web_server.load(x)).is_some();
                 unsafe {
                     replace(&mut TARDIS_INST.web_server, Some(web_server));
                 };
+                if start_instantly {
+                    tokio::spawn(TardisFuns::web_server().start());
+                }
             }
         }
         #[cfg(feature = "web-client")]
@@ -1118,7 +1116,7 @@ impl TardisFuns {
         unsafe { TARDIS_INST.shutdown_signal_sender.as_ref().map(broadcast::Sender::subscribe) }
     }
 
-    pub async fn shutdown() -> TardisResult<()> {
+    async fn shutdown_internal(inherit_mode: bool) -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
         unsafe {
             if let Some(shutdow_signal_sender) = &TARDIS_INST.shutdown_signal_sender {
@@ -1127,10 +1125,11 @@ impl TardisFuns {
                 }
             }
         }
+        let mut inherit = TardisFunsInherit::default();
         #[cfg(feature = "web-server")]
         unsafe {
-            let _ = &TARDIS_INST.web_server.take();
-        }
+            inherit.web_server = TARDIS_INST.web_server.take().map(InheritableModule::drop)
+        };
         #[cfg(feature = "web-client")]
         unsafe {
             let _ = &TARDIS_INST.web_client.take();
@@ -1169,7 +1168,26 @@ impl TardisFuns {
             }
             let _ = &TARDIS_INST.mq.take();
         }
+        if inherit_mode {
+            unsafe { TARDIS_INST.inherit.replace(inherit); }
+        }
+        // # enhancement
+        // here is not 100% safe, web-server could shutdown extremely slow, while the new instance starting up extremely fast, which cause a conflict.
+        // maybe we should hold web-server task handle, and join it on shutdown.
+        
         Ok(())
+    }
+
+    /// shutdown totally
+    pub async fn shutdown() -> TardisResult<()> {
+        Self::shutdown_internal(false).await
+    }
+
+    /// shutdown with inherit mode
+    /// # Inherit Mode
+    /// tardis will store user-defined data like webserver routes, when `init_conf()` is called next time, tardis will reload
+    pub async fn shutdown_inherit() -> TardisResult<()> {
+        Self::shutdown_internal(true).await
     }
 
     pub fn inherit() -> Option<&'static mut TardisFunsInherit> {
