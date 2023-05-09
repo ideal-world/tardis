@@ -1,11 +1,7 @@
-use std::process::Output;
-use std::sync::Arc;
-
 use futures_util::lock::Mutex;
-use lru::Iter;
 use poem::endpoint::BoxEndpoint;
 use poem::listener::{Listener, RustlsCertificate, RustlsConfig, TcpListener};
-use poem::middleware::{self, Cors};
+use poem::middleware::Cors;
 use poem::{EndpointExt, Middleware, Route};
 use poem_openapi::{ExtraHeader, OpenApi, OpenApiService, ServerObject};
 use tokio::time::Duration;
@@ -109,7 +105,7 @@ impl TardisWebServer {
         module: &WebServerModuleConfig,
         apis: T,
         data: Option<D>,
-        middlewares: impl IntoIterator<Item = BoxMiddleware<'static>> ,
+        middlewares: impl IntoIterator<Item = BoxMiddleware<'static>>,
     ) -> &Self
     where
         T: OpenApi + 'static,
