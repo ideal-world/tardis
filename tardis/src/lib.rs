@@ -132,6 +132,7 @@ pub use derive_more;
 pub use futures;
 #[cfg(feature = "future")]
 pub use futures_util;
+use inherit::{TardisFunsInherit, InheritableModule};
 pub use log;
 pub use lru;
 pub use rand;
@@ -148,6 +149,7 @@ pub use url;
 
 use basic::error::TardisErrorWithExt;
 use basic::result::TardisResult;
+use web::web_server;
 
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;
@@ -272,6 +274,7 @@ pub struct TardisFuns {
     custom_config: Option<HashMap<ModuleCode, Value>>,
     _custom_config_cached: Option<HashMap<ModuleCode, Box<dyn Any>>>,
     framework_config: Option<FrameworkConfig>,
+    inherit: Option<TardisFunsInherit>,
     #[cfg(feature = "reldb-core")]
     reldb: Option<HashMap<ModuleCode, TardisRelDBClient>>,
     #[cfg(feature = "web-server")]
@@ -295,6 +298,7 @@ static mut TARDIS_INST: TardisFuns = TardisFuns {
     custom_config: None,
     _custom_config_cached: None,
     framework_config: None,
+    inherit: None,
     #[cfg(feature = "reldb-core")]
     reldb: None,
     #[cfg(feature = "web-server")]
@@ -415,7 +419,13 @@ impl TardisFuns {
         #[cfg(feature = "web-server")]
         {
             if TardisFuns::fw_config().web_server.enabled {
-                let web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config())?;
+                let mut web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config())?;  
+                if let Some(inherit) = TardisFuns::inherit().and_then(|x|x.web_server.take()) {
+                    // start it as we already got its route info
+                    // let web_server = TardisFuns::web_server();
+                    web_server.load(inherit);
+                    tokio::spawn(web_server.start());
+                }
                 unsafe {
                     replace(&mut TARDIS_INST.web_server, Some(web_server));
                 };
@@ -1103,7 +1113,12 @@ impl TardisFuns {
                 }
             }
         }
+
         Ok(())
+    }
+
+    pub fn inherit() -> Option<&'static mut TardisFunsInherit> {
+        unsafe { TARDIS_INST.inherit.as_mut() }
     }
 }
 
@@ -1236,6 +1251,7 @@ pub mod crypto;
 #[cfg(feature = "reldb-core")]
 #[cfg_attr(docsrs, doc(cfg(feature = "reldb-core")))]
 pub mod db;
+pub(crate) mod inherit;
 #[cfg(feature = "mail")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mail")))]
 pub mod mail;
