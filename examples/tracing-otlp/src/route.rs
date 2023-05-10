@@ -11,7 +11,7 @@ pub struct Api;
 
 #[poem_openapi::OpenApi]
 impl Api {
-    #[instrument]
+    #[instrument(level = "debug")]
     #[oai(path = "/send_email", method = "get")]
     async fn send_email(&self) -> TardisApiResult<String> {
         let params = gen_params(&TaskKind::SendEmail);
@@ -19,7 +19,7 @@ impl Api {
         TardisResp::ok("send email".to_string())
     }
 
-    #[instrument]
+    #[instrument(level = "debug")]
     #[oai(path = "/send_sms", method = "get")]
     async fn send_sms(&self) -> TardisApiResult<String> {
         let params = gen_params(&TaskKind::SendEmail);
@@ -27,7 +27,7 @@ impl Api {
         TardisResp::ok("send sms".to_string())
     }
 
-    #[instrument]
+    #[instrument(level = "debug")]
     #[oai(path = "/send_push", method = "get")]
     async fn send_push(&self) -> TardisApiResult<String> {
         let params = gen_params(&TaskKind::SendEmail);
@@ -35,7 +35,7 @@ impl Api {
         TardisResp::ok("send push".to_string())
     }
 
-    #[instrument]
+    #[instrument(level = "debug")]
     #[oai(path = "/export_excel", method = "get")]
     async fn export_excel(&self) -> TardisApiResult<String> {
         let params = gen_params(&TaskKind::ExportExcel);
@@ -43,7 +43,7 @@ impl Api {
         TardisResp::ok("send push".to_string())
     }
 
-    #[instrument]
+    #[instrument(level = "debug")]
     #[oai(path = "/generate_image", method = "get")]
     async fn generate_image(&self) -> TardisApiResult<String> {
         let params = gen_params(&TaskKind::GenerateImage);
