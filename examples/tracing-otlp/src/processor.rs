@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use tardis::async_trait::async_trait;
 use tardis::basic::{error::TardisError, result::TardisResult};
 use tardis::tokio::time::{sleep, Duration};
-use tracing::instrument;
+use tardis::tokio;
+use tracing::{instrument, event, Level, debug_span};
+use tracing::Instrument;
 
 #[derive(Debug)]
 pub enum TaskKind {
@@ -40,7 +42,12 @@ impl Task for SendEmailTask {
     #[instrument]
     async fn handle(&self, _params: HashMap<String, String>) -> TardisResult<()> {
         sleep(Duration::from_millis(300)).await;
-        log_user().await.unwrap();
+        tokio::spawn(async move {
+            let span = debug_span!("into spawn");
+            let _enter = span.enter();
+
+            log_user().await.unwrap();
+        }.instrument(tracing::info_span!("task")));
         Ok(())
     }
 }
@@ -97,7 +104,6 @@ impl Task for GenerateImageTask {
     }
 }
 
-#[instrument]
 pub async fn dispatch(task_kind: TaskKind, params: HashMap<String, String>) -> TardisResult<()> {
     match task_kind {
         TaskKind::SendEmail => SendEmailTask.handle(params).await,
