@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use tardis::async_trait::async_trait;
 use tardis::basic::{error::TardisError, result::TardisResult};
-use tardis::tokio::time::{sleep, Duration};
 use tardis::tokio;
-use tracing::{instrument, event, Level, debug_span};
-use tracing::Instrument;
+use tardis::tokio::time::{sleep, Duration};
+use tardis::tracing::{debug_span, info_span, instrument};
 
 #[derive(Debug)]
 pub enum TaskKind {
@@ -47,7 +46,7 @@ impl Task for SendEmailTask {
             let _enter = span.enter();
 
             log_user().await.unwrap();
-        }.instrument(tracing::info_span!("task")));
+        });
         Ok(())
     }
 }

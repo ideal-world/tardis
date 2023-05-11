@@ -42,6 +42,7 @@ mail = ["lettre"]
 os = ["rt-tokio", "async-trait", "anyhow", "rust-s3"]
 fs = ["tokio/fs"]
 test = ["testcontainers"]
+tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp", "tonic"]
 
 [dependencies]
 # Basic
@@ -70,6 +71,10 @@ tardis-macros = { version = "0.1.0-beta.5", path = "../tardis-macros", optional 
 log = { version = "0.4" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-opentelemetry = { version = "=0.18", optional = true}
+opentelemetry = { version = "=0.18", default-features = false, features = [ "trace", "rt-tokio" ], optional = true}
+opentelemetry-otlp = { version = "=0.11", features = ["reqwest-client", "reqwest-rustls", "http-proto", "tls"], optional = true}
+tonic = { version = "0.8", features = ["tls", "tls-roots"], optional = true}
 
 # Tokio
 tokio = { version = "1", features = [
