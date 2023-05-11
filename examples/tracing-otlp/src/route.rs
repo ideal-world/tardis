@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
+use tardis::tracing::instrument;
 use tardis::web::poem_openapi;
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
-use tracing::instrument;
 
 use crate::processor::{self, TaskKind};
 
@@ -11,7 +11,7 @@ pub struct Api;
 
 #[poem_openapi::OpenApi]
 impl Api {
-    #[instrument(level = "debug")]
+    #[instrument]
     #[oai(path = "/send_email", method = "get")]
     async fn send_email(&self) -> TardisApiResult<String> {
         let params = gen_params(&TaskKind::SendEmail);

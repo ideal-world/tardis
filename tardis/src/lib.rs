@@ -148,6 +148,8 @@ pub use testcontainers;
 #[cfg(feature = "rt-tokio")]
 pub use tokio;
 pub use url;
+#[cfg(feature = "tracing")]
+pub use tracing;
 
 use basic::error::TardisErrorWithExt;
 use basic::result::TardisResult;
