@@ -2,9 +2,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::basic::result::TardisResult;
 #[cfg(feature = "tracing")]
-use tracing_subscriber::prelude::*;
-#[cfg(feature = "tracing")]
 use opentelemetry_otlp::WithExportConfig;
+#[cfg(feature = "tracing")]
+use tracing_subscriber::prelude::*;
 
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
@@ -52,14 +52,14 @@ impl TardisLogger {
     #[cfg(feature = "tracing")]
     fn create_otlp_tracer() -> opentelemetry::sdk::trace::Tracer {
         let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
-    
+
         let mut tracer = opentelemetry_otlp::new_pipeline().tracing();
         let headers = Self::parse_otlp_headers_from_env();
-    
+
         match protocol.as_str() {
             "grpc" => {
                 let mut exporter = opentelemetry_otlp::new_exporter().tonic().with_metadata(Self::metadata_from_headers(headers)).with_env();
-    
+
                 // Check if we need TLS
                 if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
                     if endpoint.starts_with("https") {
@@ -74,14 +74,14 @@ impl TardisLogger {
             }
             p => panic!("Unsupported protocol {}", p),
         };
-    
+
         tracer.install_batch(opentelemetry::runtime::Tokio).unwrap()
     }
 
     #[cfg(feature = "tracing")]
     fn parse_otlp_headers_from_env() -> Vec<(String, String)> {
         let mut headers = Vec::new();
-    
+
         if let Ok(hdrs) = std::env::var("OTEL_EXPORTER_OTLP_HEADERS") {
             hdrs.split(',')
                 .map(|header| header.split_once('=').expect("Header should contain '=' character"))
@@ -92,9 +92,9 @@ impl TardisLogger {
 
     #[cfg(feature = "tracing")]
     fn metadata_from_headers(headers: Vec<(String, String)>) -> tonic::metadata::MetadataMap {
-        use tonic::metadata;
         use std::str::FromStr;
-    
+        use tonic::metadata;
+
         let mut metadata = metadata::MetadataMap::new();
         headers.into_iter().for_each(|(name, value)| {
             let value = value.parse::<metadata::MetadataValue<metadata::Ascii>>().expect("Header value invalid");
