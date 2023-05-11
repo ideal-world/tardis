@@ -41,12 +41,15 @@ impl Task for SendEmailTask {
     #[instrument]
     async fn handle(&self, _params: HashMap<String, String>) -> TardisResult<()> {
         sleep(Duration::from_millis(300)).await;
-        tokio::spawn(async move {
-            let span = debug_span!("into spawn");
-            let _enter = span.enter();
+        tokio::spawn(
+            async move {
+                let span = debug_span!("into spawn");
+                let _enter = span.enter();
 
-            log_user().await.unwrap();
-        }.instrument(tracing::info_span!("task")));
+                log_user().await.unwrap();
+            }
+            .instrument(tracing::info_span!("task")),
+        );
         Ok(())
     }
 }
