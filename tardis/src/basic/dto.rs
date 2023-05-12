@@ -8,7 +8,7 @@ use crate::serde::{Deserialize, Serialize};
 
 use super::result::TardisResult;
 
-/// ardis context / Tardis上下文
+/// Tardis context / Tardis上下文
 ///
 /// Used to bring in some authentication information when a web request is received.
 ///
