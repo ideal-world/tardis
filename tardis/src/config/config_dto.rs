@@ -42,6 +42,9 @@ pub struct FrameworkConfig {
     /// Config center configuration / 配置中心的配置
     #[cfg(feature = "conf-remote")]
     pub conf_center: Option<ConfCenterConfig>,
+    /// Tracing configuration / 链路追踪配置
+    #[cfg(feature = "tracing")]
+    pub tracing: Option<TracingConfig>,
 }
 
 /// Application configuration / 应用配置
@@ -715,6 +718,28 @@ impl Default for ConfCenterConfig {
             format: Some("toml".to_string()),
             group: Some("default".to_string()),
             namespace: None,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct TracingConfig {
+    pub level: String,
+    pub endpoint: String,
+    pub protocol: String,
+    pub server_name: String,
+    pub headers: Option<String>,
+}
+
+impl Default for TracingConfig {
+    fn default() -> Self {
+        TracingConfig {
+            level: "info".to_string(),
+            endpoint: "http://localhost:4317".to_string(),
+            protocol: "grpc".to_string(),
+            server_name: "tardis-tracing".to_string(),
+            headers: None,
         }
     }
 }

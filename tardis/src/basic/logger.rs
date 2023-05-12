@@ -1,6 +1,10 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::basic::result::TardisResult;
+#[cfg(feature = "tracing")]
+use opentelemetry_otlp::WithExportConfig;
+#[cfg(feature = "tracing")]
+use tracing_subscriber::prelude::*;
 
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
@@ -14,7 +18,10 @@ impl TardisLogger {
         if std::env::var_os("RUST_LOG").is_none() {
             std::env::set_var("RUST_LOG", "info");
         }
-        tracing_subscriber::fmt::init();
+        #[cfg(not(feature = "tracing"))]
+        {
+            tracing_subscriber::fmt::init();
+        }
         Ok(())
     }
 }

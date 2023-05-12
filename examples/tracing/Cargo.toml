@@ -1,0 +1,13 @@
+[package]
+name = "tardis-example-tracing"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+log = { version = "0.4" }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tardis = { path = "../../tardis", features = ["future"] }
+random-string = { version = "1.0.0" }
