@@ -126,6 +126,7 @@ use std::ptr::replace;
 pub use async_stream;
 #[cfg(feature = "future")]
 pub use async_trait;
+use basic::tracing::TardisTracing;
 pub use chrono;
 pub use derive_more;
 #[cfg(feature = "future")]
@@ -403,11 +404,13 @@ impl TardisFuns {
     /// ```
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
         TardisLogger::init()?;
+        TardisTracing::init(&conf)?;
         unsafe {
             replace(&mut TARDIS_INST.custom_config, Some(conf.cs));
             replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
             replace(&mut TARDIS_INST.framework_config, Some(conf.fw));
         };
+        #[cfg(feature = "tracing")]
         #[cfg(feature = "reldb-core")]
         {
             if TardisFuns::fw_config().db.enabled {
