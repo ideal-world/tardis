@@ -27,7 +27,7 @@ impl TardisTracing {
             }
             if std::env::var_os("OTEL_SERVICE_NAME").is_none() {
                 std::env::set_var("OTEL_SERVICE_NAME", tracing_config.server_name.as_str());
-            }   
+            }
         }
         #[cfg(feature = "tracing")]
         {
