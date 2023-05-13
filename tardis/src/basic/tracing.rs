@@ -15,22 +15,22 @@ impl TardisTracing {
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
-        if let Some(tracing_config) = conf.fw.tracing.as_ref() {
-            if std::env::var_os("RUST_LOG").is_none() {
-                std::env::set_var("RUST_LOG", tracing_config.level.as_str());
-            }
-            if std::env::var_os("OTEL_EXPORTER_OTLP_ENDPOINT").is_none() {
-                std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", tracing_config.endpoint.as_str());
-            }
-            if std::env::var_os("OTEL_EXPORTER_OTLP_PROTOCOL").is_none() {
-                std::env::set_var("OTEL_EXPORTER_OTLP_PROTOCOL", tracing_config.protocol.as_str());
-            }
-            if std::env::var_os("OTEL_SERVICE_NAME").is_none() {
-                std::env::set_var("OTEL_SERVICE_NAME", tracing_config.server_name.as_str());
-            }
-        }
         #[cfg(feature = "tracing")]
         {
+            if let Some(tracing_config) = conf.fw.tracing.as_ref() {
+                if std::env::var_os("RUST_LOG").is_none() {
+                    std::env::set_var("RUST_LOG", tracing_config.level.as_str());
+                }
+                if std::env::var_os("OTEL_EXPORTER_OTLP_ENDPOINT").is_none() {
+                    std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", tracing_config.endpoint.as_str());
+                }
+                if std::env::var_os("OTEL_EXPORTER_OTLP_PROTOCOL").is_none() {
+                    std::env::set_var("OTEL_EXPORTER_OTLP_PROTOCOL", tracing_config.protocol.as_str());
+                }
+                if std::env::var_os("OTEL_SERVICE_NAME").is_none() {
+                    std::env::set_var("OTEL_SERVICE_NAME", tracing_config.server_name.as_str());
+                }
+            }
             Self::init_tracing().unwrap();
         }
         Ok(())
