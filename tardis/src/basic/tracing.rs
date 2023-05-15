@@ -17,7 +17,7 @@ impl TardisTracing {
         }
         #[cfg(feature = "tracing")]
         {
-            if let Some(tracing_config) = conf.fw.tracing.as_ref() {
+            if let Some(tracing_config) = conf.fw.log.as_ref() {
                 if std::env::var_os("RUST_LOG").is_none() {
                     std::env::set_var("RUST_LOG", tracing_config.level.as_str());
                 }

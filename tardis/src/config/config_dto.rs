@@ -44,7 +44,7 @@ pub struct FrameworkConfig {
     pub conf_center: Option<ConfCenterConfig>,
     /// Tracing configuration / 链路追踪配置
     #[cfg(feature = "tracing")]
-    pub tracing: Option<TracingConfig>,
+    pub log: Option<LogConfig>,
 }
 
 /// Application configuration / 应用配置
@@ -724,7 +724,7 @@ impl Default for ConfCenterConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
-pub struct TracingConfig {
+pub struct LogConfig {
     pub level: String,
     pub endpoint: String,
     pub protocol: String,
@@ -732,9 +732,9 @@ pub struct TracingConfig {
     pub headers: Option<String>,
 }
 
-impl Default for TracingConfig {
+impl Default for LogConfig {
     fn default() -> Self {
-        TracingConfig {
+        LogConfig {
             level: "info".to_string(),
             endpoint: "http://localhost:4317".to_string(),
             protocol: "grpc".to_string(),
