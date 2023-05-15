@@ -15,8 +15,14 @@ config_change_polling_interval = 5000
 # level_num = 3
 
 # test-app-remote in remote
+
+[fw.mq]
+enabled = true
+[fw.mq.modules.m1]
+
+
 [cs]
-project_name = "测试_romote_remote"
+project_name = "测试_romote_locale"
 level_num = 3
 
 [csm.m1]

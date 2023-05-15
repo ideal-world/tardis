@@ -161,7 +161,7 @@ required-features = ["crypto"]
 
 [[test]]
 name = "test_config_with_remote"
-required-features = ["crypto", "web-server", "cache", "web-client", "conf-remote"]
+required-features = ["test", "crypto", "web-server", "cache", "web-client", "conf-remote", "mq"]
 
 [[test]]
 name = "test_crypto"

@@ -24,7 +24,7 @@ ui_path="ui"
 # test-app-remote in remote
 [cs]
 project_name = "测试_romote_uploaded"
-level_num = 3
+level_num = 4
 
 [csm.m1]
 [csm.m1.db_proj]

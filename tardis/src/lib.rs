@@ -153,7 +153,6 @@ pub use url;
 
 use basic::error::TardisErrorWithExt;
 use basic::result::TardisResult;
-use web::web_server;
 
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;

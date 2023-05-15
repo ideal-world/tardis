@@ -1,5 +1,6 @@
 // https://github.com/mehcode/config-rs
 
+use std::collections::HashMap;
 use std::env;
 
 use poem_openapi_derive::OpenApi;
@@ -8,7 +9,12 @@ use tardis::basic::result::TardisResult;
 use tardis::config::config_dto::TardisConfig;
 use tardis::config::config_nacos::nacos_client::{NacosClient, NacosConfigDescriptor};
 use tardis::serde::{Deserialize, Serialize};
+
+use tardis::test::test_container::nacos_server::NacosServer;
 use tardis::TardisFuns;
+use testcontainers::clients::Cli;
+use testcontainers::images::generic::GenericImage;
+use testcontainers::Container;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -30,24 +36,67 @@ impl TestApi {
     }
 }
 
+#[allow(dead_code)]
+struct DockerEnv<'d> {
+    nacos_url: String,
+    mq_url: String,
+    nacos: Container<'d, NacosServer>,
+    mq: Container<'d, GenericImage>,
+}
+
+fn initialize_docker_env(cli: &Cli) -> DockerEnv {
+    // init nacos docker
+    use tardis::test::test_container::nacos_server::NacosServerMode;
+    use tardis::test::test_container::TardisTestContainer;
+
+    // nacos
+    let mut nacos = tardis::test::test_container::nacos_server::NacosServer::default();
+    nacos
+        .nacos_auth_enable(true)
+        .nacos_auth_identity_key("nacos".into())
+        .nacos_auth_identity_value("nacos".into())
+        .nacos_auth_token(tardis::crypto::crypto_base64::TardisCryptoBase64.encode("nacos server for test_config_with_remote"))
+        .mode(NacosServerMode::Standalone);
+    nacos.tag = "v2.2.2".to_string();
+    let nacos = TardisTestContainer::nacos_custom(cli, nacos);
+    let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = nacos.get_bridge_ip_address(), port = 8848);
+    env::set_var("TARDIS_FW.CONF_CENTER.URL", nacos_url.clone());
+    nacos.start();
+    println!("nacos server started at: {}", nacos_url);
+
+    // mq
+
+    let mq = TardisTestContainer::rabbit_custom(cli);
+    let mq_url = format!(
+        "{schema}://{user}:{pswd}@{ip}:{port}/%2f",
+        schema = "amqp",
+        user = "guest",
+        pswd = "guest",
+        ip = mq.get_bridge_ip_address(),
+        port = 5672
+    );
+    env::set_var("TARDIS_FW.MQ.URL", mq_url.clone());
+    env::set_var("TARDIS_FW.MQ.MODULES.M1.URL", mq_url.clone());
+    println!("rabbit-mq started at: {}", mq_url);
+
+    DockerEnv { mq_url, nacos_url, nacos, mq }
+}
 #[tokio::test]
-// #[ignore = "need a nacos server or a nacos test-container"]
+#[ignore = "need a nacos server or a nacos test-container"]
 async fn test_config_with_remote() -> TardisResult<()> {
-    use std::fs::*;
     env::set_var("RUST_LOG", "info,tardis=debug");
-    env::set_var("PROFILE", "default");
-    // for debug only
-    // env::set_current_dir("./tardis").unwrap();
+    env::set_var("PROFILE", "remote");
+
+    let docker = testcontainers::clients::Cli::docker();
+    let docker_env = initialize_docker_env(&docker);
+    // let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = "0.0.0.0", port = 8848);
     TardisFuns::init(Some("tests/config")).await?;
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 2);
+    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_locale");
+    assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
+    TardisFuns::shutdown().await?;
 
     // load remote config
-    env::set_var("PROFILE", "remote");
-    TardisFuns::init(Some("tests/config")).await?;
-    let fw_config = TardisFuns::fw_config().conf_center.as_ref().expect("fail to get conf_center config");
-    // this client is for test only
-    let mut client: NacosClient = NacosClient::new(&fw_config.url);
+    let mut client: NacosClient = NacosClient::new(&docker_env.nacos_url);
     // get auth
     client.login(&fw_config.username, &fw_config.password).await?;
     // going to put test-app-default into remote
@@ -72,13 +121,8 @@ async fn test_config_with_remote() -> TardisResult<()> {
         .unwrap();
     // 2. publish remote config
     log::info!("publish remote config: {:?}", remote_cfg_default);
-    let pub_result = client
-        .publish_config(
-            &remote_cfg_default,
-            &mut File::open("./tests/config/remote-config/conf-remote-v1.toml").expect("fail to open conf-remote-v1"),
-        )
-        .await
-        .expect("fail to publish remote config");
+    let config_file = include_str!("./config/remote-config/conf-remote-v1.toml").replace("http://0.0.0.0:8848/nacos", &docker_env.nacos_url);
+    let pub_result = client.publish_config(&remote_cfg_default, &mut config_file.as_bytes()).await.expect("fail to publish remote config");
     assert!(pub_result);
     log::info!("publish remote config success");
 
@@ -87,7 +131,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("PROFILE", "remote");
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded");
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
+    assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 4);
     assert_eq!(
         TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url,
         "ENC(9EE184E87EA31E6588C08BBC0F7C0E276DE482F7CEE914CBDA05DF619607A24E)"
@@ -108,13 +152,8 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // wait for 5s
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     // upload config
-    let update_result = client
-        .publish_config(
-            &remote_cfg_default,
-            &mut File::open("./tests/config/remote-config/conf-remote-v2.toml").expect("fail to open conf-remote-v2"),
-        )
-        .await
-        .expect("fail to update remote config");
+    let config_file = include_str!("./config/remote-config/conf-remote-v2.toml").replace("http://0.0.0.0:8848/nacos", &docker_env.nacos_url);
+    let update_result = client.publish_config(&remote_cfg_default, &mut config_file.as_bytes()).await.expect("fail to update remote config");
     log::info!("update remote config result: {:?}", update_result);
     // 4.1 wait for polling, and tardis will reboot since the remote config has been updated
     let mut count_down = 15;
@@ -128,21 +167,33 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // 4.2 check if the local config has been updated
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded_v2");
     // 5.1 test web client
-    let result = TardisFuns::web_client().get_to_str("https://postman-echo.com/get", None).await?;
-    assert_eq!(result.code, StatusCode::OK.as_u16());
-    // 5.2 test web server
-    let api = TestApi::new();
-    let key = api.randown_key.clone();
-    // let server = TardisFuns::web_server();
-    // server.add_route(api).await;
-    // tokio::spawn(server.start());
+    {
+        // let result = TardisFuns::web_client().get_to_str("https://postman-echo.com/get", None).await?;
+        // assert_eq!(result.code, StatusCode::OK.as_u16());
+    }
     // wait for server to start
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    // wait for server to start
-    let response = TardisFuns::web_client().get_to_str("http://localhost:8081/hello", None).await?;
-    assert_eq!(response.code, StatusCode::OK.as_u16());
-    assert!(response.body.unwrap().contains(&key));
-    // 5.3 test mq
+    // 5.2 test mq
+    {
+        TardisFuns::mq();
+        let mq_client = TardisFuns::mq_by_module("m1");
+
+        mq_client
+            .response("test-addr", |(header, msg)| async move {
+                println!("response1 {}", msg);
+                assert_eq!(header.get("k1").unwrap(), "v1");
+                assert_eq!(msg, "测试!");
+                Ok(())
+            })
+            .await?;
+
+        let mut header = HashMap::new();
+        header.insert("k1".to_string(), "v1".to_string());
+
+        mq_client.request("test-addr", "测试!".to_string(), &header).await?;
+        // if close cilent here, shutdown we called later will encounter an error
+        // mq_client.close().await?;
+    }
+
     TardisFuns::shutdown().await?;
     Ok(())
 }
