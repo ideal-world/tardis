@@ -175,3 +175,5 @@ impl TardisTestContainer {
         docker.run(images::minio::MinIO::default())
     }
 }
+
+pub mod nacos_server;

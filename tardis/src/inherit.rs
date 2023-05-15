@@ -1,8 +1,4 @@
-use poem::Route;
-use std::collections::HashMap;
-
 use crate::web::web_server::TardisWebServer;
-use std::cell::Cell;
 pub trait InheritableModule {
     type Inherit;
     fn drop(self) -> Self::Inherit
@@ -30,6 +26,6 @@ macro_rules! define_tardis_funs_inherit {
     };
 }
 
-define_tardis_funs_inherit!{
+define_tardis_funs_inherit! {
     "web-server" => web_server: TardisWebServer
 }

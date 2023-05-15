@@ -1168,12 +1168,14 @@ impl TardisFuns {
             let _ = &TARDIS_INST.mq.take();
         }
         if inherit_mode {
-            unsafe { TARDIS_INST.inherit.replace(inherit); }
+            unsafe {
+                TARDIS_INST.inherit.replace(inherit);
+            }
         }
         // # enhancement
         // here is not 100% safe, web-server could shutdown extremely slow, while the new instance starting up extremely fast, which cause a conflict.
         // maybe we should hold web-server task handle, and join it on shutdown.
-        
+
         Ok(())
     }
 

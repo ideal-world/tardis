@@ -6,7 +6,6 @@ use std::env;
 use poem_openapi_derive::OpenApi;
 use reqwest::StatusCode;
 use tardis::basic::result::TardisResult;
-use tardis::config::config_dto::TardisConfig;
 use tardis::config::config_nacos::nacos_client::{NacosClient, NacosConfigDescriptor};
 use tardis::serde::{Deserialize, Serialize};
 
@@ -58,7 +57,7 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
         .nacos_auth_token(tardis::crypto::crypto_base64::TardisCryptoBase64.encode("nacos server for test_config_with_remote"))
         .mode(NacosServerMode::Standalone);
     nacos.tag = "v2.2.2".to_string();
-    let nacos = TardisTestContainer::nacos_custom(cli, nacos);
+    let nacos = cli.run(nacos);
     let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = nacos.get_bridge_ip_address(), port = 8848);
     env::set_var("TARDIS_FW.CONF_CENTER.URL", nacos_url.clone());
     nacos.start();
@@ -98,7 +97,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // load remote config
     let mut client: NacosClient = NacosClient::new(&docker_env.nacos_url);
     // get auth
-    client.login(&fw_config.username, &fw_config.password).await?;
+    client.login("nacos", "nacos").await?;
     // going to put test-app-default into remote
     let remote_cfg_default = NacosConfigDescriptor::new("test-app-default", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
     let remote_cfg_remote = NacosConfigDescriptor::new("test-app-remote", "DEFAULT_GROUP", &Arc::new(Mutex::new(None)));
@@ -106,17 +105,17 @@ async fn test_config_with_remote() -> TardisResult<()> {
     let _delete_result = client
         .delete_config(&remote_cfg_default)
         .await
-        .and_then(|e| {
+        .map(|e| {
             log::warn!("delete remote config failed: {}", e);
-            Ok(false)
+            false
         })
         .unwrap();
     let _delete_result = client
         .delete_config(&remote_cfg_remote)
         .await
-        .and_then(|e| {
+        .map(|e| {
             log::warn!("delete remote config failed: {}", e);
-            Ok(false)
+            false
         })
         .unwrap();
     // 2. publish remote config
