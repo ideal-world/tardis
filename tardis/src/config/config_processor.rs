@@ -12,8 +12,8 @@ use tracing_subscriber::filter;
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
-use crate::basic::logger::RELOAD_HANDLE;
 use crate::basic::result::TardisResult;
+use crate::basic::tracing::{global_reload_handle, TardisTracing};
 use crate::config::config_dto::FrameworkConfig;
 use crate::log::{debug, info};
 
@@ -164,15 +164,15 @@ impl TardisConfig {
 
         env::set_var("RUST_BACKTRACE", if framework_config.adv.backtrace { "1" } else { "0" });
         // If set log level,reload trace filter
-        if framework_config.log.is_some() {
+        #[cfg(not(feature = "tracing"))]
+        if let Some(log_config) = framework_config.log.as_mut() {
             if let Some(log_level) = std::env::var_os("RUST_LOG") {
-                framework_config.log.as_mut().unwrap().level = log_level.into_string().unwrap();
+                log_config.level = log_level.into_string().unwrap();
             }
-            let global_reload_handle = RELOAD_HANDLE.lock().map_err(|error| TardisError::internal_error(&format!("{error:?}"), ""))?;
-            if let Some(reload_handle) = &*global_reload_handle {
-                if let Some(log_config) = framework_config.log.as_ref() {
+            unsafe {
+                if global_reload_handle.is_some() {
                     let log_level = log_config.level.as_str();
-                    reload_handle.modify(|filter| *filter = filter::LevelFilter::from_str(log_level).unwrap()).unwrap();
+                    TardisTracing::update_log_level(log_level).unwrap();
                 }
             }
         }

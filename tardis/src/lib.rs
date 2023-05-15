@@ -126,7 +126,6 @@ use std::ptr::replace;
 pub use async_stream;
 #[cfg(feature = "future")]
 pub use async_trait;
-#[cfg(feature = "tracing")]
 use basic::tracing::TardisTracing;
 pub use chrono;
 pub use derive_more;
@@ -158,7 +157,6 @@ use basic::result::TardisResult;
 
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;
-use crate::basic::logger::TardisLogger;
 use crate::basic::uri::TardisUri;
 #[cfg(feature = "cache")]
 use crate::cache::cache_client::TardisCacheClient;
@@ -338,7 +336,8 @@ impl TardisFuns {
     /// TardisFuns::init("proj/config").await;
     /// ```
     pub async fn init(relative_path: Option<&str>) -> TardisResult<()> {
-        TardisLogger::init()?;
+        #[cfg(not(feature = "tracing"))]
+        TardisTracing::init_log()?;
         let config = TardisConfig::init(relative_path).await?;
         TardisFuns::init_conf(config).await
     }
@@ -349,7 +348,9 @@ impl TardisFuns {
     ///
     /// [init](Self::init) 函数时会自动调用此函数
     pub fn init_log() -> TardisResult<()> {
-        TardisLogger::init()
+        #[cfg(not(feature = "tracing"))]
+        TardisTracing::init_log()?;
+        Ok(())
     }
 
     /// Initialized by the configuration object / 通过配置对象初始化
@@ -404,9 +405,8 @@ impl TardisFuns {
     ///         .await;
     /// ```
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
-        TardisLogger::init()?;
         #[cfg(feature = "tracing")]
-        TardisTracing::init(&conf)?;
+        TardisTracing::init_tracing(&conf)?;
         unsafe {
             replace(&mut TARDIS_INST.custom_config, Some(conf.cs));
             replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));

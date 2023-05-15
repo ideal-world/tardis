@@ -42,7 +42,7 @@ pub struct FrameworkConfig {
     /// Config center configuration / 配置中心的配置
     #[cfg(feature = "conf-remote")]
     pub conf_center: Option<ConfCenterConfig>,
-    /// Tracing configuration / 链路追踪配置
+    /// log configuration / 日志配置
     pub log: Option<LogConfig>,
 }
 
