@@ -6,10 +6,13 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
+use std::str::FromStr;
+use tracing_subscriber::filter;
 
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
+use crate::basic::logger::RELOAD_HANDLE;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
 use crate::log::{debug, info};
@@ -148,7 +151,7 @@ impl TardisConfig {
                 _ => return Err(error.into()),
             },
         }
-        let framework_config = match conf.get::<FrameworkConfig>("fw") {
+        let mut framework_config = match conf.get::<FrameworkConfig>("fw") {
             Ok(fw) => fw,
             Err(error) => match error {
                 ConfigError::NotFound(_) => {
@@ -160,6 +163,19 @@ impl TardisConfig {
         };
 
         env::set_var("RUST_BACKTRACE", if framework_config.adv.backtrace { "1" } else { "0" });
+        // If set log level,reload trace filter
+        if framework_config.log.is_some() {
+            if let Some(log_level) = std::env::var_os("RUST_LOG") {
+                framework_config.log.as_mut().unwrap().level = log_level.into_string().unwrap();
+            }
+            let global_reload_handle = RELOAD_HANDLE.lock().map_err(|error| TardisError::internal_error(&format!("{error:?}"), ""))?;
+            if let Some(reload_handle) = &*global_reload_handle {
+                if let Some(log_config) = framework_config.log.as_ref() {
+                    let log_level = log_config.level.as_str();
+                    reload_handle.modify(|filter| *filter = filter::LevelFilter::from_str(log_level).unwrap()).unwrap();
+                }
+            }
+        }
 
         let config = if framework_config.adv.salt.is_empty() {
             TardisConfig {

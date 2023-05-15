@@ -1,9 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::{basic::result::TardisResult, config::config_dto::TardisConfig};
-#[cfg(feature = "tracing")]
 use opentelemetry_otlp::WithExportConfig;
-#[cfg(feature = "tracing")]
 use tracing_subscriber::prelude::*;
 
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
@@ -15,28 +13,24 @@ impl TardisTracing {
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
-        #[cfg(feature = "tracing")]
-        {
-            if let Some(tracing_config) = conf.fw.log.as_ref() {
-                if std::env::var_os("RUST_LOG").is_none() {
-                    std::env::set_var("RUST_LOG", tracing_config.level.as_str());
-                }
-                if std::env::var_os("OTEL_EXPORTER_OTLP_ENDPOINT").is_none() {
-                    std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", tracing_config.endpoint.as_str());
-                }
-                if std::env::var_os("OTEL_EXPORTER_OTLP_PROTOCOL").is_none() {
-                    std::env::set_var("OTEL_EXPORTER_OTLP_PROTOCOL", tracing_config.protocol.as_str());
-                }
-                if std::env::var_os("OTEL_SERVICE_NAME").is_none() {
-                    std::env::set_var("OTEL_SERVICE_NAME", tracing_config.server_name.as_str());
-                }
+        if let Some(tracing_config) = conf.fw.log.as_ref() {
+            if std::env::var_os("RUST_LOG").is_none() {
+                std::env::set_var("RUST_LOG", tracing_config.level.as_str());
             }
-            Self::init_tracing().unwrap();
+            if std::env::var_os("OTEL_EXPORTER_OTLP_ENDPOINT").is_none() {
+                std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", tracing_config.endpoint.as_str());
+            }
+            if std::env::var_os("OTEL_EXPORTER_OTLP_PROTOCOL").is_none() {
+                std::env::set_var("OTEL_EXPORTER_OTLP_PROTOCOL", tracing_config.protocol.as_str());
+            }
+            if std::env::var_os("OTEL_SERVICE_NAME").is_none() {
+                std::env::set_var("OTEL_SERVICE_NAME", tracing_config.server_name.as_str());
+            }
         }
+        Self::init_tracing().unwrap();
         Ok(())
     }
 
-    #[cfg(feature = "tracing")]
     fn init_tracing() -> TardisResult<()> {
         let fmt_layer = tracing_subscriber::fmt::layer();
 
@@ -47,7 +41,6 @@ impl TardisTracing {
         Ok(())
     }
 
-    #[cfg(feature = "tracing")]
     fn create_otlp_tracer() -> opentelemetry::sdk::trace::Tracer {
         let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
 
@@ -76,7 +69,6 @@ impl TardisTracing {
         tracer.install_batch(opentelemetry::runtime::Tokio).unwrap()
     }
 
-    #[cfg(feature = "tracing")]
     fn parse_otlp_headers_from_env() -> Vec<(String, String)> {
         let mut headers = Vec::new();
 
@@ -88,7 +80,6 @@ impl TardisTracing {
         headers
     }
 
-    #[cfg(feature = "tracing")]
     fn metadata_from_headers(headers: Vec<(String, String)>) -> tonic::metadata::MetadataMap {
         use std::str::FromStr;
         use tonic::metadata;
