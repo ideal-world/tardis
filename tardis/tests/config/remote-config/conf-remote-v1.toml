@@ -1,12 +1,6 @@
 [fw]
 [fw.app]
 id = "test-app"
-[fw.conf_center]
-kind = "nacos"
-url = "http://0.0.0.0:8848/nacos"
-username = "nacos"
-password = "nacos"
-group = "DEFAULT_GROUP"
 
 [fw.web_server]
 enabled = true

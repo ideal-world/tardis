@@ -119,7 +119,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
         .unwrap();
     // 2. publish remote config
     log::info!("publish remote config: {:?}", remote_cfg_default);
-    let config_file = include_str!("./config/remote-config/conf-remote-v1.toml").replace("http://0.0.0.0:8848/nacos", &docker_env.nacos_url);
+    let config_file = include_str!("./config/remote-config/conf-remote-v1.toml");
     let pub_result = client.publish_config(&remote_cfg_default, &mut config_file.as_bytes()).await.expect("fail to publish remote config");
     assert!(pub_result);
     log::info!("publish remote config success");
@@ -150,7 +150,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // wait for 5s
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     // upload config
-    let config_file = include_str!("./config/remote-config/conf-remote-v2.toml").replace("http://0.0.0.0:8848/nacos", &docker_env.nacos_url);
+    let config_file = include_str!("./config/remote-config/conf-remote-v2.toml");
     let update_result = client.publish_config(&remote_cfg_default, &mut config_file.as_bytes()).await.expect("fail to update remote config");
     log::info!("update remote config result: {:?}", update_result);
     // 4.1 wait for polling, and tardis will reboot since the remote config has been updated
