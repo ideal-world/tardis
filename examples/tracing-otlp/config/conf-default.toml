@@ -11,7 +11,7 @@ doc_urls = [["test env", "http://localhost:8089/"]]
 [fw.db]
 url = "postgres://postgres:ENC(5892ae51dbeedacdf10ba4c0d7af42a7)@localhost:5432/test"
 
-[fw.tracing]
+[fw.log]
 level = "info"
 endpoint = "http://localhost:4317"
 protocol = "grpc"

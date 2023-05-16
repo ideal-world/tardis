@@ -11,6 +11,7 @@ use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
+use crate::basic::tracing::{TardisTracing, GLOBAL_RELOAD_HANDLE};
 use crate::config::config_dto::FrameworkConfig;
 use crate::log::{debug, info};
 
@@ -148,7 +149,7 @@ impl TardisConfig {
                 _ => return Err(error.into()),
             },
         }
-        let framework_config = match conf.get::<FrameworkConfig>("fw") {
+        let mut framework_config = match conf.get::<FrameworkConfig>("fw") {
             Ok(fw) => fw,
             Err(error) => match error {
                 ConfigError::NotFound(_) => {
@@ -160,6 +161,20 @@ impl TardisConfig {
         };
 
         env::set_var("RUST_BACKTRACE", if framework_config.adv.backtrace { "1" } else { "0" });
+        // If set log level,reload trace filter
+        #[cfg(not(feature = "tracing"))]
+        if let Some(log_config) = framework_config.log.as_mut() {
+            if let Some(log_level) = std::env::var_os("RUST_LOG") {
+                log_config.level = log_level.into_string().unwrap();
+            } else {
+                unsafe {
+                    if GLOBAL_RELOAD_HANDLE.is_some() {
+                        let log_level = log_config.level.as_str();
+                        TardisTracing::update_log_level(log_level).unwrap();
+                    }
+                }
+            }
+        }
 
         let config = if framework_config.adv.salt.is_empty() {
             TardisConfig {

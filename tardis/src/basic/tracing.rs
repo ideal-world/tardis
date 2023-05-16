@@ -1,21 +1,60 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::str::FromStr;
+use std::{
+    ffi::OsString,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 use crate::{basic::result::TardisResult, config::config_dto::TardisConfig};
 #[cfg(feature = "tracing")]
 use opentelemetry_otlp::WithExportConfig;
-#[cfg(feature = "tracing")]
-use tracing_subscriber::prelude::*;
+use tracing::metadata::LevelFilter;
+use tracing_subscriber::{
+    filter, fmt,
+    prelude::*,
+    reload::{self, Handle},
+    Registry,
+};
 
-static INITIALIZED: AtomicBool = AtomicBool::new(false);
+static INITIALIZED_TRACING: AtomicBool = AtomicBool::new(false);
+static INITIALIZED_LOG: AtomicBool = AtomicBool::new(false);
 
 pub struct TardisTracing;
 
+pub static mut GLOBAL_RELOAD_HANDLE: Option<Handle<LevelFilter, Registry>> = None;
+
 impl TardisTracing {
-    pub(crate) fn init(conf: &TardisConfig) -> TardisResult<()> {
-        if INITIALIZED.swap(true, Ordering::SeqCst) {
+    #[cfg(not(feature = "tracing"))]
+    pub(crate) fn init_log() -> TardisResult<()> {
+        if INITIALIZED_LOG.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
-        if let Some(tracing_config) = conf.fw.tracing.as_ref() {
+        let mut level = std::env::var_os("RUST_LOG").unwrap_or(OsString::from("info")).into_string().unwrap();
+        if let Some((level_str, _)) = level.split_once(',') {
+            level = level_str.to_string();
+        }
+        let filter = filter::LevelFilter::from_str(level.as_str()).unwrap();
+        let (filter, reload_handle) = reload::Layer::new(filter);
+        tracing_subscriber::registry().with(filter).with(fmt::Layer::default()).init();
+        unsafe {
+            GLOBAL_RELOAD_HANDLE = Some(reload_handle);
+        }
+
+        Ok(())
+    }
+    #[cfg(not(feature = "tracing"))]
+    pub(crate) fn update_log_level(log_level: &str) -> TardisResult<()> {
+        unsafe {
+            GLOBAL_RELOAD_HANDLE.as_ref().unwrap().modify(|filter| *filter = filter::LevelFilter::from_str(log_level).unwrap()).unwrap();
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "tracing")]
+    pub(crate) fn init_tracing(conf: &TardisConfig) -> TardisResult<()> {
+        if INITIALIZED_TRACING.swap(true, Ordering::SeqCst) {
+            return Ok(());
+        }
+        if let Some(tracing_config) = conf.fw.log.as_ref() {
             if std::env::var_os("RUST_LOG").is_none() {
                 std::env::set_var("RUST_LOG", tracing_config.level.as_str());
             }
@@ -29,15 +68,6 @@ impl TardisTracing {
                 std::env::set_var("OTEL_SERVICE_NAME", tracing_config.server_name.as_str());
             }
         }
-        #[cfg(feature = "tracing")]
-        {
-            Self::init_tracing().unwrap();
-        }
-        Ok(())
-    }
-
-    #[cfg(feature = "tracing")]
-    fn init_tracing() -> TardisResult<()> {
         let fmt_layer = tracing_subscriber::fmt::layer();
 
         let telemetry_layer = tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer());
@@ -90,7 +120,6 @@ impl TardisTracing {
 
     #[cfg(feature = "tracing")]
     fn metadata_from_headers(headers: Vec<(String, String)>) -> tonic::metadata::MetadataMap {
-        use std::str::FromStr;
         use tonic::metadata;
 
         let mut metadata = metadata::MetadataMap::new();
