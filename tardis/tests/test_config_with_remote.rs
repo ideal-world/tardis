@@ -81,7 +81,6 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
     DockerEnv { mq_url, nacos_url, nacos, mq }
 }
 #[tokio::test]
-#[ignore = "need a nacos server or a nacos test-container"]
 async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=debug");
     env::set_var("PROFILE", "remote");
@@ -124,9 +123,9 @@ async fn test_config_with_remote() -> TardisResult<()> {
     let pub_result = client.publish_config(&remote_cfg_default, &mut config_file.as_bytes()).await.expect("fail to publish remote config");
     assert!(pub_result);
     log::info!("publish remote config success");
+    TardisFuns::shutdown().await?;
 
     // 3. get remote config
-    TardisFuns::shutdown().await?;
     env::set_var("PROFILE", "remote");
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded");

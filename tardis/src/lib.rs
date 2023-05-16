@@ -132,7 +132,6 @@ pub use derive_more;
 pub use futures;
 #[cfg(feature = "future")]
 pub use futures_util;
-use inherit::{InheritableModule, TardisFunsInherit};
 pub use log;
 pub use lru;
 pub use rand;
@@ -146,7 +145,6 @@ use serde_json::Value;
 pub use tardis_macros::{TardisCreateIndex, TardisCreateTable};
 #[cfg(feature = "test")]
 pub use testcontainers;
-#[cfg(feature = "rt-tokio")]
 pub use tokio;
 use tokio::sync::broadcast;
 pub use url;
@@ -278,7 +276,6 @@ pub struct TardisFuns {
     _custom_config_cached: Option<HashMap<ModuleCode, Box<dyn Any>>>,
     shutdown_signal_sender: Option<broadcast::Sender<()>>,
     framework_config: Option<FrameworkConfig>,
-    inherit: Option<TardisFunsInherit>,
     #[cfg(feature = "reldb-core")]
     reldb: Option<HashMap<ModuleCode, TardisRelDBClient>>,
     #[cfg(feature = "web-server")]
@@ -303,7 +300,6 @@ static mut TARDIS_INST: TardisFuns = TardisFuns {
     _custom_config_cached: None,
     shutdown_signal_sender: None,
     framework_config: None,
-    inherit: None,
     #[cfg(feature = "reldb-core")]
     reldb: None,
     #[cfg(feature = "web-server")]
@@ -427,14 +423,10 @@ impl TardisFuns {
         #[cfg(feature = "web-server")]
         {
             if TardisFuns::fw_config().web_server.enabled {
-                let mut web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config())?;
-                let start_instantly = TardisFuns::inherit().and_then(|x| x.web_server.take()).map(|x| web_server.load(x)).is_some();
+                let web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config())?;
                 unsafe {
                     replace(&mut TARDIS_INST.web_server, Some(web_server));
                 };
-                if start_instantly {
-                    tokio::spawn(TardisFuns::web_server().start());
-                }
             }
         }
         #[cfg(feature = "web-client")]
@@ -1115,7 +1107,7 @@ impl TardisFuns {
         unsafe { TARDIS_INST.shutdown_signal_sender.as_ref().map(broadcast::Sender::subscribe) }
     }
 
-    async fn shutdown_internal(inherit_mode: bool) -> TardisResult<()> {
+    async fn shutdown_internal() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
         unsafe {
             if let Some(shutdow_signal_sender) = &TARDIS_INST.shutdown_signal_sender {
@@ -1124,11 +1116,6 @@ impl TardisFuns {
                 }
             }
         }
-        let mut inherit = TardisFunsInherit::default();
-        #[cfg(feature = "web-server")]
-        unsafe {
-            inherit.web_server = TARDIS_INST.web_server.take().map(InheritableModule::drop)
-        };
         #[cfg(feature = "web-client")]
         unsafe {
             let _ = &TARDIS_INST.web_client.take();
@@ -1167,11 +1154,6 @@ impl TardisFuns {
             }
             let _ = &TARDIS_INST.mq.take();
         }
-        if inherit_mode {
-            unsafe {
-                TARDIS_INST.inherit.replace(inherit);
-            }
-        }
         // # enhancement
         // here is not 100% safe, web-server could shutdown extremely slow, while the new instance starting up extremely fast, which cause a conflict.
         // maybe we should hold web-server task handle, and join it on shutdown.
@@ -1181,18 +1163,7 @@ impl TardisFuns {
 
     /// shutdown totally
     pub async fn shutdown() -> TardisResult<()> {
-        Self::shutdown_internal(false).await
-    }
-
-    /// shutdown with inherit mode
-    /// # Inherit Mode
-    /// tardis will store user-defined data like webserver routes, when `init_conf()` is called next time, tardis will reload
-    pub async fn shutdown_inherit() -> TardisResult<()> {
-        Self::shutdown_internal(true).await
-    }
-
-    pub fn inherit() -> Option<&'static mut TardisFunsInherit> {
-        unsafe { TARDIS_INST.inherit.as_mut() }
+        Self::shutdown_internal().await
     }
 }
 
@@ -1325,7 +1296,6 @@ pub mod crypto;
 #[cfg(feature = "reldb-core")]
 #[cfg_attr(docsrs, doc(cfg(feature = "reldb-core")))]
 pub mod db;
-pub(crate) mod inherit;
 #[cfg(feature = "mail")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mail")))]
 pub mod mail;

@@ -11,7 +11,6 @@ use futures::{Future, SinkExt, StreamExt};
 use log::{trace, warn};
 use native_tls::TlsConnector;
 use serde::Serialize;
-#[cfg(feature = "rt-tokio")]
 use tokio::{net::TcpStream, sync::Mutex};
 use tokio_tungstenite::tungstenite::{self, Error, Message};
 use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};

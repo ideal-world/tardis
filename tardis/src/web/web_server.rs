@@ -8,7 +8,6 @@ use tokio::time::Duration;
 
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
-use crate::inherit::InheritableModule;
 use crate::log::info;
 use crate::web::uniform_error_mw::UniformError;
 use crate::TardisFuns;
@@ -202,25 +201,5 @@ impl TardisWebServer {
             server.await?;
         };
         Ok(())
-    }
-}
-
-pub struct WebServerInherit {
-    pub route: Mutex<Route>,
-}
-
-impl InheritableModule for TardisWebServer {
-    type Inherit = WebServerInherit;
-    fn drop(self) -> Self::Inherit
-    where
-        Self: Sized,
-    {
-        WebServerInherit { route: self.route }
-    }
-    fn load(&mut self, inherit: Self::Inherit)
-    where
-        Self: Sized,
-    {
-        self.route = inherit.route
     }
 }

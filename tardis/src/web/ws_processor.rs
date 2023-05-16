@@ -8,7 +8,6 @@ use lru::LruCache;
 use poem::web::websocket::{BoxWebSocketUpgraded, CloseCode, Message, WebSocket};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-#[cfg(feature = "rt-tokio")]
 use tokio::sync::{broadcast::Sender, Mutex, RwLock};
 
 use crate::TardisFuns;
