@@ -51,6 +51,7 @@ Do NOT use in production environment!**
 * ``mail`` mail send operations
 * ``os`` object Storage operations
 * ``test`` unit test operations
+* ``tracing`` trace operations
 
 ## 🚀 Quick start
 
@@ -124,6 +125,7 @@ async fn main() -> TardisResult<()> {
   |-- multi-apps         Multi-application aggregation example
   |-- pg-graph-search    Graph search by Postgresql example
   |-- perf-test          Performance test case
+  |-- tracing-otlp       Trace and send data by otlp prococol example
 ```
 
 ### FAQ
@@ -151,6 +153,14 @@ async fn main() -> TardisResult<()> {
   sh bootstrap-vcpkg.sh
   ./vcpkg integrate install
   ./vcpkg install openssl
+  ```
+* An `` failed to run custom build command for `opentelemetry-proto`` error occurs when running under Linux:
+  ```shell
+  apt-get install protobuf-compiler
+  ```
+* An `` failed to run custom build command for `opentelemetry-proto`` error occurs when running under MacOS:
+  ```shell
+  brew install protobuf
   ```
 
 ----

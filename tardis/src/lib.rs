@@ -126,6 +126,7 @@ use std::ptr::replace;
 pub use async_stream;
 #[cfg(feature = "future")]
 pub use async_trait;
+use basic::tracing::TardisTracing;
 pub use chrono;
 pub use derive_more;
 #[cfg(feature = "future")]
@@ -145,8 +146,10 @@ use serde_json::Value;
 pub use tardis_macros::{TardisCreateIndex, TardisCreateTable};
 #[cfg(feature = "test")]
 pub use testcontainers;
-#[cfg(feature = "rt-tokio")]
 pub use tokio;
+use tokio::sync::broadcast;
+#[cfg(feature = "tracing")]
+pub use tracing;
 pub use url;
 
 use basic::error::TardisErrorWithExt;
@@ -154,7 +157,6 @@ use basic::result::TardisResult;
 
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;
-use crate::basic::logger::TardisLogger;
 use crate::basic::uri::TardisUri;
 #[cfg(feature = "cache")]
 use crate::cache::cache_client::TardisCacheClient;
@@ -274,6 +276,7 @@ use crate::web::web_server::TardisWebServer;
 pub struct TardisFuns {
     custom_config: Option<HashMap<ModuleCode, Value>>,
     _custom_config_cached: Option<HashMap<ModuleCode, Box<dyn Any>>>,
+    shutdown_signal_sender: Option<broadcast::Sender<()>>,
     framework_config: Option<FrameworkConfig>,
     #[cfg(feature = "reldb-core")]
     reldb: Option<HashMap<ModuleCode, TardisRelDBClient>>,
@@ -297,6 +300,7 @@ type ModuleCode = String;
 static mut TARDIS_INST: TardisFuns = TardisFuns {
     custom_config: None,
     _custom_config_cached: None,
+    shutdown_signal_sender: None,
     framework_config: None,
     #[cfg(feature = "reldb-core")]
     reldb: None,
@@ -334,7 +338,8 @@ impl TardisFuns {
     /// TardisFuns::init("proj/config").await;
     /// ```
     pub async fn init(relative_path: Option<&str>) -> TardisResult<()> {
-        TardisLogger::init()?;
+        #[cfg(not(feature = "tracing"))]
+        TardisTracing::init_log()?;
         let config = TardisConfig::init(relative_path).await?;
         TardisFuns::init_conf(config).await
     }
@@ -345,7 +350,9 @@ impl TardisFuns {
     ///
     /// [init](Self::init) 函数时会自动调用此函数
     pub fn init_log() -> TardisResult<()> {
-        TardisLogger::init()
+        #[cfg(not(feature = "tracing"))]
+        TardisTracing::init_log()?;
+        Ok(())
     }
 
     /// Initialized by the configuration object / 通过配置对象初始化
@@ -400,7 +407,11 @@ impl TardisFuns {
     ///         .await;
     /// ```
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
-        TardisLogger::init()?;
+        #[cfg(feature = "tracing")]
+        TardisTracing::init_tracing(&conf)?;
+        unsafe {
+            replace(&mut TARDIS_INST.shutdown_signal_sender, Some(broadcast::channel(1).0));
+        };
         unsafe {
             replace(&mut TARDIS_INST.custom_config, Some(conf.cs));
             replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
@@ -1096,17 +1107,69 @@ impl TardisFuns {
         }
     }
 
-    pub async fn shutdown() -> TardisResult<()> {
+    /// subscribe shutdown signal / 订阅关闭信号 which is a None value.
+    #[must_use]
+    pub(crate) fn subscribe_shutdown_signal() -> Option<broadcast::Receiver<()>> {
+        unsafe { TARDIS_INST.shutdown_signal_sender.as_ref().map(broadcast::Sender::subscribe) }
+    }
+
+    async fn shutdown_internal() -> TardisResult<()> {
         log::info!("[Tardis] Shutdown...");
-        #[cfg(feature = "mq")]
         unsafe {
-            if let Some(t) = &TARDIS_INST.mq {
-                for v in t.values() {
-                    v.close().await?;
+            if let Some(shutdow_signal_sender) = &TARDIS_INST.shutdown_signal_sender {
+                if shutdow_signal_sender.send(()).is_err() {
+                    log::debug!("[Tardis] Shutdown signal send failed: no receiver.");
                 }
             }
         }
+        #[cfg(feature = "web-client")]
+        unsafe {
+            let _ = &TARDIS_INST.web_client.take();
+        }
+        #[cfg(feature = "cache")]
+        unsafe {
+            let _ = &TARDIS_INST.cache.take();
+        }
+        #[cfg(feature = "mail")]
+        unsafe {
+            let _ = &TARDIS_INST.mail.take();
+        }
+        #[cfg(feature = "os")]
+        unsafe {
+            let _ = &TARDIS_INST.os.take();
+        }
+        #[cfg(feature = "reldb-core")]
+        unsafe {
+            // reldb needn't shutdown
+            // connection will be closed by drop calling
+            // see: https://www.sea-ql.org/SeaORM/docs/install-and-config/connection/
+            let _ = &TARDIS_INST.reldb.take();
+        }
+        #[cfg(feature = "mq")]
+        unsafe {
+            let mut set = tokio::task::JoinSet::new();
+            if let Some(t) = &TARDIS_INST.mq {
+                for v in t.values() {
+                    set.spawn(v.close());
+                }
+            }
+            while let Some(Ok(close_result)) = set.join_next().await {
+                if let Err(e) = close_result {
+                    log::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
+                }
+            }
+            let _ = &TARDIS_INST.mq.take();
+        }
+        // # enhancement
+        // here is not 100% safe, web-server could shutdown extremely slow, while the new instance starting up extremely fast, which cause a conflict.
+        // maybe we should hold web-server task handle, and join it on shutdown.
+
         Ok(())
+    }
+
+    /// shutdown totally
+    pub async fn shutdown() -> TardisResult<()> {
+        Self::shutdown_internal().await
     }
 }
 

@@ -6,6 +6,13 @@ use std::collections::HashMap;
 use std::env;
 use std::time::Duration;
 
+use async_trait::async_trait;
+use log::info;
+use poem::endpoint::BoxEndpoint;
+use poem::{IntoResponse, Middleware, Response};
+use reqwest::Method;
+use serde_json::json;
+use tardis::web::web_server::BoxMiddleware;
 use testcontainers::clients;
 use tokio::time::sleep;
 
@@ -17,6 +24,7 @@ use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfi
 use tardis::serde::{Deserialize, Serialize};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::web::context_extractor::{TardisContextExtractor, TOKEN_FLAG};
+use tardis::web::poem::{Endpoint, Request};
 use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi, Tags};
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
 use tardis::TardisFuns;
@@ -95,7 +103,9 @@ async fn test_web_server() -> TardisResult<()> {
     test_validate(web_url).await?;
     test_context(web_url).await?;
     test_security().await?;
+    test_middleware().await?;
 
+    TardisFuns::shutdown().await?;
     Ok(())
 }
 
@@ -157,7 +167,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
         },
     })
     .await?;
-    TardisFuns::web_server().add_module("todo", TodosApi).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
+    TardisFuns::web_server().add_module("todo", TodosApi, None).await.add_module_with_data::<_, String>("other", OtherApi, None, None).await.start().await
 }
 
 async fn test_basic(url: &str) -> TardisResult<()> {
@@ -582,7 +592,7 @@ async fn test_security() -> TardisResult<()> {
             },
         })
         .await?;
-        TardisFuns::web_server().add_module("todo", TodosApi).await.add_module_with_data::<_, String>("other", OtherApi, None).await.start().await
+        TardisFuns::web_server().add_module("todo", TodosApi, vec![]).await.add_module_with_data::<_, String>("other", OtherApi, None, None).await.start().await
     });
     sleep(Duration::from_millis(500)).await;
 
@@ -650,6 +660,111 @@ async fn test_security() -> TardisResult<()> {
     Ok(())
 }
 
+async fn test_middleware() -> TardisResult<()> {
+    let url = "http://localhost:8082";
+
+    tokio::spawn(async {
+        TardisFuns::init_conf(TardisConfig {
+            cs: Default::default(),
+            fw: FrameworkConfig {
+                app: Default::default(),
+                web_server: WebServerConfig {
+                    enabled: true,
+                    port: 8082,
+                    modules: HashMap::from([
+                        (
+                            "todo".to_string(),
+                            WebServerModuleConfig {
+                                name: "todo app".to_string(),
+                                doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].to_vec(),
+                                ..Default::default()
+                            },
+                        ),
+                        (
+                            "other".to_string(),
+                            WebServerModuleConfig {
+                                name: "other app".to_string(),
+                                ..Default::default()
+                            },
+                        ),
+                    ]),
+                    ..Default::default()
+                },
+                web_client: Default::default(),
+                cache: CacheConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                db: DBConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                mq: MQConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                search: SearchConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                mail: MailConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                os: OSConfig {
+                    enabled: false,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        })
+        .await?;
+        TardisFuns::web_server()
+            .add_module("todo", TodosApi, vec![TodosApiMiddleware1::boxed(), TodosApiMiddleware2::boxed()])
+            .await
+            .add_module_with_data::<_, String>("other", OtherApi, None, None)
+            .await
+            .start()
+            .await
+    });
+    sleep(Duration::from_millis(500)).await;
+
+    // Normal
+    let response = TardisFuns::web_client()
+        .post::<TodoAddReq, TardisResp<String>>(
+            format!("{url}/todo/todos").as_str(),
+            &TodoAddReq {
+                code: "编码2".into(),
+                description: "测试".to_string(),
+                done: false,
+            },
+            None,
+        )
+        .await?
+        .body
+        .unwrap();
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
+    assert_eq!(response.data.unwrap(), "编码2");
+
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1").as_str(), None).await?.body.unwrap();
+    assert_eq!(response.code, TARDIS_RESULT_SUCCESS_CODE);
+    let data = response.data.unwrap();
+    assert_eq!(data.description, "exec TodosApiMWImpl");
+    assert!(data.done);
+
+    // Business Error
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1/err").as_str(), None).await?.body.unwrap();
+    assert_eq!(response.code, TardisError::conflict("异常", "").code);
+    assert_eq!(response.msg, TardisError::conflict("异常", "").message);
+
+    // Not Found
+    let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1/ss").as_str(), None).await?.body.unwrap();
+    assert_eq!(response.code, TardisError::not_found("", "").code);
+    assert_eq!(response.msg, "[Tardis.WebServer] Process error: not found");
+
+    Ok(())
+}
+
 #[derive(Tags)]
 enum FunTags {
     #[oai(rename = "Todo1测试")]
@@ -664,7 +779,7 @@ struct TodoResp {
     done: bool,
 }
 
-#[derive(Object, Serialize, Deserialize, Debug)]
+#[derive(Object, Serialize, Deserialize, Debug, Clone)]
 struct TodoAddReq {
     code: TrimString,
     description: String,
@@ -739,5 +854,159 @@ impl OtherApi {
     #[oai(path = "/context_in_header", method = "get")]
     async fn context_in_header(&self, ctx: TardisContextExtractor) -> TardisApiResult<String> {
         TardisResp::ok(ctx.0.roles.get(1).unwrap().to_string())
+    }
+}
+
+struct TodosApiMiddleware1;
+impl TodosApiMiddleware1 {
+    fn boxed() -> BoxMiddleware<'static> {
+        Box::new(TodosApiMiddleware1)
+    }
+}
+
+impl Middleware<BoxEndpoint<'static>> for TodosApiMiddleware1 {
+    type Output = BoxEndpoint<'static>;
+
+    fn transform(&self, ep: BoxEndpoint<'static>) -> Self::Output {
+        Box::new(TodosApiMWImpl1(ep))
+    }
+}
+
+pub struct TodosApiMWImpl1<E>(E);
+
+#[async_trait]
+impl<E: Endpoint> Endpoint for TodosApiMWImpl1<E> {
+    type Output = Response;
+
+    async fn call(&self, mut req: Request) -> poem::Result<Self::Output> {
+        let method = req.method().clone();
+        let url = req.uri().clone();
+        if method == Method::POST {
+            let req_body = req.take_body().into_json::<TodoAddReq>().await.expect("Test req take body error");
+            info!("Exec TodosApiMWImpl {} req{:?}", method, req_body.clone());
+            req.set_body(json!({"code":req_body.code,"description":req_body.description,"done":req_body.done}).to_string());
+        }
+        match self.0.call(req).await {
+            Ok(resp) => {
+                let mut resp = resp.into_response();
+                match method {
+                    Method::GET => {
+                        let resp_body = resp.take_body().into_json::<TardisResp<TodoResp>>().await.expect("Test resp take body error");
+                        info!("Exec TodosApiMWImpl {} resp{:?}", method, resp_body);
+                        let resp_body_data = resp_body.data.unwrap();
+                        resp.set_body(
+                            json!({
+                                "code": resp_body.code,
+                                "msg":resp_body.msg,
+                                "data":{
+                                    "id": resp_body_data.id,
+                                    "code": resp_body_data.code,
+                                    "description": "exec TodosApiMWImpl",
+                                    "done":resp_body_data.done
+                                }
+                            })
+                            .to_string(),
+                        );
+                    }
+                    Method::POST => {
+                        let resp_body = resp.take_body().into_json::<TardisResp<String>>().await.expect("Test resp take body error");
+                        info!("Exec TodosApiMWImpl {} resp{:?}", method, resp_body);
+                        let resp_body_data = resp_body.data.unwrap();
+                        resp.set_body(
+                            json!({
+                                "code": resp_body.code,
+                                "msg":resp_body.msg,
+                                "data":resp_body_data
+                            })
+                            .to_string(),
+                        );
+                    }
+                    _ => {}
+                }
+
+                Ok(resp)
+            }
+            Err(r) => {
+                info!("Exec TodosApiMWImpl Err {} url{:?}", method, url,);
+                Err(r)
+            }
+        }
+    }
+}
+
+struct TodosApiMiddleware2;
+impl TodosApiMiddleware2 {
+    fn boxed() -> BoxMiddleware<'static> {
+        Box::new(TodosApiMiddleware2)
+    }
+}
+
+impl Middleware<BoxEndpoint<'static>> for TodosApiMiddleware2 {
+    type Output = BoxEndpoint<'static>;
+
+    fn transform(&self, ep: BoxEndpoint<'static>) -> Self::Output {
+        Box::new(TodosApiMWImpl2(ep))
+    }
+}
+
+pub struct TodosApiMWImpl2<E>(E);
+
+#[async_trait]
+impl<E: Endpoint> Endpoint for TodosApiMWImpl2<E> {
+    type Output = Response;
+
+    async fn call(&self, mut req: Request) -> poem::Result<Self::Output> {
+        let method = req.method().clone();
+        let url = req.uri().clone();
+        if method == Method::POST {
+            let req_body = req.take_body().into_json::<TodoAddReq>().await.expect("Test req take body error");
+            info!("Exec TodosApiMWImpl2 {} req{:?}", method, req_body.clone());
+            req.set_body(json!({"code":req_body.code,"description":req_body.description,"done":req_body.done}).to_string());
+        }
+        match self.0.call(req).await {
+            Ok(resp) => {
+                let mut resp = resp.into_response();
+                match method {
+                    Method::GET => {
+                        let resp_body = resp.take_body().into_json::<TardisResp<TodoResp>>().await.expect("Test resp take body error");
+                        info!("Exec TodosApiMWImpl2 {} resp{:?}", method, resp_body);
+                        let resp_body_data = resp_body.data.unwrap();
+                        resp.set_body(
+                            json!({
+                                "code": resp_body.code,
+                                "msg":resp_body.msg,
+                                "data":{
+                                    "id": resp_body_data.id,
+                                    "code": resp_body_data.code,
+                                    "description": resp_body_data.description,
+                                    "done":true
+                                }
+                            })
+                            .to_string(),
+                        );
+                    }
+                    Method::POST => {
+                        let resp_body = resp.take_body().into_json::<TardisResp<String>>().await.expect("Test resp take body error");
+                        info!("Exec TodosApiMWImpl2 {} resp{:?}", method, resp_body);
+                        let resp_body_data = resp_body.data.unwrap();
+                        resp.set_body(
+                            json!({
+                                "code": resp_body.code,
+                                "msg":resp_body.msg,
+                                "data":resp_body_data
+                            })
+                            .to_string(),
+                        );
+                    }
+                    _ => {}
+                }
+
+                Ok(resp)
+            }
+            Err(r) => {
+                info!("Exec TodosApiMWImpl2 Err {} url{:?}", method, url,);
+                Err(r)
+            }
+        }
     }
 }

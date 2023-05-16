@@ -17,12 +17,11 @@ name = "tardis"
 path = "src/lib.rs"
 
 [features]
-default = ["rt-tokio", "tardis-macros"]
-rt-tokio = ["tokio"]
-conf-remote = ["web-client", "async-trait"]
+default = ["tardis-macros"]
+conf-remote = ["web-client", "async-trait", "rust-crypto"]
 crypto = ["rust-crypto", "rsa"]
 crypto-with-sm = ["crypto", "libsm", "num-bigint"]
-future = ["rt-tokio", "futures", "async-stream", "futures-util", "async-trait"]
+future = ["futures", "async-stream", "futures-util", "async-trait"]
 reldb-core = ["future", "sqlparser", "sea-orm", "sqlx"]
 reldb-postgres = [
     "reldb-core",
@@ -34,14 +33,15 @@ reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql", "tardis-macros/reldb-mysql"]
 reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
 reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
-web-client = ["rt-tokio", "reqwest"]
-ws-client = ["rt-tokio", "tokio-tungstenite"]
+web-client = ["reqwest"]
+ws-client = ["future", "tokio-tungstenite"]
 cache = ["futures-util", "redis", "deadpool-redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 mail = ["lettre"]
-os = ["rt-tokio", "async-trait", "anyhow", "rust-s3"]
+os = ["async-trait", "anyhow", "rust-s3"]
 fs = ["tokio/fs"]
 test = ["testcontainers"]
+tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp"]
 
 [dependencies]
 # Basic
@@ -64,12 +64,15 @@ lru = { version = "0.10.0" }
 native-tls = { version = "0.2" }
 
 # Tardis Macros
-tardis-macros = { version = "0.1.0-beta.5", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-beta.6", path = "../tardis-macros", optional = true }
 
 # Log
 log = { version = "0.4" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-opentelemetry = { version = "0.18", optional = true }
+opentelemetry = { version = "0.18", default-features = false, features = [ "trace", "rt-tokio" ], optional = true }
+opentelemetry-otlp = { version = "0.11", features = ["reqwest-client", "reqwest-rustls", "http-proto", "tls"], optional = true }
 
 # Tokio
 tokio = { version = "1", features = [
@@ -77,7 +80,7 @@ tokio = { version = "1", features = [
     "rt-multi-thread",
     "signal",
     "time",
-], optional = true }
+] }
 
 # Crypto
 rust-crypto = { version = "0.2", optional = true }
@@ -161,7 +164,15 @@ required-features = ["crypto"]
 
 [[test]]
 name = "test_config_with_remote"
-required-features = ["crypto", "conf-remote"]
+required-features = [
+    "test",
+    "crypto",
+    "web-server",
+    "cache",
+    "web-client",
+    "conf-remote",
+    "mq",
+]
 
 [[test]]
 name = "test_crypto"
@@ -202,6 +213,10 @@ required-features = ["test", "mail"]
 [[test]]
 name = "test_os_client"
 required-features = ["test", "os"]
+
+[[test]]
+name = "test_basic_tracing"
+required-features = ["test", "tracing"]
 
 [[bench]]
 name = "json_benchmark"

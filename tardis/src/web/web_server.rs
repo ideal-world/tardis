@@ -1,14 +1,19 @@
 use futures_util::lock::Mutex;
+use poem::endpoint::BoxEndpoint;
 use poem::listener::{Listener, RustlsCertificate, RustlsConfig, TcpListener};
 use poem::middleware::Cors;
-use poem::{EndpointExt, Route};
+use poem::{EndpointExt, Middleware, Route};
 use poem_openapi::{ExtraHeader, OpenApi, OpenApiService, ServerObject};
+
 use tokio::time::Duration;
 
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
 use crate::log::info;
 use crate::web::uniform_error_mw::UniformError;
+use crate::TardisFuns;
+
+pub type BoxMiddleware<'a, T = BoxEndpoint<'a>> = Box<dyn Middleware<T, Output = T> + Send>;
 
 pub struct TardisWebServer {
     app_name: String,
@@ -44,17 +49,17 @@ impl TardisWebServer {
     where
         T: OpenApi + 'static,
     {
-        self.add_route_with_data::<_, String>(apis, None).await
+        self.add_route_with_data::<_, String>(apis, None, None).await
     }
 
     pub async fn add_route_with_ws<T>(&self, apis: T, capacity: usize) -> &Self
     where
         T: OpenApi + 'static,
     {
-        self.add_route_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>>(apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0)).await
+        self.add_route_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>>(apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0), None).await
     }
 
-    pub async fn add_route_with_data<T, D>(&self, apis: T, data: Option<D>) -> &Self
+    pub async fn add_route_with_data<T, D>(&self, apis: T, data: Option<D>, middlewares: impl IntoIterator<Item = BoxMiddleware<'static>>) -> &Self
     where
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
@@ -67,24 +72,25 @@ impl TardisWebServer {
             ui_path: self.config.ui_path.clone(),
             spec_path: self.config.spec_path.clone(),
         };
-        self.do_add_module_with_data("", &module, apis, data).await
+        self.do_add_module_with_data("", &module, apis, data, middlewares).await
     }
 
-    pub async fn add_module<T>(&self, code: &str, apis: T) -> &Self
+    pub async fn add_module<T>(&self, code: &str, apis: T, middlewares: impl IntoIterator<Item = BoxMiddleware<'static>> + Send) -> &Self
     where
         T: OpenApi + 'static,
     {
-        self.add_module_with_data::<_, String>(code, apis, None).await
+        self.add_module_with_data::<_, String>(code, apis, None, middlewares).await
     }
 
-    pub async fn add_module_with_ws<T>(&self, code: &str, apis: T, capacity: usize) -> &Self
+    pub async fn add_module_with_ws<T>(&self, code: &str, apis: T, capacity: usize, middlewares: impl IntoIterator<Item = BoxMiddleware<'static>> + Send) -> &Self
     where
         T: OpenApi + 'static,
     {
-        self.add_module_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>>(code, apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0)).await
+        self.add_module_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>>(code, apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0), middlewares)
+            .await
     }
 
-    pub async fn add_module_with_data<T, D>(&self, code: &str, apis: T, data: Option<D>) -> &Self
+    pub async fn add_module_with_data<T, D>(&self, code: &str, apis: T, data: Option<D>, middlewares: impl IntoIterator<Item = BoxMiddleware<'static>> + Send) -> &Self
     where
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
@@ -92,10 +98,17 @@ impl TardisWebServer {
         let code = code.to_lowercase();
         let code = code.as_str();
         let module = self.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {code} not found"));
-        self.do_add_module_with_data(code, module, apis, data).await
+        self.do_add_module_with_data(code, module, apis, data, middlewares).await
     }
 
-    async fn do_add_module_with_data<T, D>(&self, code: &str, module: &WebServerModuleConfig, apis: T, data: Option<D>) -> &Self
+    async fn do_add_module_with_data<T, D>(
+        &self,
+        code: &str,
+        module: &WebServerModuleConfig,
+        apis: T,
+        data: Option<D>,
+        middlewares: impl IntoIterator<Item = BoxMiddleware<'static>>,
+    ) -> &Self
     where
         T: OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
@@ -125,6 +138,10 @@ impl TardisWebServer {
         } else {
             Cors::new().allow_origin(&self.config.allowed_origin)
         };
+        let mut route = route.boxed();
+        for middleware in middlewares {
+            route = middleware.transform(route);
+        }
         let route = route.with(UniformError).with(cors);
         // Solved:  Cannot move out of *** which is behind a mutable reference
         // https://stackoverflow.com/questions/63353762/cannot-move-out-of-which-is-behind-a-mutable-reference
@@ -159,6 +176,28 @@ impl TardisWebServer {
 
         let mut swap_route = Route::new();
         std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
+        let graceful_shutdown_signal = async move {
+            let tardis_shut_down_signal = async {
+                if let Some(mut rx) = TardisFuns::subscribe_shutdown_signal() {
+                    match rx.recv().await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            log::debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
+                        }
+                    }
+                } else {
+                    futures::future::pending::<()>().await;
+                }
+            };
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                    log::debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
+                },
+                _ = tardis_shut_down_signal => {
+                    log::debug!("[Tardis.WebServer] WebServer shutdown (Tardis shutdown signal)");
+                },
+            };
+        };
         if self.config.tls_key.is_some() {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port)).rustls(
                 RustlsConfig::new().fallback(
@@ -167,24 +206,12 @@ impl TardisWebServer {
                         .cert(self.config.tls_cert.clone().expect("[Tardis.WebServer] TLS cert clone error")),
                 ),
             );
-            let server = poem::Server::new(bind).run_with_graceful_shutdown(
-                swap_route,
-                async move {
-                    let _ = tokio::signal::ctrl_c().await;
-                },
-                Some(Duration::from_secs(5)),
-            );
+            let server = poem::Server::new(bind).run_with_graceful_shutdown(swap_route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
             info!("{}", output_info);
             server.await?;
         } else {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port));
-            let server = poem::Server::new(bind).run_with_graceful_shutdown(
-                swap_route,
-                async move {
-                    let _ = tokio::signal::ctrl_c().await;
-                },
-                Some(Duration::from_secs(5)),
-            );
+            let server = poem::Server::new(bind).run_with_graceful_shutdown(swap_route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
             info!("{}", output_info);
             server.await?;
         };

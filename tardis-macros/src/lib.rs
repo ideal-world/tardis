@@ -4,7 +4,7 @@ use syn::{parse_macro_input, DeriveInput};
 /// # TardisCreateTable
 /// Generate table creation statement, compatible with `sea_orm`.
 /// see [tardis::db::reldb_client::TardisActiveModel::create_table_statement]. \
-/// According to sea_orm automatically generates `tardis_create_table_Statement` method,
+/// According to sea_orm automatically generates `tardis_create_table_statement(db: DbBackend)` method,
 /// you can be directly called in the `TardisActiveModel::create_table_statement` method.  \
 /// example see [macros_examples::example_for_derive_create_tabled]. \
 /// Optional attr see [tardis_create_table::CreateTableMeta]
@@ -21,7 +21,7 @@ pub fn tardis_create_table(input: TokenStream) -> TokenStream {
 /// # TardisCreateIndex
 /// Generate index creation statement, compatible with `sea_orm`.
 /// see [tardis::db::reldb_client::TardisActiveModel::create_index_statement]. \
-/// According to sea_orm automatically generates `tardis_create_index_Statement` method,
+/// According to sea_orm automatically generates `tardis_create_index_statement()` method,
 /// you can be directly called in the `TardisActiveModel::create_index_statement` method.  \
 /// example see [macros_examples::example_for_derive_create_index].
 ///
