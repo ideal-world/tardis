@@ -5,8 +5,8 @@ pub mod error;
 pub mod field;
 pub mod json;
 pub mod locale;
-pub mod logger;
 pub mod result;
+pub mod tracing;
 pub mod uri;
 
 pub fn fetch_profile() -> String {

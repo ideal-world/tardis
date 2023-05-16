@@ -41,6 +41,7 @@ mail = ["lettre"]
 os = ["async-trait", "anyhow", "rust-s3"]
 fs = ["tokio/fs"]
 test = ["testcontainers"]
+tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp", "tonic"]
 
 [dependencies]
 # Basic
@@ -63,12 +64,16 @@ lru = { version = "0.10.0" }
 native-tls = { version = "0.2" }
 
 # Tardis Macros
-tardis-macros = { version = "0.1.0-beta.5", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-beta.6", path = "../tardis-macros", optional = true }
 
 # Log
 log = { version = "0.4" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-opentelemetry = { version = "=0.18", optional = true}
+opentelemetry = { version = "=0.18", default-features = false, features = [ "trace", "rt-tokio" ], optional = true}
+opentelemetry-otlp = { version = "=0.11", features = ["reqwest-client", "reqwest-rustls", "http-proto", "tls"], optional = true}
+tonic = { version = "0.8", features = ["tls", "tls-roots"], optional = true}
 
 # Tokio
 tokio = { version = "1", features = [
@@ -209,6 +214,10 @@ required-features = ["test", "mail"]
 [[test]]
 name = "test_os_client"
 required-features = ["test", "os"]
+
+[[test]]
+name = "test_basic_tracing"
+required-features = ["test", "tracing"]
 
 [[bench]]
 name = "json_benchmark"
