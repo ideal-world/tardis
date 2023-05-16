@@ -6,14 +6,12 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
-use std::str::FromStr;
-use tracing_subscriber::filter;
 
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
-use crate::basic::tracing::{global_reload_handle, TardisTracing};
+use crate::basic::tracing::{TardisTracing, GLOBAL_RELOAD_HANDLE};
 use crate::config::config_dto::FrameworkConfig;
 use crate::log::{debug, info};
 
@@ -170,7 +168,7 @@ impl TardisConfig {
                 log_config.level = log_level.into_string().unwrap();
             } else {
                 unsafe {
-                    if global_reload_handle.is_some() {
+                    if GLOBAL_RELOAD_HANDLE.is_some() {
                         let log_level = log_config.level.as_str();
                         TardisTracing::update_log_level(log_level).unwrap();
                     }

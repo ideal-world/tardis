@@ -20,7 +20,7 @@ static INITIALIZED_LOG: AtomicBool = AtomicBool::new(false);
 
 pub struct TardisTracing;
 
-pub static mut global_reload_handle: Option<Handle<LevelFilter, Registry>> = None;
+pub static mut GLOBAL_RELOAD_HANDLE: Option<Handle<LevelFilter, Registry>> = None;
 
 impl TardisTracing {
     #[cfg(not(feature = "tracing"))]
@@ -36,7 +36,7 @@ impl TardisTracing {
         let (filter, reload_handle) = reload::Layer::new(filter);
         tracing_subscriber::registry().with(filter).with(fmt::Layer::default()).init();
         unsafe {
-            global_reload_handle = Some(reload_handle);
+            GLOBAL_RELOAD_HANDLE = Some(reload_handle);
         }
 
         Ok(())
@@ -44,7 +44,7 @@ impl TardisTracing {
     #[cfg(not(feature = "tracing"))]
     pub(crate) fn update_log_level(log_level: &str) -> TardisResult<()> {
         unsafe {
-            global_reload_handle.as_ref().unwrap().modify(|filter| *filter = filter::LevelFilter::from_str(log_level).unwrap()).unwrap();
+            GLOBAL_RELOAD_HANDLE.as_ref().unwrap().modify(|filter| *filter = filter::LevelFilter::from_str(log_level).unwrap()).unwrap();
         }
         Ok(())
     }
@@ -120,7 +120,6 @@ impl TardisTracing {
 
     #[cfg(feature = "tracing")]
     fn metadata_from_headers(headers: Vec<(String, String)>) -> tonic::metadata::MetadataMap {
-        use std::str::FromStr;
         use tonic::metadata;
 
         let mut metadata = metadata::MetadataMap::new();
