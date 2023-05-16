@@ -168,11 +168,12 @@ impl TardisConfig {
         if let Some(log_config) = framework_config.log.as_mut() {
             if let Some(log_level) = std::env::var_os("RUST_LOG") {
                 log_config.level = log_level.into_string().unwrap();
-            }
-            unsafe {
-                if global_reload_handle.is_some() {
-                    let log_level = log_config.level.as_str();
-                    TardisTracing::update_log_level(log_level).unwrap();
+            } else {
+                unsafe {
+                    if global_reload_handle.is_some() {
+                        let log_level = log_config.level.as_str();
+                        TardisTracing::update_log_level(log_level).unwrap();
+                    }
                 }
             }
         }
