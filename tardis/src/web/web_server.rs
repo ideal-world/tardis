@@ -4,12 +4,14 @@ use poem::listener::{Listener, RustlsCertificate, RustlsConfig, TcpListener};
 use poem::middleware::Cors;
 use poem::{EndpointExt, Middleware, Route};
 use poem_openapi::{ExtraHeader, OpenApi, OpenApiService, ServerObject};
+
 use tokio::time::Duration;
 
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
 use crate::log::info;
 use crate::web::uniform_error_mw::UniformError;
+use crate::TardisFuns;
 
 pub type BoxMiddleware<'a, T = BoxEndpoint<'a>> = Box<dyn Middleware<T, Output = T> + Send>;
 
@@ -174,6 +176,28 @@ impl TardisWebServer {
 
         let mut swap_route = Route::new();
         std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
+        let graceful_shutdown_signal = async move {
+            let tardis_shut_down_signal = async {
+                if let Some(mut rx) = TardisFuns::subscribe_shutdown_signal() {
+                    match rx.recv().await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            log::debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
+                        }
+                    }
+                } else {
+                    futures::future::pending::<()>().await;
+                }
+            };
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {
+                    log::debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
+                },
+                _ = tardis_shut_down_signal => {
+                    log::debug!("[Tardis.WebServer] WebServer shutdown (Tardis shutdown signal)");
+                },
+            };
+        };
         if self.config.tls_key.is_some() {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port)).rustls(
                 RustlsConfig::new().fallback(
@@ -182,24 +206,12 @@ impl TardisWebServer {
                         .cert(self.config.tls_cert.clone().expect("[Tardis.WebServer] TLS cert clone error")),
                 ),
             );
-            let server = poem::Server::new(bind).run_with_graceful_shutdown(
-                swap_route,
-                async move {
-                    let _ = tokio::signal::ctrl_c().await;
-                },
-                Some(Duration::from_secs(5)),
-            );
+            let server = poem::Server::new(bind).run_with_graceful_shutdown(swap_route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
             info!("{}", output_info);
             server.await?;
         } else {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port));
-            let server = poem::Server::new(bind).run_with_graceful_shutdown(
-                swap_route,
-                async move {
-                    let _ = tokio::signal::ctrl_c().await;
-                },
-                Some(Duration::from_secs(5)),
-            );
+            let server = poem::Server::new(bind).run_with_graceful_shutdown(swap_route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
             info!("{}", output_info);
             server.await?;
         };

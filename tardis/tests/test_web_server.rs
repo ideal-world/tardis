@@ -105,6 +105,7 @@ async fn test_web_server() -> TardisResult<()> {
     test_security().await?;
     test_middleware().await?;
 
+    TardisFuns::shutdown().await?;
     Ok(())
 }
 
