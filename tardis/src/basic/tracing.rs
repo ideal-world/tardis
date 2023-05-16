@@ -23,7 +23,7 @@ pub struct TardisTracing;
 pub static mut global_reload_handle: Option<Handle<LevelFilter, Registry>> = None;
 
 impl TardisTracing {
-    // #[cfg(not(feature = "tracing"))]
+    #[cfg(not(feature = "tracing"))]
     pub(crate) fn init_log() -> TardisResult<()> {
         if INITIALIZED_LOG.swap(true, Ordering::SeqCst) {
             return Ok(());
