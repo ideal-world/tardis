@@ -82,11 +82,10 @@ impl TardisTracing {
         let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
 
         let mut tracer = opentelemetry_otlp::new_pipeline().tracing();
-        let headers = Self::parse_otlp_headers_from_env();
 
         match protocol.as_str() {
             "grpc" => {
-                let mut exporter = opentelemetry_otlp::new_exporter().tonic().with_metadata(Self::metadata_from_headers(headers)).with_env();
+                let mut exporter = opentelemetry_otlp::new_exporter().tonic().with_env();
 
                 // Check if we need TLS
                 if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
@@ -97,6 +96,7 @@ impl TardisTracing {
                 tracer = tracer.with_exporter(exporter)
             }
             "http/protobuf" => {
+                let headers = Self::parse_otlp_headers_from_env();
                 let exporter = opentelemetry_otlp::new_exporter().http().with_headers(headers.into_iter().collect()).with_env();
                 tracer = tracer.with_exporter(exporter)
             }
@@ -116,17 +116,5 @@ impl TardisTracing {
                 .for_each(|(name, value)| headers.push((name.to_owned(), value.to_owned())));
         }
         headers
-    }
-
-    #[cfg(feature = "tracing")]
-    fn metadata_from_headers(headers: Vec<(String, String)>) -> tonic::metadata::MetadataMap {
-        use tonic::metadata;
-
-        let mut metadata = metadata::MetadataMap::new();
-        headers.into_iter().for_each(|(name, value)| {
-            let value = value.parse::<metadata::MetadataValue<metadata::Ascii>>().expect("Header value invalid");
-            metadata.insert(metadata::MetadataKey::from_str(&name).unwrap(), value);
-        });
-        metadata
     }
 }
