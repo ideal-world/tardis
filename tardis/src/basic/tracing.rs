@@ -23,12 +23,15 @@ pub struct TardisTracing;
 pub static mut global_reload_handle: Option<Handle<LevelFilter, Registry>> = None;
 
 impl TardisTracing {
-    #[cfg(not(feature = "tracing"))]
+    // #[cfg(not(feature = "tracing"))]
     pub(crate) fn init_log() -> TardisResult<()> {
         if INITIALIZED_LOG.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
-        let level = std::env::var_os("RUST_LOG").unwrap_or(OsString::from("info")).into_string().unwrap();
+        let mut level = std::env::var_os("RUST_LOG").unwrap_or(OsString::from("info")).into_string().unwrap();
+        if let Some((level_str, _)) = level.split_once(',') {
+            level = level_str.to_string();
+        }
         let filter = filter::LevelFilter::from_str(level.as_str()).unwrap();
         let (filter, reload_handle) = reload::Layer::new(filter);
         tracing_subscriber::registry().with(filter).with(fmt::Layer::default()).init();
