@@ -152,6 +152,8 @@ impl TardisTestContainer {
             images::generic::GenericImage::new("elasticsearch", "8.1.0")
                 .with_env_var("ELASTIC_PASSWORD", "123456")
                 .with_env_var("discovery.type", "single-node")
+                .with_env_var("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+                .with_env_var("xpack.security.enabled", "false")
                 .with_wait_for(WaitFor::message_on_stdout("license mode is [basic], currently licensed security realms are")),
         )
     }
