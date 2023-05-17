@@ -454,6 +454,8 @@ async fn test_context(url: &str) -> TardisResult<()> {
         groups: vec!["g1".to_string()],
         owner: "acc1".to_string(),
         ext: Default::default(),
+        sync_task_fns: Default::default(),
+        async_task_fns: Default::default(),
     };
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
@@ -505,6 +507,8 @@ async fn test_context(url: &str) -> TardisResult<()> {
         groups: vec!["g1".to_string()],
         owner: "acc1".to_string(),
         ext: Default::default(),
+        sync_task_fns: Default::default(),
+        async_task_fns: Default::default(),
     };
     TardisFuns::cache()
         .set(
