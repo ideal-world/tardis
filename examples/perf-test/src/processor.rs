@@ -48,6 +48,8 @@ impl TodoApi {
             roles: vec![],
             groups: vec![],
             ext: Default::default(),
+            sync_task_fns: Default::default(),
+            async_task_fns: Default::default(),
         };
         let todo_id = TardisFuns::reldb()
             .conn()
@@ -107,6 +109,8 @@ impl TodoApi {
             roles: vec![],
             groups: vec![],
             ext: Default::default(),
+            sync_task_fns: Default::default(),
+            async_task_fns: Default::default(),
         };
         TardisFuns::reldb()
             .conn()

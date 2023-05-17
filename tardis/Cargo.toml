@@ -89,6 +89,7 @@ tokio = { version = "1", features = [
     "rt-multi-thread",
     "signal",
     "time",
+    "sync",
 ] }
 
 # Crypto
@@ -167,7 +168,7 @@ testcontainers = { version = "0.14", optional = true }
 
 [dev-dependencies]
 # Common
-tokio = { version = "1", features = ["time", "rt", "macros"] }
+tokio = { version = "1", features = ["time", "rt", "macros", "sync",] }
 criterion = { version = "0.4" }
 
 [[test]]
