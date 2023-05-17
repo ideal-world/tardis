@@ -156,7 +156,7 @@ async fn main() -> TardisResult<()> {
   ```
 * An `` failed to run custom build command for `opentelemetry-proto`` error occurs when running under Linux:
   ```shell
-  apt-get install protobuf-compiler
+  apt install protobuf-compiler
   ```
 * An `` failed to run custom build command for `opentelemetry-proto`` error occurs when running under MacOS:
   ```shell

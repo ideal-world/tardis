@@ -1,22 +1,12 @@
-use std::str::FromStr;
-use std::{
-    ffi::OsString,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::{basic::result::TardisResult, config::config_dto::TardisConfig};
+use crate::basic::result::TardisResult;
 #[cfg(feature = "tracing")]
 use opentelemetry_otlp::WithExportConfig;
+use std::str::FromStr;
 use tracing::metadata::LevelFilter;
-use tracing_subscriber::{
-    filter, fmt,
-    prelude::*,
-    reload::{self, Handle},
-    Registry,
-};
-
-static INITIALIZED_TRACING: AtomicBool = AtomicBool::new(false);
-static INITIALIZED_LOG: AtomicBool = AtomicBool::new(false);
+use tracing_subscriber::{prelude::*, reload::Handle, Registry};
+static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 pub struct TardisTracing;
 
@@ -25,16 +15,16 @@ pub static mut GLOBAL_RELOAD_HANDLE: Option<Handle<LevelFilter, Registry>> = Non
 impl TardisTracing {
     #[cfg(not(feature = "tracing"))]
     pub(crate) fn init_log() -> TardisResult<()> {
-        if INITIALIZED_LOG.swap(true, Ordering::SeqCst) {
+        if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
-        let mut level = std::env::var_os("RUST_LOG").unwrap_or(OsString::from("info")).into_string().unwrap();
+        let mut level = std::env::var_os("RUST_LOG").unwrap_or(std::ffi::OsString::from("info")).into_string().unwrap();
         if let Some((level_str, _)) = level.split_once(',') {
             level = level_str.to_string();
         }
-        let filter = filter::LevelFilter::from_str(level.as_str()).unwrap();
-        let (filter, reload_handle) = reload::Layer::new(filter);
-        tracing_subscriber::registry().with(filter).with(fmt::Layer::default()).init();
+        let filter = tracing_subscriber::filter::LevelFilter::from_str(level.as_str()).unwrap();
+        let (filter, reload_handle) = tracing_subscriber::reload::Layer::new(filter);
+        tracing_subscriber::registry().with(filter).with(tracing_subscriber::fmt::Layer::default()).init();
         unsafe {
             GLOBAL_RELOAD_HANDLE = Some(reload_handle);
         }
@@ -44,14 +34,14 @@ impl TardisTracing {
     #[cfg(not(feature = "tracing"))]
     pub(crate) fn update_log_level(log_level: &str) -> TardisResult<()> {
         unsafe {
-            GLOBAL_RELOAD_HANDLE.as_ref().unwrap().modify(|filter| *filter = filter::LevelFilter::from_str(log_level).unwrap()).unwrap();
+            GLOBAL_RELOAD_HANDLE.as_ref().unwrap().modify(|filter| *filter = tracing_subscriber::filter::LevelFilter::from_str(log_level).unwrap()).unwrap();
         }
         Ok(())
     }
 
     #[cfg(feature = "tracing")]
-    pub(crate) fn init_tracing(conf: &TardisConfig) -> TardisResult<()> {
-        if INITIALIZED_TRACING.swap(true, Ordering::SeqCst) {
+    pub(crate) fn init_tracing(conf: &crate::config::config_dto::TardisConfig) -> TardisResult<()> {
+        if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
         if let Some(tracing_config) = conf.fw.log.as_ref() {
