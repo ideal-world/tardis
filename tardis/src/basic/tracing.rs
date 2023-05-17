@@ -18,15 +18,16 @@ impl TardisTracing {
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
-        let mut level = std::env::var_os("RUST_LOG").unwrap_or(std::ffi::OsString::from("info")).into_string().unwrap();
-        if let Some((level_str, _)) = level.split_once(',') {
-            level = level_str.to_string();
-        }
-        let filter = tracing_subscriber::filter::LevelFilter::from_str(level.as_str()).unwrap();
-        let (filter, reload_handle) = tracing_subscriber::reload::Layer::new(filter);
-        tracing_subscriber::registry().with(filter).with(tracing_subscriber::fmt::Layer::default()).init();
-        unsafe {
-            GLOBAL_RELOAD_HANDLE = Some(reload_handle);
+        let level = std::env::var_os("RUST_LOG").unwrap_or(std::ffi::OsString::from("info")).into_string().unwrap();
+        if level.split_once(',').is_some() {
+            tracing_subscriber::fmt::init();
+        } else {
+            let filter = tracing_subscriber::filter::LevelFilter::from_str(level.as_str()).unwrap();
+            let (filter, reload_handle) = tracing_subscriber::reload::Layer::new(filter);
+            tracing_subscriber::registry().with(filter).with(tracing_subscriber::fmt::Layer::default()).init();
+            unsafe {
+                GLOBAL_RELOAD_HANDLE = Some(reload_handle);
+            }
         }
 
         Ok(())

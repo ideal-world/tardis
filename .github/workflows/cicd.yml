@@ -37,7 +37,7 @@ jobs:
         image: elasticsearch:8.1.0
         ports:
           - 9200:9200
-        options: -e ELASTIC_PASSWORD=123456 -e discovery.type=single-node
+        options: -e ELASTIC_PASSWORD=123456 -e discovery.type=single-node -e "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       # https://github.com/minio/minio/issues/10745
       minio:
         image: minio/minio:edge-cicd
