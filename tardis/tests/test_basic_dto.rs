@@ -5,8 +5,8 @@ use std::{
     time::Duration,
 };
 
-use tardis::basic::dto::TardisContext;
 use tardis::basic::result::TardisResult;
+use tardis::{basic::dto::TardisContext, TardisFuns};
 use tokio::time::sleep;
 
 #[tokio::test]
@@ -27,6 +27,10 @@ async fn test_basic_dto() -> TardisResult<()> {
             println!("Starting background task");
         }))
         .await;
+    let ctx_json = TardisFuns::json.obj_to_string(&ctx)?;
+    println!("ctx_json: {}", ctx_json);
+    let ctx: TardisContext = TardisFuns::json.str_to_obj(&ctx_json)?;
+    println!("ctx: {:?}", ctx);
     let _ = ctx
         .add_async_task(|| {
             Box::pin(async move {

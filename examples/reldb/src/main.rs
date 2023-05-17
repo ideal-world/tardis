@@ -37,6 +37,8 @@ async fn main() -> TardisResult<()> {
         roles: vec![],
         groups: vec![],
         ext: Default::default(),
+        sync_task_fns: Default::default(),
+        async_task_fns: Default::default(),
     };
 
     // Create table

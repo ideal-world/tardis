@@ -47,7 +47,7 @@ pub struct TardisContext {
     ///     .await;
     /// ```
     #[serde(skip)]
-    pub sync_task_fns: Arc<Mutex<Vec<Box<dyn FnOnce() + Send>>>>,
+    pub sync_task_fns: Arc<Mutex<Vec<Box<dyn FnOnce() + Send + 'static>>>>,
     /// Asynchronous task method in context / 上下文中的异步任务方法
     /// ```
     ///let _ = ctx
@@ -61,8 +61,9 @@ pub struct TardisContext {
     ///     .await;
     /// ```
     #[serde(skip)]
-    pub async_task_fns: Arc<Mutex<Vec<Box<dyn FnOnce() -> Pin<Box<dyn std::future::Future<Output = ()>>>>>>>,
+    pub async_task_fns: Arc<Mutex<Vec<Box<dyn FnOnce() -> Pin<Box<dyn std::future::Future<Output = ()>>> + Send + 'static>>>>,
 }
+
 impl fmt::Debug for TardisContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TardisContext")
@@ -74,6 +75,7 @@ impl fmt::Debug for TardisContext {
             .finish()
     }
 }
+
 impl Default for TardisContext {
     fn default() -> Self {
         TardisContext {
