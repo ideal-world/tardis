@@ -4,13 +4,14 @@ use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::log::info;
 use crate::TardisFuns;
+#[cfg(feature = "future")]
 use futures::stream::SplitSink;
+#[cfg(feature = "future")]
 use futures::{Future, SinkExt, StreamExt};
 use log::{trace, warn};
 use native_tls::TlsConnector;
 use serde::Serialize;
-use tokio::net::TcpStream;
-use tokio::sync::Mutex;
+use tokio::{net::TcpStream, sync::Mutex};
 use tokio_tungstenite::tungstenite::{self, Error, Message};
 use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};
 use url::Url;

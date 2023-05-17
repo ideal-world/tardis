@@ -6,7 +6,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// Configuration of Tardis / Tardis的配置
-#[derive(Serialize, Clone)]
+#[derive(Default, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct TardisConfig {
     /// Project custom configuration / 项目自定义的配置
@@ -705,6 +705,47 @@ pub struct ConfCenterConfig {
     pub group: Option<String>,
     pub format: Option<String>,
     pub namespace: Option<String>,
+    /// config change polling interval, in milliseconds / 配置变更轮询间隔，单位毫秒
+    pub config_change_polling_interval: Option<u64>,
+}
+
+#[cfg(feature = "conf-remote")]
+impl ConfCenterConfig {
+    /// Reload configuration on remote configuration change / 远程配置变更时重新加载配置
+    #[must_use]
+    pub fn reload_on_remote_config_change(&self, relative_path: Option<&str>) -> tokio::sync::mpsc::Sender<()> {
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+        let relative_path = relative_path.map(str::to_string);
+        tokio::spawn(async move {
+            match rx.recv().await {
+                Some(_) => {}
+                None => {
+                    log::debug!("[Tardis.config] Configuration update channel closed");
+                    return;
+                }
+            };
+            if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
+                match TardisFuns::shutdown().await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("[Tardis.config] Tardis shutdown with error {}", e);
+                    }
+                }
+                match TardisFuns::init_conf(config).await {
+                    Ok(_) => {
+                        log::info!("[Tardis.config] Configuration update succeeded");
+                    }
+                    Err(e) => {
+                        log::error!("[Tardis.config] Configuration update failed: {}", e);
+                    }
+                }
+            } else {
+                log::error!("[Tardis.config] Configuration update failed: Failed to load configuration");
+            }
+            log::debug!("[Tardis.config] Configuration update listener closed")
+        });
+        tx
+    }
 }
 
 impl Default for ConfCenterConfig {
@@ -717,6 +758,7 @@ impl Default for ConfCenterConfig {
             format: Some("toml".to_string()),
             group: Some("default".to_string()),
             namespace: None,
+            config_change_polling_interval: Some(5000),
         }
     }
 }

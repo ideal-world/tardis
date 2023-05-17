@@ -1,0 +1,25 @@
+[fw]
+[fw.app]
+id = "test-app"
+
+[fw.web_server]
+enabled = true
+host="0.0.0.0"
+port=8081
+allowed_origin="*"
+spec_path="spec"
+ui_path="ui"
+
+# test-app-default in remote
+# [cs]
+# project_name = "测试_romote_default"
+# level_num = 3
+
+# test-app-remote in remote
+[cs]
+project_name = "测试_romote_uploaded_v2"
+level_num = 5
+
+[csm.m1]
+[csm.m1.db_proj]
+url = "ENC(9EE184E87EA31E6588C08BBC0F7C0E276DE482F7CEE914CBDA05DF619607A24E)"

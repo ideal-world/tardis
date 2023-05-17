@@ -1,5 +1,6 @@
 [workspace]
 members = ["tardis-macros", "tardis", "examples/*"]
+exclude = ["examples/tracing-otlp"]
 
 [profile.release]
 lto = true
