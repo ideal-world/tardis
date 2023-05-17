@@ -29,7 +29,7 @@ async fn main() -> TardisResult<()> {
         body: "http://idealworld.group/".into(),
         user_id: 1,
     };
-    let response = TardisFuns::web_client().post::<Post, Post>("https://jsonplaceholder.typicode.com/posts", &new_post, None).await?;
+    let response = TardisFuns::web_client().post::<Post, Post>("https://postman-echo.com/post", &new_post, None).await?;
     assert_eq!(response.code, 201);
     assert_eq!(response.body.unwrap().body, "http://idealworld.group/");
 

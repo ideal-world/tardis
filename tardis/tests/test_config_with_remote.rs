@@ -19,19 +19,19 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 struct TestApi {
-    pub randown_key: String,
+    pub rand_key: String,
 }
 
 #[OpenApi]
 impl TestApi {
     fn new() -> Self {
         Self {
-            randown_key: format!("{:08x}", rand::random::<u32>()),
+            rand_key: format!("{:08x}", rand::random::<u32>()),
         }
     }
     #[oai(path = "/hello", method = "get")]
     async fn create(&self) -> tardis::web::web_resp::TardisApiResult<String> {
-        tardis::web::web_resp::TardisResp::ok(self.randown_key.clone())
+        tardis::web::web_resp::TardisResp::ok(self.rand_key.clone())
     }
 }
 
@@ -56,7 +56,7 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
         .nacos_auth_identity_value("nacos".into())
         .nacos_auth_token(tardis::crypto::crypto_base64::TardisCryptoBase64.encode("nacos server for test_config_with_remote"))
         .mode(NacosServerMode::Standalone);
-    nacos.tag = "v2.2.2".to_string();
+    nacos.tag = "v2.1.1-slim".to_string();
     let nacos = cli.run(nacos);
     let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = nacos.get_bridge_ip_address(), port = 8848);
     env::set_var("TARDIS_FW.CONF_CENTER.URL", nacos_url.clone());
@@ -80,6 +80,7 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
 
     DockerEnv { mq_url, nacos_url, nacos, mq }
 }
+
 #[tokio::test]
 async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=debug");
@@ -136,7 +137,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     );
     // 3.1 test web server
     let api = TestApi::new();
-    let key = api.randown_key.clone();
+    let key = api.rand_key.clone();
     let server = TardisFuns::web_server();
     server.add_route(api).await;
     tokio::spawn(server.start());

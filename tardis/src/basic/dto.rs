@@ -1,12 +1,8 @@
 //! Common DTOs / 常用的DTO
-use std::{
-    collections::HashMap,
-    fmt,
-    pin::Pin,
-    sync::{Arc, Mutex, RwLock},
-};
+use std::{collections::HashMap, fmt, pin::Pin, sync::Arc};
 
 use log::info;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::serde::{Deserialize, Serialize};
 
@@ -39,7 +35,7 @@ pub struct TardisContext {
     #[serde(skip)]
     pub ext: Arc<RwLock<HashMap<String, String>>>,
     /// Synchronous task method in context / 上下文中的同步任务方法
-    /// ```
+    /// ```ignore
     /// let _ = ctx
     ///     .add_sync_task(Box::new(|| {
     ///         println!("Starting background task");
@@ -49,7 +45,7 @@ pub struct TardisContext {
     #[serde(skip)]
     pub sync_task_fns: Arc<Mutex<Vec<Box<dyn FnOnce() + Send + 'static>>>>,
     /// Asynchronous task method in context / 上下文中的异步任务方法
-    /// ```
+    /// ```ignore
     ///let _ = ctx
     ///     .add_async_task(|| {
     ///         Box::pin(async move {
@@ -92,25 +88,25 @@ impl Default for TardisContext {
 }
 
 impl TardisContext {
-    pub fn add_ext(&self, key: &str, value: &str) -> TardisResult<()> {
-        self.ext.write()?.insert(key.to_string(), value.to_string());
+    pub async fn add_ext(&self, key: &str, value: &str) -> TardisResult<()> {
+        self.ext.write().await.insert(key.to_string(), value.to_string());
         Ok(())
     }
 
-    pub fn remove_ext(&self, key: &str) -> TardisResult<()> {
-        self.ext.write()?.remove(key);
+    pub async fn remove_ext(&self, key: &str) -> TardisResult<()> {
+        self.ext.write().await.remove(key);
         Ok(())
     }
 
-    pub fn get_ext(&self, key: &str) -> TardisResult<Option<String>> {
-        Ok(self.ext.read()?.get(key).cloned())
+    pub async fn get_ext(&self, key: &str) -> TardisResult<Option<String>> {
+        Ok(self.ext.read().await.get(key).cloned())
     }
 
     pub async fn add_sync_task<F>(&self, task: Box<F>) -> TardisResult<()>
     where
         F: FnOnce() + Send + 'static,
     {
-        self.sync_task_fns.lock().unwrap().push(task);
+        self.sync_task_fns.lock().await.push(task);
         Ok(())
     }
 
@@ -118,21 +114,21 @@ impl TardisContext {
     where
         F: FnOnce() -> Pin<Box<dyn std::future::Future<Output = ()>>> + Send + 'static,
     {
-        self.async_task_fns.lock().unwrap().push(Box::new(task));
+        self.async_task_fns.lock().await.push(Box::new(task));
         Ok(())
     }
 
     pub async fn execute_task(&self) -> TardisResult<()> {
         info!(
             "execute is task sync:[{}],async:[{}]",
-            self.sync_task_fns.lock().unwrap().len(),
-            self.async_task_fns.lock().unwrap().len()
+            self.sync_task_fns.lock().await.len(),
+            self.async_task_fns.lock().await.len()
         );
-        let mut sync_task_fns = self.sync_task_fns.lock().unwrap();
+        let mut sync_task_fns = self.sync_task_fns.lock().await;
         while let Some(sync_task_fn) = sync_task_fns.pop() {
             sync_task_fn();
         }
-        let mut async_task_fns = self.async_task_fns.lock().unwrap();
+        let mut async_task_fns = self.async_task_fns.lock().await;
         while let Some(async_task_fn) = async_task_fns.pop() {
             async_task_fn().await;
         }

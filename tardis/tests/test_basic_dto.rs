@@ -1,13 +1,11 @@
-use std::{
-    collections::HashMap,
-    env,
-    sync::{Arc, Mutex, RwLock},
-    time::Duration,
-};
+use std::{collections::HashMap, env, sync::Arc, time::Duration};
 
 use tardis::basic::result::TardisResult;
 use tardis::{basic::dto::TardisContext, TardisFuns};
-use tokio::time::sleep;
+use tokio::{
+    sync::{Mutex, RwLock},
+    time::sleep,
+};
 
 #[tokio::test]
 async fn test_basic_dto() -> TardisResult<()> {

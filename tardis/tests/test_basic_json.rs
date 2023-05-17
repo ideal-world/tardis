@@ -53,14 +53,14 @@ async fn test_basic_json() -> TardisResult<()> {
     assert_eq!(ctx.ak, "");
     assert_eq!(ctx.own_paths, "ss/");
 
-    assert!(ctx.ext.read()?.is_empty());
+    assert!(ctx.ext.read().await.is_empty());
 
-    ctx.add_ext("task_id1", "测试")?;
-    ctx.add_ext("task_id2", "dddddd")?;
-    assert_eq!(ctx.get_ext("task_id1")?, Some("测试".to_string()));
-    assert_eq!(ctx.get_ext("task_id2")?, Some("dddddd".to_string()));
-    ctx.remove_ext("task_id2")?;
-    assert_eq!(ctx.get_ext("task_id2")?, None);
+    ctx.add_ext("task_id1", "测试").await.unwrap();
+    ctx.add_ext("task_id2", "dddddd").await.unwrap();
+    assert_eq!(ctx.get_ext("task_id1").await.unwrap(), Some("测试".to_string()));
+    assert_eq!(ctx.get_ext("task_id2").await.unwrap(), Some("dddddd".to_string()));
+    ctx.remove_ext("task_id2").await.unwrap();
+    assert_eq!(ctx.get_ext("task_id2").await.unwrap(), None);
     let ctx = TardisFuns::json.obj_to_string(&ctx)?;
     assert_eq!(ctx, r#"{"own_paths":"ss/","ak":"","owner":"","roles":[],"groups":[]}"#);
 
