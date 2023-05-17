@@ -44,6 +44,7 @@ where
             tokio_tungstenite::connect_async_tls_with_config(
                 url.clone(),
                 None,
+                false,
                 Some(Connector::NativeTls(TlsConnector::builder().danger_accept_invalid_certs(true).build().unwrap())),
             )
             .await
