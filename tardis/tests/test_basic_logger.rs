@@ -19,7 +19,7 @@ async fn test_basic_logger() -> TardisResult<()> {
 
 mod app {
     pub mod req {
-        use tardis::log::{error, info};
+        use tracing::{error, info};
 
         pub fn test_req() {
             info!("app::req info");
