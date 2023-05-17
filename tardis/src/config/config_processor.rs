@@ -11,7 +11,6 @@ use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
-use crate::basic::tracing::{TardisTracing, GLOBAL_RELOAD_HANDLE};
 use crate::config::config_dto::FrameworkConfig;
 use crate::log::{debug, info};
 
@@ -164,9 +163,9 @@ impl TardisConfig {
                 log_config.level = log_level.into_string().unwrap();
             } else {
                 unsafe {
-                    if GLOBAL_RELOAD_HANDLE.is_some() {
+                    if crate::basic::tracing::GLOBAL_RELOAD_HANDLE.is_some() {
                         let log_level = log_config.level.as_str();
-                        TardisTracing::update_log_level(log_level).unwrap();
+                        crate::basic::tracing::TardisTracing::update_log_level(log_level).unwrap();
                     }
                 }
             }
