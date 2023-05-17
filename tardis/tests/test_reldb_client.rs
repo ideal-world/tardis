@@ -66,6 +66,8 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
         groups: vec![],
         owner: "acc1".to_string(),
         ext: Default::default(),
+        sync_task_fns: Default::default(),
+        async_task_fns: Default::default(),
     };
 
     let db = client.conn();
@@ -142,6 +144,8 @@ async fn test_advanced_query(client: &TardisRelDBClient) -> TardisResult<()> {
         groups: vec![],
         owner: "acc1".to_string(),
         ext: Default::default(),
+        sync_task_fns: Default::default(),
+        async_task_fns: Default::default(),
     };
 
     let db = client.conn();
@@ -344,6 +348,8 @@ async fn test_rel(client: &TardisRelDBClient) -> TardisResult<()> {
         groups: vec![],
         owner: "acc1".to_string(),
         ext: Default::default(),
+        sync_task_fns: Default::default(),
+        async_task_fns: Default::default(),
     };
 
     db.insert_one(
@@ -588,6 +594,8 @@ async fn test_field_type(client: &TardisRelDBClient) -> TardisResult<()> {
         groups: vec![],
         owner: "acc1".to_string(),
         ext: Default::default(),
+        sync_task_fns: Default::default(),
+        async_task_fns: Default::default(),
     };
 
     let mut conn = client.conn();
