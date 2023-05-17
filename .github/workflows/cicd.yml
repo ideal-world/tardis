@@ -64,9 +64,14 @@ jobs:
 
       - name: Check clippy
         run: cargo clippy --all --all-features
-
+   
       - name: Run test
-        run: cargo test --all-features
+        run: |
+          sudo swapoff -a
+          sudo sysctl -w vm.swappiness=1
+          sudo sysctl -w fs.file-max=262144
+          sudo sysctl -w vm.max_map_count=262144
+          cargo test --all-features
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
