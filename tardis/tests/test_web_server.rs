@@ -7,7 +7,6 @@ use std::env;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use log::info;
 use poem::endpoint::BoxEndpoint;
 use poem::{IntoResponse, Middleware, Response};
 use reqwest::Method;
@@ -15,6 +14,7 @@ use serde_json::json;
 use tardis::web::web_server::BoxMiddleware;
 use testcontainers::clients;
 use tokio::time::sleep;
+use tracing::info;
 
 use tardis::basic::dto::TardisContext;
 use tardis::basic::error::TardisError;

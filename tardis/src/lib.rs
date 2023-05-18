@@ -133,7 +133,6 @@ pub use derive_more;
 pub use futures;
 #[cfg(feature = "future")]
 pub use futures_util;
-pub use log;
 pub use lru;
 pub use rand;
 pub use regex;
@@ -148,8 +147,7 @@ pub use tardis_macros::{TardisCreateIndex, TardisCreateTable};
 pub use testcontainers;
 pub use tokio;
 use tokio::sync::broadcast;
-#[cfg(feature = "tracing")]
-pub use tracing;
+pub use tracing as log;
 pub use url;
 
 use basic::error::TardisErrorWithExt;
@@ -1114,11 +1112,11 @@ impl TardisFuns {
     }
 
     async fn shutdown_internal() -> TardisResult<()> {
-        log::info!("[Tardis] Shutdown...");
+        tracing::info!("[Tardis] Shutdown...");
         unsafe {
             if let Some(shutdow_signal_sender) = &TARDIS_INST.shutdown_signal_sender {
                 if shutdow_signal_sender.send(()).is_err() {
-                    log::debug!("[Tardis] Shutdown signal send failed: no receiver.");
+                    tracing::debug!("[Tardis] Shutdown signal send failed: no receiver.");
                 }
             }
         }
@@ -1155,7 +1153,7 @@ impl TardisFuns {
             }
             while let Some(Ok(close_result)) = set.join_next().await {
                 if let Err(e) = close_result {
-                    log::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
+                    tracing::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
                 }
             }
             let _ = &TARDIS_INST.mq.take();

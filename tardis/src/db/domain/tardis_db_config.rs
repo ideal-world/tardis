@@ -1,6 +1,6 @@
 use chrono::Utc;
-use log::trace;
 use sea_orm::*;
+use tracing::trace;
 
 use crate::basic::dto::TardisContext;
 use crate::db::domain::tardis_db_config;

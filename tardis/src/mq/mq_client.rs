@@ -10,7 +10,7 @@ use url::Url;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
-use crate::log::{error, info, trace};
+use tracing::{error, info, trace};
 
 pub struct TardisMQClient {
     con: Connection,

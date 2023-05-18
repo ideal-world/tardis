@@ -2,13 +2,13 @@ use std::sync::Arc;
 use std::{collections::HashMap, num::NonZeroUsize};
 
 use futures::{Future, SinkExt, StreamExt};
-use log::trace;
-use log::warn;
 use lru::LruCache;
 use poem::web::websocket::{BoxWebSocketUpgraded, CloseCode, Message, WebSocket};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::{broadcast::Sender, Mutex, RwLock};
+use tracing::trace;
+use tracing::warn;
 
 use crate::TardisFuns;
 

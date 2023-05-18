@@ -5,6 +5,7 @@ use derive_more::Display;
 use crypto::{digest::Digest, md5::Md5};
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
+use tracing::{debug, info};
 
 const ACCESS_TOKEN_FIELD: &str = "accessToken";
 
@@ -82,7 +83,7 @@ impl NacosClient {
         content.read_to_string(&mut content_buf).map_err(IoError)?;
         params.insert("content", content_buf);
         let resp = self.reqwest_client.post(&url).query(descriptor).query(&self.access_token_as_query()).form(&params).send().await;
-        log::debug!("[Tardis.Config] publish_config resp: {:?}", resp);
+        debug!("[Tardis.Config] publish_config resp: {:?}", resp);
         resp.map_err(ReqwestError)?.json::<bool>().await.map_err(ReqwestError)
     }
 
@@ -135,7 +136,7 @@ impl NacosClient {
         let url = format!("{}/v1/cs/configs/listener", self.base_url);
         let mut params = HashMap::new();
         params.insert("Listening-Configs", descriptor.as_listening_configs().await);
-        log::debug!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
+        debug!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
         let resp = self
             .reqwest_client
             .post(&url)
@@ -147,12 +148,12 @@ impl NacosClient {
             .send()
             .await
             .map_err(ReqwestError)?;
-        log::debug!("[Tardis.Config] listen_config resp: {:?}", resp);
+        debug!("[Tardis.Config] listen_config resp: {:?}", resp);
         let result = resp.text().await.map_err(ReqwestError)?;
         let result = if result.is_empty() { None } else { Some(result) };
         if let Some(config_text) = &result {
             {
-                log::info!("[Tardis.Config] Listening-Configs {} updated", config_text);
+                info!("[Tardis.Config] Listening-Configs {} updated", config_text);
                 Ok(true)
             }
         } else {

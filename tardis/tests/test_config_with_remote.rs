@@ -14,6 +14,7 @@ use tardis::TardisFuns;
 use testcontainers::clients::Cli;
 use testcontainers::images::generic::GenericImage;
 use testcontainers::Container;
+use tracing::{info, warn};
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -106,7 +107,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
         .delete_config(&remote_cfg_default)
         .await
         .map(|e| {
-            log::warn!("delete remote config failed: {}", e);
+            warn!("delete remote config failed: {}", e);
             false
         })
         .unwrap();
@@ -114,16 +115,16 @@ async fn test_config_with_remote() -> TardisResult<()> {
         .delete_config(&remote_cfg_remote)
         .await
         .map(|e| {
-            log::warn!("delete remote config failed: {}", e);
+            warn!("delete remote config failed: {}", e);
             false
         })
         .unwrap();
     // 2. publish remote config
-    log::info!("publish remote config: {:?}", remote_cfg_default);
+    info!("publish remote config: {:?}", remote_cfg_default);
     let config_file = include_str!("./config/remote-config/conf-remote-v1.toml");
     let pub_result = client.publish_config(&remote_cfg_default, &mut config_file.as_bytes()).await.expect("fail to publish remote config");
     assert!(pub_result);
-    log::info!("publish remote config success");
+    info!("publish remote config success");
     TardisFuns::shutdown().await?;
 
     // 3. get remote config
@@ -153,12 +154,12 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // upload config
     let config_file = include_str!("./config/remote-config/conf-remote-v2.toml");
     let update_result = client.publish_config(&remote_cfg_default, &mut config_file.as_bytes()).await.expect("fail to update remote config");
-    log::info!("update remote config result: {:?}", update_result);
+    info!("update remote config result: {:?}", update_result);
     // 4.1 wait for polling, and tardis will reboot since the remote config has been updated
     let mut count_down = 15;
     while count_down > 0 {
         if count_down % 5 == 0 {
-            log::info!("wait {}s for polling", count_down);
+            info!("wait {}s for polling", count_down);
         }
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         count_down -= 1;

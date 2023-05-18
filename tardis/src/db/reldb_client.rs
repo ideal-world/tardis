@@ -4,7 +4,6 @@ use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
-use log::{error, trace};
 use sea_orm::sea_query::TableCreateStatement;
 use sea_orm::sea_query::{IndexCreateStatement, SelectStatement, UpdateStatement};
 use sea_orm::ActiveValue::Set;
@@ -15,6 +14,7 @@ use sqlparser::ast::{SetExpr, TableFactor};
 use sqlparser::dialect::{MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
 use sqlx::Executor;
+use tracing::{error, info, trace};
 use url::Url;
 
 use crate::basic::dto::TardisContext;
@@ -22,7 +22,6 @@ use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::{CompatibleType, FrameworkConfig};
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
-use crate::log::info;
 use crate::serde::{Deserialize, Serialize};
 use crate::TardisFuns;
 

@@ -2,9 +2,9 @@ use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
 use crate::serde_json::json;
 use crate::TardisFuns;
 use async_trait::async_trait;
-use log::{trace, warn};
 use poem::http::StatusCode;
 use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
+use tracing::{trace, warn};
 
 use super::web_resp::mapping_http_code_to_error;
 

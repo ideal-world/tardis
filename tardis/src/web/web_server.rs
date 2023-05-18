@@ -6,10 +6,10 @@ use poem::{EndpointExt, Middleware, Route};
 use poem_openapi::{ExtraHeader, OpenApi, OpenApiService, ServerObject};
 
 use tokio::time::Duration;
+use tracing::{debug, info};
 
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
-use crate::log::info;
 use crate::web::uniform_error_mw::UniformError;
 use crate::TardisFuns;
 
@@ -182,7 +182,7 @@ impl TardisWebServer {
                     match rx.recv().await {
                         Ok(_) => {}
                         Err(e) => {
-                            log::debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
+                            debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
                         }
                     }
                 } else {
@@ -191,10 +191,10 @@ impl TardisWebServer {
             };
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
-                    log::debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
+                    debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
                 },
                 _ = tardis_shut_down_signal => {
-                    log::debug!("[Tardis.WebServer] WebServer shutdown (Tardis shutdown signal)");
+                    debug!("[Tardis.WebServer] WebServer shutdown (Tardis shutdown signal)");
                 },
             };
         };

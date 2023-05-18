@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 use std::env;
 
-use log::info;
 use tardis::cache::AsyncCommands;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
+use tracing::info;
 
 use tardis::basic::result::TardisResult;
 use tardis::cache::cache_client::TardisCacheClient;

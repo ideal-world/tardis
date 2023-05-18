@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use config::ConfigError;
+use tracing::{debug, trace, warn};
 
 use self::nacos_client::NacosClientError;
 
@@ -76,7 +77,7 @@ where
     }
     fn listen_update(self, update_notifier: tokio::sync::mpsc::Sender<()>) {
         let task = async move {
-            log::debug!("[Tardis.config] Nacos Remote listener start for {:?}", &self);
+            debug!("[Tardis.config] Nacos Remote listener start for {:?}", &self);
             loop {
                 // if request failed, wait for next poll
                 // if response is empty, remote config not yet updated, wait for next poll
@@ -89,11 +90,11 @@ where
                     match update_notifier.send(()).await {
                         Ok(_) => {
                             // tardis will be reboot, stop watching
-                            log::debug!("[Tardis.config] Nacos Remote config updated, send update notifier")
+                            debug!("[Tardis.config] Nacos Remote config updated, send update notifier")
                         }
                         Err(e) => {
                             // if receiver dropped, stop watching, since tardis wont be reboot anyway
-                            log::debug!("[Tardis.config] Nacos Remote config updated, but no receiver found, stop watching, error: {e}");
+                            debug!("[Tardis.config] Nacos Remote config updated, but no receiver found, stop watching, error: {e}");
                         }
                     }
                     break;
@@ -110,15 +111,15 @@ where
     F: Send + Sync + std::fmt::Debug + 'static,
 {
     async fn collect(&self) -> Result<config::Map<String, config::Value>, ConfigError> {
-        log::debug!("[Tardis.config] Nacos Remote config server response: {}", &self);
+        debug!("[Tardis.config] Nacos Remote config server response: {}", &self);
         match self.nacos_client.get_config(&self.get_nacos_config_descriptor()).await {
             Ok(config_text) => {
-                log::trace!("[Tardis.config] Nacos Remote config server response: {}", config_text);
+                trace!("[Tardis.config] Nacos Remote config server response: {}", config_text);
                 self.format.parse(None, &config_text).map_err(|error| ConfigError::Foreign(error))
             }
             Err(NacosClientError::ReqwestError(e)) => {
                 if e.status().map(|s| u16::from(s) == 404).unwrap_or(false) {
-                    log::warn!("[Tardis.config] Nacos Remote config not found: {}, config: {}", e, &self);
+                    warn!("[Tardis.config] Nacos Remote config not found: {}, config: {}", e, &self);
                     return Ok(config::Map::new());
                 } else {
                     return Err(config_foreign_err(e));

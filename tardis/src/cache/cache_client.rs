@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
 use deadpool_redis::{Config, Connection, Pool, Runtime};
-use log::{error, trace};
 use redis::{AsyncCommands, ErrorKind, RedisError, RedisResult};
+use tracing::{error, info, trace};
 use url::Url;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
-use crate::log::info;
 
 /// Distributed cache handle / 分布式缓存操作
 ///

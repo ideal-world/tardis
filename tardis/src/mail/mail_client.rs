@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use lettre::message::{header, MultiPart, SinglePart};
 use lettre::{address, error, transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
-use log::{error, info, trace, warn};
+use tracing::{error, info, trace, warn};
 
 use crate::basic::error::TardisError;
 use crate::{FrameworkConfig, TardisFuns, TardisResult};

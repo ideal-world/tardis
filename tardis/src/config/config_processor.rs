@@ -12,7 +12,7 @@ use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
-use crate::log::{debug, info};
+use tracing::{debug, info};
 
 use super::config_dto::{ConfCenterConfig, TardisConfig};
 

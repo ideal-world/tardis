@@ -1,6 +1,6 @@
 use std::env;
 
-use log::info;
+use tracing::info;
 
 use tardis::basic::result::TardisResult;
 use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};

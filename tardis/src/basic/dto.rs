@@ -1,8 +1,8 @@
 //! Common DTOs / 常用的DTO
 use std::{collections::HashMap, fmt, pin::Pin, sync::Arc};
 
-use log::info;
 use tokio::sync::{Mutex, RwLock};
+use tracing::info;
 
 use crate::serde::{Deserialize, Serialize};
 

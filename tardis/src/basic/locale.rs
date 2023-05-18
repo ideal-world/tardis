@@ -4,8 +4,8 @@ use std::io::{prelude::*, BufReader};
 use std::path::Path;
 use std::sync::Mutex;
 
-use log::info;
 use regex::Regex;
+use tracing::info;
 
 use crate::basic::error::TardisError;
 use crate::{TardisFuns, TardisResult};

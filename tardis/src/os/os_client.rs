@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use async_trait::async_trait;
-use log::{error, info, trace};
 use s3::creds::Credentials;
 use s3::{Bucket, BucketConfiguration, Region};
+use tracing::{error, info, trace};
 
 use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
 use crate::{FrameworkConfig, TardisResult};

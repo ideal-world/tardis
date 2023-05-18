@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use log::{error, trace};
 use reqwest::{Client, Method, Response};
+use tracing::{error, info, trace};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
-use crate::log::info;
 use crate::serde::de::DeserializeOwned;
 use crate::serde::Serialize;
 use crate::TardisFuns;

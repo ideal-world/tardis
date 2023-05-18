@@ -4,6 +4,7 @@ use crate::{
 };
 use serde_json::Value;
 use std::collections::HashMap;
+use tracing::{debug, error, info};
 
 /// Configuration of Tardis / Tardis的配置
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -720,7 +721,7 @@ impl ConfCenterConfig {
             match rx.recv().await {
                 Some(_) => {}
                 None => {
-                    log::debug!("[Tardis.config] Configuration update channel closed");
+                    debug!("[Tardis.config] Configuration update channel closed");
                     return;
                 }
             };
@@ -728,21 +729,21 @@ impl ConfCenterConfig {
                 match TardisFuns::shutdown().await {
                     Ok(_) => {}
                     Err(e) => {
-                        log::error!("[Tardis.config] Tardis shutdown with error {}", e);
+                        error!("[Tardis.config] Tardis shutdown with error {}", e);
                     }
                 }
                 match TardisFuns::init_conf(config).await {
                     Ok(_) => {
-                        log::info!("[Tardis.config] Configuration update succeeded");
+                        info!("[Tardis.config] Configuration update succeeded");
                     }
                     Err(e) => {
-                        log::error!("[Tardis.config] Configuration update failed: {}", e);
+                        error!("[Tardis.config] Configuration update failed: {}", e);
                     }
                 }
             } else {
-                log::error!("[Tardis.config] Configuration update failed: Failed to load configuration");
+                error!("[Tardis.config] Configuration update failed: Failed to load configuration");
             }
-            log::debug!("[Tardis.config] Configuration update listener closed")
+            debug!("[Tardis.config] Configuration update listener closed")
         });
         tx
     }

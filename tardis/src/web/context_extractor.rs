@@ -2,6 +2,7 @@ use base64::engine::general_purpose;
 use base64::Engine;
 use poem::Request;
 use poem_openapi::{auth::ApiKey, SecurityScheme};
+use tracing::warn;
 
 use crate::basic::dto::TardisContext;
 use crate::basic::error::TardisError;
@@ -17,7 +18,7 @@ async fn context_checker(req: &Request, _: ApiKey) -> Option<TardisContext> {
     match extract_context(req).await {
         Ok(context) => Some(context),
         Err(error) => {
-            log::warn!("[Tardis.WebServer] [{}]{} at {}", error.code, error.message, req.uri());
+            warn!("[Tardis.WebServer] [{}]{} at {}", error.code, error.message, req.uri());
             None
         }
     }

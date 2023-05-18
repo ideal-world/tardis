@@ -14,9 +14,9 @@ use tardis::db::reldb_client::TardisSeaORMExtend;
 use tardis::db::reldb_client::{TardisActiveModel, TardisRelDBClient};
 use tardis::db::sea_orm::sea_query::*;
 use tardis::db::sea_orm::*;
-use tardis::log::info;
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
+use tracing::info;
 
 use crate::entities::RbumExampleResp;
 
