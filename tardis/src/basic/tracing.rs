@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::basic::result::TardisResult;
@@ -12,13 +13,13 @@ pub static mut GLOBAL_RELOAD_HANDLE: Option<Handle<LevelFilter, Registry>> = Non
 impl TardisTracing {
     #[cfg(not(feature = "tracing"))]
     pub(crate) fn init_log() -> TardisResult<()> {
-        use std::str::FromStr;
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
         let level = std::env::var_os("RUST_LOG").unwrap_or(std::ffi::OsString::from("info")).into_string().unwrap();
+        let subscriber = tracing_subscriber::registry();
         if level.split_once(',').is_some() {
-            tracing_subscriber::fmt::init();
+            subscriber.with(tracing_subscriber::fmt::Layer::default()).init();
         } else {
             let filter = tracing_subscriber::filter::LevelFilter::from_str(level.as_str()).unwrap();
             let (filter, reload_handle) = tracing_subscriber::reload::Layer::new(filter);
