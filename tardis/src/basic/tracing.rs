@@ -31,6 +31,7 @@ impl TardisTracing {
     }
     #[cfg(not(feature = "tracing"))]
     pub(crate) fn update_log_level(log_level: &str) -> TardisResult<()> {
+        use std::str::FromStr;
         unsafe {
             GLOBAL_RELOAD_HANDLE.as_ref().unwrap().modify(|filter| *filter = tracing_subscriber::filter::LevelFilter::from_str(log_level).unwrap()).unwrap();
         }
