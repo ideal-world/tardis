@@ -30,15 +30,15 @@ async fn test_basic_dto() -> TardisResult<()> {
     let ctx: TardisContext = TardisFuns::json.str_to_obj(&ctx_json)?;
     println!("ctx: {:?}", ctx);
     let _ = ctx
-        .add_async_task(|| {
+        .add_async_task(Box::new(|| {
             Box::pin(async move {
                 println!("Starting async background task box");
                 sleep(Duration::from_secs(1)).await;
                 println!("Finished async background task box");
             })
-        })
+        }))
         .await;
-    let _ = ctx.add_async_task(|| Box::pin(async move { async_test("2").await })).await;
+    let _ = ctx.add_async_task(Box::new(|| Box::pin(async move { async_test("2").await }))).await;
     let _ = ctx
         .add_sync_task(Box::new(|| {
             sync_test("3");
