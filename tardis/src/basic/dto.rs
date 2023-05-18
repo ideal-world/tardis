@@ -8,6 +8,8 @@ use crate::serde::{Deserialize, Serialize};
 
 use super::result::TardisResult;
 
+type SyncFn = dyn FnOnce() + Send + 'static;
+type AsyncFn = dyn FnOnce() -> Pin<Box<dyn std::future::Future<Output = ()>>> + Send + 'static;
 /// Tardis context / Tardis上下文
 ///
 /// Used to bring in some authentication information when a web request is received.
@@ -43,21 +45,21 @@ pub struct TardisContext {
     ///     .await;
     /// ```
     #[serde(skip)]
-    pub sync_task_fns: Arc<Mutex<Vec<Box<dyn FnOnce() + Send + 'static>>>>,
+    pub sync_task_fns: Arc<Mutex<Vec<Box<SyncFn>>>>,
     /// Asynchronous task method in context / 上下文中的异步任务方法
     /// ```ignore
     ///let _ = ctx
-    ///     .add_async_task(|| {
+    ///     .add_async_task(Box::new(|| {
     ///         Box::pin(async move {
     ///             println!("Starting async background task");
     ///             sleep(Duration::from_secs(1)).await;
     ///             println!("Finished async background task");
     ///         })
-    ///     })
+    ///     }))
     ///     .await;
     /// ```
     #[serde(skip)]
-    pub async_task_fns: Arc<Mutex<Vec<Box<dyn FnOnce() -> Pin<Box<dyn std::future::Future<Output = ()>>> + Send + 'static>>>>,
+    pub async_task_fns: Arc<Mutex<Vec<Box<AsyncFn>>>>,
 }
 
 impl fmt::Debug for TardisContext {
@@ -102,19 +104,13 @@ impl TardisContext {
         Ok(self.ext.read().await.get(key).cloned())
     }
 
-    pub async fn add_sync_task<F>(&self, task: Box<F>) -> TardisResult<()>
-    where
-        F: FnOnce() + Send + 'static,
-    {
+    pub async fn add_sync_task(&self, task: Box<SyncFn>) -> TardisResult<()> {
         self.sync_task_fns.lock().await.push(task);
         Ok(())
     }
 
-    pub async fn add_async_task<F>(&self, task: F) -> TardisResult<()>
-    where
-        F: FnOnce() -> Pin<Box<dyn std::future::Future<Output = ()>>> + Send + 'static,
-    {
-        self.async_task_fns.lock().await.push(Box::new(task));
+    pub async fn add_async_task(&self, task: Box<AsyncFn>) -> TardisResult<()> {
+        self.async_task_fns.lock().await.push(task);
         Ok(())
     }
 
