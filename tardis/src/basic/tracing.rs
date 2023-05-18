@@ -1,9 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::basic::result::TardisResult;
-#[cfg(feature = "tracing")]
-use opentelemetry_otlp::WithExportConfig;
-use std::str::FromStr;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{prelude::*, reload::Handle, Registry};
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
@@ -15,6 +12,7 @@ pub static mut GLOBAL_RELOAD_HANDLE: Option<Handle<LevelFilter, Registry>> = Non
 impl TardisTracing {
     #[cfg(not(feature = "tracing"))]
     pub(crate) fn init_log() -> TardisResult<()> {
+        use std::str::FromStr;
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
@@ -29,7 +27,6 @@ impl TardisTracing {
                 GLOBAL_RELOAD_HANDLE = Some(reload_handle);
             }
         }
-
         Ok(())
     }
     #[cfg(not(feature = "tracing"))]
@@ -60,27 +57,24 @@ impl TardisTracing {
             }
         }
         let fmt_layer = tracing_subscriber::fmt::layer();
-
-        let telemetry_layer = tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer());
-
+        let telemetry_layer = tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?);
         tracing_subscriber::registry().with(tracing_subscriber::EnvFilter::from_default_env()).with(fmt_layer).with(telemetry_layer).init();
-
         Ok(())
     }
 
     #[cfg(feature = "tracing")]
-    fn create_otlp_tracer() -> opentelemetry::sdk::trace::Tracer {
+    fn create_otlp_tracer() -> TardisResult<opentelemetry::sdk::trace::Tracer> {
+        use crate::basic::error::TardisError;
+        use opentelemetry_otlp::WithExportConfig;
+
         let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
-
         let mut tracer = opentelemetry_otlp::new_pipeline().tracing();
-
         match protocol.as_str() {
             "grpc" => {
                 let mut exporter = opentelemetry_otlp::new_exporter().tonic().with_env();
-
                 // Check if we need TLS
                 if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
-                    if endpoint.starts_with("https") {
+                    if endpoint.to_lowercase().starts_with("https") {
                         exporter = exporter.with_tls_config(Default::default());
                     }
                 }
@@ -91,10 +85,9 @@ impl TardisTracing {
                 let exporter = opentelemetry_otlp::new_exporter().http().with_headers(headers.into_iter().collect()).with_env();
                 tracer = tracer.with_exporter(exporter)
             }
-            p => panic!("Unsupported protocol {}", p),
+            p => return Err(TardisError::conflict(&format!("[Tracing] Unsupported protocol {p}"), "")),
         };
-
-        tracer.install_batch(opentelemetry::runtime::Tokio).unwrap()
+        Ok(tracer.install_batch(opentelemetry::runtime::Tokio).unwrap())
     }
 
     #[cfg(feature = "tracing")]
