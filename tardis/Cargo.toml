@@ -22,6 +22,7 @@ conf-remote = ["web-client", "async-trait", "rust-crypto"]
 crypto = ["rust-crypto", "rsa"]
 crypto-with-sm = ["crypto", "libsm", "num-bigint"]
 future = ["futures", "async-stream", "futures-util", "async-trait"]
+tls = ["native-tls"]
 reldb-core = ["future", "sqlparser", "sea-orm", "sqlx"]
 reldb-postgres = [
     "reldb-core",
@@ -34,7 +35,7 @@ reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
 reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
 web-client = ["reqwest"]
-ws-client = ["future", "tokio-tungstenite"]
+ws-client = ["future", "tokio-tungstenite", "tls"]
 cache = ["futures-util", "redis", "deadpool-redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 mail = ["lettre"]
@@ -59,16 +60,22 @@ chrono = { version = "0.4" }
 config = { version = "0.13" }
 regex = { version = "1.5" }
 url = { version = "2.2" }
-openssl = { version = "0.10", features = ["vendored"] }
 lru = { version = "0.10.0" }
-native-tls = { version = "0.2" }
-
+# Tokio
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "signal",
+    "time",
+    "sync",
+] }
 # Tardis Macros
 tardis-macros = { version = "0.1.0-beta.7", path = "../tardis-macros", optional = true }
-
 # Log
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Tracing
 tracing-opentelemetry = { version = "0.18", optional = true }
 opentelemetry = { version = "0.18", default-features = false, features = [
     "trace",
@@ -81,14 +88,8 @@ opentelemetry-otlp = { version = "0.11", features = [
     "tls",
 ], optional = true }
 
-# Tokio
-tokio = { version = "1", features = [
-    "macros",
-    "rt-multi-thread",
-    "signal",
-    "time",
-    "sync",
-] }
+# TLS
+native-tls = { version = "0.2", optional = true }
 
 # Crypto
 rust-crypto = { version = "0.2", optional = true }
@@ -168,7 +169,7 @@ testcontainers = { version = "0.14", optional = true }
 
 [dev-dependencies]
 # Common
-tokio = { version = "1", features = ["time", "rt", "macros", "sync",] }
+tokio = { version = "1", features = ["time", "rt", "macros", "sync"] }
 criterion = { version = "0.4" }
 
 [[test]]
