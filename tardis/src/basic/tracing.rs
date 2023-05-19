@@ -20,7 +20,7 @@ impl TardisTracing {
         if std::env::var_os("RUST_LOG").is_none() {
             std::env::set_var("RUST_LOG", "info");
         }
-        
+
         let builder = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).with_filter_reloading();
         let reload_handle = builder.reload_handle();
         builder.finish().init();
