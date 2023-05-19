@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tardis::tracing::instrument;
+use tardis::log::instrument;
 use tardis::web::poem_openapi;
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
 
@@ -22,16 +22,16 @@ impl Api {
     #[instrument(level = "debug")]
     #[oai(path = "/send_sms", method = "get")]
     async fn send_sms(&self) -> TardisApiResult<String> {
-        let params = gen_params(&TaskKind::SendEmail);
-        processor::dispatch(TaskKind::SendEmail, params).await.unwrap();
+        let params = gen_params(&TaskKind::SendSms);
+        processor::dispatch(TaskKind::SendSms, params).await.unwrap();
         TardisResp::ok("send sms".to_string())
     }
 
     #[instrument(level = "debug")]
     #[oai(path = "/send_push", method = "get")]
     async fn send_push(&self) -> TardisApiResult<String> {
-        let params = gen_params(&TaskKind::SendEmail);
-        processor::dispatch(TaskKind::SendEmail, params).await.unwrap();
+        let params = gen_params(&TaskKind::SendPush);
+        processor::dispatch(TaskKind::SendPush, params).await.unwrap();
         TardisResp::ok("send push".to_string())
     }
 

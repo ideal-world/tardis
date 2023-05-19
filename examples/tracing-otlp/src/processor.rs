@@ -3,7 +3,8 @@ use tardis::async_trait::async_trait;
 use tardis::basic::{error::TardisError, result::TardisResult};
 use tardis::tokio;
 use tardis::tokio::time::{sleep, Duration};
-use tardis::tracing::{debug_span, info_span, instrument, Instrument};
+use tardis::log::{debug_span, info, info_span, instrument};
+use tracing::Instrument;
 
 #[derive(Debug)]
 pub enum TaskKind {
@@ -61,6 +62,7 @@ struct SendSmsTask;
 impl Task for SendSmsTask {
     #[instrument]
     async fn handle(&self, _params: HashMap<String, String>) -> TardisResult<()> {
+        info!("send sms task is handled");
         sleep(Duration::from_millis(300)).await;
         log_user().await.unwrap();
         Ok(())
@@ -107,6 +109,7 @@ impl Task for GenerateImageTask {
 }
 
 pub async fn dispatch(task_kind: TaskKind, params: HashMap<String, String>) -> TardisResult<()> {
+    info!("task dispatch");
     match task_kind {
         TaskKind::SendEmail => SendEmailTask.handle(params).await,
         TaskKind::SendSms => SendSmsTask.handle(params).await,
