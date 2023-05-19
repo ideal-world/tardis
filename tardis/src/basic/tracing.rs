@@ -1,9 +1,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::basic::result::TardisResult;
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::Layered;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::{prelude::*, reload::Handle, Registry};
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
