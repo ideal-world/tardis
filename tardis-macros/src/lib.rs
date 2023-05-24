@@ -46,6 +46,17 @@ pub fn tardis_create_index(input: TokenStream) -> TokenStream {
     }
 }
 
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[proc_macro_derive(TardisCreateEntity, attributes(sea_orm, index, fill_ctx))]
+pub fn tardis_create_entity(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, data, attrs, .. } = parse_macro_input!(input as DeriveInput);
+    match tardis_create_entity::create_entity(ident, data, attrs) {
+        Ok(stream) => stream.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
 pub(crate) mod macro_helpers;
+mod tardis_create_entity;
 mod tardis_create_index;
 mod tardis_create_table;
