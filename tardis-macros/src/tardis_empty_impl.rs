@@ -1,10 +1,7 @@
 use crate::macro_helpers::helpers::default_doc;
 
-
 use proc_macro2::{Ident, TokenStream};
-use quote::{quote};
-
-
+use quote::quote;
 
 use syn::{Data, Error, Result};
 
