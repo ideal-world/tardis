@@ -36,11 +36,10 @@ pub struct Model {
     pub aaa: String,
 }
 
-
 struct GiST;
 
 impl Iden for GiST {
     fn unquoted(&self, s: &mut dyn Write) {
-        s.write_str("GiST").expect("TODO: panic message");
+        s.write_str("GiST").expect("panic message");
     }
 }
