@@ -1107,6 +1107,7 @@ impl TardisFuns {
 
     /// subscribe shutdown signal / 订阅关闭信号 which is a None value.
     #[must_use]
+    #[allow(dead_code)]
     pub(crate) fn subscribe_shutdown_signal() -> Option<broadcast::Receiver<()>> {
         unsafe { TARDIS_INST.shutdown_signal_sender.as_ref().map(broadcast::Sender::subscribe) }
     }

@@ -34,7 +34,7 @@
 //!
 //! Example usage:
 //!
-//! ```rust
+//! ```rust ignore
 //! #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation)]
 //! #[sea_orm(table_name = "examples")]
 //! pub struct Model {

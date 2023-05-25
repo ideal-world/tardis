@@ -144,10 +144,10 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                             }
                         }
                     } else if let Some(ident) = field_type.path.get_ident() {
-                        // basic type
+                        // single literal type
                         map_type_to_create_table_(ident, &mut attribute, None)?;
                     } else {
-                        return Err(Error::new(path.span(), "[path.segments] not support type!"));
+                        return Err(Error::new(path.span(), "[path.segments] not support yet! please use single literal"));
                     }
                 }
             }
@@ -202,6 +202,7 @@ fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
                 map.insert("f32".to_string(), quote!(float()));
                 map.insert("f64".to_string(), quote!(double()));
                 map.insert("bool".to_string(), quote!(boolean()));
+                map.insert("Value".to_string(), quote!(json()));
             }
             _ => {}
         }
@@ -214,6 +215,7 @@ fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
             }
             Some("DateTime") => {
                 map.insert("Utc".to_string(), quote!(timestamp()));
+                map.insert("Local".to_string(), quote!(timestamp()));
             }
             None => {
                 map.insert("String".to_string(), quote!(string()));
@@ -228,6 +230,7 @@ fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
                 map.insert("f32".to_string(), quote!(float()));
                 map.insert("f64".to_string(), quote!(double()));
                 map.insert("bool".to_string(), quote!(boolean()));
+                map.insert("Value".to_string(), quote!(json()));
             }
             _ => {}
         }
