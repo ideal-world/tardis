@@ -4,11 +4,11 @@ use tardis::chrono::Utc;
 use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
 use tardis::db::sea_orm::*;
-use tardis::{chrono, TardisCreateEntity};
+use tardis::{chrono, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation};
 
 // run `cargo expand example_for_derive_create_entity > derive_create_entity_expand.rs` \
 // to see automatically impl TardisActiveModel
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, TardisCreateEntity)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation)]
 #[sea_orm(table_name = "examples")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -38,10 +38,10 @@ pub struct Model {
     pub aaa: String,
 }
 
-impl ActiveModelBehavior for ActiveModel {}
+// impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+// #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+// pub enum Relation {}
 // macro_rules! derive_all {
 //     () => {
 //         #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

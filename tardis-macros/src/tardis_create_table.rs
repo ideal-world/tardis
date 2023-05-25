@@ -28,8 +28,8 @@ struct CreateTableMeta {
     #[darling(default)]
     custom_len: Option<u32>,
 
-    //The following fields are not used temporarily
-    // in order to be compatible with the original available parameters of sea_orm
+    /// The following fields are not used temporarily
+    /// in order to be compatible with the original available parameters of sea_orm
     #[allow(dead_code)]
     #[darling(default)]
     auto_increment: bool,
@@ -59,13 +59,13 @@ struct CreateTableMeta {
     save_as: Option<String>,
 }
 
-pub(crate) fn create_table(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Result<TokenStream> {
+pub(crate) fn create_table(ident: Ident, data: Data, _atr: impl IntoIterator<Item = Attribute>) -> Result<TokenStream> {
     if ident != "Model" {
         panic!("Struct name must be Model");
     }
     match data {
-        Data::Struct(struct_impl) => {
-            let col_token = create_col_token_statement(struct_impl.fields)?;
+        Data::Struct(data_struct) => {
+            let col_token = create_col_token_statement(data_struct.fields)?;
             let doc = default_doc();
             Ok(quote! {
                 #doc

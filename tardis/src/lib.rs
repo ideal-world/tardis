@@ -142,7 +142,7 @@ pub use serde_json;
 use serde_json::Value;
 #[cfg(feature = "tardis-macros")]
 #[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
-pub use tardis_macros::{TardisCreateEntity, TardisCreateIndex, TardisCreateTable};
+pub use tardis_macros::{TardisCreateEntity, TardisCreateIndex, TardisCreateTable, TardisEmptyBehavior, TardisEmptyRelation};
 #[cfg(feature = "test")]
 pub use testcontainers;
 pub use tokio;
