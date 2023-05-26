@@ -2,14 +2,14 @@
 use std::{collections::HashMap, fmt, pin::Pin, sync::Arc};
 
 use tokio::sync::{Mutex, RwLock};
-use tracing::{error, info};
+use tracing::{error};
 
 use crate::serde::{Deserialize, Serialize};
 
 use super::result::TardisResult;
 
-type SyncFn = dyn FnOnce() -> Pin<Box<dyn std::future::Future<Output = TardisResult<()>> + Send>> + Send + 'static;
-type AsyncFn = dyn FnOnce() -> Pin<Box<dyn std::future::Future<Output = TardisResult<()>> + Send>> + Send + 'static;
+type SyncFn = dyn FnOnce() -> Pin<Box<dyn std::future::Future<Output = TardisResult<()>> + Send + Sync>> + Send + 'static;
+type AsyncFn = dyn FnOnce() -> Pin<Box<dyn std::future::Future<Output = TardisResult<()>> + Send + Sync>> + Send + 'static;
 /// Tardis context / Tardis上下文
 ///
 /// Used to bring in some authentication information when a web request is received.
@@ -121,11 +121,6 @@ impl TardisContext {
     }
 
     pub async fn execute_task(&self) -> TardisResult<()> {
-        info!(
-            "execute is task sync:[{}],async:[{}]",
-            self.sync_task_fns.lock().await.len(),
-            self.async_task_fns.lock().await.len()
-        );
         let mut sync_task_fns = self.sync_task_fns.lock().await;
         while let Some(sync_task_fn) = sync_task_fns.pop() {
             let result = sync_task_fn().await;
