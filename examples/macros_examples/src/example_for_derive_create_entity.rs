@@ -26,9 +26,9 @@ pub struct Model {
     pub can_bool: bool,
     #[index(full_text, index_id = "index_id_3")]
     pub can_be_null: Option<String>,
-    #[sea_orm(custom_type = "char", custom_len = "50")]
+    #[sea_orm(custom_type = "char", custom_len = "[50]")]
     pub be_50_char: String,
-    #[sea_orm(custom_type = "bit", custom_len = "1")]
+    #[sea_orm(custom_type = "bit", custom_len = "[1]")]
     pub be_bit: bool,
     pub create_time: chrono::DateTime<Utc>,
     #[index(index_id = "index_id_2", index_type = "Custom(GiST)", full_text)]

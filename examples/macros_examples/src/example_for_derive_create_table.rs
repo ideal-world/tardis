@@ -23,9 +23,9 @@ pub struct Model {
     pub number_u8: Vec<u8>,
     pub can_bool: bool,
     pub can_be_null: Option<String>,
-    #[sea_orm(custom_type = "char", custom_len = "50")]
+    #[sea_orm(custom_type = "char", custom_len = "[50]")]
     pub be_50_char: String,
-    #[sea_orm(custom_type = "bit", custom_len = "1")]
+    #[sea_orm(custom_type = "bit", custom_len = "[1]")]
     pub be_bit: bool,
     #[sea_orm(custom_type = "text")]
     pub be_text: String,

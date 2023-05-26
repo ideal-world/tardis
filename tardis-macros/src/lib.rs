@@ -68,7 +68,7 @@ use syn::{parse_macro_input, DeriveInput};
 /// - `nullable`: Specifies if the table columns are nullable. (default: `false`)
 /// - `extra`: Additional information about the table. (optional)
 /// - `custom_type`: Custom type for the table columns. (optional) See [`sea-query::tabled::column::ColumnDef`] .
-/// - `custom_len`: Custom length for the table columns. (optional) Enabled when used with `custom_type` attribute, such as `char(len)`.
+/// - `custom_len`: Custom length for the table columns. (optional)
 ///
 /// [`sea-query::tabled::column::ColumnDef`]: https://docs.rs/sea-query/latest/sea_query/table/struct.ColumnDef.html
 #[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]

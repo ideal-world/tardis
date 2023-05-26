@@ -34,3 +34,4 @@ nanoid = { version = "0.4" }
 [dev-dependencies]
 trybuild = "1.0"
 tardis = { path = "../tardis", features = ["reldb-postgres"] }
+rust_decimal = { version = "*" }
