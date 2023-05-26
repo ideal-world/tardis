@@ -2,7 +2,7 @@
 use std::{collections::HashMap, fmt, pin::Pin, sync::Arc};
 
 use tokio::sync::{Mutex, RwLock};
-use tracing::{error};
+use tracing::error;
 
 use crate::serde::{Deserialize, Serialize};
 
