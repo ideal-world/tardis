@@ -1,5 +1,6 @@
 use std::{collections::HashMap, env, sync::Arc, time::Duration};
 
+use tardis::basic::error::TardisError;
 use tardis::basic::result::TardisResult;
 use tardis::{basic::dto::TardisContext, TardisFuns};
 use tokio::{
@@ -22,7 +23,10 @@ async fn test_basic_dto() -> TardisResult<()> {
     };
     let _ = ctx
         .add_sync_task(Box::new(|| {
-            println!("Starting background task");
+            Box::pin(async move {
+                println!("Starting background task");
+                Ok(())
+            })
         }))
         .await;
     let ctx_json = TardisFuns::json.obj_to_string(&ctx)?;
@@ -32,32 +36,52 @@ async fn test_basic_dto() -> TardisResult<()> {
     let _ = ctx
         .add_async_task(Box::new(|| {
             Box::pin(async move {
-                println!("Starting async background task box");
+                println!("Starting async background task box 1");
                 sleep(Duration::from_secs(1)).await;
-                println!("Finished async background task box");
+                println!("Finished async background task box 1");
+                Ok(())
+            })
+        }))
+        .await;
+    let _ = ctx
+        .add_async_task(Box::new(|| {
+            Box::pin(async move {
+                println!("Starting async background task box 2");
+                println!("Finished async background task box 2");
+                Ok(())
+            })
+        }))
+        .await;
+    let _ = ctx
+        .add_async_task(Box::new(|| {
+            Box::pin(async move {
+                println!("Starting async background task box 3");
+                sleep(Duration::from_secs(1)).await;
+                println!("Finished async background task box 3");
+                Ok(())
             })
         }))
         .await;
     let _ = ctx.add_async_task(Box::new(|| Box::pin(async move { async_test("2").await }))).await;
-    let _ = ctx
-        .add_sync_task(Box::new(|| {
-            sync_test("3");
-        }))
-        .await;
+    let _ = ctx.add_sync_task(Box::new(|| Box::pin(async move { sync_test("3").await }))).await;
 
     println!("sleep 1 second before task scheduling");
     sleep(Duration::from_secs(1)).await;
     println!("sleep 1 second after task scheduling");
     let _ = ctx.execute_task().await;
-    sleep(Duration::from_secs(1)).await;
+    sleep(Duration::from_secs(4)).await;
     Ok(())
 }
 
-pub fn sync_test(t: &str) {
-    println!("Starting background task {}", t);
+pub async fn sync_test(t: &str) -> TardisResult<()> {
+    println!("Starting sync background task {}", t);
+    sleep(Duration::from_secs(1)).await;
+    println!("Finished sync background task {}", t);
+    Ok(())
 }
-pub async fn async_test(t: &str) {
+pub async fn async_test(t: &str) -> TardisResult<()> {
     println!("Starting async background task {}", t);
     sleep(Duration::from_secs(1)).await;
     println!("Finished async background task {}", t);
+    Err(TardisError::bad_request(&"error".to_string(), &"error".to_string()))
 }
