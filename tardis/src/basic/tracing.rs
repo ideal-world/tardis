@@ -1,39 +1,39 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::basic::result::TardisResult;
-use tracing::metadata::LevelFilter;
+use tracing_subscriber::fmt::Layer;
+use tracing_subscriber::layer::Layered;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::{prelude::*, reload::Handle, Registry};
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 pub struct TardisTracing;
 
-pub static mut GLOBAL_RELOAD_HANDLE: Option<Handle<LevelFilter, Registry>> = None;
+pub static mut GLOBAL_RELOAD_HANDLE: Option<Handle<EnvFilter, Layered<Layer<Registry>, Registry>>> = None;
 
 impl TardisTracing {
     #[cfg(not(feature = "tracing"))]
     pub(crate) fn init_log() -> TardisResult<()> {
-        use std::str::FromStr;
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
-        let level = std::env::var_os("RUST_LOG").unwrap_or(std::ffi::OsString::from("info")).into_string().unwrap();
-        if level.split_once(',').is_some() {
-            tracing_subscriber::fmt::init();
-        } else {
-            let filter = tracing_subscriber::filter::LevelFilter::from_str(level.as_str()).unwrap();
-            let (filter, reload_handle) = tracing_subscriber::reload::Layer::new(filter);
-            tracing_subscriber::registry().with(filter).with(tracing_subscriber::fmt::Layer::default()).init();
-            unsafe {
-                GLOBAL_RELOAD_HANDLE = Some(reload_handle);
-            }
+        if std::env::var_os("RUST_LOG").is_none() {
+            std::env::set_var("RUST_LOG", "info");
+        }
+
+        let builder = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).with_filter_reloading();
+        let reload_handle = builder.reload_handle();
+        builder.finish().init();
+        unsafe {
+            GLOBAL_RELOAD_HANDLE = Some(reload_handle);
         }
         Ok(())
     }
-    #[cfg(not(feature = "tracing"))]
+
     pub(crate) fn update_log_level(log_level: &str) -> TardisResult<()> {
-        use std::str::FromStr;
+        std::env::set_var("RUST_LOG", log_level);
         unsafe {
-            GLOBAL_RELOAD_HANDLE.as_ref().unwrap().modify(|filter| *filter = tracing_subscriber::filter::LevelFilter::from_str(log_level).unwrap()).unwrap();
+            GLOBAL_RELOAD_HANDLE.as_ref().unwrap().reload(EnvFilter::from_default_env()).unwrap();
         }
         Ok(())
     }
@@ -57,9 +57,13 @@ impl TardisTracing {
                 std::env::set_var("OTEL_SERVICE_NAME", tracing_config.server_name.as_str());
             }
         }
-        let fmt_layer = tracing_subscriber::fmt::layer();
         let telemetry_layer = tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?);
-        tracing_subscriber::registry().with(tracing_subscriber::EnvFilter::from_default_env()).with(fmt_layer).with(telemetry_layer).init();
+        let builder = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).with_filter_reloading();
+        let reload_handle = builder.reload_handle();
+        unsafe {
+            GLOBAL_RELOAD_HANDLE = Some(reload_handle);
+        }
+        builder.finish().with(telemetry_layer).init();
         Ok(())
     }
 
