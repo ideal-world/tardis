@@ -50,13 +50,13 @@ struct CreateIndexMeta {
 fn default_index_id() -> String {
     "index_id_1".to_string()
 }
-pub(crate) fn create_index(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Result<TokenStream> {
+pub(crate) fn create_index(ident: Ident, data: Data, _atr: impl IntoIterator<Item = Attribute>) -> Result<TokenStream> {
     if ident != "Model" {
         panic!("Struct name must be Model");
     }
     match data {
-        Data::Struct(struct_impl) => {
-            let col_token = create_col_token_statement(struct_impl.fields)?;
+        Data::Struct(data_struct) => {
+            let col_token = create_col_token_statement(data_struct.fields)?;
             let doc = default_doc();
             Ok(quote! {#doc
                 fn tardis_create_index_statement() -> Vec<::tardis::db::sea_orm::sea_query::IndexCreateStatement> {

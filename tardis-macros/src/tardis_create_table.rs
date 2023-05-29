@@ -2,7 +2,6 @@ use crate::macro_helpers::helpers::{default_doc, ConvertVariableHelpers};
 use darling::FromField;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
-use std::collections::HashMap;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Dot;
@@ -22,14 +21,18 @@ struct CreateTableMeta {
     /// custom type , optional see [sea-query::tabled::column::ColumnDef]/[map_type_to_db_type]
     #[darling(default)]
     custom_type: Option<String>,
-    /// custom len , when enabled, it needs to be used with custom_type attribute. \
-    /// And it will only be enabled when a specific type. \
-    /// such as `char(len)`
+    /// custom len
+    /// type: array
+    /// ```rust ignore
+    /// #[sea_orm(custom_len = "[10,2]")]
+    /// ```
     #[darling(default)]
-    custom_len: Option<u32>,
+    custom_len: Vec<u32>,
+    #[darling(default)]
+    ignore: bool,
 
-    //The following fields are not used temporarily
-    // in order to be compatible with the original available parameters of sea_orm
+    /// The following fields are not used temporarily
+    /// in order to be compatible with the original available parameters of sea_orm
     #[allow(dead_code)]
     #[darling(default)]
     auto_increment: bool,
@@ -50,35 +53,34 @@ struct CreateTableMeta {
     indexed: bool,
     #[allow(dead_code)]
     #[darling(default)]
-    ignore: bool,
-    #[allow(dead_code)]
-    #[darling(default)]
     select_as: Option<String>,
     #[darling(default)]
     #[allow(dead_code)]
     save_as: Option<String>,
 }
 
-pub(crate) fn create_table(ident: Ident, data: Data, _atr: Vec<Attribute>) -> Result<TokenStream> {
+pub(crate) fn create_table(ident: Ident, data: Data, _atr: impl IntoIterator<Item = Attribute>) -> Result<TokenStream> {
     if ident != "Model" {
         panic!("Struct name must be Model");
     }
     match data {
-        Data::Struct(struct_impl) => {
-            let col_token = create_col_token_statement(struct_impl.fields)?;
+        Data::Struct(data_struct) => {
+            let col_token = create_col_token_statement(data_struct.fields)?;
             let doc = default_doc();
-            Ok(quote! {#doc
+            Ok(quote! {
+                #doc
                 fn tardis_create_table_statement(db: DbBackend) -> ::tardis::db::sea_orm::sea_query::TableCreateStatement {
-                let mut builder = ::tardis::db::sea_orm::sea_query::Table::create();
-                builder
-                    .table(Entity.table_ref())
-                    .if_not_exists()
-                    .#col_token;
-                if db == DatabaseBackend::MySql {
-                    builder.engine("InnoDB").character_set("utf8mb4").collate("utf8mb4_0900_as_cs");
+                    let mut builder = ::tardis::db::sea_orm::sea_query::Table::create();
+                    builder
+                        .table(Entity.table_ref())
+                        .if_not_exists()
+                        .#col_token;
+                    if db == DatabaseBackend::MySql {
+                        builder.engine("InnoDB").character_set("utf8mb4").collate("utf8mb4_0900_as_cs");
+                    }
+                    builder.to_owned()
                 }
-                builder.to_owned()
-            }})
+            })
         }
         Data::Enum(_) => Err(Error::new(ident.span(), "enum is not support!")),
         Data::Union(_) => Err(Error::new(ident.span(), "union is not support!")),
@@ -94,6 +96,9 @@ fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
                 return Ok(err.write_errors());
             }
         };
+        if field_create_table_meta.ignore {
+            continue;
+        }
         let stream = create_single_col_token_statement(field_create_table_meta)?;
         result.push(stream);
     }
@@ -103,11 +108,11 @@ fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
 fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStream> {
     let field_clone = field.clone();
     let mut attribute: Punctuated<_, Dot> = Punctuated::new();
+    let mut col_type = TokenStream::new();
     if let Some(ident) = field_clone.ident {
         // Priority according to custom_type specifies the corresponding database type to be created/优先根据custom_type指定创建对应数据库类型
         if let Some(custom_column_type) = field.custom_type {
-            let db_type = map_type_to_db_type(&custom_column_type, field.custom_len, ident.span())?;
-            attribute.push(db_type);
+            col_type = map_custom_type_to_sea_type(&custom_column_type, field.custom_len, ident.span())?;
         } else {
             //Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
             if let Type::Path(field_type) = field_clone.ty {
@@ -116,20 +121,19 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                     if path.ident == "Option" {
                         if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
                             if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
-                                if path.path.get_ident().is_some() {
-                                    return create_single_col_token_statement(CreateTableMeta {
-                                        ty: Type::Path(path.clone()),
-                                        nullable: true,
-                                        ..field
-                                    });
-                                }
+                                return create_single_col_token_statement(CreateTableMeta {
+                                    ty: Type::Path(path.clone()),
+                                    nullable: true,
+                                    ..field
+                                });
                             }
                         }
                     } else if path.ident == "Vec" {
                         if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
                             if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
                                 if let Some(ident) = path.path.get_ident() {
-                                    map_type_to_create_table_(ident, &mut attribute, Some("Vec"))?;
+                                    let custom_ty = map_rust_ty_custom_ty(ident, Some("Vec"))?;
+                                    col_type = map_custom_type_to_sea_type(&custom_ty, field.custom_len, ident.span())?;
                                 }
                             }
                         }
@@ -137,15 +141,18 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                         if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
                             if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
                                 if let Some(ident) = path.path.get_ident() {
-                                    map_type_to_create_table_(ident, &mut attribute, Some("DateTime"))?;
+                                    let custom_ty = map_rust_ty_custom_ty(ident, Some("DateTime"))?;
+                                    col_type = map_custom_type_to_sea_type(&custom_ty, field.custom_len, ident.span())?;
                                 }
                             }
                         }
                     } else if let Some(ident) = field_type.path.get_ident() {
-                        // basic type
-                        map_type_to_create_table_(ident, &mut attribute, None)?;
+                        // single literal type
+                        // map_type_to_create_table_(ident, &mut attribute, None)?;
+                        let custom_ty = map_rust_ty_custom_ty(ident, None)?;
+                        col_type = map_custom_type_to_sea_type(&custom_ty, field.custom_len, ident.span())?;
                     } else {
-                        return Err(Error::new(path.span(), "[path.segments] not support type!"));
+                        return Err(Error::new(path.span(), "[path.segments] not support yet! please use single literal"));
                     }
                 }
             }
@@ -161,195 +168,260 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
         }
 
         let ident = Ident::new(ConvertVariableHelpers::underscore_to_camel(ident.to_string()).as_ref(), ident.span());
-        Ok(quote! {col(::tardis::db::sea_orm::sea_query::ColumnDef::new(Column::#ident).#attribute)})
+        if col_type.is_empty() {
+            return Err(Error::new(
+                field.ident.span(),
+                "Failed to parse the type. Please try using custom_type to specify the type.",
+            ));
+        }
+        if attribute.is_empty() {
+            Ok(quote! {col(&mut ::tardis::db::sea_orm::sea_query::ColumnDef::new_with_type(Column::#ident,#col_type))})
+        } else {
+            Ok(quote! {col(&mut ::tardis::db::sea_orm::sea_query::ColumnDef::new_with_type(Column::#ident,#col_type).#attribute)})
+        }
     } else {
         Ok(quote! {})
     }
 }
 
-fn map_type_to_create_table_(ident: &Ident, attribute: &mut Punctuated<TokenStream, Dot>, segments_type: Option<&str>) -> Result<()> {
-    let map: HashMap<String, TokenStream> = get_type_map(segments_type);
-
+/// Conversion type reference https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/
+fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<String> {
     let ident_string = ident.to_string();
-    if let Some(tk) = map.get::<str>(ident_string.as_ref()) {
-        attribute.push((*tk).clone());
-        Ok(())
-    } else {
-        Err(Error::new(ident.span(), "type is not impl!"))
-    }
-}
-/// Conversion type reference https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/ \
-/// for developer: if you want support more type,just add type map.
-fn get_type_map(segments_type: Option<&str>) -> HashMap<String, TokenStream> {
-    let mut map: HashMap<String, TokenStream> = HashMap::new();
-    #[cfg(feature = "reldb-postgres")]
-    {
-        match segments_type {
-            Some("Vec") => {
-                map.insert("u8".to_string(), quote!(binary()));
-            }
-            Some("DateTime") => {
-                map.insert("Utc".to_string(), quote!(timestamp_with_time_zone()));
-            }
-            None => {
-                map.insert("String".to_string(), quote!(string()));
-                map.insert("i8".to_string(), quote!(tiny_integer()));
-                map.insert("i16".to_string(), quote!(small_integer()));
-                map.insert("i32".to_string(), quote!(integer()));
-                map.insert("i64".to_string(), quote!(big_integer()));
-                map.insert("f32".to_string(), quote!(float()));
-                map.insert("f64".to_string(), quote!(double()));
-                map.insert("bool".to_string(), quote!(boolean()));
-            }
-            _ => {}
-        }
-    }
-    #[cfg(feature = "reldb-mysql")]
-    {
-        match segments_type {
-            Some("Vec") => {
-                map.insert("u8".to_string(), quote!(binary()));
-            }
-            Some("DateTime") => {
-                map.insert("Utc".to_string(), quote!(timestamp()));
-            }
-            None => {
-                map.insert("String".to_string(), quote!(string()));
-                map.insert("i8".to_string(), quote!(tiny_integer()));
-                map.insert("u8".to_string(), quote!(tiny_unsigned()));
-                map.insert("i16".to_string(), quote!(small_integer()));
-                map.insert("u16".to_string(), quote!(small_unsigned()));
-                map.insert("i32".to_string(), quote!(integer()));
-                map.insert("u32".to_string(), quote!(unsigned()));
-                map.insert("i64".to_string(), quote!(big_integer()));
-                map.insert("u64".to_string(), quote!(big_unsigned()));
-                map.insert("f32".to_string(), quote!(float()));
-                map.insert("f64".to_string(), quote!(double()));
-                map.insert("bool".to_string(), quote!(boolean()));
-            }
-            _ => {}
-        }
-    }
-    map
-}
-fn map_type_to_db_type(custom_column_type: &str, custom_len: Option<u32>, span: Span) -> Result<TokenStream> {
-    let result = match custom_column_type {
-        "Char" | "char" => {
-            if let Some(len) = custom_len {
-                quote!(char_len(#len))
+    let span = ident.span();
+    let custom_ty = match ident_string.as_str() {
+        "String" | "Decimal" => ident_string.as_str(),
+        "i8" => "tiny_integer",
+        "u8" => {
+            if let Some("Vec") = segments_type {
+                "binary"
+            } else if cfg!(feature = "reldb-mysql") {
+                "tiny_unsigned"
             } else {
-                quote!(char())
+                return Err(Error::new(span, "not supported! u8 only supported when the 'reldb-mysql' feature is enabled. ".to_string()));
+            }
+        }
+        "i16" => "small_integer",
+        "u16" => {
+            if cfg!(feature = "reldb-mysql") {
+                "small_unsigned"
+            } else {
+                return Err(Error::new(span, "not supported!u16 only supported when the 'reldb-mysql' feature is enabled. ".to_string()));
+            }
+        }
+        "i32" => "integer",
+        "u32" => {
+            if cfg!(feature = "reldb-mysql") {
+                "unsigned"
+            } else {
+                return Err(Error::new(span, "not supported!u16 only supported when the 'reldb-mysql' feature is enabled. ".to_string()));
+            }
+        }
+        "i64" => "big_integer",
+        "u64" => {
+            if cfg!(feature = "reldb-mysql") {
+                "big_unsigned"
+            } else {
+                return Err(Error::new(span, "not supported!u16 only supported when the 'reldb-mysql' feature is enabled. ".to_string()));
+            }
+        }
+        "f32" => "float",
+        "f64" => "double",
+        "bool" => "boolean",
+        "NaiveDate" | "Date" => "date",
+        "NaiveDateTime" | "PrimitiveDateTime" => "DateTime",
+        "Local" | "Utc" => {
+            if let Some("DateTime") = segments_type {
+                if cfg!(feature = "reldb-postgres") {
+                    "TimestampWithTimeZone"
+                } else {
+                    "Timestamp"
+                }
+            } else {
+                return Err(Error::new(span, "not supported type!".to_string()));
+            }
+        }
+        "FixedOffset" | "OffsetDateTime" => "TimestampWithTimeZone",
+        "Value" | "Json" => "Json",
+        _ => return Err(Error::new(ident.span(), "type is not impl!")),
+    };
+    let result = if let Some("Vec") = segments_type {
+        if custom_ty != "binary" {
+            format!("array.{custom_ty}")
+        } else {
+            custom_ty.to_string()
+        }
+    } else {
+        custom_ty.to_string()
+    };
+    Ok(result)
+}
+
+fn map_custom_type_to_sea_type(custom_column_type: &str, custom_len: Vec<u32>, span: Span) -> Result<TokenStream> {
+    let mut type_split: Vec<_> = custom_column_type.split('.').collect();
+    let first_type = if !type_split.is_empty() {
+        type_split.remove(0)
+    } else {
+        return Err(Error::new(span, "column_type can't be empty!".to_string()));
+    };
+    let result = match first_type {
+        "Char" | "char" => {
+            if let Some(len) = custom_len.first() {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Char(Some(#len)))
+            } else {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Char(None))
             }
         }
         "String" | "string" => {
-            if let Some(len) = custom_len {
-                quote!(string_len(#len))
+            if let Some(len) = custom_len.first() {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::String(Some(#len)))
             } else {
-                quote!(string())
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::String(None))
             }
         }
         "Text" | "text" => {
-            quote!(text())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Text)
         }
         "TinyInteger" | "tiny_integer" => {
-            quote!(tiny_integer())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::TinyInteger)
         }
         "SmallInteger" | "small_integer" => {
-            quote!(small_integer())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::SmallInteger)
         }
         "Integer" | "integer" => {
-            quote!(integer())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Integer)
         }
         "BigInteger" | "big_integer" => {
-            quote!(big_integer())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::BigInteger)
         }
         "TinyUnsigned" | "tiny_unsigned" => {
-            quote!(tiny_unsigned())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::TinyUnsigned)
         }
         "SmallUnsigned" | "small_unsigned" => {
-            quote!(small_unsigned())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::SmallUnsigned)
         }
         "Unsigned" | "unsigned" => {
-            quote!(unsigned())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Unsigned)
         }
         "BigUnsigned" | "big_unsigned" => {
-            quote!(big_unsigned())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::BigUnsigned)
         }
         "Float" | "float" => {
-            quote!(float())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Float)
         }
         "Double" | "double" => {
-            quote!(double())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Double)
         }
         "Decimal" | "decimal" => {
-            quote!(decimal())
+            if let (Some(precision), Some(scale)) = (custom_len.first(), custom_len.get(1)) {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Decimal(Some((#precision,#scale))))
+            } else {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Decimal(None))
+            }
         }
         "DateTime" | "date_time" => {
-            quote!(date_time())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::DateTime)
         }
         "Timestamp" | "timestamp" => {
-            quote!(timestamp())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Timestamp)
         }
         "TimestampWithTimeZone" | "timestamp_with_time_zone" => {
-            quote!(timestamp_with_time_zone())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::TimestampWithTimeZone)
         }
         "Time" | "time" => {
-            quote!(time())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Time)
         }
         "Date" | "date" => {
-            quote!(date())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Date)
         }
         "Binary" | "binary" => {
-            if let Some(len) = custom_len {
-                quote!(binary_len(#len))
+            if let Some(len) = custom_len.first() {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Binary(::tardis::db::sea_orm::sea_query::BlobSize::Blob(
+                    Some(#len)
+                )))
             } else {
-                quote!(binary())
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Binary(::tardis::db::sea_orm::sea_query::BlobSize::Blob(None)))
             }
         }
         "VarBinary" | "var_binary" => {
-            if let Some(len) = custom_len {
-                quote!(var_binary(#len))
+            if let Some(len) = custom_len.first() {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::VarBinary(#len))
             } else {
                 return Err(Error::new(span, "column_type:var_binary must have custom_len!".to_string()));
             }
         }
         "Bit" | "bit" => {
-            if let Some(len) = custom_len {
-                quote!(bit(Some(#len)))
+            if let Some(len) = custom_len.first() {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Bit(Some(#len)))
             } else {
-                quote!(bit(None))
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Bit(None))
             }
         }
         "VarBit" | "varbit" => {
-            if let Some(len) = custom_len {
-                quote!(varbit(#len))
+            if let Some(len) = custom_len.first() {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::VarBit(#len))
             } else {
                 return Err(Error::new(span, "column_type:varbit must have custom_len!".to_string()));
             }
         }
         "Boolean" | "boolean" => {
-            quote!(boolean())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Boolean)
         }
         "Money" | "money" => {
-            quote!(money())
+            if let (Some(precision), Some(scale)) = (custom_len.first(), custom_len.get(1)) {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Money(Some((#precision,#scale))))
+            } else {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Money(None))
+            }
         }
         "Json" | "json" => {
-            quote!(json())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Json)
         }
         "JsonBinary" | "json_binary" => {
-            quote!(json_binary())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::JsonBinary)
         }
         "UUID" | "Uuid" | "uuid" => {
-            quote!(uuid())
+            quote!(::tardis::db::sea_orm::sea_query::ColumnType::Uuid)
+        }
+        "Array" | "array" => {
+            if cfg!(feature = "reldb-postgres") {
+                let item_type = map_custom_type_to_sea_type(type_split.join(".").as_str(), custom_len, span)?;
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Array(::tardis::db::sea_orm::sea_query::SeaRc::new(#item_type)))
+            } else {
+                return Err(Error::new(
+                    span,
+                    format!("column_type:{custom_column_type} only supported when the 'reldb-postgres' feature is enabled. "),
+                ));
+            }
         }
         "CIDR" | "Cidr" | "cidr" => {
-            quote!(cidr())
+            if cfg!(feature = "reldb-postgres") {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Cidr)
+            } else {
+                return Err(Error::new(
+                    span,
+                    format!("column_type:{custom_column_type} only supported when the 'reldb-postgres' feature is enabled. "),
+                ));
+            }
         }
         "Inet" | "inet" => {
-            quote!(inet())
+            if cfg!(feature = "reldb-postgres") {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Inet)
+            } else {
+                return Err(Error::new(
+                    span,
+                    format!("column_type:{custom_column_type} only supported when the 'reldb-postgres' feature is enabled. "),
+                ));
+            }
         }
         "MacAddress" | "mac_address" => {
-            quote!(mac_address())
+            if cfg!(feature = "reldb-postgres") {
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::MacAddr)
+            } else {
+                return Err(Error::new(
+                    span,
+                    format!("column_type:{custom_column_type} only supported when the 'reldb-postgres' feature is enabled. "),
+                ));
+            }
         }
         _ => {
             return Err(Error::new(span, format!("column_type:{custom_column_type} is a not support custom type!")));
