@@ -42,8 +42,13 @@ pub struct Model {
     #[sea_orm(custom_len = "[10,2]")]
     pub be_decimal: Decimal,
     pub create_time: chrono::DateTime<Utc>,
+
+    pub be_vec_i8: Vec<i8>,
+    pub be_option_vec_i8: Option<Vec<i8>>,
     pub be_vec_text: Vec<String>,
+    #[sea_orm(custom_len = "[50]")]
     pub be_option_vec_text: Option<Vec<String>>,
+
     #[index(index_id = "index_id_2", index_type = "Custom(GiST)", full_text)]
     #[fill_ctx(own_paths)]
     pub aaa: String,
@@ -66,7 +71,7 @@ fn main() {
     assert_eq!(format!("{:?}", table_name.unwrap()), "Table(tests)".to_string());
 
     let table_cols: &Vec<_> = create_table_statement.get_columns();
-    assert_eq!(table_cols.len(), 20);
+    assert_eq!(table_cols.len(), 22);
     let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "id" && col.get_column_type() == Some(&ColumnType::String(None))).collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "number8" && col.get_column_type() == Some(&ColumnType::TinyInteger)).collect();
@@ -77,6 +82,16 @@ fn main() {
     let find_id: Vec<_> = table_cols
         .iter()
         .filter(|col| col.get_column_name() == "be_option_50_binary" && col.get_column_type() == Some(&ColumnType::Binary(sea_query::BlobSize::Blob(Some(50)))))
+        .collect();
+    assert_eq!(find_id.len(), 1);
+    let find_id: Vec<_> = table_cols
+        .iter()
+        .filter(|col| col.get_column_name() == "be_vec_text" && col.get_column_type() == Some(&ColumnType::Array(sea_query::SeaRc::new(ColumnType::String(None)))))
+        .collect();
+    assert_eq!(find_id.len(), 1);
+    let find_id: Vec<_> = table_cols
+        .iter()
+        .filter(|col| col.get_column_name() == "be_option_vec_text" && col.get_column_type() == Some(&ColumnType::Array(sea_query::SeaRc::new(ColumnType::String(Some(50))))))
         .collect();
     assert_eq!(find_id.len(), 1);
 

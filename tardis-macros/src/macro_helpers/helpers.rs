@@ -2,7 +2,6 @@ use quote::quote;
 
 pub(crate) struct TypeToTokenHelpers;
 
-#[allow(dead_code)]
 impl TypeToTokenHelpers {
     pub(crate) fn optional_literal(s: &Option<impl AsRef<str>>) -> proc_macro2::TokenStream {
         match s {

@@ -52,7 +52,9 @@
 //!
 //! [TardisCreateEntity]
 
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 use proc_macro::TokenStream;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 use syn::{parse_macro_input, DeriveInput};
 
 /// # TardisCreateTable
@@ -186,8 +188,13 @@ pub fn tardis_empty_relation(input: TokenStream) -> TokenStream {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) mod macro_helpers;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 mod tardis_create_entity;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 mod tardis_create_index;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 mod tardis_create_table;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 mod tardis_empty_impl;
