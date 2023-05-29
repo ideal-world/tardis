@@ -70,7 +70,7 @@ tokio = { version = "1", features = [
     "sync",
 ] }
 # Tardis Macros
-tardis-macros = { version = "0.1.0-beta.7", path = "../tardis-macros", optional = true }
+tardis-macros = { version = "0.1.0-beta.8", path = "../tardis-macros", optional = true }
 # Log
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -110,7 +110,7 @@ sea-orm = { version = "0.11", features = [
     "debug-print",
 ], optional = true }
 sqlx = { version = "0.6", features = ["any"], optional = true }
-sqlparser = { version = "0.33", optional = true }
+sqlparser = { version = "0.34", optional = true }
 
 # Web Server
 poem-openapi = { version = "2", features = [
@@ -153,7 +153,7 @@ amq-protocol-types = { version = "7.0", optional = true }
 async-global-executor = { version = "2.0", optional = true }
 
 # Mail
-lettre = { version = "0.10.0-rc.6", features = [
+lettre = { version = "0.10.4", features = [
     "smtp-transport",
     "tokio1",
     "tokio1-native-tls",
@@ -170,7 +170,7 @@ testcontainers = { version = "0.14", optional = true }
 [dev-dependencies]
 # Common
 tokio = { version = "1", features = ["time", "rt", "macros", "sync"] }
-criterion = { version = "0.4" }
+criterion = { version = "0.5" }
 
 [[test]]
 name = "test_config"
