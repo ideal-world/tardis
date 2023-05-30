@@ -96,8 +96,8 @@ fn main() {
     assert_eq!(find_id.len(), 1);
 
     let create_indexes: Vec<IndexCreateStatement> = ActiveModel::create_index_statement();
-    assert_eq!(create_indexes.len(), 3);
-    let find_index_1: Vec<_> = create_indexes.iter().filter(|index| index.get_index_spec().get_column_names().contains(&"number64".to_string())).collect();
+    assert_eq!(create_indexes.len(), 4);
+    let find_index_1: Vec<_> = create_indexes.iter().filter(|index| index.get_index_spec().get_column_names().contains(&"number32".to_string())).collect();
     assert_eq!(find_index_1.len(), 1);
     assert_eq!(find_index_1.first().unwrap().get_index_spec().get_column_names().len(), 2);
 }
