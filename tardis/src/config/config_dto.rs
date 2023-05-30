@@ -577,6 +577,7 @@ pub struct MailConfig {
     pub smtp_username: String,
     pub smtp_password: String,
     pub default_from: String,
+    pub starttls: bool,
     /// Mail module configuration / 邮件模块配置
     pub modules: HashMap<String, MailModuleConfig>,
 }
@@ -589,6 +590,7 @@ pub struct MailModuleConfig {
     pub smtp_username: String,
     pub smtp_password: String,
     pub default_from: String,
+    pub starttls: bool,
 }
 
 impl Default for MailConfig {
@@ -601,6 +603,7 @@ impl Default for MailConfig {
             smtp_password: "".to_string(),
             default_from: "".to_string(),
             modules: Default::default(),
+            starttls: false,
         }
     }
 }
@@ -613,6 +616,7 @@ impl Default for MailModuleConfig {
             smtp_username: "".to_string(),
             smtp_password: "".to_string(),
             default_from: "".to_string(),
+            starttls: false,
         }
     }
 }

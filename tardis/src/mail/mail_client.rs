@@ -23,25 +23,31 @@ impl TardisMailClient {
                 &conf.mail.smtp_username,
                 &conf.mail.smtp_password,
                 &conf.mail.default_from,
+                conf.mail.starttls,
             )?,
         );
         for (k, v) in &conf.mail.modules {
             clients.insert(
                 k.to_string(),
-                TardisMailClient::init(&v.smtp_host, v.smtp_port, &v.smtp_username, &v.smtp_password, &v.default_from)?,
+                TardisMailClient::init(&v.smtp_host, v.smtp_port, &v.smtp_username, &v.smtp_password, &v.default_from, v.starttls)?,
             );
         }
         Ok(clients)
     }
 
-    pub fn init(smtp_host: &str, smtp_port: u16, smtp_username: &str, smtp_password: &str, default_from: &str) -> TardisResult<TardisMailClient> {
+    pub fn init(smtp_host: &str, smtp_port: u16, smtp_username: &str, smtp_password: &str, default_from: &str, starttls: bool) -> TardisResult<TardisMailClient> {
         info!("[Tardis.MailClient] Initializing");
         let creds = Credentials::new(smtp_username.to_string(), smtp_password.to_string());
-        let client = AsyncSmtpTransport::<Tokio1Executor>::relay(smtp_host)
-            .map_err(|_| TardisError::internal_error(&format!("[Tardis.MailClient] Failed to create SMTP client: {smtp_host}"), "500-tardis-mail-init-error"))?
-            .credentials(creds)
-            .port(smtp_port)
-            .build();
+        let client = if starttls {
+            info!("[Tardis.MailClient] Using STARTTLS");
+            AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(smtp_host)
+        } else {
+            AsyncSmtpTransport::<Tokio1Executor>::relay(smtp_host)
+        }
+        .map_err(|_| TardisError::internal_error(&format!("[Tardis.MailClient] Failed to create SMTP client: {smtp_host}"), "500-tardis-mail-init-error"))?
+        .credentials(creds)
+        .port(smtp_port)
+        .build();
         info!("[Tardis.MailClient] Initialized");
         TardisResult::Ok(TardisMailClient {
             client,
