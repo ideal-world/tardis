@@ -69,13 +69,13 @@ pub(crate) fn create_table(ident: Ident, data: Data, _atr: impl IntoIterator<Ite
             let doc = default_doc();
             Ok(quote! {
                 #doc
-                fn tardis_create_table_statement(db: DbBackend) -> ::tardis::db::sea_orm::sea_query::TableCreateStatement {
+                fn tardis_create_table_statement(db: ::tardis::db::sea_orm::DbBackend) -> ::tardis::db::sea_orm::sea_query::TableCreateStatement {
                     let mut builder = ::tardis::db::sea_orm::sea_query::Table::create();
                     builder
                         .table(Entity.table_ref())
                         .if_not_exists()
                         .#col_token;
-                    if db == DatabaseBackend::MySql {
+                    if db == ::tardis::db::sea_orm::DatabaseBackend::MySql {
                         builder.engine("InnoDB").character_set("utf8mb4").collate("utf8mb4_0900_as_cs");
                     }
                     builder.to_owned()
@@ -148,7 +148,6 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                         }
                     } else if let Some(ident) = field_type.path.get_ident() {
                         // single literal type
-                        // map_type_to_create_table_(ident, &mut attribute, None)?;
                         let custom_ty = map_rust_ty_custom_ty(ident, None)?;
                         col_type = map_custom_type_to_sea_type(&custom_ty, field.custom_len, ident.span())?;
                     } else {
@@ -242,7 +241,7 @@ fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<S
         }
         "FixedOffset" | "OffsetDateTime" => "TimestampWithTimeZone",
         "Value" | "Json" => "Json",
-        _ => return Err(Error::new(ident.span(), "type is not impl!")),
+        _ => "Json",
     };
     let result = if let Some("Vec") = segments_type {
         if custom_ty != "binary" {
@@ -423,8 +422,34 @@ fn map_custom_type_to_sea_type(custom_column_type: &str, custom_len: Vec<u32>, s
                 ));
             }
         }
-        _ => {
-            return Err(Error::new(span, format!("column_type:{custom_column_type} is a not support custom type!")));
+        _any => {
+            //try `type(len)` type
+            if _any.contains('(') && _any.contains(')') {
+                let type_split: Vec<&str> = _any.split('(').collect();
+                let len_split: Vec<&str> = type_split[1].split(')').collect();
+                let mut custom_len = vec![];
+                let parse_lens: Vec<_> = len_split[0]
+                    .split(',')
+                    .collect::<Vec<_>>()
+                    .iter()
+                    .map(|x| x.parse::<u32>().map_err(|_| Error::new(span, format!("column_type:{custom_column_type} is a not support custom type!"))))
+                    .collect();
+                for parse_len in parse_lens {
+                    match parse_len {
+                        Ok(len) => custom_len.push(len),
+                        Err(_) => {
+                            // return Err(Error::new(
+                            //     span,
+                            //     format!("column_type:{custom_column_type} is a not support yet! The parentheses must contain numbers and not other characters"),
+                            // ));
+                        }
+                    }
+                }
+
+                map_custom_type_to_sea_type(type_split[0], custom_len, span)?
+            } else {
+                return Err(Error::new(span, format!("column_type:{custom_column_type} is a not support custom type!")));
+            }
         }
     };
     Ok(result)

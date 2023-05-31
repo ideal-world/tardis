@@ -15,7 +15,7 @@ pub(crate) fn create_empty_behavior(ident: Ident, data: Data) -> Result<TokenStr
 
             Ok(quote! {
                 #doc
-                impl ActiveModelBehavior for ActiveModel {}
+                impl ::tardis::db::sea_orm::ActiveModelBehavior for ActiveModel {}
             })
         }
         Data::Enum(_) => Err(Error::new(ident.span(), "enum is not support!")),
