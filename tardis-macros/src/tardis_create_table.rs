@@ -438,10 +438,10 @@ fn map_custom_type_to_sea_type(custom_column_type: &str, custom_len: Vec<u32>, s
                     match parse_len {
                         Ok(len) => custom_len.push(len),
                         Err(_) => {
-                            // return Err(Error::new(
-                            //     span,
-                            //     format!("column_type:{custom_column_type} is a not support yet! The parentheses must contain numbers and not other characters"),
-                            // ));
+                            return Err(Error::new(
+                                span,
+                                format!("column_type:{custom_column_type} is a not support yet! The parentheses must contain numbers and not other characters"),
+                            ));
                         }
                     }
                 }

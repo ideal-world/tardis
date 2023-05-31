@@ -36,7 +36,7 @@ pub struct Model {
     pub be_bit: bool,
     pub create_time: chrono::DateTime<Utc>,
     pub key_value: Option<KeyValue>,
-    pub key_values: Vec<KeyValue>,
+    // pub key_values: Vec<KeyValue>,
     #[index(index_id = "index_id_2", index_type = "Custom(GiST)", full_text)]
     #[fill_ctx(own_paths)]
     pub aaa: String,
