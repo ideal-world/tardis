@@ -33,7 +33,7 @@ impl TardisTracing {
     pub(crate) fn update_log_level(log_level: &str) -> TardisResult<()> {
         std::env::set_var("RUST_LOG", log_level);
         unsafe {
-            GLOBAL_RELOAD_HANDLE.as_ref().unwrap().reload(EnvFilter::from_default_env()).unwrap();
+            GLOBAL_RELOAD_HANDLE.as_ref().unwrap().reload(EnvFilter::from_default_env())?;
         }
         Ok(())
     }

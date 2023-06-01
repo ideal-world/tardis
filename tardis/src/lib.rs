@@ -113,6 +113,7 @@
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-world/tardis/main/logo.png")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![warn(clippy::unwrap_used)]
 
 extern crate core;
 #[macro_use]

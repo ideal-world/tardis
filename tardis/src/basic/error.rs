@@ -6,6 +6,7 @@ use std::num::{ParseIntError, TryFromIntError};
 use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 use std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard};
+use std::time::SystemTimeError;
 use tracing::warn;
 
 pub static ERROR_DEFAULT_CODE: &str = "-1";
@@ -207,5 +208,17 @@ impl<P> From<PoisonError<RwLockReadGuard<'_, P>>> for TardisError {
 impl<P> From<PoisonError<RwLockWriteGuard<'_, P>>> for TardisError {
     fn from(error: PoisonError<RwLockWriteGuard<'_, P>>) -> Self {
         TardisError::conflict(&format!("[Tardis.Basic] {error}"), "")
+    }
+}
+
+impl From<tracing_subscriber::reload::Error> for TardisError {
+    fn from(error: tracing_subscriber::reload::Error) -> Self {
+        TardisError::internal_error(&format!("[Tardis.Basic] {error}"), "")
+    }
+}
+
+impl From<SystemTimeError> for TardisError {
+    fn from(error: SystemTimeError) -> Self {
+        TardisError::internal_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }

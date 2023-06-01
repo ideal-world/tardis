@@ -1,3 +1,4 @@
+use crate::basic::error::TardisError;
 use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
 use crate::serde_json::json;
 use crate::TardisFuns;
@@ -77,7 +78,10 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
             }
             Err(error) => {
                 let msg = error.to_string();
-                let error = mapping_http_code_to_error(error.into_response().status(), &msg).unwrap();
+                let error = mapping_http_code_to_error(error.into_response().status(), &msg).ok_or(TardisError::internal_error(
+                    &format!("[Tardis.WebServer] {msg} cannot be mapped into http error code"),
+                    "500-tardis-webserver-error",
+                ))?;
                 warn!(
                     "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
                     method, url, error.code, error.message

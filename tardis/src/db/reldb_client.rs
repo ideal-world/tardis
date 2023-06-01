@@ -496,7 +496,7 @@ impl TardisRelDBClient {
         let count_sql = format!(
             "SELECT COUNT(1) AS count FROM ( {} ) _{}",
             select_statement.sql,
-            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
+            SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis()
         );
         let count_statement = Statement {
             sql: count_sql.clone(),
