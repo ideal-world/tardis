@@ -1,13 +1,13 @@
 use crate::basic::locale::TardisLocale;
 use crate::serde::{Deserialize, Serialize};
 use core::fmt::Display;
+use opentelemetry::trace::TraceError;
 use std::convert::Infallible;
 use std::num::{ParseIntError, TryFromIntError};
 use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 use std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard};
 use std::time::SystemTimeError;
-use opentelemetry::trace::TraceError;
 use tracing::warn;
 
 pub static ERROR_DEFAULT_CODE: &str = "-1";

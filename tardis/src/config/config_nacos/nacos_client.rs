@@ -100,7 +100,7 @@ impl NacosClient {
                         let text = resp.text().await.map_err(ReqwestError)?;
                         descriptor.update_md5(&text).await;
                         Ok(text)
-                    },
+                    }
                     Err(e) => Err(ReqwestError(e)),
                 }
             }

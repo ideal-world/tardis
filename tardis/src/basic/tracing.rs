@@ -35,9 +35,13 @@ impl TardisTracing {
     pub(crate) fn update_log_level(log_level: &str) -> TardisResult<()> {
         std::env::set_var("RUST_LOG", log_level);
         unsafe {
-            GLOBAL_RELOAD_HANDLE.as_ref()
-            .ok_or(TardisError::internal_error(&format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)), ""))?
-            .reload(EnvFilter::from_default_env())?;
+            GLOBAL_RELOAD_HANDLE
+                .as_ref()
+                .ok_or(TardisError::internal_error(
+                    &format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)),
+                    "",
+                ))?
+                .reload(EnvFilter::from_default_env())?;
         }
         Ok(())
     }

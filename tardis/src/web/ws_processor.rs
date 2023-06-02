@@ -162,7 +162,7 @@ where
                                     }
                                     // System process
                                     if req_msg.event == Some(WS_SYSTEM_EVENT_INFO.to_string()) {
-                                       let Ok(msg) = TardisFuns::json
+                                        let Ok(msg) = TardisFuns::json
                                         .obj_to_json(&TardisWebsocketInstInfo {
                                             inst_id: inst_id.clone(),
                                             avatars: current_avatars,
@@ -200,7 +200,7 @@ where
                                             continue;
                                         };
                                         let mut write_locked = insts_in_send.write().await;
-                                        let Some(inst) = write_locked.get_mut(&spec_inst_id) else {                                            
+                                        let Some(inst) = write_locked.get_mut(&spec_inst_id) else {
                                             ws_send_error_to_channel(&text, "spec_inst_id not found", &avatar_self, &inst_id, &sender);
                                             continue;
                                         };
