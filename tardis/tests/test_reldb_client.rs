@@ -109,6 +109,7 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
 
     #[derive(FromQueryResult)]
     struct TenantResp {
+        #[allow(dead_code)]
         id: String,
         name: String,
     }

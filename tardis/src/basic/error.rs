@@ -7,6 +7,7 @@ use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 use std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard};
 use std::time::SystemTimeError;
+use opentelemetry::trace::TraceError;
 use tracing::warn;
 
 pub static ERROR_DEFAULT_CODE: &str = "-1";
@@ -219,6 +220,13 @@ impl From<tracing_subscriber::reload::Error> for TardisError {
 
 impl From<SystemTimeError> for TardisError {
     fn from(error: SystemTimeError) -> Self {
+        TardisError::internal_error(&format!("[Tardis.Basic] {error}"), "")
+    }
+}
+
+#[cfg(feature = "tracing")]
+impl From<TraceError> for TardisError {
+    fn from(error: TraceError) -> Self {
         TardisError::internal_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }

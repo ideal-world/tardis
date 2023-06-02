@@ -66,14 +66,20 @@ where
 }
 
 fn ws_send_to_channel(send_msg: TardisWebsocketMgrMessage, sender: &Sender<String>) -> bool {
-    if let Err(error) = sender.send(TardisFuns::json.obj_to_string(&send_msg).unwrap()) {
-        warn!(
-            "[Tardis.WebServer] WS message send to channel: {} to {:?} ignore {:?} failed: {error}",
-            send_msg.msg, send_msg.to_avatars, send_msg.ignore_avatars
-        );
-        return false;
-    }
-    true
+    TardisFuns::json
+        .obj_to_string(&send_msg)
+        .map_err(|error| {
+            warn!("[Tardis.WebServer] WS message failed with convert into json string, error: {error}");
+        })
+        .and_then(|obj| {
+            sender.send(obj).map_err(|error| {
+                warn!(
+                    "[Tardis.WebServer] WS message send to channel: {} to {:?} ignore {:?} failed: {error}",
+                    send_msg.msg, send_msg.to_avatars, send_msg.ignore_avatars
+                );
+            })
+        })
+        .is_ok()
 }
 
 pub fn ws_send_error_to_channel(req_message: &str, error_message: &str, from_avatar: &str, from_inst_id: &str, sender: &Sender<String>) -> bool {
@@ -113,7 +119,9 @@ where
         .on_upgrade(move |socket| async move {
             let inst_id = TardisFuns::field.nanoid();
             let current_receive_inst_id = inst_id.clone();
-            WS_INSTS_MAPPING_AVATARS.write().await.insert(inst_id.clone(), avatars);
+            {
+                WS_INSTS_MAPPING_AVATARS.write().await.insert(inst_id.clone(), avatars);
+            }
             let (mut sink, mut stream) = socket.split();
 
             let insts_in_send = WS_INSTS_MAPPING_AVATARS.clone();
@@ -122,7 +130,10 @@ where
                     match message {
                         Message::Text(text) => {
                             let msg_id = TardisFuns::field.nanoid();
-                            let current_avatars = insts_in_send.read().await.get(&inst_id).unwrap().clone();
+                            let Some(current_avatars) = insts_in_send.read().await.get(&inst_id).cloned() else {
+                                warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
+                                continue;
+                            };
                             trace!(
                                 "[Tardis.WebServer] WS message receive: {}:{} by {:?} {}",
                                 msg_id,
@@ -130,39 +141,42 @@ where
                                 current_avatars,
                                 if mgr_node { "[MGR]" } else { "" }
                             );
+                            let Some(avatar_self) = current_avatars.get(0).cloned() else {
+                                warn!("[Tardis.WebServer] current_avatars is empty");
+                                continue;
+                            };
                             match TardisFuns::json.str_to_obj::<TardisWebsocketReq>(&text) {
                                 Err(_) => {
-                                    ws_send_error_to_channel(&text, "message not illegal", current_avatars.get(0).unwrap(), &inst_id, &sender);
+                                    ws_send_error_to_channel(&text, "message not illegal", &avatar_self, &inst_id, &sender);
                                     break;
                                 }
                                 Ok(req_msg) => {
                                     // Security check
                                     if !mgr_node && req_msg.spec_inst_id.is_some() {
-                                        ws_send_error_to_channel(
-                                            &text,
-                                            "spec_inst_id can only be specified on the management node",
-                                            current_avatars.get(0).unwrap(),
-                                            &inst_id,
-                                            &sender,
-                                        );
+                                        ws_send_error_to_channel(&text, "spec_inst_id can only be specified on the management node", &avatar_self, &inst_id, &sender);
                                         break;
                                     }
                                     if !mgr_node && !current_avatars.contains(&req_msg.from_avatar) {
-                                        ws_send_error_to_channel(&text, "from_avatar is not illegal", current_avatars.get(0).unwrap(), &inst_id, &sender);
+                                        ws_send_error_to_channel(&text, "from_avatar is not illegal", &avatar_self, &inst_id, &sender);
                                         break;
                                     }
                                     // System process
                                     if req_msg.event == Some(WS_SYSTEM_EVENT_INFO.to_string()) {
+                                       let Ok(msg) = TardisFuns::json
+                                        .obj_to_json(&TardisWebsocketInstInfo {
+                                            inst_id: inst_id.clone(),
+                                            avatars: current_avatars,
+                                            mgr_node,
+                                            subscribe_mode,
+                                        }).map_err(|error| {
+                                            crate::log::error!("[Tardis.WebServer] can't serialize {struct_name}, error: {error}", struct_name=stringify!(TardisWebsocketInstInfo));
+                                            ws_send_error_to_channel(&text, "message not illegal", &avatar_self, &inst_id, &sender);
+                                        }) else {
+                                            break;
+                                        };
                                         let send_msg = TardisWebsocketMgrMessage {
                                             id: TardisFuns::field.nanoid(),
-                                            msg: TardisFuns::json
-                                                .obj_to_json(&TardisWebsocketInstInfo {
-                                                    inst_id: inst_id.clone(),
-                                                    avatars: current_avatars,
-                                                    mgr_node,
-                                                    subscribe_mode,
-                                                })
-                                                .unwrap(),
+                                            msg,
                                             from_avatar: req_msg.from_avatar.clone(),
                                             to_avatars: vec![req_msg.from_avatar],
                                             event: req_msg.event,
@@ -177,13 +191,36 @@ where
                                         continue;
                                         // For security reasons, adding an avatar needs to be handled by the management node
                                     } else if mgr_node && req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) {
-                                        let new_avatar = req_msg.msg.as_str().unwrap();
-                                        insts_in_send.write().await.get_mut(&req_msg.spec_inst_id.clone().unwrap()).unwrap().push(new_avatar.to_string());
-                                        trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", msg_id, new_avatar, req_msg.spec_inst_id.unwrap());
+                                        let Some(new_avatar) = req_msg.msg.as_str() else {
+                                            ws_send_error_to_channel(&text, "msg is not a string", &avatar_self, &inst_id, &sender);
+                                            continue;
+                                        };
+                                        let Some(spec_inst_id) = req_msg.spec_inst_id else {
+                                            ws_send_error_to_channel(&text, "spec_inst_id is not specified", &avatar_self, &inst_id, &sender);
+                                            continue;
+                                        };
+                                        let mut write_locked = insts_in_send.write().await;
+                                        let Some(inst) = write_locked.get_mut(&spec_inst_id) else {                                            
+                                            ws_send_error_to_channel(&text, "spec_inst_id not found", &avatar_self, &inst_id, &sender);
+                                            continue;
+                                        };
+                                        inst.push(new_avatar.to_string());
+                                        drop(write_locked);
+                                        trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", msg_id, new_avatar, spec_inst_id);
+
                                         continue;
                                     } else if req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) {
-                                        let del_avatar = req_msg.msg.as_str().unwrap();
-                                        insts_in_send.write().await.get_mut(&inst_id).unwrap().retain(|value| *value != del_avatar);
+                                        let Some(del_avatar) = req_msg.msg.as_str() else {
+                                            ws_send_error_to_channel(&text, "msg is not a string", &avatar_self, &inst_id, &sender);
+                                            continue;
+                                        };
+                                        let mut write_locked = insts_in_send.write().await;
+                                        let Some(inst) = write_locked.get_mut(&inst_id) else {
+                                            ws_send_error_to_channel(&text, "spec_inst_id not found", &avatar_self, &inst_id, &sender);
+                                            continue;
+                                        };
+                                        inst.retain(|value| *value != del_avatar);
+                                        drop(write_locked);
                                         trace!("[Tardis.WebServer] WS message delete avatar {},{} to {}", msg_id, del_avatar, &inst_id);
                                         continue;
                                     }
@@ -237,8 +274,16 @@ where
 
             tokio::spawn(async move {
                 while let Ok(resp_msg) = receiver.recv().await {
-                    let resp = TardisFuns::json.str_to_obj::<TardisWebsocketMgrMessage>(&resp_msg).unwrap();
-                    let current_avatars = insts_in_receive.read().await.get(&current_receive_inst_id).unwrap().clone();
+                    let Ok(resp) = TardisFuns::json.str_to_obj::<TardisWebsocketMgrMessage>(&resp_msg) else {
+                        warn!("[Tardis.WebServer] Cannot deserialize {resp_msg} as {}", stringify!(TardisWebsocketMgrMessage));
+                        continue;
+                    };
+                    let Some(current_avatars) = ({
+                        insts_in_receive.read().await.get(&current_receive_inst_id).cloned()
+                    }) else {
+                        warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} notfound");
+                        continue;
+                    };
                     // only self
                     if resp.echo && current_receive_inst_id != resp.from_inst_id {
                         continue;
@@ -262,15 +307,17 @@ where
                                 continue;
                             }
                         }
-                        let resp_msg = if mgr_node {
-                            TardisFuns::json.obj_to_string(&resp).unwrap()
+                        let Ok(resp_msg) = (if mgr_node {
+                            TardisFuns::json.obj_to_string(&resp)
                         } else {
                             TardisFuns::json
                                 .obj_to_string(&TardisWebsocketMessage {
                                     msg: resp.msg.clone(),
                                     event: resp.event.clone(),
                                 })
-                                .unwrap()
+                        }) else {
+                            warn!("[Tardis.WebServer] Cannot serialize {resp_msg} into json");
+                            continue;
                         };
                         if let Err(error) = sink.send(Message::Text(resp_msg)).await {
                             if error.to_string() != "Connection closed normally" {

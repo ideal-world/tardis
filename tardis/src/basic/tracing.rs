@@ -5,6 +5,8 @@ use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::Layered;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::{prelude::*, reload::Handle, Registry};
+
+use super::error::TardisError;
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 pub struct TardisTracing;
@@ -33,7 +35,9 @@ impl TardisTracing {
     pub(crate) fn update_log_level(log_level: &str) -> TardisResult<()> {
         std::env::set_var("RUST_LOG", log_level);
         unsafe {
-            GLOBAL_RELOAD_HANDLE.as_ref().unwrap().reload(EnvFilter::from_default_env())?;
+            GLOBAL_RELOAD_HANDLE.as_ref()
+            .ok_or(TardisError::internal_error(&format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)), ""))?
+            .reload(EnvFilter::from_default_env())?;
         }
         Ok(())
     }
@@ -69,7 +73,6 @@ impl TardisTracing {
 
     #[cfg(feature = "tracing")]
     fn create_otlp_tracer() -> TardisResult<opentelemetry::sdk::trace::Tracer> {
-        use crate::basic::error::TardisError;
         use opentelemetry_otlp::WithExportConfig;
 
         let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
@@ -92,7 +95,7 @@ impl TardisTracing {
             }
             p => return Err(TardisError::conflict(&format!("[Tracing] Unsupported protocol {p}"), "")),
         };
-        Ok(tracer.install_batch(opentelemetry::runtime::Tokio).unwrap())
+        Ok(tracer.install_batch(opentelemetry::runtime::Tokio)?)
     }
 
     #[cfg(feature = "tracing")]
