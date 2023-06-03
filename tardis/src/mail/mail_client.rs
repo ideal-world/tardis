@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use lettre::message::{header, MultiPart, SinglePart};
+use lettre::transport::smtp::client::{Tls, TlsParametersBuilder, TlsVersion};
 use lettre::{address, error, transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use tracing::{error, info, trace, warn};
 
@@ -38,16 +39,24 @@ impl TardisMailClient {
     pub fn init(smtp_host: &str, smtp_port: u16, smtp_username: &str, smtp_password: &str, default_from: &str, starttls: bool) -> TardisResult<TardisMailClient> {
         info!("[Tardis.MailClient] Initializing");
         let creds = Credentials::new(smtp_username.to_string(), smtp_password.to_string());
-        let client = if starttls {
+        let tls = TlsParametersBuilder::new(smtp_host.to_string())
+            .dangerous_accept_invalid_certs(true)
+            .dangerous_accept_invalid_hostnames(true)
+            .set_min_tls_version(TlsVersion::Tlsv10)
+            .build()
+            .map_err(|error| TardisError::internal_error(&format!("[Tardis.MailClient] Tls build error: {error}"), "500-tardis-mail-init-error"))?;
+        let (client, tls) = if starttls {
             info!("[Tardis.MailClient] Using STARTTLS");
-            AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(smtp_host)
+            (AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(smtp_host), Tls::Opportunistic(tls))
         } else {
-            AsyncSmtpTransport::<Tokio1Executor>::relay(smtp_host)
-        }
-        .map_err(|_| TardisError::internal_error(&format!("[Tardis.MailClient] Failed to create SMTP client: {smtp_host}"), "500-tardis-mail-init-error"))?
-        .credentials(creds)
-        .port(smtp_port)
-        .build();
+            (AsyncSmtpTransport::<Tokio1Executor>::relay(smtp_host), Tls::Wrapper(tls))
+        };
+        let client = client
+            .map_err(|_| TardisError::internal_error(&format!("[Tardis.MailClient] Failed to create SMTP client: {smtp_host}"), "500-tardis-mail-init-error"))?
+            .credentials(creds)
+            .tls(tls)
+            .port(smtp_port)
+            .build();
         info!("[Tardis.MailClient] Initialized");
         TardisResult::Ok(TardisMailClient {
             client,
