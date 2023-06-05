@@ -48,7 +48,7 @@ struct CreateIndexMeta {
     index_type: Option<String>,
 }
 fn default_index_id() -> String {
-    "index_id_1".to_string()
+    format!("{}_id", nanoid::nanoid!(4))
 }
 pub(crate) fn create_index(ident: Ident, data: Data, _atr: impl IntoIterator<Item = Attribute>) -> Result<TokenStream> {
     if ident != "Model" {

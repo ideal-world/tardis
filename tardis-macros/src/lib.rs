@@ -52,7 +52,9 @@
 //!
 //! [TardisCreateEntity]
 
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 use proc_macro::TokenStream;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 use syn::{parse_macro_input, DeriveInput};
 
 /// # TardisCreateTable
@@ -90,7 +92,7 @@ pub fn tardis_create_table(input: TokenStream) -> TokenStream {
 ///
 /// ## index attribute
 ///
-/// - `index_id`: ID of the index. (default: "index_id_1")
+/// - `index_id`: ID of the index. (default: Random id)
 /// - `name`: Name of the index. (optional)
 /// - `primary`: Specifies if the index is a primary index. (default: `false`)
 /// - `unique`: Specifies if the index is a unique index. (default: `false`)
@@ -99,7 +101,10 @@ pub fn tardis_create_table(input: TokenStream) -> TokenStream {
 /// - `index_type`: Type of the index. See "Index Types" section for possible values. (optional)
 ///
 /// ### index_id parameter
-/// if you want generate different index statement, you must use `index_id` parameter to distinguish. \
+///
+/// Each default index will be a separate index statement. \
+/// If you want to add multiple properties to a single index statement, you must set the `index_id` to the same value.
+///
 /// Same index_id, if there are different variable assignments, only the first one will take effect. \
 /// For example,the name of the generated statement is name1 instead of name2.
 /// ```ignore
@@ -186,8 +191,13 @@ pub fn tardis_empty_relation(input: TokenStream) -> TokenStream {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) mod macro_helpers;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 mod tardis_create_entity;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 mod tardis_create_index;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 mod tardis_create_table;
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 mod tardis_empty_impl;

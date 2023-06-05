@@ -42,6 +42,7 @@ async fn test_mail_client() -> TardisResult<()> {
                 smtp_username: "<username>".to_string(),
                 smtp_password: "<password>".to_string(),
                 default_from: "<username>@163.com".to_string(),
+                starttls: false,
                 modules: Default::default(),
             },
             os: OSConfig {

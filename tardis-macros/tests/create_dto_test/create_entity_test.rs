@@ -1,12 +1,11 @@
 use rust_decimal::Decimal;
 use std::fmt::Write;
-use tardis::basic::dto::TardisContext;
 use tardis::chrono::Utc;
 use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
 use tardis::db::sea_orm::sea_query::IndexCreateStatement;
 use tardis::db::sea_orm::*;
-use tardis::serde_json::Value;
+use tardis::serde_json::{self, Value};
 use tardis::{chrono, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation)]
@@ -42,8 +41,20 @@ pub struct Model {
     #[sea_orm(custom_len = "[10,2]")]
     pub be_decimal: Decimal,
     pub create_time: chrono::DateTime<Utc>,
+
+    #[sea_orm(custom_type = "array.string(50)", custom_len = "[1]")]
+    pub be_custom_array_string: Vec<String>,
+
+    pub be_vec_i8: Vec<i8>,
+    pub be_option_vec_i8: Option<Vec<i8>>,
     pub be_vec_text: Vec<String>,
+    #[sea_orm(custom_len = "[50]")]
     pub be_option_vec_text: Option<Vec<String>>,
+
+    pub be_custom: KeyValue,
+    pub be_option_custom: Option<KeyValue>,
+    // pub be_vec_custom: Vec<KeyValue>,
+    // pub be_option_vec_custom: Option<Vec<KeyValue>>,
     #[index(index_id = "index_id_2", index_type = "Custom(GiST)", full_text)]
     #[fill_ctx(own_paths)]
     pub aaa: String,
@@ -56,6 +67,13 @@ impl Iden for GiST {
         s.write_str("GiST").expect(" panic message");
     }
 }
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize, sea_orm::FromJsonQueryResult)]
+pub struct KeyValue {
+    pub id: i32,
+    pub name: String,
+    pub price: f32,
+    pub notes: Option<String>,
+}
 
 #[allow(dead_code)]
 fn main() {
@@ -66,7 +84,7 @@ fn main() {
     assert_eq!(format!("{:?}", table_name.unwrap()), "Table(tests)".to_string());
 
     let table_cols: &Vec<_> = create_table_statement.get_columns();
-    assert_eq!(table_cols.len(), 20);
+    assert_eq!(table_cols.len(), 25);
     let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "id" && col.get_column_type() == Some(&ColumnType::String(None))).collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "number8" && col.get_column_type() == Some(&ColumnType::TinyInteger)).collect();
@@ -79,10 +97,25 @@ fn main() {
         .filter(|col| col.get_column_name() == "be_option_50_binary" && col.get_column_type() == Some(&ColumnType::Binary(sea_query::BlobSize::Blob(Some(50)))))
         .collect();
     assert_eq!(find_id.len(), 1);
+    let find_id: Vec<_> = table_cols
+        .iter()
+        .filter(|col| col.get_column_name() == "be_custom_array_string" && col.get_column_type() == Some(&ColumnType::Array(sea_query::SeaRc::new(ColumnType::String(Some(50))))))
+        .collect();
+    assert_eq!(find_id.len(), 1);
+    let find_id: Vec<_> = table_cols
+        .iter()
+        .filter(|col| col.get_column_name() == "be_vec_text" && col.get_column_type() == Some(&ColumnType::Array(sea_query::SeaRc::new(ColumnType::String(None)))))
+        .collect();
+    assert_eq!(find_id.len(), 1);
+    let find_id: Vec<_> = table_cols
+        .iter()
+        .filter(|col| col.get_column_name() == "be_option_vec_text" && col.get_column_type() == Some(&ColumnType::Array(sea_query::SeaRc::new(ColumnType::String(Some(50))))))
+        .collect();
+    assert_eq!(find_id.len(), 1);
 
     let create_indexes: Vec<IndexCreateStatement> = ActiveModel::create_index_statement();
-    assert_eq!(create_indexes.len(), 3);
-    let find_index_1: Vec<_> = create_indexes.iter().filter(|index| index.get_index_spec().get_column_names().contains(&"number64".to_string())).collect();
+    assert_eq!(create_indexes.len(), 4);
+    let find_index_1: Vec<_> = create_indexes.iter().filter(|index| index.get_index_spec().get_column_names().contains(&"number32".to_string())).collect();
     assert_eq!(find_index_1.len(), 1);
     assert_eq!(find_index_1.first().unwrap().get_index_spec().get_column_names().len(), 2);
 }

@@ -1,9 +1,9 @@
 use std::fmt::Write;
-use tardis::basic::dto::TardisContext;
 use tardis::chrono::Utc;
-use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
+use tardis::db::sea_orm::entity::prelude::*;
 use tardis::db::sea_orm::*;
+use tardis::serde_json;
 use tardis::{chrono, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation};
 
 // run `cargo expand example_for_derive_create_entity > derive_create_entity_expand.rs` \
@@ -26,11 +26,17 @@ pub struct Model {
     pub can_bool: bool,
     #[index(full_text, index_id = "index_id_3")]
     pub can_be_null: Option<String>,
-    #[sea_orm(custom_type = "char", custom_len = "[50]")]
+    #[sea_orm(custom_type = "char(50)", custom_len = "[50]")]
     pub be_50_char: String,
+    #[sea_orm(custom_type = "varbit(50)")]
+    pub be_var_bit: Vec<u8>,
+    #[sea_orm(custom_type = "array.string(50))")]
+    pub test_array: Vec<String>,
     #[sea_orm(custom_type = "bit", custom_len = "[1]")]
     pub be_bit: bool,
     pub create_time: chrono::DateTime<Utc>,
+    pub key_value: Option<KeyValue>,
+    // pub key_values: Vec<KeyValue>,
     #[index(index_id = "index_id_2", index_type = "Custom(GiST)", full_text)]
     #[fill_ctx(own_paths)]
     pub aaa: String,
@@ -42,4 +48,12 @@ impl Iden for GiST {
     fn unquoted(&self, s: &mut dyn Write) {
         s.write_str("GiST").expect("panic message");
     }
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize, sea_orm::FromJsonQueryResult)]
+pub struct KeyValue {
+    pub id: i32,
+    pub name: String,
+    pub price: f32,
+    pub notes: Option<String>,
 }
