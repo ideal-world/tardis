@@ -15,7 +15,7 @@ struct CreateTableMeta {
     #[darling(default)]
     primary_key: bool,
     #[darling(default)]
-    nullable: bool,
+    nullable: Option<bool>,
     #[darling(default)]
     extra: Option<String>,
     /// custom type , optional see [sea-query::tabled::column::ColumnDef]/[map_type_to_db_type]
@@ -110,25 +110,28 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
     let mut attribute: Punctuated<_, Dot> = Punctuated::new();
     let mut col_type = TokenStream::new();
     if let Some(ident) = field_clone.ident {
-        // Priority according to custom_type specifies the corresponding database type to be created/优先根据custom_type指定创建对应数据库类型
-        if let Some(custom_column_type) = field.custom_type {
-            col_type = map_custom_type_to_sea_type(&custom_column_type, field.custom_len, ident.span())?;
-        } else {
-            //Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
-            if let Type::Path(field_type) = field_clone.ty {
-                if let Some(path) = field_type.path.segments.last() {
-                    //judge packaging types such as `Option<inner_type>` `Vec<inner_type>` `DateTime<inner_type>`
-                    if path.ident == "Option" {
-                        if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
-                            if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
-                                return create_single_col_token_statement(CreateTableMeta {
-                                    ty: Type::Path(path.clone()),
-                                    nullable: true,
-                                    ..field
-                                });
-                            }
+        if let Type::Path(field_type) = field_clone.ty {
+            if let Some(path) = field_type.path.segments.last() {
+                // judge nullable/判断是否为nullable
+                if path.ident == "Option" && field.nullable.is_none() {
+                    if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
+                        if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
+                            return create_single_col_token_statement(CreateTableMeta {
+                                ty: Type::Path(path.clone()),
+                                nullable: Some(true),
+                                ..field
+                            });
                         }
-                    } else if path.ident == "Vec" {
+                    };
+                }
+                // Priority according to custom_type specifies the corresponding database type to be created/优先根据custom_type指定创建对应数据库类型
+                if let Some(custom_column_type) = field.custom_type {
+                    col_type = map_custom_type_to_sea_type(&custom_column_type, field.custom_len, ident.span())?;
+                } else {
+                    //Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
+
+                    //judge packaging types such as `Vec<inner_type>` `DateTime<inner_type>`
+                    if path.ident == "Vec" {
                         if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
                             if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
                                 if let Some(ident) = path.path.get_ident() {
@@ -156,7 +159,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                 }
             }
         }
-        if !field.nullable {
+        if field.nullable.is_none() || !field.nullable.unwrap() {
             attribute.push(quote!(not_null()))
         }
         if field.primary_key {
