@@ -1,6 +1,7 @@
 use crate::basic::locale::TardisLocale;
 use crate::serde::{Deserialize, Serialize};
 use core::fmt::Display;
+#[cfg(feature = "opentelemetry")]
 use opentelemetry::trace::TraceError;
 use std::convert::Infallible;
 use std::num::{ParseIntError, TryFromIntError};
