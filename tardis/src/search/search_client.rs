@@ -208,6 +208,32 @@ impl TardisSearchClient {
         }
     }
 
+    /// check index exist  / 检查索引是否存在
+    ///
+    /// # Arguments
+    ///
+    ///  * `index_name` -  index name / 索引名称
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// TardisFuns::search().check_index_exist("test_index").await.unwrap();
+    /// ```
+    pub async fn check_index_exist(&self, index_name: &str) -> TardisResult<bool> {
+        trace!("[Tardis.SearchClient] Check index exist: {}", index_name);
+        let url = format!("{}/{}", self.server_url, index_name);
+        let resp = self.client.head_to_void(&url, None).await?;
+        match resp.code {
+            200 => Ok(true),
+            404 => Ok(false),
+            _ => Err(TardisError::custom(
+                &resp.code.to_string(),
+                "[Tardis.SearchClient] Check index exist request failed",
+                "-1-tardis-search-error",
+            )),
+        }
+    }
+
     fn parse_search_result(result: &str) -> TardisResult<Vec<String>> {
         let json = TardisFuns::json.str_to_json(result)?;
         let json = json["hits"]["hits"]
