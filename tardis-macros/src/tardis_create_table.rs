@@ -5,57 +5,96 @@ use quote::{quote, ToTokens};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Dot;
-use syn::{Attribute, Data, Error, Fields, GenericArgument, PathArguments, Result, Type};
+use syn::{Attribute, Data, Error, Field, Fields, GenericArgument, PathArguments, Result, Type};
 
 #[derive(FromField, Debug, Clone)]
 #[darling(attributes(tardis_entity))]
-struct CreateTableMeta {
+struct TardisEntityMeta {
     ident: Option<Ident>,
     ty: Type,
-    #[darling(default)]
-    primary_key: bool,
-    #[darling(default)]
-    nullable: Option<bool>,
-    #[darling(default)]
-    extra: Option<String>,
     /// custom type , optional see [sea-query::tabled::column::ColumnDef]/[map_type_to_db_type]
     #[darling(default)]
     custom_type: Option<String>,
     /// custom len
     /// type: array
     /// ```rust ignore
-    /// #[sea_orm(custom_len = "[10,2]")]
+    /// #[tardis_entity(custom_len = "10", custom_len = "2")]
     /// ```
     #[darling(default)]
+    #[darling(multiple)]
     custom_len: Vec<u32>,
+}
+
+#[derive(FromField, Debug, Clone)]
+#[darling(attributes(sea_orm))]
+struct SeaOrmMeta {
+    #[darling(default)]
+    primary_key: bool,
+    #[darling(default)]
+    nullable: Option<bool>,
+    #[darling(default)]
+    extra: Option<String>,
     #[darling(default)]
     ignore: bool,
-    // /// The following fields are not used temporarily
-    // /// in order to be compatible with the original available parameters of sea_orm
-    // #[allow(dead_code)]
-    // #[darling(default)]
-    // auto_increment: bool,
-    // #[allow(dead_code)]
-    // #[darling(default)]
-    // column_type: Option<String>,
-    // #[allow(dead_code)]
-    // #[darling(default)]
-    // column_name: Option<String>,
-    // #[allow(dead_code)]
-    // #[darling(default)]
-    // default_value: Option<String>,
-    // #[allow(dead_code)]
-    // #[darling(default)]
-    // unique: bool,
-    // #[allow(dead_code)]
-    // #[darling(default)]
-    // indexed: bool,
-    // #[allow(dead_code)]
-    // #[darling(default)]
-    // select_as: Option<String>,
-    // #[darling(default)]
-    // #[allow(dead_code)]
-    // save_as: Option<String>,
+    /// The following fields are not used temporarily
+    /// in order to be compatible with the original available parameters of sea_orm
+    #[allow(dead_code)]
+    #[darling(default)]
+    auto_increment: bool,
+    #[allow(dead_code)]
+    #[darling(default)]
+    column_type: Option<String>,
+    #[allow(dead_code)]
+    #[darling(default)]
+    column_name: Option<String>,
+    #[allow(dead_code)]
+    #[darling(default)]
+    default_value: Option<String>,
+    #[allow(dead_code)]
+    #[darling(default)]
+    unique: bool,
+    #[allow(dead_code)]
+    #[darling(default)]
+    indexed: bool,
+    #[allow(dead_code)]
+    #[darling(default)]
+    select_as: Option<String>,
+    #[darling(default)]
+    #[allow(dead_code)]
+    save_as: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct CreateTableMeta {
+    ident: Option<Ident>,
+    ty: Type,
+    custom_type: Option<String>,
+    custom_len: Vec<u32>,
+
+    primary_key: bool,
+    nullable: Option<bool>,
+    extra: Option<String>,
+    ignore: bool,
+}
+
+impl CreateTableMeta {
+    pub fn from(field1: TardisEntityMeta, field2: SeaOrmMeta) -> Self {
+        Self {
+            ident: field1.ident,
+            ty: field1.ty,
+            custom_type: field1.custom_type,
+            custom_len: field1.custom_len,
+            primary_key: field2.primary_key,
+            nullable: field2.nullable,
+            extra: field2.extra,
+            ignore: field2.ignore,
+        }
+    }
+    pub fn from_field(field: &Field) -> darling::Result<Self> {
+        let field_create_table_meta: TardisEntityMeta = TardisEntityMeta::from_field(field)?;
+        let field_sea_orm_meta: SeaOrmMeta = SeaOrmMeta::from_field(field)?;
+        Ok(Self::from(field_create_table_meta, field_sea_orm_meta))
+    }
 }
 
 pub(crate) fn create_table(ident: Ident, data: Data, _atr: impl IntoIterator<Item = Attribute>) -> Result<TokenStream> {
@@ -89,7 +128,7 @@ pub(crate) fn create_table(ident: Ident, data: Data, _atr: impl IntoIterator<Ite
 fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
     let mut result: Punctuated<_, Dot> = Punctuated::new();
     for field in fields {
-        let field_create_table_meta: CreateTableMeta = match CreateTableMeta::from_field(&field) {
+        let field_create_table_meta = match CreateTableMeta::from_field(&field) {
             Ok(field) => field,
             Err(err) => {
                 return Ok(err.write_errors());

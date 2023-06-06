@@ -1,4 +1,3 @@
-use rust_decimal::Decimal;
 use std::fmt::Write;
 use tardis::chrono::Utc;
 use tardis::db::reldb_client::TardisActiveModel;
@@ -12,9 +11,8 @@ use tardis::{chrono, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelatio
 #[sea_orm(table_name = "tests")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    #[tardis_entity(primary_key)]
     pub id: String,
-    #[tardis_entity(ignore)]
+    #[sea_orm(ignore)]
     pub be_ignore: String,
     #[sea_orm(column_name = "number8")]
     pub number_i8_for_test: i8,
@@ -26,30 +24,28 @@ pub struct Model {
     pub number_f32: f32,
     pub number_f64: f64,
     pub be_binary: Vec<u8>,
-    #[tardis_entity(custom_len = "[50]")]
+    #[tardis_entity(custom_len = "50")]
     pub be_option_50_binary: Option<Vec<u8>>,
     #[index]
     pub be_bool: bool,
     #[index(full_text, index_id = "index_id_3")]
     pub can_be_null: Option<String>,
-    #[tardis_entity(custom_type = "char", custom_len = "[50]")]
+    #[tardis_entity(custom_type = "char", custom_len = "50")]
     pub be_50_char: String,
-    #[tardis_entity(custom_type = "bit", custom_len = "[1]")]
+    #[tardis_entity(custom_type = "bit", custom_len = "1")]
     pub be_bit: bool,
     #[tardis_entity(custom_type = "text")]
     pub be_text: String,
     pub be_json_1: Value,
-    #[tardis_entity(custom_len = "[10,2]")]
-    pub be_decimal: Decimal,
     pub create_time: chrono::DateTime<Utc>,
 
-    #[tardis_entity(custom_type = "array.string(50)", custom_len = "[1]")]
+    #[tardis_entity(custom_type = "array.string(50)", custom_len = "1")]
     pub be_custom_array_string: Vec<String>,
 
     pub be_vec_i8: Vec<i8>,
     pub be_option_vec_i8: Option<Vec<i8>>,
     pub be_vec_text: Vec<String>,
-    #[tardis_entity(custom_len = "[50]")]
+    #[tardis_entity(custom_len = "50")]
     pub be_option_vec_text: Option<Vec<String>>,
 
     pub be_custom: KeyValue,
@@ -85,7 +81,7 @@ fn main() {
     assert_eq!(format!("{:?}", table_name.unwrap()), "Table(tests)".to_string());
 
     let table_cols: &Vec<_> = create_table_statement.get_columns();
-    assert_eq!(table_cols.len(), 25);
+    assert_eq!(table_cols.len(), 24);
     let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "id" && col.get_column_type() == Some(&ColumnType::String(None))).collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "number8" && col.get_column_type() == Some(&ColumnType::TinyInteger)).collect();

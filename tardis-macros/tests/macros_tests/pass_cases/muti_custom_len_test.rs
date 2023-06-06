@@ -1,8 +1,7 @@
+use rust_decimal::Decimal;
 use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
-use tardis::db::sea_orm::prelude::Json;
 use tardis::db::sea_orm::*;
-use tardis::serde_json::{self, Value};
 use tardis::{TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation)]
@@ -10,21 +9,10 @@ use tardis::{TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
-    pub be_json_1: Value,
-    pub be_json_2: Json,
-
-    pub be_custom: KeyValue,
-    pub be_option_custom: Option<KeyValue>,
-    // pub be_vec_custom: Vec<KeyValue>,
-    // pub be_option_vec_custom: Option<Vec<KeyValue>>,
-}
-
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize, sea_orm::FromJsonQueryResult)]
-pub struct KeyValue {
-    pub id: i32,
-    pub name: String,
-    pub price: f32,
-    pub notes: Option<String>,
+    #[tardis_entity(custom_len = "10", custom_len = "2")]
+    pub be_decimal: Decimal,
+    #[tardis_entity(custom_type = "Money", custom_len = "10", custom_len = "2")]
+    pub be_money: Decimal,
 }
 
 #[allow(dead_code)]
@@ -36,7 +24,9 @@ fn main() {
     assert_eq!(format!("{:?}", table_name.unwrap()), "Table(tests)".to_string());
 
     let table_cols: &Vec<_> = create_table_statement.get_columns();
-    assert_eq!(table_cols.len(), 5);
-    let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_type() == Some(&ColumnType::Json)).collect();
-    assert_eq!(find_id.len(), 4);
+    assert_eq!(table_cols.len(), 3);
+    let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "be_decimal" && col.get_column_type() == Some(&ColumnType::Decimal(Some((10, 2))))).collect();
+    assert_eq!(find_id.len(), 1);
+    let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "be_money" && col.get_column_type() == Some(&ColumnType::Money(Some((10, 2))))).collect();
+    assert_eq!(find_id.len(), 1);
 }

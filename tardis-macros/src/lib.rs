@@ -66,10 +66,6 @@ use syn::{parse_macro_input, DeriveInput};
 ///
 /// ## tardis_entity attribute
 ///
-/// - `primary_key`: Specifies if the table has a primary key. (default: `false`)
-/// - `nullable`: Specifies if the table columns are nullable. (default: `false`)
-/// - `extra`: Additional information about the table. (optional)
-/// - `custom_type`: Custom type for the table columns. (optional) See [`sea-query::tabled::column::ColumnDef`] .
 /// - `custom_len`: Custom length for the table columns. (optional)
 ///
 /// [`sea-query::tabled::column::ColumnDef`]: https://docs.rs/sea-query/latest/sea_query/table/struct.ColumnDef.html

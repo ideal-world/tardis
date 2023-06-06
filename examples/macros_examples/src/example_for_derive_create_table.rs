@@ -23,15 +23,15 @@ pub struct Model {
     pub number_u8: Vec<u8>,
     pub can_bool: bool,
     pub can_be_null: Option<String>,
-    #[tardis_entity(custom_type = "char", custom_len = "[50]")]
+    #[tardis_entity(custom_type = "char", custom_len = "50")]
     pub be_50_char: String,
-    #[tardis_entity(custom_type = "bit", custom_len = "[1]")]
+    #[tardis_entity(custom_type = "bit", custom_len = "1")]
     pub be_bit: bool,
     #[tardis_entity(custom_type = "text")]
     pub be_text: String,
     #[tardis_entity(custom_type = "uuid")]
     pub be_uuid: String,
-    #[tardis_entity(extra = "DEFAULT CURRENT_TIMESTAMP")]
+    #[sea_orm(extra = "DEFAULT CURRENT_TIMESTAMP")]
     pub create_time: chrono::DateTime<Utc>,
     #[tardis_entity(custom_type = "string")]
     pub own_paths: String,
