@@ -16,6 +16,8 @@ struct FillCtxMeta {
     #[darling(default)]
     owner: bool,
     #[darling(default)]
+    ak: bool,
+    #[darling(default)]
     own_paths: bool,
 }
 
@@ -64,7 +66,7 @@ fn create_fill_ctx_statement(fields: Fields) -> Result<TokenStream> {
     for field in fields {
         for attr in field.attrs.clone() {
             if let Some(ident) = attr.path().get_ident() {
-                if ident == "index" {
+                if ident == "fill_ctx" {
                     let field_fill_ctx_meta: FillCtxMeta = match FillCtxMeta::from_field(&field) {
                         Ok(field) => field,
                         Err(err) => {
@@ -75,6 +77,13 @@ fn create_fill_ctx_statement(fields: Fields) -> Result<TokenStream> {
                         if let Some(ident) = field_fill_ctx_meta.ident.clone() {
                             statement.push(quote! {
                                 self.#ident=Set(ctx.owner.to_string())
+                            });
+                        }
+                    }
+                    if field_fill_ctx_meta.ak {
+                        if let Some(ident) = field_fill_ctx_meta.ident.clone() {
+                            statement.push(quote! {
+                                self.#ident=Set(ctx.ak.to_string())
                             });
                         }
                     }

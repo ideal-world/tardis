@@ -5,32 +5,37 @@ use quote::{quote, ToTokens};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Dot;
-use syn::{Attribute, Data, Error, Fields, GenericArgument, PathArguments, Result, Type};
+use syn::{Attribute, Data, Error, Field, Fields, GenericArgument, PathArguments, Result, Type};
 
 #[derive(FromField, Debug, Clone)]
-#[darling(attributes(sea_orm))]
-struct CreateTableMeta {
+#[darling(attributes(tardis_entity))]
+struct TardisEntityMeta {
     ident: Option<Ident>,
     ty: Type,
-    #[darling(default)]
-    primary_key: bool,
-    #[darling(default)]
-    nullable: bool,
-    #[darling(default)]
-    extra: Option<String>,
     /// custom type , optional see [sea-query::tabled::column::ColumnDef]/[map_type_to_db_type]
     #[darling(default)]
     custom_type: Option<String>,
     /// custom len
     /// type: array
     /// ```rust ignore
-    /// #[sea_orm(custom_len = "[10,2]")]
+    /// #[tardis_entity(custom_len = "10", custom_len = "2")]
     /// ```
     #[darling(default)]
+    #[darling(multiple)]
     custom_len: Vec<u32>,
+}
+
+#[derive(FromField, Debug, Clone)]
+#[darling(attributes(sea_orm))]
+struct SeaOrmMeta {
+    #[darling(default)]
+    primary_key: bool,
+    #[darling(default)]
+    nullable: Option<bool>,
+    #[darling(default)]
+    extra: Option<String>,
     #[darling(default)]
     ignore: bool,
-
     /// The following fields are not used temporarily
     /// in order to be compatible with the original available parameters of sea_orm
     #[allow(dead_code)]
@@ -57,6 +62,39 @@ struct CreateTableMeta {
     #[darling(default)]
     #[allow(dead_code)]
     save_as: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct CreateTableMeta {
+    ident: Option<Ident>,
+    ty: Type,
+    custom_type: Option<String>,
+    custom_len: Vec<u32>,
+
+    primary_key: bool,
+    nullable: Option<bool>,
+    extra: Option<String>,
+    ignore: bool,
+}
+
+impl CreateTableMeta {
+    pub fn from(field1: TardisEntityMeta, field2: SeaOrmMeta) -> Self {
+        Self {
+            ident: field1.ident,
+            ty: field1.ty,
+            custom_type: field1.custom_type,
+            custom_len: field1.custom_len,
+            primary_key: field2.primary_key,
+            nullable: field2.nullable,
+            extra: field2.extra,
+            ignore: field2.ignore,
+        }
+    }
+    pub fn from_field(field: &Field) -> darling::Result<Self> {
+        let field_create_table_meta: TardisEntityMeta = TardisEntityMeta::from_field(field)?;
+        let field_sea_orm_meta: SeaOrmMeta = SeaOrmMeta::from_field(field)?;
+        Ok(Self::from(field_create_table_meta, field_sea_orm_meta))
+    }
 }
 
 pub(crate) fn create_table(ident: Ident, data: Data, _atr: impl IntoIterator<Item = Attribute>) -> Result<TokenStream> {
@@ -90,7 +128,7 @@ pub(crate) fn create_table(ident: Ident, data: Data, _atr: impl IntoIterator<Ite
 fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
     let mut result: Punctuated<_, Dot> = Punctuated::new();
     for field in fields {
-        let field_create_table_meta: CreateTableMeta = match CreateTableMeta::from_field(&field) {
+        let field_create_table_meta = match CreateTableMeta::from_field(&field) {
             Ok(field) => field,
             Err(err) => {
                 return Ok(err.write_errors());
@@ -110,25 +148,28 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
     let mut attribute: Punctuated<_, Dot> = Punctuated::new();
     let mut col_type = TokenStream::new();
     if let Some(ident) = field_clone.ident {
-        // Priority according to custom_type specifies the corresponding database type to be created/优先根据custom_type指定创建对应数据库类型
-        if let Some(custom_column_type) = field.custom_type {
-            col_type = map_custom_type_to_sea_type(&custom_column_type, field.custom_len, ident.span())?;
-        } else {
-            //Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
-            if let Type::Path(field_type) = field_clone.ty {
-                if let Some(path) = field_type.path.segments.last() {
-                    //judge packaging types such as `Option<inner_type>` `Vec<inner_type>` `DateTime<inner_type>`
-                    if path.ident == "Option" {
-                        if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
-                            if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
-                                return create_single_col_token_statement(CreateTableMeta {
-                                    ty: Type::Path(path.clone()),
-                                    nullable: true,
-                                    ..field
-                                });
-                            }
+        if let Type::Path(field_type) = field_clone.ty {
+            if let Some(path) = field_type.path.segments.last() {
+                // judge nullable/判断是否为nullable
+                if path.ident == "Option" && field.nullable.is_none() {
+                    if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
+                        if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
+                            return create_single_col_token_statement(CreateTableMeta {
+                                ty: Type::Path(path.clone()),
+                                nullable: Some(true),
+                                ..field
+                            });
                         }
-                    } else if path.ident == "Vec" {
+                    };
+                }
+                // Priority according to custom_type specifies the corresponding database type to be created/优先根据custom_type指定创建对应数据库类型
+                if let Some(custom_column_type) = field.custom_type {
+                    col_type = map_custom_type_to_sea_type(&custom_column_type, field.custom_len, ident.span())?;
+                } else {
+                    //Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
+
+                    //judge packaging types such as `Vec<inner_type>` `DateTime<inner_type>`
+                    if path.ident == "Vec" {
                         if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
                             if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
                                 if let Some(ident) = path.path.get_ident() {
@@ -156,7 +197,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                 }
             }
         }
-        if !field.nullable {
+        if field.nullable.is_none() || !field.nullable.unwrap() {
             attribute.push(quote!(not_null()))
         }
         if field.primary_key {

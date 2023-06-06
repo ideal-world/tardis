@@ -58,23 +58,19 @@ use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput};
 
 /// # TardisCreateTable
-/// Generate table creation statement, compatible with `sea_orm`.
+/// Generate table creation statement, compatible with `tardis_entity`.
 /// see [TardisActiveModel::create_table_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_table_statement). \
-/// According to sea_orm automatically generates `tardis_create_table_statement(db: DbBackend)` method,
+/// According to tardis_entity automatically generates `tardis_create_table_statement(db: DbBackend)` method,
 /// you can be directly called in the `TardisActiveModel::create_table_statement` method.  \
 /// example see [macros_examples::example_for_derive_create_tabled]. \
 ///
-/// ## sea_orm attribute
+/// ## tardis_entity attribute
 ///
-/// - `primary_key`: Specifies if the table has a primary key. (default: `false`)
-/// - `nullable`: Specifies if the table columns are nullable. (default: `false`)
-/// - `extra`: Additional information about the table. (optional)
-/// - `custom_type`: Custom type for the table columns. (optional) See [`sea-query::tabled::column::ColumnDef`] .
 /// - `custom_len`: Custom length for the table columns. (optional)
 ///
 /// [`sea-query::tabled::column::ColumnDef`]: https://docs.rs/sea-query/latest/sea_query/table/struct.ColumnDef.html
 #[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
-#[proc_macro_derive(TardisCreateTable, attributes(sea_orm))]
+#[proc_macro_derive(TardisCreateTable, attributes(tardis_entity))]
 pub fn tardis_create_table(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, attrs, .. } = parse_macro_input!(input as DeriveInput);
     match tardis_create_table::create_table(ident, data, attrs) {
@@ -84,9 +80,9 @@ pub fn tardis_create_table(input: TokenStream) -> TokenStream {
 }
 
 /// # TardisCreateIndex
-/// Generate index creation statement, compatible with `sea_orm`.
+/// Generate index creation statement, compatible with `tardis_entity`.
 /// see [create_index_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_index_statement). \
-/// According to sea_orm automatically generates `tardis_create_index_statement()` method,
+/// According to tardis_entity automatically generates `tardis_create_index_statement()` method,
 /// you can be directly called in the `TardisActiveModel::create_index_statement` method.  \
 /// example see [macros_examples::example_for_derive_create_index].
 ///
@@ -130,6 +126,7 @@ pub fn tardis_create_table(input: TokenStream) -> TokenStream {
 /// #[sea_orm(table_name = "examples")]
 /// pub struct Model {
 ///     #[sea_orm(primary_key)]
+///     #[tardis_entity(primary_key)]
 ///     pub id: String,
 ///     #[index(index_id = "index_id_1", index_type = "Custom(Test)")]
 ///     pub custom_index_col: String,
@@ -157,7 +154,7 @@ pub fn tardis_create_index(input: TokenStream) -> TokenStream {
 /// Additionally, it introduces a new attribute called fill_ctx, and automatically implements `ActiveModelBehavior`. \
 /// see [TardisCreateIndex] and [TardisCreateTable]
 #[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
-#[proc_macro_derive(TardisCreateEntity, attributes(sea_orm, index, fill_ctx))]
+#[proc_macro_derive(TardisCreateEntity, attributes(tardis_entity, index, fill_ctx))]
 pub fn tardis_create_entity(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input as DeriveInput);
 
@@ -169,7 +166,7 @@ pub fn tardis_create_entity(input: TokenStream) -> TokenStream {
 /// # TardisEmptyBehavior
 /// Generates an empty implementation of `ActiveModelBehavior` for `ActiveModel`.
 #[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
-#[proc_macro_derive(TardisEmptyBehavior, attributes(sea_orm, index, fill_ctx))]
+#[proc_macro_derive(TardisEmptyBehavior)]
 pub fn tardis_empty_behavior(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input as DeriveInput);
 
@@ -181,7 +178,7 @@ pub fn tardis_empty_behavior(input: TokenStream) -> TokenStream {
 /// #TardisEmptyRelation
 /// Generates an empty `Relation`.
 #[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
-#[proc_macro_derive(TardisEmptyRelation, attributes(sea_orm, index, fill_ctx))]
+#[proc_macro_derive(TardisEmptyRelation)]
 pub fn tardis_empty_relation(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input as DeriveInput);
 

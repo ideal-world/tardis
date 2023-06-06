@@ -6,7 +6,7 @@ use tardis::{TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
-    #[sea_orm(custom_type = "unknown_type", custom_len = "[1]")]
+    #[tardis_entity(custom_type = "unknown_type", custom_len = "1")]
     pub aaa: String,
 }
 

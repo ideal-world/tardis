@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `tardis::db::sea_orm::Value: From<KeyValue>` is not satisfied
- --> tests/create_dto_test/fail_cases/without_FromJsonQueryResult_custom_struct_test_fail.rs:4:35
+ --> tests/macros_tests/fail_cases/without_FromJsonQueryResult_custom_struct_test_fail.rs:4:35
   |
 4 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation)]
   |                                   ^^^^^^^^^^^^^^^^^ the trait `From<KeyValue>` is not implemented for `tardis::db::sea_orm::Value`
@@ -23,7 +23,7 @@ note: required by a bound in `ActiveValue`
   = note: this error originates in the derive macro `DeriveEntityModel` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `KeyValue: Nullable` is not satisfied
- --> tests/create_dto_test/fail_cases/without_FromJsonQueryResult_custom_struct_test_fail.rs:4:35
+ --> tests/macros_tests/fail_cases/without_FromJsonQueryResult_custom_struct_test_fail.rs:4:35
   |
 4 | #[derive(Clone, Debug, PartialEq, DeriveEntityModel, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation)]
   |                                   ^^^^^^^^^^^^^^^^^ the trait `Nullable` is not implemented for `KeyValue`
