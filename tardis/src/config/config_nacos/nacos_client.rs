@@ -94,14 +94,14 @@ impl NacosClient {
         let resp = self.reqwest_client.get(&url).query(descriptor).query(&self.access_token_as_query()).send().await;
         match resp {
             Ok(resp) => {
-                let status = resp.status();
-                // only update md5 when status is success
-                if status.is_success() {
-                    let text = resp.text().await.map_err(ReqwestError)?;
-                    descriptor.update_md5(&text).await;
-                    Ok(text)
-                } else {
-                    Err(ReqwestError(resp.error_for_status().unwrap_err()))
+                let resp = resp.error_for_status();
+                match resp {
+                    Ok(resp) => {
+                        let text = resp.text().await.map_err(ReqwestError)?;
+                        descriptor.update_by_content(&text).await;
+                        Ok(text)
+                    }
+                    Err(e) => Err(ReqwestError(e)),
                 }
             }
             Err(e) => Err(ReqwestError(e)),
@@ -187,7 +187,7 @@ impl<'a> NacosConfigDescriptor<'a> {
     }
 
     /// update md5 value by content
-    pub async fn update_md5(&self, content: &str) {
+    pub async fn update_by_content(&self, content: &str) {
         let mut encoder = Md5::new();
         encoder.input_str(content);
         let result = encoder.result_str();

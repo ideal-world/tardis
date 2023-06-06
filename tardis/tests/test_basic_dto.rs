@@ -83,5 +83,5 @@ pub async fn async_test(t: &str) -> TardisResult<()> {
     println!("Starting async background task {}", t);
     sleep(Duration::from_secs(1)).await;
     println!("Finished async background task {}", t);
-    Err(TardisError::bad_request(&"error".to_string(), &"error".to_string()))
+    Err(TardisError::bad_request("error", "error"))
 }

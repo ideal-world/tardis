@@ -887,7 +887,7 @@ impl<E: Endpoint> Endpoint for TodosApiMWImpl1<E> {
         let url = req.uri().clone();
         if method == Method::POST {
             let req_body = req.take_body().into_json::<TodoAddReq>().await.expect("Test req take body error");
-            info!("Exec TodosApiMWImpl {} req{:?}", method, req_body.clone());
+            info!("Exec TodosApiMWImpl {} req{:?}", method, req_body);
             req.set_body(json!({"code":req_body.code,"description":req_body.description,"done":req_body.done}).to_string());
         }
         match self.0.call(req).await {
@@ -964,7 +964,7 @@ impl<E: Endpoint> Endpoint for TodosApiMWImpl2<E> {
         let url = req.uri().clone();
         if method == Method::POST {
             let req_body = req.take_body().into_json::<TodoAddReq>().await.expect("Test req take body error");
-            info!("Exec TodosApiMWImpl2 {} req{:?}", method, req_body.clone());
+            info!("Exec TodosApiMWImpl2 {} req{:?}", method, req_body);
             req.set_body(json!({"code":req_body.code,"description":req_body.description,"done":req_body.done}).to_string());
         }
         match self.0.call(req).await {

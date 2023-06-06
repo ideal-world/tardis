@@ -159,12 +159,12 @@ impl TardisConfig {
         // If set log level,reload trace filter
         if let Some(log_config) = framework_config.log.as_mut() {
             if let Some(log_level) = std::env::var_os("RUST_LOG") {
-                log_config.level = log_level.into_string().unwrap();
+                log_config.level = log_level.into_string().unwrap_or_default();
             }
             unsafe {
                 if crate::basic::tracing::GLOBAL_RELOAD_HANDLE.is_some() {
                     let log_level = log_config.level.as_str();
-                    crate::basic::tracing::TardisTracing::update_log_level(log_level).unwrap();
+                    crate::basic::tracing::TardisTracing::update_log_level(log_level)?;
                 }
             }
         }
