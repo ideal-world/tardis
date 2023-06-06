@@ -8,6 +8,7 @@ use tardis::{chrono, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelatio
 #[sea_orm(table_name = "tests")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
+    #[tardis_entity(primary_key)]
     pub id: String,
     pub create_time: chrono::DateTime<Utc>,
 }

@@ -8,7 +8,7 @@ use syn::token::Dot;
 use syn::{Attribute, Data, Error, Fields, GenericArgument, PathArguments, Result, Type};
 
 #[derive(FromField, Debug, Clone)]
-#[darling(attributes(sea_orm))]
+#[darling(attributes(tardis_entity))]
 struct CreateTableMeta {
     ident: Option<Ident>,
     ty: Type,
@@ -30,33 +30,32 @@ struct CreateTableMeta {
     custom_len: Vec<u32>,
     #[darling(default)]
     ignore: bool,
-
-    /// The following fields are not used temporarily
-    /// in order to be compatible with the original available parameters of sea_orm
-    #[allow(dead_code)]
-    #[darling(default)]
-    auto_increment: bool,
-    #[allow(dead_code)]
-    #[darling(default)]
-    column_type: Option<String>,
-    #[allow(dead_code)]
-    #[darling(default)]
-    column_name: Option<String>,
-    #[allow(dead_code)]
-    #[darling(default)]
-    default_value: Option<String>,
-    #[allow(dead_code)]
-    #[darling(default)]
-    unique: bool,
-    #[allow(dead_code)]
-    #[darling(default)]
-    indexed: bool,
-    #[allow(dead_code)]
-    #[darling(default)]
-    select_as: Option<String>,
-    #[darling(default)]
-    #[allow(dead_code)]
-    save_as: Option<String>,
+    // /// The following fields are not used temporarily
+    // /// in order to be compatible with the original available parameters of sea_orm
+    // #[allow(dead_code)]
+    // #[darling(default)]
+    // auto_increment: bool,
+    // #[allow(dead_code)]
+    // #[darling(default)]
+    // column_type: Option<String>,
+    // #[allow(dead_code)]
+    // #[darling(default)]
+    // column_name: Option<String>,
+    // #[allow(dead_code)]
+    // #[darling(default)]
+    // default_value: Option<String>,
+    // #[allow(dead_code)]
+    // #[darling(default)]
+    // unique: bool,
+    // #[allow(dead_code)]
+    // #[darling(default)]
+    // indexed: bool,
+    // #[allow(dead_code)]
+    // #[darling(default)]
+    // select_as: Option<String>,
+    // #[darling(default)]
+    // #[allow(dead_code)]
+    // save_as: Option<String>,
 }
 
 pub(crate) fn create_table(ident: Ident, data: Data, _atr: impl IntoIterator<Item = Attribute>) -> Result<TokenStream> {

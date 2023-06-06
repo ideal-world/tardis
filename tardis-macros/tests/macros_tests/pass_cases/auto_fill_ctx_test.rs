@@ -8,6 +8,7 @@ use tardis::{TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation};
 #[sea_orm(table_name = "tests")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
+    #[tardis_entity(primary_key)]
     pub id: String,
     #[fill_ctx(own_paths)]
     pub auto_fill_ctx: String,
