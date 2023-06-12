@@ -1,5 +1,6 @@
 use std::env;
 
+use tardis::os::os_client::TardisOsBucketConfig;
 use tracing::info;
 
 use tardis::basic::result::TardisResult;
@@ -62,24 +63,25 @@ async fn test_os_client() -> TardisResult<()> {
         let resp = TardisFuns::os().bucket_create_simple(&bucket_name, true).await;
         assert_eq!(resp.err().unwrap().code, "409");
 
-        TardisFuns::os().object_create("test/test.txt", "I want to go to S3 测试".as_bytes(), None, Some(bucket_name.clone())).await?;
+        let bucket_config = TardisOsBucketConfig::private(bucket_name);
+        TardisFuns::os().object_create("test/test.txt", "I want to go to S3 测试".as_bytes(), None, Some(&bucket_config)).await?;
 
-        let data = TardisFuns::os().object_get("test/test.txt", Some(bucket_name.clone())).await?;
+        let data = TardisFuns::os().object_get("test/test.txt", Some(&bucket_config)).await?;
         assert_eq!(String::from_utf8(data).unwrap(), "I want to go to S3 测试");
 
-        info!("object_get_url = {}", TardisFuns::os().object_get_url("test/test.txt", 60, Some(bucket_name.clone()))?);
+        info!("object_get_url = {}", TardisFuns::os().object_get_url("test/test.txt", 60, Some(&bucket_config))?);
 
         //info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test2.txt", 1, Some(bucket_name.clone()))?);
         //
         //info!("object_delete_url = {}", TardisFuns::os().object_delete_url("test/test.txt", 60, Some(bucket_name.clone()))?);
 
-        let data = TardisFuns::os().object_get("test/test.txt", Some(bucket_name.clone())).await?;
+        let data = TardisFuns::os().object_get("test/test.txt", Some(&bucket_config)).await?;
         assert_eq!(String::from_utf8(data).unwrap(), "I want to go to S3 测试");
 
-        TardisFuns::os().object_delete("test/test.txt", Some(bucket_name.clone())).await?;
-        assert!(TardisFuns::os().object_get("test/test.txt", Some(bucket_name.clone())).await.is_err());
+        TardisFuns::os().object_delete("test/test.txt", Some(&bucket_config)).await?;
+        assert!(TardisFuns::os().object_get("test/test.txt", Some(&bucket_config)).await.is_err());
 
-        TardisFuns::os().bucket_delete(&bucket_name).await?;
+        TardisFuns::os().bucket_delete(&bucket_config.name).await?;
 
         Ok(())
     })
