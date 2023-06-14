@@ -90,14 +90,14 @@ impl NacosClient {
     }
 
     /// create a new nacos client, with unsafe option
-    ///
+    /// # Safety
     /// **⚠ Don't use this in production environment ⚠**
     /// # Panic
     /// panic when reqwest_client build failed
     pub unsafe fn new_test(base_url: impl Into<String>) -> Self {
         Self {
             base_url: base_url.into(),
-            reqwest_client: reqwest::Client::builder().danger_accept_invalid_certs(true).danger_accept_invalid_hostnames(true).build().expect("fail to build test NacosClient"),
+            reqwest_client: reqwest::Client::builder().danger_accept_invalid_certs(true).build().expect("fail to build test NacosClient"),
             ..Default::default()
         }
     }
