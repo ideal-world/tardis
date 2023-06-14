@@ -185,7 +185,7 @@ impl NacosClient {
         let result = if result.is_empty() { None } else { Some(result) };
         if let Some(config_text) = &result {
             {
-                info!("[Tardis.Config] md5 {} updated", config_text);
+                debug!("[Tardis.Config] update with digest {}", config_text);
                 Ok(true)
             }
         } else {
