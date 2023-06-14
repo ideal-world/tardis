@@ -6,7 +6,7 @@ use crypto::{digest::Digest, md5::Md5};
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
-use tracing::{debug, info};
+use tracing::debug;
 
 const ACCESS_TOKEN_FIELD: &str = "accessToken";
 
@@ -36,6 +36,19 @@ pub struct NacosClient {
     auth: Option<(String, String)>,
 }
 
+impl std::ops::Deref for NacosClient {
+    type Target = reqwest::Client;
+    fn deref(&self) -> &Self::Target {
+        &self.reqwest_client
+    }
+}
+
+impl std::ops::DerefMut for NacosClient {
+    fn deref_mut(&mut self) -> &mut <Self as std::ops::Deref>::Target {
+        &mut self.reqwest_client
+    }
+}
+
 impl Display for NacosClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -63,6 +76,28 @@ impl NacosClient {
     pub fn new(base_url: impl Into<String>) -> Self {
         Self {
             base_url: base_url.into(),
+            ..Default::default()
+        }
+    }
+
+    /// create a new nacos client
+    pub fn new_with_client(base_url: impl Into<String>, client: reqwest::Client) -> Self {
+        Self {
+            base_url: base_url.into(),
+            reqwest_client: client,
+            ..Default::default()
+        }
+    }
+
+    /// create a new nacos client, with unsafe option
+    ///
+    /// **⚠ Don't use this in production environment ⚠**
+    /// # Panic
+    /// panic when reqwest_client build failed
+    pub unsafe fn new_test(base_url: impl Into<String>) -> Self {
+        Self {
+            base_url: base_url.into(),
+            reqwest_client: reqwest::Client::builder().danger_accept_invalid_certs(true).danger_accept_invalid_hostnames(true).build().expect("fail to build test NacosClient"),
             ..Default::default()
         }
     }

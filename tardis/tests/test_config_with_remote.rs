@@ -97,7 +97,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     TardisFuns::shutdown().await?;
 
     // load remote config
-    let mut client: NacosClient = NacosClient::new(&docker_env.nacos_url);
+    let mut client: NacosClient = unsafe { NacosClient::new_test(&docker_env.nacos_url) };
     // get auth
     client.login("nacos", "nacos").await?;
     // going to put test-app-default into remote
