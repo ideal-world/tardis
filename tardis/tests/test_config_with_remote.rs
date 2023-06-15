@@ -56,6 +56,7 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
         .nacos_auth_identity_key("nacos".into())
         .nacos_auth_identity_value("nacos".into())
         .nacos_auth_token(tardis::crypto::crypto_base64::TardisCryptoBase64.encode("nacos server for test_config_with_remote"))
+        .nacos_auth_token_expire_seconds(10)
         .mode(NacosServerMode::Standalone);
     nacos.tag = "v2.1.1-slim".to_string();
     let nacos = cli.run(nacos);
@@ -84,7 +85,7 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
 
 #[tokio::test]
 async fn test_config_with_remote() -> TardisResult<()> {
-    env::set_var("RUST_LOG", "info,tardis=debug");
+    env::set_var("RUST_LOG", "info,tardis::config=debug");
     env::set_var("PROFILE", "remote");
 
     let docker = testcontainers::clients::Cli::docker();
@@ -96,7 +97,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     TardisFuns::shutdown().await?;
 
     // load remote config
-    let mut client: NacosClient = NacosClient::new(&docker_env.nacos_url);
+    let mut client: NacosClient = unsafe { NacosClient::new_test(&docker_env.nacos_url) };
     // get auth
     client.login("nacos", "nacos").await?;
     // going to put test-app-default into remote
@@ -156,7 +157,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     let update_result = client.publish_config(&remote_cfg_default, &mut config_file.as_bytes()).await.expect("fail to update remote config");
     info!("update remote config result: {:?}", update_result);
     // 4.1 wait for polling, and tardis will reboot since the remote config has been updated
-    let mut count_down = 15;
+    let mut count_down = 30;
     while count_down > 0 {
         if count_down % 5 == 0 {
             info!("wait {}s for polling", count_down);

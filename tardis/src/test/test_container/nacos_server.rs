@@ -51,7 +51,8 @@ def_container! {
         mode:                       NacosServerMode = NacosServerMode::Cluster,
         nacos_auth_identity_key:    String          = "nacos",
         nacos_auth_identity_value:  String          = "nacos",
-        nacos_auth_token:           String          = "TARDIS-NACOS-SERVER-TEST-CONTAINER"
+        nacos_auth_token:           String          = "TARDIS-NACOS-SERVER-TEST-CONTAINER",
+        nacos_auth_token_expire_seconds:    usize   = 18000_usize
     }
 }
 
