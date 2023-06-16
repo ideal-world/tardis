@@ -71,6 +71,7 @@ impl TardisWebServer {
             req_headers: self.config.req_headers.clone(),
             ui_path: self.config.ui_path.clone(),
             spec_path: self.config.spec_path.clone(),
+            uniform_error: self.config.uniform_error
         };
         self.do_add_module_with_data("", &module, apis, data, middlewares).await
     }
@@ -142,7 +143,10 @@ impl TardisWebServer {
         for middleware in middlewares {
             route = middleware.transform(route);
         }
-        let route = route.with(UniformError).with(cors);
+        if module.uniform_error {
+            route = Box::new(UniformError.transform(route));
+        }
+        let route = route.with(cors);
         // Solved:  Cannot move out of *** which is behind a mutable reference
         // https://stackoverflow.com/questions/63353762/cannot-move-out-of-which-is-behind-a-mutable-reference
         let mut swap_route = Route::new();
