@@ -5,7 +5,8 @@ use derive_more::Display;
 use crypto::{digest::Digest, md5::Md5};
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, info};
+use tokio::sync::Mutex;
+use tracing::debug;
 
 const ACCESS_TOKEN_FIELD: &str = "accessToken";
 
@@ -14,8 +15,14 @@ pub enum NacosClientError {
     ReqwestError(ReqwestError),
     IoError(std::io::Error),
     UrlParseError(url::ParseError),
+    NoAuth,
 }
 
+impl From<reqwest::Error> for NacosClientError {
+    fn from(value: reqwest::Error) -> Self {
+        NacosClientError::ReqwestError(value)
+    }
+}
 impl std::error::Error for NacosClientError {}
 
 /// for request nacos openapi, see https://nacos.io/zh-cn/docs/open-api.html
@@ -24,8 +31,22 @@ pub struct NacosClient {
     pub base_url: String,
     /// listener poll period, default 5s
     pub poll_period: std::time::Duration,
-    access_token: Option<String>,
+    access_token: Arc<Mutex<Option<String>>>,
     reqwest_client: reqwest::Client,
+    auth: Option<(String, String)>,
+}
+
+impl std::ops::Deref for NacosClient {
+    type Target = reqwest::Client;
+    fn deref(&self) -> &Self::Target {
+        &self.reqwest_client
+    }
+}
+
+impl std::ops::DerefMut for NacosClient {
+    fn deref_mut(&mut self) -> &mut <Self as std::ops::Deref>::Target {
+        &mut self.reqwest_client
+    }
 }
 
 impl Display for NacosClient {
@@ -43,8 +64,9 @@ impl Default for NacosClient {
         Self {
             base_url: "http://localhost:8848/nacos".to_owned(),
             poll_period: std::time::Duration::from_secs(5),
-            access_token: None,
+            access_token: Default::default(),
             reqwest_client: reqwest::Client::new(),
+            auth: None,
         }
     }
 }
@@ -58,9 +80,32 @@ impl NacosClient {
         }
     }
 
+    /// create a new nacos client
+    pub fn new_with_client(base_url: impl Into<String>, client: reqwest::Client) -> Self {
+        Self {
+            base_url: base_url.into(),
+            reqwest_client: client,
+            ..Default::default()
+        }
+    }
+
+    /// create a new nacos client, with unsafe option
+    /// # Safety
+    /// **⚠ Don't use this in production environment ⚠**
+    /// # Panic
+    /// panic when reqwest_client build failed
+    pub unsafe fn new_test(base_url: impl Into<String>) -> Self {
+        Self {
+            base_url: base_url.into(),
+            reqwest_client: reqwest::Client::builder().danger_accept_invalid_certs(true).build().expect("fail to build test NacosClient"),
+            ..Default::default()
+        }
+    }
+
     /// take access token as reqwest acceptable query
-    fn access_token_as_query(&self) -> Vec<(&str, &str)> {
-        self.access_token.as_ref().map(|token| (ACCESS_TOKEN_FIELD, token.as_str())).into_iter().collect()
+    async fn access_token_as_query(&self) -> Vec<(String, String)> {
+        let access_token = self.access_token.lock().await;
+        access_token.as_ref().map(|token| (ACCESS_TOKEN_FIELD.into(), token.clone())).into_iter().collect()
     }
 
     /// authenticate with username and password
@@ -70,8 +115,31 @@ impl NacosClient {
         params.insert("username", username);
         params.insert("password", password);
         let access_token = self.reqwest_client.post(&url).form(&params).send().await?.json::<NacosAuthResponse>().await?.access_token;
-        self.access_token = Some(access_token);
+        {
+            *(self.access_token.lock().await) = Some(access_token);
+        }
+        self.auth = Some((username.to_string(), password.to_string()));
         Ok(self)
+    }
+
+    pub async fn relogin(&self) -> Result<&Self, NacosClientError> {
+        if let Some((ref username, ref password)) = self.auth.clone() {
+            debug!("[Tardis.Config] Trying to re-login");
+            // lock while re-login
+            let mut access_token_lock = self.access_token.lock().await;
+            let url = format!("{}/v1/auth/login", self.base_url);
+            let mut params = HashMap::new();
+            params.insert("username", username);
+            params.insert("password", password);
+            let access_token = self.reqwest_client.post(&url).form(&params).send().await?.json::<NacosAuthResponse>().await?.access_token;
+            *access_token_lock = Some(access_token);
+            // release lock
+            drop(access_token_lock);
+            debug!("[Tardis.Config] Success to re-login");
+            Ok(self)
+        } else {
+            Err(NacosClientError::NoAuth)
+        }
     }
 
     /// publish config by a nacos config descriptor and some content implement `Read`
@@ -82,78 +150,77 @@ impl NacosClient {
         let mut content_buf = String::new();
         content.read_to_string(&mut content_buf).map_err(IoError)?;
         params.insert("content", content_buf);
-        let resp = self.reqwest_client.post(&url).query(descriptor).query(&self.access_token_as_query()).form(&params).send().await;
-        debug!("[Tardis.Config] publish_config resp: {:?}", resp);
-        resp.map_err(ReqwestError)?.json::<bool>().await.map_err(ReqwestError)
+        let mut resp = self.reqwest_client.post(&url).query(descriptor).query(&self.access_token_as_query().await).form(&params).send().await?;
+        if resp.status() == reqwest::StatusCode::FORBIDDEN {
+            self.relogin().await?;
+            resp = self.reqwest_client.post(&url).query(descriptor).query(&self.access_token_as_query().await).form(&params).send().await?;
+        }
+        Ok(resp.json::<bool>().await?)
     }
 
     /// get config by a nacos config descriptor
     pub async fn get_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<String, NacosClientError> {
-        use NacosClientError::*;
         let url = format!("{}/v1/cs/configs", self.base_url);
-        let resp = self.reqwest_client.get(&url).query(descriptor).query(&self.access_token_as_query()).send().await;
-        match resp {
-            Ok(resp) => {
-                let resp = resp.error_for_status();
-                match resp {
-                    Ok(resp) => {
-                        let text = resp.text().await.map_err(ReqwestError)?;
-                        descriptor.update_by_content(&text).await;
-                        Ok(text)
-                    }
-                    Err(e) => Err(ReqwestError(e)),
-                }
-            }
-            Err(e) => Err(ReqwestError(e)),
+        let mut resp = self.reqwest_client.get(&url).query(descriptor).query(&self.access_token_as_query().await).send().await?;
+        if resp.status() == reqwest::StatusCode::FORBIDDEN {
+            resp = self.reqwest_client.get(&url).query(descriptor).query(&self.access_token_as_query().await).send().await?;
         }
+        resp = resp.error_for_status()?;
+        let text = resp.text().await?;
+        descriptor.update_by_content(&text).await;
+        Ok(text)
     }
 
     /// delete config by a nacos config descriptor
     pub async fn delete_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<bool, NacosClientError> {
-        use NacosClientError::*;
         let auth_url = format!("{}/v1/cs/configs", self.base_url);
-        self.reqwest_client
-            .delete(&auth_url)
-            .query(descriptor)
-            .query(&self.access_token_as_query())
+        let mut resp = self.reqwest_client.delete(&auth_url).query(descriptor).query(&self.access_token_as_query().await).send().await?;
+        if resp.status() == reqwest::StatusCode::FORBIDDEN {
+            resp = self.reqwest_client.delete(&auth_url).query(descriptor).query(&self.access_token_as_query().await).send().await?
+        }
+
+        Ok(resp.json::<bool>().await?)
+    }
+
+    async fn listen_config_inner<T: Serialize>(&self, params: &T) -> Result<reqwest::Response, NacosClientError> {
+        let resp = self
+            .reqwest_client
+            .post(&format!("{}/v1/cs/configs/listener", self.base_url))
+            // refer: https://nacos.io/zh-cn/docs/open-api.html
+            // doc says it's `pulling` instead of `polling`
+            .header("Long-Pulling-Timeout", self.poll_period.as_millis().to_string())
+            .query(&self.access_token_as_query().await)
+            .query(&params)
             .send()
-            .await
-            .map_err(ReqwestError)?
-            .json::<bool>()
-            .await
-            .map_err(ReqwestError)
+            .await?;
+        Ok(resp)
     }
 
     /// listen config change, if updated, return Ok(true), if not updated, return Ok(false)
     pub async fn listen_config(&self, descriptor: &NacosConfigDescriptor<'_>) -> Result<bool, NacosClientError> {
-        use NacosClientError::*;
         {
             let md5 = descriptor.md5.lock().await;
             if md5.is_none() {
                 return Ok(false);
             }
         }
-        let url = format!("{}/v1/cs/configs/listener", self.base_url);
         let mut params = HashMap::new();
         params.insert("Listening-Configs", descriptor.as_listening_configs().await);
         debug!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
-        let resp = self
-            .reqwest_client
-            .post(&url)
-            // refer: https://nacos.io/zh-cn/docs/open-api.html
-            // doc says it's `pulling` instead of `polling`
-            .header("Long-Pulling-Timeout", self.poll_period.as_millis().to_string())
-            .query(&self.access_token_as_query())
-            .query(&params)
-            .send()
-            .await
-            .map_err(ReqwestError)?;
+
+        let mut resp = self.listen_config_inner(&params).await?;
+
         debug!("[Tardis.Config] listen_config resp: {:?}", resp);
-        let result = resp.text().await.map_err(ReqwestError)?;
+        // case of token expired
+        if resp.status() == reqwest::StatusCode::FORBIDDEN {
+            self.relogin().await?;
+            resp = self.listen_config_inner(&params).await?;
+        };
+        let result = resp.text().await?;
         let result = if result.is_empty() { None } else { Some(result) };
         if let Some(config_text) = &result {
             {
-                info!("[Tardis.Config] Listening-Configs {} updated", config_text);
+                debug!("[Tardis.Config] update with digest {}", config_text);
                 Ok(true)
             }
         } else {
