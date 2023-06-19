@@ -257,7 +257,7 @@ pub struct WebServerConfig {
     /// ``OpenAPI`` information path / ``OpenAPI`` 信息路径
     pub spec_path: Option<String>,
     /// Enable `UniformError` middleware / 启用 `UniformError` 中间件
-    /// 
+    ///
     /// It's enabled by default. In some case like running a mocker server, it may be supposed to be closed
     pub uniform_error: bool,
     /// Web module configuration / Web模块配置
@@ -332,7 +332,7 @@ pub struct WebServerModuleConfig {
     /// Module ``OpenAPI`` information path / 模块 ``OpenAPI`` 信息路径
     pub spec_path: Option<String>,
     /// Enable `UniformError` middleware / 启用 `UniformError` 中间件
-    /// 
+    ///
     /// It's enabled by default. In some case like running a mocker server, it may be supposed to be closed
     pub uniform_error: bool,
 }
@@ -376,7 +376,7 @@ impl Default for WebServerModuleConfig {
             req_headers: vec![],
             ui_path: Some("ui".to_string()),
             spec_path: Some("spec".to_string()),
-            uniform_error: true
+            uniform_error: true,
         }
     }
 }

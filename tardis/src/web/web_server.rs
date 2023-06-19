@@ -71,7 +71,7 @@ impl TardisWebServer {
             req_headers: self.config.req_headers.clone(),
             ui_path: self.config.ui_path.clone(),
             spec_path: self.config.spec_path.clone(),
-            uniform_error: self.config.uniform_error
+            uniform_error: self.config.uniform_error,
         };
         self.do_add_module_with_data("", &module, apis, data, middlewares).await
     }
