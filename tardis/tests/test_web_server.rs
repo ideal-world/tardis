@@ -11,7 +11,7 @@ use poem::endpoint::BoxEndpoint;
 use poem::{IntoResponse, Middleware, Response};
 use reqwest::Method;
 use serde_json::json;
-use tardis::web::web_server::BoxMiddleware;
+use tardis::web::web_server::{BoxMiddleware, EMPTY_MW};
 use testcontainers::clients;
 use tokio::time::sleep;
 use tracing::info;
@@ -167,7 +167,7 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
         },
     })
     .await?;
-    TardisFuns::web_server().add_module("todo", TodosApi, None).await.add_module_with_data::<_, String>("other", OtherApi, None, None).await.start().await
+    TardisFuns::web_server().add_module("todo", TodosApi, EMPTY_MW).await.add_module_with_data::<_, String, _>("other", OtherApi, None, EMPTY_MW).await.start().await
 }
 
 async fn test_basic(url: &str) -> TardisResult<()> {
@@ -596,7 +596,7 @@ async fn test_security() -> TardisResult<()> {
             },
         })
         .await?;
-        TardisFuns::web_server().add_module("todo", TodosApi, vec![]).await.add_module_with_data::<_, String>("other", OtherApi, None, None).await.start().await
+        TardisFuns::web_server().add_module("todo", TodosApi, EMPTY_MW).await.add_module_with_data::<_, String, _>("other", OtherApi, None, EMPTY_MW).await.start().await
     });
     sleep(Duration::from_millis(500)).await;
 
@@ -724,8 +724,8 @@ async fn test_middleware() -> TardisResult<()> {
         })
         .await?;
         TardisFuns::web_server()
-            .add_module("todo", TodosApi, vec![TodosApiMiddleware1::boxed(), TodosApiMiddleware2::boxed()])
-            .await
+        .await
+        .add_module("todo", TodosApi, Some((TodosApiMiddleware1, TodosApiMiddleware2)))
             .add_module_with_data::<_, String>("other", OtherApi, None, None)
             .await
             .start()
