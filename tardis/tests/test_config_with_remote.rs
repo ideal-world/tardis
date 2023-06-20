@@ -18,7 +18,7 @@ use tracing::{info, warn};
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
+#[derive(Debug, Clone)]
 struct TestApi {
     pub rand_key: String,
 }
@@ -142,7 +142,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     let key = api.rand_key.clone();
     let server = TardisFuns::web_server();
     server.add_route(api).await;
-    tokio::spawn(server.start());
+    server.start().await?;
     // wait for server to start
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     // wait for server to start
@@ -167,10 +167,12 @@ async fn test_config_with_remote() -> TardisResult<()> {
     }
     // 4.2 check if the local config has been updated
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded_v2");
-    // 5.1 test web client
+    // 5.1 test if web server router is still usable
     {
-        // let result = TardisFuns::web_client().get_to_str("https://postman-echo.com/get", None).await?;
-        // assert_eq!(result.code, StatusCode::OK.as_u16());
+        let result = TardisFuns::web_client().get_to_str("http://localhost:8080/hello", None).await?;
+        assert_eq!(result.code, StatusCode::OK.as_u16());
+        // rand key should be same
+        assert_eq!(result.body.unwrap(), key);
     }
     // wait for server to start
     // 5.2 test mq
@@ -191,8 +193,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
         header.insert("k1".to_string(), "v1".to_string());
 
         mq_client.request("test-addr", "测试!".to_string(), &header).await?;
-        // if close cilent here, shutdown we called later will encounter an error
-        // mq_client.close().await?;
+
     }
 
     TardisFuns::shutdown().await?;

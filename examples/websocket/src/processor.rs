@@ -9,7 +9,7 @@ use tardis::web::poem_openapi::payload::Html;
 use tardis::web::poem_openapi::{self};
 use tardis::web::ws_processor::{ws_broadcast, ws_echo, TardisWebsocketResp};
 use tardis::TardisFuns;
-
+#[derive(Debug, Clone)]
 pub struct Page;
 
 #[poem_openapi::OpenApi]

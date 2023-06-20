@@ -89,6 +89,7 @@ impl NacosClient {
         }
     }
 
+    #[cfg(feature="test")]
     /// create a new nacos client, with unsafe option
     /// # Safety
     /// **⚠ Don't use this in production environment ⚠**

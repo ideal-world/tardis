@@ -729,7 +729,7 @@ impl ConfCenterConfig {
                 }
             };
             if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
-                match TardisFuns::shutdown().await {
+                match TardisFuns::shutdown_inherit().await {
                     Ok(_) => {}
                     Err(e) => {
                         tracing::error!("[Tardis.config] Tardis shutdown with error {}", e);

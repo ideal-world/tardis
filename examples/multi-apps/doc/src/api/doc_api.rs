@@ -6,7 +6,7 @@ use tardis::TardisFuns;
 
 use crate::dto::doc_dto::DocAddReq;
 use crate::serv::doc_serv::DocServ;
-
+#[derive(Debug, Clone)]
 pub struct DocApi;
 
 #[poem_openapi::OpenApi(prefix_path = "/doc")]

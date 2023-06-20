@@ -35,6 +35,7 @@ struct TodoModifyReq {
     done: Option<bool>,
 }
 
+#[derive(Debug, Clone)]
 pub struct TodoApi;
 
 #[poem_openapi::OpenApi]

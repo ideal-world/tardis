@@ -1,8 +1,3 @@
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::sync::Arc;
-
-use async_trait::async_trait;
 use futures_util::lock::Mutex;
 use poem::endpoint::BoxEndpoint;
 use poem::listener::{Listener, RustlsCertificate, RustlsConfig, TcpListener};
@@ -10,112 +5,54 @@ use poem::middleware::Cors;
 use poem::{EndpointExt, Middleware, Route};
 use poem_openapi::{ExtraHeader, OpenApi, OpenApiService, ServerObject};
 
+use tokio::sync::oneshot;
+use tokio::task::JoinHandle;
+
 use tokio::time::Duration;
-use tracing::{debug, info};
+use tracing::{debug, error, info, warn};
 
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
 use crate::web::uniform_error_mw::UniformError;
-use crate::TardisFuns;
+mod initializer;
+use initializer::*;
+mod module;
+pub use module::*;
 
 pub type BoxMiddleware<'a, T = BoxEndpoint<'a>> = Box<dyn Middleware<T, Output = T> + Send>;
+type ServerTaskInner = JoinHandle<TardisResult<()>>;
+pub struct ServerTask {
+    inner: ServerTaskInner,
+    shutdown_trigger: oneshot::Sender<()>,
+}
 
 pub struct TardisWebServer {
     app_name: String,
     version: String,
     config: WebServerConfig,
-    initializers: Mutex<Vec<Box<dyn Initializer + Send>>>,
-    route: Mutex<Route>,
-}
-
-#[async_trait::async_trait]
-trait Initializer {
-    async fn init(&self, target: &TardisWebServer);
-}
-
-#[derive(Clone)]
-pub struct WebServerModule<T, MW = EmptyMiddleWare, D = String> {
-    apis: T,
-    data: Option<D>,
-    middleware: MW,
-}
-
-#[async_trait::async_trait]
-impl<T, MW, D> Initializer for (String, WebServerModule<T, MW, D>)
-where
-    T: Clone + OpenApi + 'static + Send + Sync ,
-    MW: Clone + Middleware<BoxEndpoint<'static>> + 'static + Send + Sync ,
-    D: Clone + Send + Sync + 'static,
-{
-    async fn init(&self, target: &TardisWebServer) {
-        let (code, ref module) = self;
-        let module_config = target.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {code} not found")).clone();
-        target.do_add_module_with_data(code, &module_config, module.clone()).await;
-    }
-}
-
-impl<T> WebServerModule<T> {
-    pub fn new(apis: T) -> Self {
-        Self {
-            apis,
-            data: None,
-            middleware: EMPTY_MW,
-        }
-    }
-}
-
-impl<T, _MW, _D> WebServerModule<T, _MW, _D> {
-    pub fn data<D>(self, data: D) -> WebServerModule<T, _MW, D> {
-        WebServerModule {
-            apis: self.apis,
-            data: Some(data),
-            middleware: self.middleware,
-        }
-    }
-    pub fn middleware<MW>(self, middleware: MW) -> WebServerModule<T, MW, _D> {
-        WebServerModule {
-            apis: self.apis,
-            data: self.data,
-            middleware,
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct EmptyMiddleWare;
-pub const EMPTY_MW: EmptyMiddleWare = EmptyMiddleWare;
-
-impl Middleware<BoxEndpoint<'static>> for EmptyMiddleWare {
-    type Output = BoxEndpoint<'static>;
-
-    fn transform(&self, ep: BoxEndpoint<'static>) -> Self::Output {
-        struct EmptyMiddleWareImpl<E>(E);
-
-        #[async_trait::async_trait]
-        impl<E: poem::Endpoint> poem::Endpoint for EmptyMiddleWareImpl<E> {
-            type Output = poem::Response;
-
-            async fn call(&self, req: poem::Request) -> poem::Result<Self::Output> {
-                self.0.call(req).await.map(poem::IntoResponse::into_response)
-            }
-        }
-        Box::new(EmptyMiddleWareImpl(ep))
-    }
+    /// Initializers here is **USED**, and being stored at here for next restart.
+    ///
+    /// Don't manually add initializer into here if you wan't `Initializer::init()` to be called,
+    /// use `load_initializer` or `load_boxed_initializer` instead
+    pub(self) initializers: Mutex<Vec<Box<dyn Initializer + Send + Sync>>>,
+    pub(self) route: Mutex<Route>,
+    server_task: Mutex<Option<ServerTask>>,
 }
 
 impl TardisWebServer {
     pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServer> {
-        Ok(TardisWebServer {
+        TardisResult::Ok(TardisWebServer {
             app_name: conf.app.name.clone(),
             version: conf.app.version.clone(),
             config: conf.web_server.clone(),
             route: Mutex::default(),
             initializers: Mutex::new(Vec::new()),
+            server_task: Default::default(),
         })
     }
 
     pub fn init_simple(host: &str, port: u16) -> TardisResult<TardisWebServer> {
-        Ok(TardisWebServer {
+        TardisResult::Ok(TardisWebServer {
             app_name: "".to_string(),
             version: "".to_string(),
             config: WebServerConfig {
@@ -125,31 +62,17 @@ impl TardisWebServer {
             },
             route: Mutex::default(),
             initializers: Mutex::new(Vec::new()),
+            server_task: Default::default(),
         })
     }
 
-    pub async fn add_route<T>(&self, apis: T) -> &Self
+    pub async fn add_route<T, D, MW>(&self, module: impl Into<WebServerModule<T, MW, D>>) -> &Self
     where
-        T: OpenApi + 'static,
-    {
-        self.add_route_with_data::<_, String, EmptyMiddleWare>(apis, None, None).await
-    }
-
-    pub async fn add_route_with_ws<T>(&self, apis: T, capacity: usize) -> &Self
-    where
-        T: OpenApi + 'static,
-    {
-        self.add_route_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>, EmptyMiddleWare>(apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0), None)
-            .await
-    }
-
-    pub async fn add_route_with_data<T, D, MW>(&self, apis: T, data: Option<D>, middlewares: Option<MW>) -> &Self
-    where
-        T: OpenApi + 'static,
+        T: Clone + Send + Sync + OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
-        MW: Middleware<BoxEndpoint<'static>> + Send + 'static,
+        MW: Clone + Send + Sync + Middleware<BoxEndpoint<'static>> + 'static,
     {
-        let module = WebServerModuleConfig {
+        let module_config = WebServerModuleConfig {
             name: self.app_name.clone(),
             version: self.version.clone(),
             doc_urls: self.config.doc_urls.clone(),
@@ -157,30 +80,11 @@ impl TardisWebServer {
             ui_path: self.config.ui_path.clone(),
             spec_path: self.config.spec_path.clone(),
         };
-        // self.do_add_module_with_data("", &module, apis, data, middlewares).await
-        todo!()
+        self.load_initializer(("".to_owned(), module.into(), module_config)).await;
+        self
     }
 
-    pub async fn add_module<T, MW, D>(&self, code: &str, module: WebServerModule<T, MW, D>) -> &Self
-    where
-        T: Clone + Send + Sync + OpenApi + 'static,
-        D: Clone + Send + Sync + 'static,
-        MW: Clone + Send + Sync + Middleware<BoxEndpoint<'static>> + 'static,
-    {
-        self.add_module_with_data(code, module).await
-    }
-
-    pub async fn add_module_with_ws<T, MW>(&self, code: &str, apis: T, capacity: usize, middleware: Option<MW>) -> &Self
-    where
-        T: OpenApi + 'static,
-        MW: Middleware<BoxEndpoint<'static>> + Send + 'static,
-    {
-        todo!();
-        // self.add_module_with_data::<_, tokio::sync::broadcast::Sender<std::string::String>, EmptyMiddleWare>(code, apis, Some(tokio::sync::broadcast::channel::<String>(capacity).0), middlewares)
-        //     .await
-    }
-
-    pub async fn add_module_with_data<T, D, MW>(&self, code: &str, module: WebServerModule<T, MW, D>) -> &Self
+    pub async fn add_module<T, MW, D>(&self, code: &str, module: impl Into<WebServerModule<T, MW, D>>) -> &Self
     where
         T: Clone + Send + Sync + OpenApi + 'static,
         D: Clone + Send + Sync + 'static,
@@ -188,10 +92,8 @@ impl TardisWebServer {
     {
         let code = code.to_lowercase();
         let code = code.as_str();
-        let module_config = self.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {code} not found"));
-        self.initializers.lock().await.push(Box::new((code.to_string(), module)));
-        // self.do_add_module_with_data(code, module_config, module).await
-        todo!()
+        self.load_initializer((code.to_string(), module.into())).await;
+        self
     }
 
     async fn do_add_module_with_data<T, MW, D>(&self, code: &str, module_config: &WebServerModuleConfig, module: WebServerModule<T, MW, D>) -> &Self
@@ -226,12 +128,8 @@ impl TardisWebServer {
         } else {
             Cors::new().allow_origin(&self.config.allowed_origin)
         };
-        let mut route = route.boxed();
+        let route = route.boxed();
         let route = route.with(middleware);
-        // let route = middleware.transform(route);
-        // for middleware in middlewares {
-        //     route = middleware.transform(route);
-        // }
         let route = route.with(UniformError).with(cors);
         // Solved:  Cannot move out of *** which is behind a mutable reference
         // https://stackoverflow.com/questions/63353762/cannot-move-out-of-which-is-behind-a-mutable-reference
@@ -245,16 +143,27 @@ impl TardisWebServer {
         self
     }
 
+    /// # Warn
+    /// Since `Route` didn't implement `Clone`, module create in this way cannot be reloaded while webserver restart
     pub async fn add_module_raw(&self, code: &str, route: Route) -> &Self {
         let mut swap_route = Route::new();
-        // std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
-        // *self.route.lock().await = swap_route.nest(format!("/{code}"), route);
+        std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
+        *self.route.lock().await = swap_route.nest(format!("/{code}"), route);
         self
     }
+
+    /// # Start
+    /// Start this webserver
+    ///
+    /// to shutdown it by calling `TardisWebServer::shutdown()`
     pub async fn start(&self) -> TardisResult<()> {
-        for initializer in self.initializers.lock().await.iter() {
-            initializer.init(self).await;
+        // server_task will be locked until function return
+        let mut task_locked = self.server_task.lock().await;
+        // case of already running
+        if task_locked.is_some() {
+            return TardisResult::Ok(());
         }
+
         let output_info = format!(
             r#"
 =================
@@ -268,29 +177,18 @@ impl TardisWebServer {
 
         let mut swap_route = Route::new();
         std::mem::swap(&mut swap_route, &mut *self.route.lock().await);
+        let (tx, rx) = oneshot::channel::<()>();
         let graceful_shutdown_signal = async move {
-            let tardis_shut_down_signal = async {
-                if let Some(mut rx) = TardisFuns::subscribe_shutdown_signal() {
-                    match rx.recv().await {
-                        Ok(_) => {}
-                        Err(e) => {
-                            debug!("[Tardis.WebServer] WebServer shutdown signal reciever got an error: {e}");
-                        }
-                    }
-                } else {
-                    futures::future::pending::<()>().await;
-                }
-            };
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
                     debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
                 },
-                _ = tardis_shut_down_signal => {
-                    debug!("[Tardis.WebServer] WebServer shutdown (Tardis shutdown signal)");
+                _ = rx => {
+                    debug!("[Tardis.WebServer] WebServer shutdown (Webserver shutdown signal)");
                 },
             };
         };
-        if self.config.tls_key.is_some() {
+        let boxed_server: ServerTaskInner = if self.config.tls_key.is_some() {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port)).rustls(
                 RustlsConfig::new().fallback(
                     RustlsCertificate::new()
@@ -299,14 +197,43 @@ impl TardisWebServer {
                 ),
             );
             let server = poem::Server::new(bind).run_with_graceful_shutdown(swap_route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
-            info!("{}", output_info);
-            server.await?;
+            tokio::spawn(async {
+                server.await?;
+                Ok(())
+            })
         } else {
             let bind = TcpListener::bind(format!("{}:{}", self.config.host, self.config.port));
             let server = poem::Server::new(bind).run_with_graceful_shutdown(swap_route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
-            info!("{}", output_info);
-            server.await?;
+            tokio::spawn(async {
+                server.await?;
+                Ok(())
+            })
         };
+        let task = ServerTask {
+            inner: boxed_server,
+            shutdown_trigger: tx,
+        };
+        task_locked.replace(task);
+        info!("{}", output_info);
+        TardisResult::Ok(())
+    }
+
+    /// # Shutdown
+    /// shutdown this webserver, if it's not running it will return `Ok(())` instantly
+    pub async fn shutdown(&self) -> TardisResult<()> {
+        if let Some(task) = self.server_task.lock().await.take() {
+            info!("[Tardis.WebServer] Shutdown web server");
+            let send_result = task.shutdown_trigger.send(());
+            if send_result.is_err() {
+                warn!("[Tardis.WebServer] Trying to shutdown webserver which seems already closed")
+            };
+            match task.inner.await {
+                Ok(result) => return result,
+                Err(e) => {
+                    error!("[Tardis.WebServer] Fail to join webservert task: {e}")
+                }
+            }
+        }
         Ok(())
     }
 }

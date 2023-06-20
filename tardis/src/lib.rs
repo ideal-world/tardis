@@ -430,6 +430,18 @@ impl TardisFuns {
             if TardisFuns::fw_config().web_server.enabled {
                 let web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config())?;
                 unsafe {
+                    // take out previous webserver first, because TARDIS_INST is not send and can't live cross an `await` point
+                    let inherit = {
+                        TARDIS_INST.web_server.take()
+                        // `&mut TARDIS_INST` dropped here
+                    };
+                    // if there's some inherit webserver
+                    if let Some(inherit) = inherit {
+                        // 1. load initializers
+                        web_server.load_initializer(inherit).await;
+                        // 2. restart webserver
+                        web_server.start().await?;
+                    }
                     replace(&mut TARDIS_INST.web_server, Some(web_server));
                 };
             }
@@ -1113,15 +1125,12 @@ impl TardisFuns {
         unsafe { TARDIS_INST.shutdown_signal_sender.as_ref().map(broadcast::Sender::subscribe) }
     }
 
-    async fn shutdown_internal() -> TardisResult<()> {
+    /// # Parameters
+    /// - `clean: bool`: if use clean mode, it will cleanup all user setted configs like webserver modules
+    async fn shutdown_internal(clean: bool) -> TardisResult<()> {
         tracing::info!("[Tardis] Shutdown...");
-        unsafe {
-            if let Some(shutdow_signal_sender) = &TARDIS_INST.shutdown_signal_sender {
-                if shutdow_signal_sender.send(()).is_err() {
-                    tracing::debug!("[Tardis] Shutdown signal send failed: no receiver.");
-                }
-            }
-        }
+        // using a join set to collect async task, because `&TARDIS_INST` is not `Send`
+        let mut set = tokio::task::JoinSet::new();
         #[cfg(feature = "web-client")]
         unsafe {
             let _ = &TARDIS_INST.web_client.take();
@@ -1147,29 +1156,66 @@ impl TardisFuns {
         }
         #[cfg(feature = "mq")]
         unsafe {
-            let mut set = tokio::task::JoinSet::new();
             if let Some(t) = &TARDIS_INST.mq {
                 for v in t.values() {
-                    set.spawn(v.close());
-                }
-            }
-            while let Some(Ok(close_result)) = set.join_next().await {
-                if let Err(e) = close_result {
-                    tracing::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
+                    set.spawn(async {
+                        if let Err(e) = v.close().await {
+                            tracing::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
+                        }
+                    });
                 }
             }
             let _ = &TARDIS_INST.mq.take();
         }
-        // # enhancement
-        // here is not 100% safe, web-server could shutdown extremely slow, while the new instance starting up extremely fast, which cause a conflict.
-        // maybe we should hold web-server task handle, and join it on shutdown.
+        #[cfg(feature = "web-server")]
+        unsafe {
+            if let Some(web_server) = &TARDIS_INST.web_server {
+                set.spawn(async {
+                    if let Err(e) = web_server.shutdown().await {
+                        tracing::error!("[Tardis] Encounter an error while shutting down webserver: {}", e);
+                    }
+                });
+            }
+        }
+        
+        while let Some(join_result) = set.join_next().await {
+            if let Err(e) = join_result {
+                tracing::error!("[Tardis] Fail to join async shutdown task: {}", e);
+            }
+        }
 
+        // cleanup
+        // # Safety
+        // we shall **do** ensure all the async tasks finished here
+        // if not, we may drop memories which being used by async tasks
+        {
+            #[cfg(feature = "web-server")]
+            unsafe {
+                if clean {
+                    let _ = &TARDIS_INST.web_server.take();
+                }
+            }
+            #[cfg(feature = "mq")]
+            unsafe {
+                if clean {
+                    let _ = &TARDIS_INST.mq.take();
+                }
+            }
+        }
+        tracing::info!("[Tardis] Shutdown finished");
         Ok(())
     }
 
     /// shutdown totally
     pub async fn shutdown() -> TardisResult<()> {
-        Self::shutdown_internal().await
+        Self::shutdown_internal(true).await
+    }
+
+    /// shutdown with inherit mode
+    /// 
+    /// this shutdown function will retain some user setted configs like webserver moudules for next init
+    pub async fn shutdown_inherit() -> TardisResult<()> {
+        Self::shutdown_internal(false).await
     }
 }
 

@@ -5,7 +5,7 @@ use tardis::web::poem_openapi;
 use tardis::web::poem_openapi::payload::Json;
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
 use tardis::TardisFuns;
-
+#[derive(Debug, Clone)]
 pub struct TagApi;
 
 #[poem_openapi::OpenApi(prefix_path = "/tag")]
