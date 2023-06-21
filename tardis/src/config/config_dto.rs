@@ -771,7 +771,7 @@ impl Default for ConfCenterConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct LogConfig {
     pub level: String,

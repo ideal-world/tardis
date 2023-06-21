@@ -277,7 +277,6 @@ use crate::web::web_server::TardisWebServer;
 pub struct TardisFuns {
     custom_config: Option<HashMap<ModuleCode, Value>>,
     _custom_config_cached: Option<HashMap<ModuleCode, Box<dyn Any>>>,
-    shutdown_signal_sender: Option<broadcast::Sender<()>>,
     framework_config: Option<FrameworkConfig>,
     #[cfg(feature = "reldb-core")]
     reldb: Option<HashMap<ModuleCode, TardisRelDBClient>>,
@@ -301,7 +300,6 @@ type ModuleCode = String;
 static mut TARDIS_INST: TardisFuns = TardisFuns {
     custom_config: None,
     _custom_config_cached: None,
-    shutdown_signal_sender: None,
     framework_config: None,
     #[cfg(feature = "reldb-core")]
     reldb: None,
@@ -409,10 +407,7 @@ impl TardisFuns {
     /// ```
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
         #[cfg(feature = "tracing")]
-        TardisTracing::init_tracing(&conf)?;
-        unsafe {
-            replace(&mut TARDIS_INST.shutdown_signal_sender, Some(broadcast::channel(1).0));
-        };
+        TardisTracing::init_tracing(&conf.fw)?;
         unsafe {
             replace(&mut TARDIS_INST.custom_config, Some(conf.cs));
             replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
@@ -1120,13 +1115,6 @@ impl TardisFuns {
         }
     }
 
-    /// subscribe shutdown signal / 订阅关闭信号 which is a None value.
-    #[must_use]
-    #[allow(dead_code)]
-    pub(crate) fn subscribe_shutdown_signal() -> Option<broadcast::Receiver<()>> {
-        unsafe { TARDIS_INST.shutdown_signal_sender.as_ref().map(broadcast::Sender::subscribe) }
-    }
-
     /// # Parameters
     /// - `clean: bool`: if use clean mode, it will cleanup all user setted configs like webserver modules
     async fn shutdown_internal(clean: bool) -> TardisResult<()> {
@@ -1234,6 +1222,12 @@ impl TardisFuns {
         
         let fw_config = TardisFuns::fw_config();
 
+        #[cfg(feature = "tracing")]
+        {
+            if fw_config.log.is_some() && fw_config.log != old_config.fw.log {
+                TardisTracing::init_tracing(fw_config)?;
+            }
+        }
 
         #[cfg(feature = "reldb-core")]
         {
