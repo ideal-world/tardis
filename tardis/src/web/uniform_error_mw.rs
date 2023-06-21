@@ -78,10 +78,8 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
             }
             Err(error) => {
                 let msg = error.to_string();
-                let error = mapping_http_code_to_error(error.into_response().status(), &msg).ok_or(TardisError::internal_error(
-                    &format!("[Tardis.WebServer] {msg} cannot be mapped into http error code"),
-                    "500-tardis-webserver-error",
-                ))?;
+                let error = mapping_http_code_to_error(error.into_response().status(), &msg)
+                    .ok_or_else(|| TardisError::internal_error(&format!("[Tardis.WebServer] {msg} cannot be mapped into http error code"), "500-tardis-webserver-error"))?;
                 warn!(
                     "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
                     method, url, error.code, error.message

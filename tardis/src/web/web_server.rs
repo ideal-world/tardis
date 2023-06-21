@@ -158,6 +158,7 @@ impl TardisWebServer {
             req_headers: self.config.req_headers.clone(),
             ui_path: self.config.ui_path.clone(),
             spec_path: self.config.spec_path.clone(),
+            uniform_error: self.config.uniform_error,
         };
         self.load_initializer(("".to_owned(), module.into(), module_config)).await;
         self
@@ -212,8 +213,11 @@ impl TardisWebServer {
         };
         let route = route.boxed();
         let route = route.with(middleware);
-        let route = route.with(UniformError).with(cors);
-        self.state.lock().await.add_route(code, route, data);
+        if module_config.uniform_error {
+            self.state.lock().await.add_route(code, route.with(UniformError).with(cors), data);
+        } else {
+            self.state.lock().await.add_route(code, route.with(cors), data);
+        };
         self
     }
 
@@ -328,7 +332,7 @@ impl std::future::Future for &TardisWebServer {
                     ServerState::Halted(_) => return Poll::Ready(()),
                     ServerState::Running(t) => {
                         if !t.inner.is_finished() {
-                            return Poll::Pending
+                            return Poll::Pending;
                         }
                     }
                 }
