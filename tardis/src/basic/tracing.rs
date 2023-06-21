@@ -32,16 +32,26 @@ impl TardisTracing {
         Ok(())
     }
 
-    pub(crate) fn update_log_level(log_level: &str) -> TardisResult<()> {
+    pub fn update_log_level(log_level: &str) -> TardisResult<()> {
         std::env::set_var("RUST_LOG", log_level);
         unsafe {
             GLOBAL_RELOAD_HANDLE
                 .as_ref()
-                .ok_or(TardisError::internal_error(
-                    &format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)),
-                    "",
-                ))?
+                .ok_or_else(|| TardisError::internal_error(&format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)), ""))?
                 .reload(EnvFilter::from_default_env())?;
+        }
+        Ok(())
+    }
+
+    pub fn update_log_level_by_domain_code(domain_code: &str, log_level: &str) -> TardisResult<()> {
+        let env_filter = EnvFilter::from_default_env();
+        let env_filter = env_filter
+            .add_directive(format!("{domain_code}={log_level}").parse().map_err(|e| TardisError::internal_error(&format!("update_log_level_by_domain_code failed: {e:?}"), ""))?);
+        unsafe {
+            GLOBAL_RELOAD_HANDLE
+                .as_ref()
+                .ok_or_else(|| TardisError::internal_error(&format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)), ""))?
+                .reload(env_filter)?;
         }
         Ok(())
     }
