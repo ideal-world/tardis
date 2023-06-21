@@ -11,7 +11,7 @@ use poem::endpoint::BoxEndpoint;
 use poem::{IntoResponse, Middleware, Response};
 use reqwest::Method;
 use serde_json::json;
-use tardis::web::web_server::{WebServerModule};
+use tardis::web::web_server::WebServerModule;
 use testcontainers::clients;
 use tokio::time::sleep;
 use tracing::info;

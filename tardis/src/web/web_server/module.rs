@@ -1,7 +1,6 @@
-use poem::{Middleware, endpoint::BoxEndpoint};
+use poem::{endpoint::BoxEndpoint, Middleware};
 use poem_openapi::OpenApi;
 use tokio::sync::broadcast;
-
 
 #[derive(Clone)]
 pub struct WebServerModule<T, MW = EmptyMiddleWare, D = ()> {
@@ -10,8 +9,9 @@ pub struct WebServerModule<T, MW = EmptyMiddleWare, D = ()> {
     pub middleware: MW,
 }
 
-impl<T> From<T> for WebServerModule<T> 
-where T: OpenApi
+impl<T> From<T> for WebServerModule<T>
+where
+    T: OpenApi,
 {
     fn from(apis: T) -> Self {
         WebServerModule::new(apis)
@@ -19,7 +19,8 @@ where T: OpenApi
 }
 
 impl<T, MW> From<(T, MW)> for WebServerModule<T, MW>
-where MW: Middleware<BoxEndpoint<'static>>
+where
+    MW: Middleware<BoxEndpoint<'static>>,
 {
     fn from(value: (T, MW)) -> Self {
         let (apis, mw) = value;
@@ -28,7 +29,8 @@ where MW: Middleware<BoxEndpoint<'static>>
 }
 
 impl<T, MW, D> From<(T, MW, D)> for WebServerModule<T, MW, D>
-where MW: Middleware<BoxEndpoint<'static>>
+where
+    MW: Middleware<BoxEndpoint<'static>>,
 {
     fn from(value: (T, MW, D)) -> Self {
         let (apis, mw, data) = value;
@@ -51,7 +53,7 @@ impl<T, _MW, _D> WebServerModule<T, _MW, _D> {
     /// ```no_run
     /// WebServerModule::from(MyApi).with_ws(100);
     /// ```
-    pub fn with_ws(self, capacity: usize) -> WebServerModule<T, _MW, broadcast::Sender::<String>> {
+    pub fn with_ws(self, capacity: usize) -> WebServerModule<T, _MW, broadcast::Sender<String>> {
         WebServerModule {
             apis: self.apis,
             data: Some(broadcast::channel(capacity).0),

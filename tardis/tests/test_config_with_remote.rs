@@ -193,7 +193,6 @@ async fn test_config_with_remote() -> TardisResult<()> {
         header.insert("k1".to_string(), "v1".to_string());
 
         mq_client.request("test-addr", "测试!".to_string(), &header).await?;
-
     }
 
     TardisFuns::shutdown().await?;

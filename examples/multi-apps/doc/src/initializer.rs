@@ -1,5 +1,5 @@
 use tardis::basic::result::TardisResult;
-use tardis::web::web_server::{TardisWebServer};
+use tardis::web::web_server::TardisWebServer;
 use tardis::TardisFuns;
 
 use crate::api::doc_api;

@@ -1167,7 +1167,7 @@ impl TardisFuns {
                 });
             }
         }
-        
+
         while let Some(join_result) = set.join_next().await {
             if let Err(e) = join_result {
                 tracing::error!("[Tardis] Fail to join async shutdown task: {}", e);
@@ -1202,24 +1202,21 @@ impl TardisFuns {
     }
 
     /// shutdown with inherit mode
-    /// 
+    ///
     /// this shutdown function will retain some user setted configs like webserver moudules for next init
     pub async fn shutdown_inherit() -> TardisResult<()> {
         Self::shutdown_internal(false).await
     }
 
     /// hot reload tardis instance
-    pub async fn hot_reload(conf: TardisConfig) -> TardisResult<()>{
+    pub async fn hot_reload(conf: TardisConfig) -> TardisResult<()> {
         let old_config = unsafe {
             let cs = replace(&mut TARDIS_INST.custom_config, Some(conf.cs)).expect("hot reload before tardis initialized");
             replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
             let fw = replace(&mut TARDIS_INST.framework_config, Some(conf.fw)).expect("hot reload before tardis initialized");
-            TardisConfig {
-                cs,
-                fw,
-            }
+            TardisConfig { cs, fw }
         };
-        
+
         let fw_config = TardisFuns::fw_config();
 
         #[cfg(feature = "tracing")]
