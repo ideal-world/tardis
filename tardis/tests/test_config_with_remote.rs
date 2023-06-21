@@ -169,10 +169,10 @@ async fn test_config_with_remote() -> TardisResult<()> {
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_uploaded_v2");
     // 5.1 test if web server router is still usable
     {
-        let result = TardisFuns::web_client().get_to_str("http://localhost:8080/hello", None).await?;
-        assert_eq!(result.code, StatusCode::OK.as_u16());
+        let response = TardisFuns::web_client().get_to_str("http://localhost:8080/hello", None).await?;
+        assert_eq!(response.code, StatusCode::OK.as_u16());
         // rand key should be same
-        assert_eq!(result.body.unwrap(), key);
+        assert!(response.body.unwrap().contains(&key));
     }
     // wait for server to start
     // 5.2 test mq

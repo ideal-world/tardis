@@ -1,5 +1,6 @@
 use poem::{Middleware, endpoint::BoxEndpoint};
 use poem_openapi::OpenApi;
+use tokio::sync::broadcast;
 
 
 #[derive(Clone)]
@@ -50,10 +51,10 @@ impl<T, _MW, _D> WebServerModule<T, _MW, _D> {
     /// ```no_run
     /// WebServerModule::from(MyApi).with_ws(100);
     /// ```
-    pub fn with_ws(self, capacity: usize) -> WebServerModule<T, _MW, tokio::sync::broadcast::Sender::<String>> {
+    pub fn with_ws(self, capacity: usize) -> WebServerModule<T, _MW, broadcast::Sender::<String>> {
         WebServerModule {
             apis: self.apis,
-            data: Some(tokio::sync::broadcast::channel(capacity).0),
+            data: Some(broadcast::channel(capacity).0),
             middleware: self.middleware,
         }
     }

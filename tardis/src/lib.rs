@@ -91,7 +91,9 @@
 //!     // Initial configuration
 //!     TardisFuns::init("config").await?;
 //!     // Register the processor and start the web service
-//!     TardisFuns::web_server().add_module("", Api).start().await
+//!     TardisFuns::web_server().add_module("", Api).start().await?;
+//!     TardisFuns::web_server().await;
+//!     Ok(());
 //! }
 //! ```
 //!
@@ -1216,6 +1218,107 @@ impl TardisFuns {
     /// this shutdown function will retain some user setted configs like webserver moudules for next init
     pub async fn shutdown_inherit() -> TardisResult<()> {
         Self::shutdown_internal(false).await
+    }
+
+    /// hot reload tardis instance
+    pub async fn hot_reload(conf: TardisConfig) -> TardisResult<()>{
+        let old_config = unsafe {
+            let cs = replace(&mut TARDIS_INST.custom_config, Some(conf.cs)).expect("hot reload before tardis initialized");
+            replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
+            let fw = replace(&mut TARDIS_INST.framework_config, Some(conf.fw)).expect("hot reload before tardis initialized");
+            TardisConfig {
+                cs,
+                fw,
+            }
+        };
+        
+        let fw_config = TardisFuns::fw_config();
+
+
+        #[cfg(feature = "reldb-core")]
+        {
+            if fw_config.db.enabled && fw_config.db != old_config.fw.db {
+                let reldb_clients = TardisRelDBClient::init_by_conf(TardisFuns::fw_config()).await?;
+                unsafe {
+                    replace(&mut TARDIS_INST.reldb, Some(reldb_clients));
+                };
+            }
+        }
+        #[cfg(feature = "web-server")]
+        {
+            if fw_config.web_server.enabled && old_config.fw.web_server != fw_config.web_server {
+                let web_server = TardisWebServer::init_by_conf(fw_config)?;
+                unsafe {
+                    // take out previous webserver first, because TARDIS_INST is not send and can't live cross an `await` point
+                    let inherit = {
+                        TARDIS_INST.web_server.take()
+                        // `&mut TARDIS_INST` dropped here
+                    };
+                    // if there's some inherit webserver
+                    if let Some(inherit) = inherit {
+                        // 1. shutdown webserver
+                        inherit.shutdown().await?;
+                        // 2. load initializers
+                        web_server.load_initializer(inherit).await;
+                        // 3. restart webserver
+                        web_server.start().await?;
+                    }
+                    replace(&mut TARDIS_INST.web_server, Some(web_server));
+                };
+            }
+        }
+        #[cfg(feature = "web-client")]
+        {
+            let web_clients = TardisWebClient::init_by_conf(fw_config)?;
+            unsafe {
+                replace(&mut TARDIS_INST.web_client, Some(web_clients));
+            };
+        }
+        #[cfg(feature = "cache")]
+        {
+            if fw_config.cache.enabled {
+                let cache_clients = TardisCacheClient::init_by_conf(fw_config).await?;
+                unsafe {
+                    replace(&mut TARDIS_INST.cache, Some(cache_clients));
+                };
+            }
+        }
+        #[cfg(feature = "mq")]
+        {
+            if fw_config.mq.enabled && fw_config.mq != old_config.fw.mq {
+                unsafe {
+                    let mq_clients = TARDIS_INST.mq.take();
+                    if let Some(mq_clients) = mq_clients {
+                        for v in mq_clients.values() {
+                            if let Err(e) = v.close().await {
+                                tracing::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
+                            }
+                        }
+                    }
+                    let mq_clients = TardisMQClient::init_by_conf(fw_config).await?;
+                    replace(&mut TARDIS_INST.mq, Some(mq_clients));
+                }
+            }
+        }
+        #[cfg(feature = "mail")]
+        {
+            if fw_config.mail.enabled {
+                let mail_clients = TardisMailClient::init_by_conf(fw_config)?;
+                unsafe {
+                    replace(&mut TARDIS_INST.mail, Some(mail_clients));
+                };
+            }
+        }
+        #[cfg(feature = "os")]
+        {
+            if fw_config.os.enabled {
+                let os_clients = TardisOSClient::init_by_conf(fw_config)?;
+                unsafe {
+                    replace(&mut TARDIS_INST.os, Some(os_clients));
+                };
+            }
+        }
+        Ok(())
     }
 }
 

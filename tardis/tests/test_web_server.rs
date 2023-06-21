@@ -539,67 +539,66 @@ async fn test_context(url: &str) -> TardisResult<()> {
 async fn test_security() -> TardisResult<()> {
     let url = "https://localhost:8081";
     TardisFuns::shutdown().await?;
-    tokio::spawn(async {
-        TardisFuns::init_conf(TardisConfig {
-            cs: Default::default(),
-            fw: FrameworkConfig {
-                app: Default::default(),
-                web_server: WebServerConfig {
-                    enabled: true,
-                    port: 8081,
-                    modules: HashMap::from([
-                        (
-                            "todo".to_string(),
-                            WebServerModuleConfig {
-                                name: "todo app".to_string(),
-                                doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].to_vec(),
-                                ..Default::default()
-                            },
-                        ),
-                        (
-                            "other".to_string(),
-                            WebServerModuleConfig {
-                                name: "other app".to_string(),
-                                ..Default::default()
-                            },
-                        ),
-                    ]),
-                    tls_key: Some(TLS_KEY.to_string()),
-                    tls_cert: Some(TLS_CERT.to_string()),
-                    security_hide_err_msg: true,
-                    ..Default::default()
-                },
-                web_client: Default::default(),
-                cache: CacheConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                db: DBConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                mq: MQConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                search: SearchConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                mail: MailConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                os: OSConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
+    TardisFuns::init_conf(TardisConfig {
+        cs: Default::default(),
+        fw: FrameworkConfig {
+            app: Default::default(),
+            web_server: WebServerConfig {
+                enabled: true,
+                port: 8081,
+                modules: HashMap::from([
+                    (
+                        "todo".to_string(),
+                        WebServerModuleConfig {
+                            name: "todo app".to_string(),
+                            doc_urls: [("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())].to_vec(),
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        "other".to_string(),
+                        WebServerModuleConfig {
+                            name: "other app".to_string(),
+                            ..Default::default()
+                        },
+                    ),
+                ]),
+                tls_key: Some(TLS_KEY.to_string()),
+                tls_cert: Some(TLS_CERT.to_string()),
+                security_hide_err_msg: true,
                 ..Default::default()
             },
-        })
-        .await?;
-        TardisFuns::web_server().add_module("todo", WebServerModule::new(TodosApi)).await.add_module("other", WebServerModule::new(OtherApi)).await.start().await
-    });
+            web_client: Default::default(),
+            cache: CacheConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            db: DBConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            mq: MQConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            search: SearchConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            mail: MailConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            os: OSConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    })
+    .await?;
+    TardisFuns::web_server().add_module("todo", WebServerModule::new(TodosApi)).await.add_module("other", WebServerModule::new(OtherApi)).await.start().await?;
+
     sleep(Duration::from_millis(500)).await;
 
     // Normal

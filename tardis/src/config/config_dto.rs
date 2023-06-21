@@ -125,7 +125,7 @@ impl Default for AppConfig {
 ///    ..Default::default()
 /// };
 /// ```
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct DBConfig {
     /// Whether to enable the database operation function / 是否启用数据库操作功能
@@ -146,7 +146,7 @@ pub struct DBConfig {
     pub compatible_type: CompatibleType,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct DBModuleConfig {
     /// Database access Url, Url with permission information / 数据库访问Url，Url带权限信息
@@ -191,7 +191,7 @@ impl Default for DBModuleConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum CompatibleType {
     None,
     Oracle,
@@ -225,7 +225,7 @@ pub enum CompatibleType {
 ///    ..Default::default()
 ///};
 /// ```
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct WebServerConfig {
     /// Whether to enable the web service operation function / 是否启用Web服务操作功能
@@ -275,7 +275,7 @@ pub struct WebServerConfig {
 /// and if it is not specified or has no value it will try to get it from the cache.
 ///
 /// 首先会尝试从请求头信息中获取 [context_header_name](Self::context_header_name) ,如果没指定或是没有值时会尝试从缓存中获取.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct WebServerContextConfig {
     /// Tardis context identifier, used to specify the request header name, default is `Tardis-Context`
@@ -308,7 +308,7 @@ pub struct WebServerContextConfig {
 ///     ..Default::default()
 /// };
 /// ```
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct WebServerModuleConfig {
     /// Module name for ``OpenAPI`` / 模块名称，用于 ``OpenAPI``
@@ -477,7 +477,7 @@ impl Default for CacheModuleConfig {
 ///    ..Default::default()
 ///};
 /// ```
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct MQConfig {
     /// Whether to enable the message queue operation function / 是否启用消息队列操作功能
@@ -488,7 +488,7 @@ pub struct MQConfig {
     pub modules: HashMap<String, MQModuleConfig>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
 pub struct MQModuleConfig {
     /// Message queue access Url, Url with permission information / 消息队列访问Url，Url带权限信息
@@ -729,18 +729,12 @@ impl ConfCenterConfig {
                 }
             };
             if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
-                match TardisFuns::shutdown_inherit().await {
-                    Ok(_) => {}
+                match TardisFuns::hot_reload(config).await {
+                    Ok(_) => {
+                        tracing::info!("[Tardis.config] Tardis hot reloaded");
+                    }
                     Err(e) => {
                         tracing::error!("[Tardis.config] Tardis shutdown with error {}", e);
-                    }
-                }
-                match TardisFuns::init_conf(config).await {
-                    Ok(_) => {
-                        tracing::info!("[Tardis.config] Configuration update succeeded");
-                    }
-                    Err(e) => {
-                        tracing::error!("[Tardis.config] Configuration update failed: {}", e);
                     }
                 }
             } else {
