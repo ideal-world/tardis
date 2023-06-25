@@ -65,7 +65,6 @@ async fn test_search_client() -> TardisResult<()> {
         client.create_index(index_name).await?;
         assert!(client.check_index_exist(index_name).await?);
         assert!(!client.check_index_exist("test_index_copy").await?);
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         client.create_record(index_name, r#"{"user":{"id":1,"name":"张三","open":false}}"#).await?;
         client.create_record(index_name, r#"{"user":{"id":2,"name":"李四","open":false}}"#).await?;

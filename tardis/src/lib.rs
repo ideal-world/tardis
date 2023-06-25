@@ -1184,6 +1184,7 @@ impl TardisFuns {
 
     /// hot reload tardis instance
     pub async fn hot_reload(conf: TardisConfig) -> TardisResult<()> {
+        #[allow(unused_variables)]
         let old_config = unsafe {
             let cs = replace(&mut TARDIS_INST.custom_config, Some(conf.cs)).expect("hot reload before tardis initialized");
             replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
