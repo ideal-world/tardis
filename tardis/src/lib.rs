@@ -149,7 +149,6 @@ pub use tardis_macros::{TardisCreateEntity, TardisCreateIndex, TardisCreateTable
 #[cfg(feature = "test")]
 pub use testcontainers;
 pub use tokio;
-use tokio::sync::broadcast;
 pub use tracing as log;
 pub use url;
 
@@ -1120,7 +1119,6 @@ impl TardisFuns {
     async fn shutdown_internal(clean: bool) -> TardisResult<()> {
         tracing::info!("[Tardis] Shutdown...");
         // using a join set to collect async task, because `&TARDIS_INST` is not `Send`
-        let mut set = tokio::task::JoinSet::new();
         #[cfg(feature = "web-client")]
         unsafe {
             let _ = &TARDIS_INST.web_client.take();
@@ -1146,49 +1144,25 @@ impl TardisFuns {
         }
         #[cfg(feature = "mq")]
         unsafe {
-            if let Some(t) = &TARDIS_INST.mq {
+            let mq = TARDIS_INST.mq.take();
+            if let Some(t) = mq {
                 for v in t.values() {
-                    set.spawn(async {
-                        if let Err(e) = v.close().await {
-                            tracing::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
-                        }
-                    });
+                    if let Err(e) = v.close().await {
+                        tracing::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
+                    }
                 }
             }
-            let _ = &TARDIS_INST.mq.take();
         }
         #[cfg(feature = "web-server")]
         unsafe {
-            if let Some(web_server) = &TARDIS_INST.web_server {
-                set.spawn(async {
-                    if let Err(e) = web_server.shutdown().await {
-                        tracing::error!("[Tardis] Encounter an error while shutting down webserver: {}", e);
-                    }
-                });
-            }
-        }
-
-        while let Some(join_result) = set.join_next().await {
-            if let Err(e) = join_result {
-                tracing::error!("[Tardis] Fail to join async shutdown task: {}", e);
-            }
-        }
-
-        // cleanup
-        // # Safety
-        // we shall **do** ensure all the async tasks finished here
-        // if not, we may drop memories which being used by async tasks
-        {
-            #[cfg(feature = "web-server")]
-            unsafe {
-                if clean {
-                    let _ = &TARDIS_INST.web_server.take();
+            let web_server = TARDIS_INST.web_server.take();
+            if let Some(web_server) = web_server {
+                if let Err(e) = web_server.shutdown().await {
+                    tracing::error!("[Tardis] Encounter an error while shutting down webserver: {}", e);
                 }
-            }
-            #[cfg(feature = "mq")]
-            unsafe {
-                if clean {
-                    let _ = &TARDIS_INST.mq.take();
+                // put it back if not "clean"
+                if !clean {
+                    TARDIS_INST.web_server.replace(web_server);
                 }
             }
         }
