@@ -1116,7 +1116,7 @@ impl TardisFuns {
 
     /// # Parameters
     /// - `clean: bool`: if use clean mode, it will cleanup all user setted configs like webserver modules
-    async fn shutdown_internal(clean: bool) -> TardisResult<()> {
+    async fn shutdown_internal(#[allow(unused_variables)] clean: bool) -> TardisResult<()> {
         tracing::info!("[Tardis] Shutdown...");
         // using a join set to collect async task, because `&TARDIS_INST` is not `Send`
         #[cfg(feature = "web-client")]
