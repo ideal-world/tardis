@@ -183,7 +183,7 @@ impl TardisSearchClient {
         trace!("[Tardis.SearchClient] Multi search: {}, q:{:?}", index_name, q);
         let q = q.into_iter().map(|(k, v)| format!(r#"{{"match": {{"{k}": "{v}"}}}}"#)).collect::<Vec<String>>().join(",");
         let q = format!(r#"{{ "query": {{ "bool": {{ "must": [{q}]}}}}}}"#);
-        self.raw_search(index_name, &q).await
+        self.raw_search(index_name, &q, None, None).await
     }
 
     /// Search using native format  / 使用原生格式搜索
@@ -193,9 +193,15 @@ impl TardisSearchClient {
     ///  * `index_name` -  index name / 索引名称
     ///  * `q` -  native format / 原生格式
     ///
-    pub async fn raw_search(&self, index_name: &str, q: &str) -> TardisResult<Vec<String>> {
-        trace!("[Tardis.SearchClient] Raw search: {}, q:{}", index_name, q);
-        let url = format!("{}/{}/_search", self.server_url, index_name);
+    pub async fn raw_search(&self, index_name: &str, q: &str, size: Option<i32>, from: Option<i32>) -> TardisResult<Vec<String>> {
+        trace!("[Tardis.SearchClient] Raw search: {}, q:{}, size:{:?}, from:{:?}", index_name, q, size, from);
+        let mut url = format!("{}/{}/_search", self.server_url, index_name);
+        if let Some(size) = size {
+            url = format!("{}?size={}", url, size)
+        }
+        if let Some(from) = from {
+            url = format!("{}&from={}", url, from)
+        }
         let resp = self.client.post_str_to_str(&url, q, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             Self::parse_search_result(&resp.body.unwrap_or_default())

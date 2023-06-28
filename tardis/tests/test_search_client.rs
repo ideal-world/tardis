@@ -89,6 +89,10 @@ async fn test_search_client() -> TardisResult<()> {
         let records = client.multi_search(index_name, HashMap::from([("user.open", "false"), ("user.id", "2"), ("user.name", "李四")])).await?;
         assert_eq!(records.len(), 1);
         assert!(records.contains(&r#"{"user":{"id":2,"name":"李四","open":false}}"#.to_string()));
+
+        let records = client.raw_search(index_name, r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}]}}}"#, Some(1), Some(0)).await?;
+        assert_eq!(records.len(), 1);
+
         Ok(())
     })
     .await
