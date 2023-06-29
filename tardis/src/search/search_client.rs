@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{info, trace};
 
@@ -36,7 +36,7 @@ pub struct TardisSearchClient {
 pub struct TardisRawSearchResp {
     hits: TardisRawSearchHits,
     took: i32,
-    _shards:TardisRawSearchShards,
+    _shards: TardisRawSearchShards,
     timed_out: bool,
 }
 
@@ -221,9 +221,7 @@ impl TardisSearchClient {
         trace!("[Tardis.SearchClient] Multi search: {}, q:{:?}", index_name, q);
         let q = q.into_iter().map(|(k, v)| format!(r#"{{"match": {{"{k}": "{v}"}}}}"#)).collect::<Vec<String>>().join(",");
         let q = format!(r#"{{ "query": {{ "bool": {{ "must": [{q}]}}}}}}"#);
-        let result = self.raw_search(index_name, &q, None, None).await?.hits.hits
-        .iter().map(|item| item._source.clone().to_string())
-        .collect();
+        let result = self.raw_search(index_name, &q, None, None).await?.hits.hits.iter().map(|item| item._source.clone().to_string()).collect();
         Ok(result)
     }
 
