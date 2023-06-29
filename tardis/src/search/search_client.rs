@@ -28,44 +28,44 @@ use crate::{TardisFuns, TardisWebClient};
 /// TardisFuns::search().simple_search("test_index", "张三").await.unwrap();
 /// ```
 pub struct TardisSearchClient {
-    client: TardisWebClient,
-    server_url: String,
+    pub client: TardisWebClient,
+    pub server_url: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TardisRawSearchResp {
-    hits: TardisRawSearchHits,
-    took: i32,
-    _shards: TardisRawSearchShards,
-    timed_out: bool,
+    pub hits: TardisRawSearchHits,
+    pub took: i32,
+    pub _shards: TardisRawSearchShards,
+    pub timed_out: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TardisRawSearchHits {
-    total: TardisRawSearchHitsTotal,
-    hits: Vec<TardisRawSearchHitsItem>,
-    max_score: Option<f32>,
+    pub total: TardisRawSearchHitsTotal,
+    pub hits: Vec<TardisRawSearchHitsItem>,
+    pub max_score: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TardisRawSearchHitsTotal {
-    value: i32,
-    relation: String,
+    pub value: i32,
+    pub relation: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TardisRawSearchHitsItem {
-    _index: String,
-    _id: String,
-    _score: f32,
-    _source: Value,
+    pub _index: String,
+    pub _id: String,
+    pub _score: f32,
+    pub _source: Value,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TardisRawSearchShards {
-    failed: i32,
-    successful: i32,
-    total: i32,
+    pub failed: i32,
+    pub successful: i32,
+    pub total: i32,
 }
 
 impl TardisSearchClient {
