@@ -597,7 +597,7 @@ async fn test_security() -> TardisResult<()> {
         },
     })
     .await?;
-    TardisFuns::web_server().add_module("todo", WebServerModule::new(TodosApi)).await.add_module("other", WebServerModule::new(OtherApi)).await.start().await?;
+    TardisFuns::web_server().add_module("todo", TodosApi).await.add_module("other", OtherApi).await.start().await?;
 
     sleep(Duration::from_millis(500)).await;
 
@@ -727,7 +727,7 @@ async fn test_middleware() -> TardisResult<()> {
         TardisFuns::web_server()
             .add_module("todo", WebServerModule::new(TodosApi).middleware((TodosApiMiddleware1, TodosApiMiddleware2)))
             .await
-            .add_module("other", WebServerModule::new(OtherApi))
+            .add_module("other", OtherApi)
             .await
             .start()
             .await

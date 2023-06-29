@@ -138,7 +138,7 @@ impl TardisWebServer {
     /// // add with middleware and data
     /// webserver.add_route((api, middleware, data)).await;
     /// // add without middleware
-    /// webserver.add_route((api, EMPTY_MW, data)).await;
+    /// webserver.add_route((api, EmptyMiddleWare, data)).await;
     /// webserver.add_route(WebServerModule::from(api).data(data)).await;
     /// // add ws api
     /// webserver.add_route(WebServerModule::from(api).with_ws(ws_capacity)).await;
@@ -186,7 +186,12 @@ impl TardisWebServer {
         MW: Middleware<BoxEndpoint<'static>> + 'static,
     {
         info!("[Tardis.WebServer] Add module {}", code);
-        let WebServerModule { apis, data, middleware } = module;
+        let WebServerModule {
+            apis,
+            data,
+            middleware,
+            options: module_options,
+        } = module;
         let mut api_serv = OpenApiService::new(apis, &module_config.name, &module_config.version);
         for (env, url) in &module_config.doc_urls {
             let url = if !url.ends_with('/') { format!("{url}/{code}") } else { format!("{url}{code}") };
@@ -213,7 +218,7 @@ impl TardisWebServer {
         };
         let route = route.boxed();
         let route = route.with(middleware);
-        if module_config.uniform_error {
+        if module_options.uniform_error || module_config.uniform_error {
             self.state.lock().await.add_route(code, route.with(UniformError).with(cors), data);
         } else {
             self.state.lock().await.add_route(code, route.with(cors), data);
