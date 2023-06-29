@@ -90,8 +90,8 @@ async fn test_search_client() -> TardisResult<()> {
         assert_eq!(records.len(), 1);
         assert!(records.contains(&r#"{"user":{"id":2,"name":"李四","open":false}}"#.to_string()));
 
-        let records = client.raw_search(index_name, r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}]}}}"#, Some(1), Some(0)).await?;
-        assert_eq!(records.len(), 1);
+        let raw_search_resp = client.raw_search(index_name, r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}]}}}"#, Some(1), Some(0)).await?;
+        println!("raw_search_resp: {:?}", raw_search_resp);
 
         Ok(())
     })

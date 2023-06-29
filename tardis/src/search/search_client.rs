@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use serde::{Serialize, Deserialize};
+use serde_json::Value;
 use tracing::{info, trace};
 
 use crate::basic::error::TardisError;
@@ -28,6 +30,42 @@ use crate::{TardisFuns, TardisWebClient};
 pub struct TardisSearchClient {
     client: TardisWebClient,
     server_url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchResp {
+    hits: TardisRawSearchHits,
+    took: i32,
+    _shards:TardisRawSearchShards,
+    timed_out: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchHits {
+    total: TardisRawSearchHitsTotal,
+    hits: Vec<TardisRawSearchHitsItem>,
+    max_score: Option<f32>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchHitsTotal {
+    value: i32,
+    relation: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchHitsItem {
+    _index: String,
+    _id: String,
+    _score: f32,
+    _source: Value,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchShards {
+    failed: i32,
+    successful: i32,
+    total: i32,
 }
 
 impl TardisSearchClient {
@@ -183,7 +221,10 @@ impl TardisSearchClient {
         trace!("[Tardis.SearchClient] Multi search: {}, q:{:?}", index_name, q);
         let q = q.into_iter().map(|(k, v)| format!(r#"{{"match": {{"{k}": "{v}"}}}}"#)).collect::<Vec<String>>().join(",");
         let q = format!(r#"{{ "query": {{ "bool": {{ "must": [{q}]}}}}}}"#);
-        self.raw_search(index_name, &q, None, None).await
+        let result = self.raw_search(index_name, &q, None, None).await?.hits.hits
+        .iter().map(|item| item._source.clone().to_string())
+        .collect();
+        Ok(result)
     }
 
     /// Search using native format  / 使用原生格式搜索
@@ -193,7 +234,7 @@ impl TardisSearchClient {
     ///  * `index_name` -  index name / 索引名称
     ///  * `q` -  native format / 原生格式
     ///
-    pub async fn raw_search(&self, index_name: &str, q: &str, size: Option<i32>, from: Option<i32>) -> TardisResult<Vec<String>> {
+    pub async fn raw_search(&self, index_name: &str, q: &str, size: Option<i32>, from: Option<i32>) -> TardisResult<TardisRawSearchResp> {
         trace!("[Tardis.SearchClient] Raw search: {}, q:{}, size:{:?}, from:{:?}", index_name, q, size, from);
         let mut url = format!("{}/{}/_search", self.server_url, index_name);
         if let Some(size) = size {
@@ -204,7 +245,8 @@ impl TardisSearchClient {
         }
         let resp = self.client.post_str_to_str(&url, q, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
-            Self::parse_search_result(&resp.body.unwrap_or_default())
+            trace!("[Tardis.SearchClient] resp.body: {:?}", &resp.body);
+            Ok(TardisFuns::json.str_to_obj(&resp.body.unwrap_or_default())?)
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
