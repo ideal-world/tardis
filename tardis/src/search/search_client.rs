@@ -57,7 +57,7 @@ pub struct TardisRawSearchHitsTotal {
 pub struct TardisRawSearchHitsItem {
     pub _index: String,
     pub _id: String,
-    pub _score: f32,
+    pub _score: Option<f32>,
     pub _source: Value,
 }
 
@@ -277,6 +277,61 @@ impl TardisSearchClient {
                 "[Tardis.SearchClient] Check index exist request failed",
                 "-1-tardis-search-error",
             )),
+        }
+    }
+
+    /// update record / 更新记录
+    ///
+    /// # Arguments
+    ///
+    ///  * `index_name` -  index name / 索引名称
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// TardisFuns::search().update("test_index", "111", HashMap::from([("user.id", "1"), ("user.name", "李四")])).await.unwrap();
+    /// ```
+    pub async fn update(&self, index_name: &str, id: &str, q: HashMap<&str, &str>) -> TardisResult<()> {
+        let q = q.into_iter().map(|(k, v)| format!(r#""ctx._source.{k}= '{v}'"#)).collect::<Vec<String>>().join(";");
+        let q = format!(r#"{{ "script": {{"source": {q}}}}}"#);
+        trace!("[Tardis.SearchClient] Update: {}, q:{}", index_name, q);
+        let url = format!("{}/{}/_update/{}?refresh=true", self.server_url, index_name, id);
+        let resp = self.client.post_str_to_str(&url, &q, None).await?;
+        if resp.code >= 200 && resp.code <= 300 {
+            trace!("[Tardis.SearchClient] resp.body: {:?}", &resp.body);
+            Ok(())
+        } else {
+            Err(TardisError::custom(
+                &resp.code.to_string(),
+                &format!("[Tardis.SearchClient] Delete by query error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                "-1-tardis-search-error",
+            ))
+        }
+    }
+
+    /// Delete record / 删除记录
+    ///
+    /// # Arguments
+    ///
+    ///  * `index_name` -  index name / 索引名称
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// TardisFuns::search().delete_by_query("test_index" r#"{}"#).await.unwrap();
+    /// ```
+    pub async fn delete_by_query(&self, index_name: &str, q: &str) -> TardisResult<()> {
+        let url = format!("{}/{}/_delete_by_query", self.server_url, index_name);
+        let resp = self.client.post_str_to_str(&url, q, None).await?;
+        if resp.code >= 200 && resp.code <= 300 {
+            trace!("[Tardis.SearchClient] resp.body: {:?}", &resp.body);
+            Ok(())
+        } else {
+            Err(TardisError::custom(
+                &resp.code.to_string(),
+                &format!("[Tardis.SearchClient] Delete by query error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                "-1-tardis-search-error",
+            ))
         }
     }
 

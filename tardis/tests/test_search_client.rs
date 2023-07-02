@@ -73,7 +73,6 @@ async fn test_search_client() -> TardisResult<()> {
 
         let record = client.get_record(index_name, &id).await?;
         assert_eq!(record, r#"{"user":{"id":4,"name":"Tom","open":true}}"#);
-
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         let records = client.simple_search(index_name, "李四").await?;
@@ -90,8 +89,15 @@ async fn test_search_client() -> TardisResult<()> {
         assert_eq!(records.len(), 1);
         assert!(records.contains(&r#"{"user":{"id":2,"name":"李四","open":false}}"#.to_string()));
 
-        let raw_search_resp = client.raw_search(index_name, r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}]}}}"#, Some(1), Some(0)).await?;
-        println!("raw_search_resp: {:?}", raw_search_resp);
+        client.delete_by_query(index_name, r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}, {"match": {"user.open": "false"}}]}}}"#).await?;
+        // client.update(index_name, &id, HashMap::from([("user.open", "false")])).await?;
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+        let raw_search_resp = client.raw_search(index_name, r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}]}}}"#, Some(10), Some(0)).await?;
+        assert_eq!(raw_search_resp.hits.total.value, 1);
+        
+        let raw_search_resp = client.raw_search(index_name, r#"{ "query": { "bool": { "must": [{"match": {"user.name": "tom"}}]}}}"#, Some(10), Some(0)).await?;
+        assert_eq!(raw_search_resp.hits.hits[0]._source.to_string(), r#"{"user":{"id":4,"name":"Tom","open":true}}"#);
 
         Ok(())
     })
