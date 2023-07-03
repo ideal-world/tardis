@@ -2,7 +2,7 @@ use tardis::basic::error::TardisError;
 use tardis::web::poem_openapi;
 use tardis::web::poem_openapi::param::Query;
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
-
+#[derive(Debug, Clone, Copy)]
 pub struct Api;
 
 #[poem_openapi::OpenApi]

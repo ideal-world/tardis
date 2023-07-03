@@ -7,6 +7,6 @@ use crate::domain::tag;
 
 pub async fn init(web_server: &TardisWebServer) -> TardisResult<()> {
     TardisFuns::reldb().conn().create_table_from_entity(tag::Entity).await?;
-    web_server.add_module("tag", tag_api::TagApi, None).await;
+    web_server.add_module("tag", tag_api::TagApi).await;
     Ok(())
 }

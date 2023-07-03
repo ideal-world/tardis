@@ -7,6 +7,6 @@ use crate::domain::doc;
 
 pub async fn init(web_server: &TardisWebServer) -> TardisResult<()> {
     TardisFuns::reldb().conn().create_table_from_entity(doc::Entity).await?;
-    web_server.add_module("doc", doc_api::DocApi, None).await;
+    web_server.add_module("doc", doc_api::DocApi).await;
     Ok(())
 }

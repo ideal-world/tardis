@@ -57,11 +57,11 @@ impl TardisTracing {
     }
 
     #[cfg(feature = "tracing")]
-    pub(crate) fn init_tracing(conf: &crate::config::config_dto::TardisConfig) -> TardisResult<()> {
+    pub(crate) fn init_tracing(conf: &crate::config::config_dto::FrameworkConfig) -> TardisResult<()> {
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
-        if let Some(tracing_config) = conf.fw.log.as_ref() {
+        if let Some(tracing_config) = conf.log.as_ref() {
             if std::env::var_os("RUST_LOG").is_none() {
                 std::env::set_var("RUST_LOG", tracing_config.level.as_str());
             }

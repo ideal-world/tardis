@@ -8,7 +8,7 @@ use poem::web::websocket::{BoxWebSocketUpgraded, WebSocket};
 use poem_openapi::param::Path;
 use serde_json::json;
 use tardis::basic::result::TardisResult;
-use tardis::web::web_server::TardisWebServer;
+use tardis::web::web_server::{TardisWebServer, WebServerModule};
 use tardis::web::ws_processor::{
     ws_broadcast, ws_echo, TardisWebsocketInstInfo, TardisWebsocketMessage, TardisWebsocketMgrMessage, TardisWebsocketReq, TardisWebsocketResp, WS_SYSTEM_EVENT_AVATAR_ADD,
     WS_SYSTEM_EVENT_AVATAR_DEL, WS_SYSTEM_EVENT_INFO,
@@ -25,11 +25,9 @@ lazy_static! {
 
 #[tokio::test]
 async fn test_websocket() -> TardisResult<()> {
-    tokio::spawn(async {
-        let serv = TardisWebServer::init_simple("127.0.0.1", 8080).unwrap();
-        serv.add_route_with_ws(Api, 100).await;
-        serv.start().await
-    });
+    let serv = TardisWebServer::init_simple("127.0.0.1", 8080).unwrap();
+    serv.add_route(WebServerModule::from(Api).with_ws(100)).await;
+    serv.start().await?;
     sleep(Duration::from_millis(500)).await;
 
     test_normal().await?;
@@ -327,6 +325,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     Ok(())
 }
 
+#[derive(Debug, Clone)]
 struct Api;
 
 #[poem_openapi::OpenApi]

@@ -94,7 +94,7 @@ where
                         }
                         Err(e) => {
                             // if receiver dropped, stop watching, since tardis wont be reboot anyway
-                            debug!("[Tardis.config] Nacos Remote config updated, but no receiver found, stop watching, error: {e}");
+                            warn!("[Tardis.config] Nacos Remote config updated, but no receiver found, stop watching, error: {e}");
                         }
                     }
                     break;

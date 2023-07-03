@@ -149,7 +149,7 @@ impl TardisTestContainer {
 
     pub fn es_custom(docker: &Cli) -> Container<GenericImage> {
         docker.run(
-            images::generic::GenericImage::new("elasticsearch", "8.1.0")
+            images::generic::GenericImage::new("elasticsearch", "8.7.1")
                 .with_env_var("ELASTIC_PASSWORD", "123456")
                 .with_env_var("discovery.type", "single-node")
                 .with_env_var("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
