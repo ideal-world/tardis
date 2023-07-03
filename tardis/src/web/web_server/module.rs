@@ -86,7 +86,7 @@ impl<T> WebServerModule<T> {
 
 impl<T, _MW, _D> WebServerModule<T, _MW, _D> {
     /// create a module with tokio broadcast sender as data
-    /// ```no_run
+    /// ```ignore
     /// WebServerModule::from(MyApi).with_ws(100);
     /// ```
     pub fn with_ws(self, capacity: usize) -> WebServerModule<T, _MW, broadcast::Sender<String>> {

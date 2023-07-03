@@ -130,7 +130,7 @@ impl TardisWebServer {
 
     /// add route
     /// # Usage
-    /// ```no_run
+    /// ```ignore
     /// // add an api
     /// webserver.add_route(api).await;
     /// // add with middleware
