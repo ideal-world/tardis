@@ -32,21 +32,8 @@ pub struct NacosClient {
     /// listener poll period, default 5s
     pub poll_period: std::time::Duration,
     access_token: Arc<Mutex<Option<String>>>,
-    reqwest_client: reqwest::Client,
+    pub reqwest_client: reqwest::Client,
     auth: Option<(String, String)>,
-}
-
-impl std::ops::Deref for NacosClient {
-    type Target = reqwest::Client;
-    fn deref(&self) -> &Self::Target {
-        &self.reqwest_client
-    }
-}
-
-impl std::ops::DerefMut for NacosClient {
-    fn deref_mut(&mut self) -> &mut <Self as std::ops::Deref>::Target {
-        &mut self.reqwest_client
-    }
 }
 
 impl Display for NacosClient {
@@ -87,6 +74,19 @@ impl NacosClient {
             reqwest_client: client,
             ..Default::default()
         }
+    }
+
+    /// get a copy of current using access_token
+    pub async fn get_current_access_token(&self) -> Option<String> {
+        self.access_token.lock().await.clone()
+    }
+
+    /// execute a reqwest::Request, with access_token if client has one
+    pub async fn reqwest_execute(&self, mut request: reqwest::Request) -> Result<reqwest::Response, reqwest::Error> {
+        if let Some(access_token) = self.access_token.lock().await.as_deref() {
+            request.url_mut().query_pairs_mut().append_pair(ACCESS_TOKEN_FIELD, access_token);
+        };
+        self.reqwest_client.execute(request).await
     }
 
     #[cfg(feature = "test")]
