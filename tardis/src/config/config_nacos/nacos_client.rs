@@ -82,11 +82,12 @@ impl NacosClient {
     }
 
     /// execute a reqwest::Request, with access_token if client has one
-    pub async fn reqwest_execute(&self, mut request: reqwest::Request) -> Result<reqwest::Response, reqwest::Error> {
+    pub async fn reqwest_execute(&self, f: impl Fn(&reqwest::Client) -> reqwest::RequestBuilder) -> Result<reqwest::Response, reqwest::Error> {
+        let mut request = f(&self.reqwest_client);
         if let Some(access_token) = self.access_token.lock().await.as_deref() {
-            request.url_mut().query_pairs_mut().append_pair(ACCESS_TOKEN_FIELD, access_token);
+            request = request.query(&[(ACCESS_TOKEN_FIELD, access_token)]);
         };
-        self.reqwest_client.execute(request).await
+        self.reqwest_client.execute(request.build()?).await
     }
 
     #[cfg(feature = "test")]
