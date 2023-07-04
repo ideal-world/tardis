@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::{info, trace};
+use tracing::{info, trace, debug};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
@@ -102,10 +102,10 @@ impl TardisSearchClient {
     /// use tardis::TardisFuns;
     /// TardisFuns::search().create_index("test_index").await.unwrap();
     /// ```
-    pub async fn create_index(&self, index_name: &str) -> TardisResult<()> {
+    pub async fn create_index(&self, index_name: &str, mappings: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.SearchClient] Creating index: {}", index_name);
         let url = format!("{}/{}", self.server_url, index_name);
-        let resp = self.client.put_str_to_str(&url, "", None).await?;
+        let resp = self.client.put_str_to_str(&url, mappings.unwrap_or_default(), None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             Ok(())
         } else {
@@ -291,10 +291,18 @@ impl TardisSearchClient {
     /// use tardis::TardisFuns;
     /// TardisFuns::search().update("test_index", "111", HashMap::from([("user.id", "1"), ("user.name", "李四")])).await.unwrap();
     /// ```
-    pub async fn update(&self, index_name: &str, id: &str, q: HashMap<&str, &str>) -> TardisResult<()> {
-        let q = q.into_iter().map(|(k, v)| format!(r#""ctx._source.{k}= '{v}'"#)).collect::<Vec<String>>().join(";");
-        let q = format!(r#"{{ "script": {{"source": {q}}}}}"#);
-        trace!("[Tardis.SearchClient] Update: {}, q:{}", index_name, q);
+    pub async fn update(&self, index_name: &str, id: &str, q: HashMap<String, String>) -> TardisResult<()> {
+        let mut source_vec = vec![];
+        let mut params_vec = vec![];
+        for (key, value) in q {
+            let param_key = key.replace(".", "_");
+            source_vec.push(format!(r#"ctx._source.{key}= params.{param_key}"#));
+            params_vec.push(format!(r#""{param_key}": {value}"#));
+        }
+        let source = source_vec.join(";");
+        let params = params_vec.join(",");
+        let q = format!(r#"{{ "script": {{"source": "{source}", "params":{{{params}}}}}}}"#);
+        debug!("[Tardis.SearchClient] Update: {}, q:{}", index_name, q);
         let url = format!("{}/{}/_update/{}?refresh=true", self.server_url, index_name, id);
         let resp = self.client.post_str_to_str(&url, &q, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
@@ -303,7 +311,7 @@ impl TardisSearchClient {
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
-                &format!("[Tardis.SearchClient] Delete by query error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                &format!("[Tardis.SearchClient] Update error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
                 "-1-tardis-search-error",
             ))
         }

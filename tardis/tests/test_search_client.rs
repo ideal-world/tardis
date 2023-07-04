@@ -62,7 +62,7 @@ async fn test_search_client() -> TardisResult<()> {
 
         let index_name = "test_index";
 
-        client.create_index(index_name).await?;
+        client.create_index(index_name, None).await?;
         assert!(client.check_index_exist(index_name).await?);
         assert!(!client.check_index_exist("test_index_copy").await?);
 
@@ -95,14 +95,14 @@ async fn test_search_client() -> TardisResult<()> {
                 r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}, {"match": {"user.open": "false"}}]}}}"#,
             )
             .await?;
-        // client.update(index_name, &id, HashMap::from([("user.open", "false")])).await?;
+        client.update(index_name, &id, HashMap::from([("user.open".to_string(), "false".to_string()), ("user.xxx".to_string(), "[\"acc01\",\"acc02\"]".to_string())])).await?;
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         let raw_search_resp = client.raw_search(index_name, r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}]}}}"#, Some(10), Some(0)).await?;
         assert_eq!(raw_search_resp.hits.total.value, 1);
 
         let raw_search_resp = client.raw_search(index_name, r#"{ "query": { "bool": { "must": [{"match": {"user.name": "tom"}}]}}}"#, Some(10), Some(0)).await?;
-        assert_eq!(raw_search_resp.hits.hits[0]._source.to_string(), r#"{"user":{"id":4,"name":"Tom","open":true}}"#);
+        assert_eq!(raw_search_resp.hits.hits[0]._source.to_string(), r#"{"user":{"id":4,"name":"Tom","open":"false"}}"#);
 
         Ok(())
     })
