@@ -127,7 +127,10 @@ async fn test_search_client() -> TardisResult<()> {
                 None,
             )
             .await?;
-        assert_eq!(raw_search_resp.hits.hits[0]._source.to_string(), r#"{"user":{"id":4,"name":"Tom","open":false,"xxx":["acc01","acc02"]}}"#);
+        assert_eq!(
+            raw_search_resp.hits.hits[0]._source.to_string(),
+            r#"{"user":{"id":4,"name":"Tom","open":false,"xxx":["acc01","acc02"]}}"#
+        );
 
         Ok(())
     })

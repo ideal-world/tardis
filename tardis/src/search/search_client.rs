@@ -305,7 +305,7 @@ impl TardisSearchClient {
     ///  * `index_name` -  index name / 索引名称
     ///  * `id` -  record primary key value / 记录主键值
     ///  * `q` -  native format / 原生格式
-    /// 
+    ///
     /// # Examples
     /// ```ignore
     /// use tardis::TardisFuns;
