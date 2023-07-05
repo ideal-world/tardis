@@ -231,6 +231,9 @@ impl TardisSearchClient {
     ///
     ///  * `index_name` -  index name / 索引名称
     ///  * `q` -  native format / 原生格式
+    ///  * `size` -  number of shows / 展示的数量
+    ///  * `from` -  offset / 偏移量
+    ///  * `track_scores` -  calculating score / 计算相关性得分
     ///
     pub async fn raw_search(&self, index_name: &str, q: &str, size: Option<i32>, from: Option<i32>, track_scores: Option<bool>) -> TardisResult<TardisRawSearchResp> {
         trace!(
@@ -300,7 +303,9 @@ impl TardisSearchClient {
     /// # Arguments
     ///
     ///  * `index_name` -  index name / 索引名称
-    ///
+    ///  * `id` -  record primary key value / 记录主键值
+    ///  * `q` -  native format / 原生格式
+    /// 
     /// # Examples
     /// ```ignore
     /// use tardis::TardisFuns;
@@ -337,6 +342,7 @@ impl TardisSearchClient {
     /// # Arguments
     ///
     ///  * `index_name` -  index name / 索引名称
+    ///  * `q` -  native format / 原生格式
     ///
     /// # Examples
     /// ```ignore
