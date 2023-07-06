@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use tracing::{info, trace};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use tracing::{debug, info, trace};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
@@ -26,8 +28,44 @@ use crate::{TardisFuns, TardisWebClient};
 /// TardisFuns::search().simple_search("test_index", "张三").await.unwrap();
 /// ```
 pub struct TardisSearchClient {
-    client: TardisWebClient,
-    server_url: String,
+    pub client: TardisWebClient,
+    pub server_url: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchResp {
+    pub hits: TardisRawSearchHits,
+    pub took: i32,
+    pub _shards: TardisRawSearchShards,
+    pub timed_out: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchHits {
+    pub total: TardisRawSearchHitsTotal,
+    pub hits: Vec<TardisRawSearchHitsItem>,
+    pub max_score: Option<f32>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchHitsTotal {
+    pub value: i32,
+    pub relation: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchHitsItem {
+    pub _index: String,
+    pub _id: String,
+    pub _score: Option<f32>,
+    pub _source: Value,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TardisRawSearchShards {
+    pub failed: i32,
+    pub successful: i32,
+    pub total: i32,
 }
 
 impl TardisSearchClient {
@@ -64,10 +102,10 @@ impl TardisSearchClient {
     /// use tardis::TardisFuns;
     /// TardisFuns::search().create_index("test_index").await.unwrap();
     /// ```
-    pub async fn create_index(&self, index_name: &str) -> TardisResult<()> {
+    pub async fn create_index(&self, index_name: &str, mappings: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.SearchClient] Creating index: {}", index_name);
         let url = format!("{}/{}", self.server_url, index_name);
-        let resp = self.client.put_str_to_str(&url, "", None).await?;
+        let resp = self.client.put_str_to_str(&url, mappings.unwrap_or_default(), None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             Ok(())
         } else {
@@ -183,7 +221,8 @@ impl TardisSearchClient {
         trace!("[Tardis.SearchClient] Multi search: {}, q:{:?}", index_name, q);
         let q = q.into_iter().map(|(k, v)| format!(r#"{{"match": {{"{k}": "{v}"}}}}"#)).collect::<Vec<String>>().join(",");
         let q = format!(r#"{{ "query": {{ "bool": {{ "must": [{q}]}}}}}}"#);
-        self.raw_search(index_name, &q).await
+        let result = self.raw_search(index_name, &q, None, None, None).await?.hits.hits.iter().map(|item| item._source.clone().to_string()).collect();
+        Ok(result)
     }
 
     /// Search using native format  / 使用原生格式搜索
@@ -192,13 +231,38 @@ impl TardisSearchClient {
     ///
     ///  * `index_name` -  index name / 索引名称
     ///  * `q` -  native format / 原生格式
+    ///  * `size` -  number of shows / 展示的数量
+    ///  * `from` -  offset / 偏移量
+    ///  * `track_scores` -  calculating score / 计算相关性得分
     ///
-    pub async fn raw_search(&self, index_name: &str, q: &str) -> TardisResult<Vec<String>> {
-        trace!("[Tardis.SearchClient] Raw search: {}, q:{}", index_name, q);
-        let url = format!("{}/{}/_search", self.server_url, index_name);
+    pub async fn raw_search(&self, index_name: &str, q: &str, size: Option<i32>, from: Option<i32>, track_scores: Option<bool>) -> TardisResult<TardisRawSearchResp> {
+        trace!(
+            "[Tardis.SearchClient] Raw search: {}, q:{}, size:{:?}, from:{:?}, track_scores:{:?}",
+            index_name,
+            q,
+            size,
+            from,
+            track_scores
+        );
+        let mut url = format!("{}/{}/_search", self.server_url, index_name);
+        let mut queries = vec![];
+
+        if let Some(size) = size {
+            queries.push(format!("size={}", size));
+        }
+        if let Some(from) = from {
+            queries.push(format!("from={}", from));
+        }
+        if let Some(track_scores) = track_scores {
+            queries.push(format!("track_scores={}", track_scores));
+        }
+        if !queries.is_empty() {
+            url = format!("{}?{}", url, queries.join("&").as_str());
+        }
         let resp = self.client.post_str_to_str(&url, q, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
-            Self::parse_search_result(&resp.body.unwrap_or_default())
+            trace!("[Tardis.SearchClient] resp.body: {:?}", &resp.body);
+            Ok(TardisFuns::json.str_to_obj(&resp.body.unwrap_or_default())?)
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
@@ -231,6 +295,72 @@ impl TardisSearchClient {
                 "[Tardis.SearchClient] Check index exist request failed",
                 "-1-tardis-search-error",
             )),
+        }
+    }
+
+    /// update record / 更新记录
+    ///
+    /// # Arguments
+    ///
+    ///  * `index_name` -  index name / 索引名称
+    ///  * `id` -  record primary key value / 记录主键值
+    ///  * `q` -  native format / 原生格式
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// TardisFuns::search().update("test_index", "111", HashMap::from([("user.id", "1"), ("user.name", "李四")])).await.unwrap();
+    /// ```
+    pub async fn update(&self, index_name: &str, id: &str, q: HashMap<String, String>) -> TardisResult<()> {
+        let mut source_vec = vec![];
+        let mut params_vec = vec![];
+        for (key, value) in q {
+            let param_key = key.replace(".", "_");
+            source_vec.push(format!(r#"ctx._source.{key}= params.{param_key}"#));
+            params_vec.push(format!(r#""{param_key}": {value}"#));
+        }
+        let source = source_vec.join(";");
+        let params = params_vec.join(",");
+        let q = format!(r#"{{ "script": {{"source": "{source}", "params":{{{params}}}}}}}"#);
+        debug!("[Tardis.SearchClient] Update: {}, q:{}", index_name, q);
+        let url = format!("{}/{}/_update/{}?refresh=true", self.server_url, index_name, id);
+        let resp = self.client.post_str_to_str(&url, &q, None).await?;
+        if resp.code >= 200 && resp.code <= 300 {
+            trace!("[Tardis.SearchClient] resp.body: {:?}", &resp.body);
+            Ok(())
+        } else {
+            Err(TardisError::custom(
+                &resp.code.to_string(),
+                &format!("[Tardis.SearchClient] Update error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                "-1-tardis-search-error",
+            ))
+        }
+    }
+
+    /// Delete record / 删除记录
+    ///
+    /// # Arguments
+    ///
+    ///  * `index_name` -  index name / 索引名称
+    ///  * `q` -  native format / 原生格式
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// TardisFuns::search().delete_by_query("test_index" r#"{}"#).await.unwrap();
+    /// ```
+    pub async fn delete_by_query(&self, index_name: &str, q: &str) -> TardisResult<()> {
+        let url = format!("{}/{}/_delete_by_query", self.server_url, index_name);
+        let resp = self.client.post_str_to_str(&url, q, None).await?;
+        if resp.code >= 200 && resp.code <= 300 {
+            debug!("[Tardis.SearchClient] resp.body: {:?}", &resp.body);
+            Ok(())
+        } else {
+            Err(TardisError::custom(
+                &resp.code.to_string(),
+                &format!("[Tardis.SearchClient] Delete by query error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                "-1-tardis-search-error",
+            ))
         }
     }
 

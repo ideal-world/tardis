@@ -62,7 +62,7 @@ async fn test_search_client() -> TardisResult<()> {
 
         let index_name = "test_index";
 
-        client.create_index(index_name).await?;
+        client.create_index(index_name, None).await?;
         assert!(client.check_index_exist(index_name).await?);
         assert!(!client.check_index_exist("test_index_copy").await?);
 
@@ -73,7 +73,6 @@ async fn test_search_client() -> TardisResult<()> {
 
         let record = client.get_record(index_name, &id).await?;
         assert_eq!(record, r#"{"user":{"id":4,"name":"Tom","open":true}}"#);
-
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         let records = client.simple_search(index_name, "李四").await?;
@@ -89,6 +88,50 @@ async fn test_search_client() -> TardisResult<()> {
         let records = client.multi_search(index_name, HashMap::from([("user.open", "false"), ("user.id", "2"), ("user.name", "李四")])).await?;
         assert_eq!(records.len(), 1);
         assert!(records.contains(&r#"{"user":{"id":2,"name":"李四","open":false}}"#.to_string()));
+
+        client
+            .delete_by_query(
+                index_name,
+                r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}, {"match": {"user.open": "false"}}]}}}"#,
+            )
+            .await?;
+        client
+            .update(
+                index_name,
+                &id,
+                HashMap::from([
+                    ("user.open".to_string(), "false".to_string()),
+                    ("user.xxx".to_string(), "[\"acc01\",\"acc02\"]".to_string()),
+                ]),
+            )
+            .await?;
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+        let raw_search_resp = client
+            .raw_search(
+                index_name,
+                r#"{ "query": { "bool": { "must": [{"match": {"user.name": "李四"}}]}}}"#,
+                Some(10),
+                Some(0),
+                None,
+            )
+            .await?;
+        assert_eq!(raw_search_resp.hits.total.value, 1);
+
+        let raw_search_resp = client
+            .raw_search(
+                index_name,
+                r#"{ "query": { "bool": { "must": [{"match": {"user.name": "tom"}}]}}}"#,
+                Some(10),
+                Some(0),
+                None,
+            )
+            .await?;
+        assert_eq!(
+            raw_search_resp.hits.hits[0]._source.to_string(),
+            r#"{"user":{"id":4,"name":"Tom","open":false,"xxx":["acc01","acc02"]}}"#
+        );
+
         Ok(())
     })
     .await
