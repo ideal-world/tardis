@@ -321,6 +321,12 @@ impl TardisWebServer {
         drop(state_locked);
         Ok(())
     }
+
+    /// return true if web server is running
+    pub async fn is_running(&self) -> bool {
+        let state = &*self.state.lock().await;
+        matches!(state, ServerState::Running(t) if !t.inner.is_finished())
+    }
 }
 
 /// this await will pending until server is closed

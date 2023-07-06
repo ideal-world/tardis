@@ -433,9 +433,13 @@ impl TardisFuns {
                     };
                     // if there's some inherit webserver
                     if let Some(inherit) = inherit {
-                        // 1. load initializers
+                        // 1. should always shutdown first
+                        if let Err(e) = inherit.shutdown().await {
+                            log::error!("[Tardis.WebServer] encounter an error when trying to shutdown webserver: {e}")
+                        }
+                        // 2. load initializers
                         web_server.load_initializer(inherit).await;
-                        // 2. restart webserver
+                        // 3. restart webserver
                         web_server.start().await?;
                     }
                     replace(&mut TARDIS_INST.web_server, Some(web_server));

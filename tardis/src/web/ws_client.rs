@@ -45,7 +45,12 @@ where
                 url.clone(),
                 None,
                 false,
-                Some(Connector::NativeTls(TlsConnector::builder().danger_accept_invalid_certs(true).build().unwrap())),
+                Some(Connector::NativeTls(TlsConnector::builder().danger_accept_invalid_certs(true).build().map_err(|e| {
+                    TardisError::format_error(
+                        &format!("[Tardis.WSClient] Failed to build tls connector: {e}"),
+                        "500-tardis-ws-client-build-connector-error",
+                    )
+                })?)),
             )
             .await
         };
@@ -80,7 +85,7 @@ where
     }
 
     pub async fn send_obj<E: ?Sized + Serialize>(&self, msg: &E) -> TardisResult<()> {
-        let message = TardisFuns::json.obj_to_string(msg).unwrap();
+        let message = TardisFuns::json.obj_to_string(msg)?;
         self.send_text(message).await
     }
 
