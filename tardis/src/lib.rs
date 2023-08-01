@@ -885,7 +885,7 @@ impl TardisFuns {
         F: Fn(tokio_tungstenite::tungstenite::Message) -> T + Send + Sync + Copy + 'static,
         T: futures::Future<Output = Option<tokio_tungstenite::tungstenite::Message>> + Send + 'static,
     {
-        web::ws_client::TardisWSClient::init(str_url, fun).await
+        web::ws_client::TardisWSClient::connect(str_url, fun).await
     }
 
     /// Use the distributed cache feature / 使用分布式缓存功能

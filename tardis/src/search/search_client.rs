@@ -315,7 +315,7 @@ impl TardisSearchClient {
         let mut source_vec = vec![];
         let mut params_vec = vec![];
         for (key, value) in q {
-            let param_key = key.replace(".", "_");
+            let param_key = key.replace('.', "_");
             source_vec.push(format!(r#"ctx._source.{key}= params.{param_key}"#));
             params_vec.push(format!(r#""{param_key}": {value}"#));
         }

@@ -11,7 +11,7 @@ use crate::{TardisFuns, TardisResult};
 pub const TOKEN_FLAG: &str = "__";
 
 #[derive(SecurityScheme)]
-#[oai(type = "api_key", key_name = "Tardis-Context", in = "header", checker = "context_checker")]
+#[oai(ty = "api_key", key_name = "Tardis-Context", key_in = "header", checker = "context_checker")]
 pub struct TardisContextExtractor(pub TardisContext);
 
 async fn context_checker(req: &Request, _: ApiKey) -> Option<TardisContext> {

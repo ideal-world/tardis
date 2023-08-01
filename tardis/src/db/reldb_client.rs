@@ -196,9 +196,9 @@ impl TardisRelDBClient {
                     let mut raw_opt = opt.get_url().parse::<sqlx::mysql::MySqlConnectOptions>().map_err(|error| DbErr::Conn(RuntimeErr::Internal(error.to_string())))?;
                     use sqlx::ConnectOptions;
                     if !opt.get_sqlx_logging() {
-                        raw_opt.disable_statement_logging();
+                        raw_opt = raw_opt.disable_statement_logging();
                     } else {
-                        raw_opt.log_statements(opt.get_sqlx_logging_level());
+                        raw_opt = raw_opt.log_statements(opt.get_sqlx_logging_level());
                     }
                     match opt
                         .pool_options::<sqlx::MySql>()
@@ -224,9 +224,9 @@ impl TardisRelDBClient {
                     let mut raw_opt = opt.get_url().parse::<sqlx::postgres::PgConnectOptions>().map_err(|error| DbErr::Conn(RuntimeErr::Internal(error.to_string())))?;
                     use sqlx::ConnectOptions;
                     if !opt.get_sqlx_logging() {
-                        raw_opt.disable_statement_logging();
+                        raw_opt = raw_opt.disable_statement_logging();
                     } else {
-                        raw_opt.log_statements(opt.get_sqlx_logging_level());
+                        raw_opt = raw_opt.log_statements(opt.get_sqlx_logging_level());
                     }
                     match opt
                         .pool_options::<sqlx::Postgres>()

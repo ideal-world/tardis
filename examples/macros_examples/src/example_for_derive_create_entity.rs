@@ -26,7 +26,7 @@ pub struct Model {
     pub can_bool: bool,
     #[index(full_text, index_id = "index_id_3")]
     pub can_be_null: Option<String>,
-    #[tardis_entity(custom_type = "char(50)", custom_len = "50")]
+    #[tardis_entity(custom_type = "Char(50)", custom_len = "50")]
     pub be_50_char: String,
     #[tardis_entity(custom_type = "varbit(50)")]
     pub be_var_bit: Vec<u8>,
