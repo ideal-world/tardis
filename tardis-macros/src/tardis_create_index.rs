@@ -192,7 +192,8 @@ fn index_type_map(index_type: &str, span: Span, create_statement: &mut Punctuate
                     let custom_index_type = &index_type[paren + 1..index_type.len() - 1];
                     let custom_index_type = Ident::new(custom_index_type, span);
                     let custom_statement = quote!(#custom_index_type{});
-                    create_statement.push(quote!(index_type(::tardis::db::sea_orm::sea_query::IndexType::Custom(::std::sync::Arc::new(#custom_statement)))));
+                    create_statement
+                        .push(quote!(index_type(::tardis::db::sea_orm::sea_query::IndexType::Custom(tardis::db::sea_orm::sea_query::types::SeaRc::new(#custom_statement)))));
                     return Ok(());
                 };
             }
