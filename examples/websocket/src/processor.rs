@@ -2,9 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use tardis::basic::result::TardisResult;
-use tardis::tokio::sync::broadcast::Sender;
 use tardis::web::poem::web::websocket::BoxWebSocketUpgraded;
-use tardis::web::poem::web::{websocket::WebSocket, Data, Path};
+use tardis::web::poem::web::{websocket::WebSocket, Path};
 use tardis::web::poem_openapi::payload::Html;
 use tardis::web::poem_openapi::{self};
 use tardis::web::ws_processor::{ws_broadcast, ws_echo, TardisWebsocketResp};
@@ -127,14 +126,14 @@ impl Page {
     }
 
     #[oai(path = "/ws/broadcast/:name", method = "get")]
-    async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<String>>) -> BoxWebSocketUpgraded {
+    async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket) -> BoxWebSocketUpgraded {
         ws_broadcast(
+            "/ws/broadcast/:name",
             vec![name.0],
             false,
             false,
             HashMap::from([("some_key".to_string(), "ext_value".to_string())]),
             websocket,
-            sender.clone(),
             |req_msg, ext| async move {
                 let example_msg = TardisFuns::json.json_to_obj::<WebsocketExample>(req_msg.msg).unwrap();
                 Some(TardisWebsocketResp {
@@ -145,6 +144,7 @@ impl Page {
             },
             |_, _| async move {},
         )
+        .await
     }
 }
 

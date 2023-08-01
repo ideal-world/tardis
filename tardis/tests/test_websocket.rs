@@ -1,27 +1,20 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
 use std::time::Duration;
 
-use lazy_static::lazy_static;
 use poem::web::websocket::{BoxWebSocketUpgraded, WebSocket};
 use poem_openapi::param::Path;
 use serde_json::json;
 use tardis::basic::result::TardisResult;
 use tardis::web::web_server::{TardisWebServer, WebServerModule};
+use tardis::web::ws_client::TardisWebSocketMessageExt;
 use tardis::web::ws_processor::{
     ws_broadcast, ws_echo, TardisWebsocketInstInfo, TardisWebsocketMessage, TardisWebsocketMgrMessage, TardisWebsocketReq, TardisWebsocketResp, WS_SYSTEM_EVENT_AVATAR_ADD,
     WS_SYSTEM_EVENT_AVATAR_DEL, WS_SYSTEM_EVENT_INFO,
 };
 use tardis::TardisFuns;
-use tokio::sync::broadcast::Sender;
-use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio_tungstenite::tungstenite::Message;
-
-lazy_static! {
-    static ref SENDERS: Arc<RwLock<HashMap<String, Sender<String>>>> = Arc::new(RwLock::new(HashMap::new()));
-}
 
 #[tokio::test]
 async fn test_websocket() -> TardisResult<()> {
@@ -225,19 +218,17 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     static DEL_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/_/true", move |msg| async move {
-        if let Message::Text(msg) = msg {
-            let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMgrMessage>(&msg).unwrap();
-            if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
-                ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
-                let from_avatar = receive_msg.from_avatar.clone();
-                return Some(Message::Text(
-                    TardisFuns::json.obj_to_string(&receive_msg.into_req(json! {"c"}, from_avatar.clone(), Some(vec![from_avatar]))).unwrap(),
-                ));
-            }
-            if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
-                assert!(1 == 2);
-                DEL_COUNTER.fetch_add(1, Ordering::SeqCst);
-            }
+        let receive_msg = msg.str_to_obj::<TardisWebsocketMgrMessage>().unwrap();
+        if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
+            ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
+            let from_avatar = receive_msg.from_avatar.clone();
+            return Some(Message::Text(
+                TardisFuns::json.obj_to_string(&receive_msg.into_req(json! {"c"}, from_avatar.clone(), Some(vec![from_avatar]))).unwrap(),
+            ));
+        }
+        if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
+            assert!(1 == 2);
+            DEL_COUNTER.fetch_add(1, Ordering::SeqCst);
         }
         None
     })
@@ -332,18 +323,14 @@ struct Api;
 impl Api {
     #[oai(path = "/ws/broadcast/:group/:name", method = "get")]
     async fn ws_broadcast(&self, group: Path<String>, name: Path<String>, websocket: WebSocket) -> BoxWebSocketUpgraded {
-        if !SENDERS.read().await.contains_key(&group.0) {
-            SENDERS.write().await.insert(group.0.clone(), tokio::sync::broadcast::channel::<String>(100).0);
-        }
-        let sender = SENDERS.read().await.get(&group.0).unwrap().clone();
         if group.0 == "g1" {
             ws_broadcast(
+                &group.0,
                 vec![name.0],
                 false,
                 true,
                 HashMap::new(),
                 websocket,
-                sender,
                 |req_msg, _ext| async move {
                     println!("service g1 recv:{}:{}", req_msg.from_avatar, req_msg.msg);
                     if req_msg.msg == json! {"client_b send:hi again"} {
@@ -357,14 +344,15 @@ impl Api {
                 },
                 |_, _| async move {},
             )
+            .await
         } else if group.0 == "g2" {
             ws_broadcast(
+                &group.0,
                 vec![name.0],
                 false,
                 false,
                 HashMap::new(),
                 websocket,
-                sender,
                 |req_msg, _ext| async move {
                     println!("service g2 recv:{}:{}", req_msg.from_avatar, req_msg.msg);
                     if req_msg.msg == json! {"client_b send:hi again"} {
@@ -378,20 +366,22 @@ impl Api {
                 },
                 |_, _| async move {},
             )
+            .await
         } else if group.0 == "gerror" {
             ws_broadcast(
+                &group.0,
                 vec![name.0],
                 false,
                 false,
                 HashMap::new(),
                 websocket,
-                sender,
                 |req_msg, _ext| async move {
                     println!("service gerror recv:{}:{}", req_msg.from_avatar, req_msg.msg);
                     None
                 },
                 |_, _| async move {},
             )
+            .await
         } else {
             ws_echo(
                 name.0,
@@ -405,17 +395,13 @@ impl Api {
 
     #[oai(path = "/ws/dyn/:name/:mgr", method = "get")]
     async fn ws_dyn_broadcast(&self, name: Path<String>, mgr: Path<bool>, websocket: WebSocket) -> BoxWebSocketUpgraded {
-        if !SENDERS.read().await.contains_key("dyn") {
-            SENDERS.write().await.insert("dyn".to_string(), tokio::sync::broadcast::channel::<String>(100).0);
-        }
-        let sender = SENDERS.read().await.get("dyn").unwrap().clone();
         ws_broadcast(
+            "dyn",
             vec![name.0],
             mgr.0,
             true,
             HashMap::new(),
             websocket,
-            sender,
             |req_msg, _ext| async move {
                 Some(TardisWebsocketResp {
                     msg: req_msg.msg,
@@ -425,5 +411,6 @@ impl Api {
             },
             |_, _| async move {},
         )
+        .await
     }
 }

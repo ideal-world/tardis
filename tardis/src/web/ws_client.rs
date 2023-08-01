@@ -8,7 +8,9 @@ use futures::stream::SplitSink;
 #[cfg(feature = "future")]
 use futures::{Future, SinkExt, StreamExt};
 use native_tls::TlsConnector;
+use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_json::Value;
 use tokio::{net::TcpStream, sync::Mutex};
 use tokio_tungstenite::tungstenite::{self, Error, Message};
 use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};
@@ -31,11 +33,11 @@ where
     F: Fn(Message) -> T + Send + Sync + Copy + 'static,
     T: Future<Output = Option<Message>> + Send + 'static,
 {
-    pub async fn init(str_url: &str, fun: F) -> TardisResult<TardisWSClient<F, T>> {
-        Self::do_init(str_url, fun, false).await
+    pub async fn connect(str_url: &str, fun: F) -> TardisResult<TardisWSClient<F, T>> {
+        Self::do_connect(str_url, fun, false).await
     }
 
-    async fn do_init(str_url: &str, fun: F, retry: bool) -> TardisResult<TardisWSClient<F, T>> {
+    async fn do_connect(str_url: &str, fun: F, retry: bool) -> TardisResult<TardisWSClient<F, T>> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.WSClient] Invalid url {str_url}"), "406-tardis-ws-url-error"))?;
         info!("[Tardis.WSClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
         let connect = if !str_url.starts_with("wss") {
@@ -91,18 +93,18 @@ where
 
     pub async fn send_text(&self, message: String) -> TardisResult<()> {
         let message = Message::Text(message.clone());
-        self.send_with_retry(message).await
+        self.send_raw_with_retry(message).await
     }
 
-    pub async fn send_with_retry(&self, message: Message) -> TardisResult<()> {
-        if let Err(error) = self.do_send(message.clone()).await {
+    pub async fn send_raw_with_retry(&self, message: Message) -> TardisResult<()> {
+        if let Err(error) = self.send_raw(message.clone()).await {
             warn!("[Tardis.WSClient] Failed to send message {}: {}", message.clone(), error);
             match error {
                 Error::AlreadyClosed | Error::Io(_) => {
                     if let Err(error) = self.reconnect().await {
                         Err(error)
                     } else {
-                        self.do_send(message.clone())
+                        self.send_raw(message.clone())
                             .await
                             .map_err(|error| TardisError::format_error(&format!("[Tardis.WSClient] Failed to send message {message}: {error}"), "500-tardis-ws-client-send-error"))
                     }
@@ -117,13 +119,49 @@ where
         }
     }
 
-    pub async fn do_send(&self, message: Message) -> Result<(), tungstenite::Error> {
+    pub async fn send_raw(&self, message: Message) -> Result<(), tungstenite::Error> {
         self.write.lock().await.lock().await.send(message).await
     }
 
     async fn reconnect(&self) -> TardisResult<()> {
-        let new_client = Self::do_init(&self.str_url, self.fun, true).await?;
+        let new_client = Self::do_connect(&self.str_url, self.fun, true).await?;
         *self.write.lock().await = new_client.write.lock().await.clone();
         Ok(())
+    }
+}
+
+pub trait TardisWebSocketMessageExt {
+    fn str_to_obj<T: DeserializeOwned>(&self) -> TardisResult<T>;
+    fn str_to_json(&self) -> TardisResult<Value>;
+}
+
+impl TardisWebSocketMessageExt for Message {
+    fn str_to_obj<T: DeserializeOwned>(&self) -> TardisResult<T> {
+        if let Message::Text(msg) = self {
+            TardisFuns::json.str_to_obj(msg).map_err(|_| {
+                TardisError::format_error(
+                    &format!("[Tardis.WSClient] Message {self} parse to object error"),
+                    "400-tardis-ws-client-message-parse-error",
+                )
+            })
+        } else {
+            Err(TardisError::format_error(
+                &format!("[Tardis.WSClient] Message {self} isn't a text type"),
+                "400-tardis-ws-client-message-not-text",
+            ))
+        }
+    }
+
+    fn str_to_json(&self) -> TardisResult<Value> {
+        if let Message::Text(msg) = self {
+            TardisFuns::json
+                .str_to_json(msg)
+                .map_err(|_| TardisError::format_error(&format!("[Tardis.WSClient] Message {self} parse to json error"), "400-tardis-ws-client-message-parse-error"))
+        } else {
+            Err(TardisError::format_error(
+                &format!("[Tardis.WSClient] Message {self} isn't a text type"),
+                "400-tardis-ws-client-message-not-text",
+            ))
+        }
     }
 }
