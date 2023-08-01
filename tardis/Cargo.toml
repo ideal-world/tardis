@@ -17,7 +17,7 @@ name = "tardis"
 path = "src/lib.rs"
 
 [features]
-default = ["tardis-macros", "tracing"]
+default = ["tardis-macros"]
 conf-remote = ["web-client", "async-trait", "rust-crypto"]
 crypto = ["rust-crypto", "rsa"]
 crypto-with-sm = ["crypto", "libsm", "num-bigint"]
