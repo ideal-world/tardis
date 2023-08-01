@@ -17,7 +17,7 @@ name = "tardis"
 path = "src/lib.rs"
 
 [features]
-default = ["tardis-macros"]
+default = ["tardis-macros", "tracing"]
 conf-remote = ["web-client", "async-trait", "rust-crypto"]
 crypto = ["rust-crypto", "rsa"]
 crypto-with-sm = ["crypto", "libsm", "num-bigint"]
@@ -76,12 +76,12 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Tracing
-tracing-opentelemetry = { version = "0.18", optional = true }
-opentelemetry = { version = "0.18", default-features = false, features = [
+tracing-opentelemetry = { version = "0.19", optional = true }
+opentelemetry = { version = "0.19", default-features = false, features = [
     "trace",
     "rt-tokio",
 ], optional = true }
-opentelemetry-otlp = { version = "0.11", features = [
+opentelemetry-otlp = { version = "0.12", features = [
     "reqwest-client",
     "reqwest-rustls",
     "http-proto",
