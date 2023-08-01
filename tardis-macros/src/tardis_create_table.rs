@@ -425,7 +425,7 @@ fn map_custom_type_to_sea_type(custom_column_type: &str, custom_len: Vec<u32>, s
         "Array" | "array" => {
             if cfg!(feature = "reldb-postgres") {
                 let item_type = map_custom_type_to_sea_type(type_split.join(".").as_str(), custom_len, span)?;
-                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Array(::tardis::db::sea_orm::sea_query::SeaRc::new(#item_type)))
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Array(::std::sync::Arc::new(#item_type)))
             } else {
                 return Err(Error::new(
                     span,
