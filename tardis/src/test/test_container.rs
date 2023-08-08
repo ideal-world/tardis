@@ -30,7 +30,7 @@ impl TardisTestContainer {
     }
 
     pub fn redis_custom(docker: &Cli) -> Container<Redis> {
-        docker.run(images::redis::Redis::default())
+        docker.run(images::redis::Redis)
     }
 
     pub async fn rabbit<F, T>(fun: F) -> TardisResult<()>
