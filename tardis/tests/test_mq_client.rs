@@ -14,8 +14,9 @@ static COUNTER: AtomicUsize = AtomicUsize::new(0);
 #[tokio::test(flavor = "multi_thread")]
 async fn test_mq_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
-    console_subscriber::init();
-    // TardisFuns::init_log()?;
+    // enable when debug tokio
+    // console_subscriber::init();
+    TardisFuns::init_log()?;
     TardisTestContainer::rabbit(|url| async move {
         // Default test
         TardisFuns::init_conf(TardisConfig {
