@@ -34,10 +34,10 @@ jobs:
           - 4369:4369
         options: -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest
       es:
-        image: elasticsearch:8.7.1
+        image: rapidfort/elasticsearch:7.17
         ports:
           - 9200:9200
-        options: -e ELASTIC_PASSWORD=123456 -e discovery.type=single-node
+        options: -e ELASTICSEARCH_HEAP_SIZE=128m
       # https://github.com/minio/minio/issues/10745
       minio:
         image: minio/minio:edge-cicd
