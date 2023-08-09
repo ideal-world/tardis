@@ -156,11 +156,11 @@ async fn main() -> TardisResult<()> {
   ./vcpkg integrate install
   ./vcpkg install openssl
   ```
-* An `` failed to run custom build command for `opentelemetry-proto`` error occurs when running under Linux:
+* An `` failed to run custom build command for opentelemetry-proto`` error occurs when running under Linux:
   ```shell
   apt install protobuf-compiler
   ```
-* An `` failed to run custom build command for `opentelemetry-proto`` error occurs when running under MacOS:
+* An `` failed to run custom build command for opentelemetry-proto`` error occurs when running under MacOS:
   ```shell
   brew install protobuf
   ```
