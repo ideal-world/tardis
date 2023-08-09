@@ -8,6 +8,7 @@ out
 # Cargo
 Cargo.lock
 target
+.cargo
 
 # gh pages docs
 util/gh-pages/lints.json
