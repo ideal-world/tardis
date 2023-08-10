@@ -261,10 +261,10 @@ impl TardisWebServer {
         let graceful_shutdown_signal = async move {
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
-                    debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
+                    debug!("[Tardis.WebServer] WebServer shutdown (Ctrl+C signal)");
                 },
                 _ = rx => {
-                    debug!("[Tardis.WebServer] WebServer shutdown (Webserver shutdown signal)");
+                    debug!("[Tardis.WebServer] WebServer shutdown (WebServer shutdown signal)");
                 },
             };
         };

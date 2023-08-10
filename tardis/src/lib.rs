@@ -348,7 +348,6 @@ impl TardisFuns {
     ///
     /// [init](Self::init) 函数时会自动调用此函数
     pub fn init_log() -> TardisResult<()> {
-        #[cfg(not(feature = "tracing"))]
         TardisTracing::init_log()?;
         Ok(())
     }
@@ -580,6 +579,10 @@ impl TardisFuns {
                 Some(t) => t,
             }
         }
+    }
+
+    pub fn fw_config_opt() -> &'static Option<FrameworkConfig> {
+        unsafe { &TARDIS_INST.framework_config }
     }
 
     /// Using the field feature / 使用字段功能
