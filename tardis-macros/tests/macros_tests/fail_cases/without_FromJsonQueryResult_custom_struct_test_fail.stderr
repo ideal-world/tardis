@@ -5,7 +5,7 @@ error[E0277]: the trait bound `tardis::db::sea_orm::Value: From<KeyValue>` is no
   |                                   ^^^^^^^^^^^^^^^^^ the trait `From<KeyValue>` is not implemented for `tardis::db::sea_orm::Value`
   |
   = help: the following other types implement trait `From<T>`:
-            <tardis::db::sea_orm::Value as From<&'a [u8]>>
+            <tardis::db::sea_orm::Value as From<&[u8]>>
             <tardis::db::sea_orm::Value as From<&std::string::String>>
             <tardis::db::sea_orm::Value as From<&str>>
             <tardis::db::sea_orm::Value as From<Cow<'_, str>>>
@@ -16,7 +16,7 @@ error[E0277]: the trait bound `tardis::db::sea_orm::Value: From<KeyValue>` is no
           and $N others
   = note: required for `KeyValue` to implement `Into<tardis::db::sea_orm::Value>`
 note: required by a bound in `ActiveValue`
- --> $CARGO/sea-orm-0.11.3/src/entity/active_model.rs
+ --> $CARGO/sea-orm-0.12.2/src/entity/active_model.rs
   |
   |     V: Into<Value>,
   |        ^^^^^^^^^^^ required by this bound in `ActiveValue`
@@ -29,7 +29,7 @@ error[E0277]: the trait bound `KeyValue: Nullable` is not satisfied
   |                                   ^^^^^^^^^^^^^^^^^ the trait `Nullable` is not implemented for `KeyValue`
   |
   = help: the following other types implement trait `Nullable`:
-            &'a str
+            &str
             JsonValue
             NaiveDate
             NaiveDateTime
@@ -41,7 +41,7 @@ error[E0277]: the trait bound `KeyValue: Nullable` is not satisfied
   = note: required for `tardis::db::sea_orm::Value` to implement `From<std::option::Option<KeyValue>>`
   = note: required for `std::option::Option<KeyValue>` to implement `Into<tardis::db::sea_orm::Value>`
 note: required by a bound in `ActiveValue`
- --> $CARGO/sea-orm-0.11.3/src/entity/active_model.rs
+ --> $CARGO/sea-orm-0.12.2/src/entity/active_model.rs
   |
   |     V: Into<Value>,
   |        ^^^^^^^^^^^ required by this bound in `ActiveValue`

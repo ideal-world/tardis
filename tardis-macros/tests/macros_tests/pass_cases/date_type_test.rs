@@ -18,7 +18,7 @@ fn main() {
 
     let table_name: Option<_> = create_table_statement.get_table_name();
     assert!(table_name.is_some());
-    assert_eq!(format!("{:?}", table_name.unwrap()), "Table(tests)".to_string());
+    assert_eq!(format!("{:?}", table_name.unwrap()), "Table(SeaRc(tests))".to_string());
 
     let table_cols: &Vec<_> = create_table_statement.get_columns();
     assert_eq!(table_cols.len(), 2);
