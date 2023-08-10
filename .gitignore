@@ -21,3 +21,5 @@ util/gh-pages/lints.json
 *.iml
 .vscode
 .idea
+
+.DS_Store

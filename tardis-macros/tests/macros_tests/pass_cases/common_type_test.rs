@@ -78,7 +78,7 @@ fn main() {
 
     let table_name: Option<_> = create_table_statement.get_table_name();
     assert!(table_name.is_some());
-    assert_eq!(format!("{:?}", table_name.unwrap()), "Table(tests)".to_string());
+    assert_eq!(format!("{:?}", table_name.unwrap()), "Table(SeaRc(tests))".to_string());
 
     let table_cols: &Vec<_> = create_table_statement.get_columns();
     assert_eq!(table_cols.len(), 24);
@@ -96,17 +96,17 @@ fn main() {
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols
         .iter()
-        .filter(|col| col.get_column_name() == "be_custom_array_string" && col.get_column_type() == Some(&ColumnType::Array(sea_query::SeaRc::new(ColumnType::String(Some(50))))))
+        .filter(|col| col.get_column_name() == "be_custom_array_string" && col.get_column_type() == Some(&ColumnType::Array(std::sync::Arc::new(ColumnType::String(Some(50))))))
         .collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols
         .iter()
-        .filter(|col| col.get_column_name() == "be_vec_text" && col.get_column_type() == Some(&ColumnType::Array(sea_query::SeaRc::new(ColumnType::String(None)))))
+        .filter(|col| col.get_column_name() == "be_vec_text" && col.get_column_type() == Some(&ColumnType::Array(std::sync::Arc::new(ColumnType::String(None)))))
         .collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols
         .iter()
-        .filter(|col| col.get_column_name() == "be_option_vec_text" && col.get_column_type() == Some(&ColumnType::Array(sea_query::SeaRc::new(ColumnType::String(Some(50))))))
+        .filter(|col| col.get_column_name() == "be_option_vec_text" && col.get_column_type() == Some(&ColumnType::Array(std::sync::Arc::new(ColumnType::String(Some(50))))))
         .collect();
     assert_eq!(find_id.len(), 1);
 
