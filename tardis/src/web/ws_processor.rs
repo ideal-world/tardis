@@ -18,10 +18,7 @@ pub const WS_SYSTEM_EVENT_AVATAR_DEL: &str = "__sys_avatar_del__";
 pub const WS_SYSTEM_EVENT_ERROR: &str = "__sys_error__";
 pub const WS_CACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1000000) };
 
-const MAX_CAPACITY: usize = 100;
-
 lazy_static! {
-    static ref INNER_SENDERS: Arc<RwLock<HashMap<String, Sender<TardisWebsocketMgrMessage>>>> = Arc::new(RwLock::new(HashMap::new()));
     // Single instance reply guard
     static ref REPLY_ONCE_GUARD: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(WS_CACHE_SIZE)));
     // Websocket instance Id -> Avatars
@@ -97,12 +94,12 @@ pub fn ws_send_error_to_channel(req_message: &str, error_message: &str, from_ava
 }
 
 pub async fn ws_broadcast<PF, PT, CF, CT>(
-    code: &str,
     avatars: Vec<String>,
     mgr_node: bool,
     subscribe_mode: bool,
     ext: HashMap<String, String>,
     websocket: WebSocket,
+    inner_sender: Sender<TardisWebsocketMgrMessage>,
     process_fun: PF,
     close_fun: CF,
 ) -> BoxWebSocketUpgraded
@@ -112,16 +109,7 @@ where
     CF: Fn(Option<(CloseCode, String)>, HashMap<String, String>) -> CT + Send + Sync + 'static,
     CT: Future<Output = ()> + Send + 'static,
 {
-    let inner_sender = match INNER_SENDERS.read().await.get(code) {
-        Some(inner_sender) => inner_sender.clone(),
-        _ => {
-            let inner_sender = tokio::sync::broadcast::channel::<TardisWebsocketMgrMessage>(MAX_CAPACITY).0;
-            INNER_SENDERS.write().await.insert(code.to_string(), inner_sender.clone());
-            inner_sender
-        }
-    };
     let mut inner_receiver = inner_sender.subscribe();
-
     websocket
         .on_upgrade(move |socket| async move {
             let inst_id = TardisFuns::field.nanoid();
