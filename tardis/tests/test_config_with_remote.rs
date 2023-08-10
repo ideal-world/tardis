@@ -63,7 +63,7 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
         .mode(NacosServerMode::Standalone);
     nacos.tag = "v2.1.1-slim".to_string();
     let nacos = cli.run(nacos);
-    let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = nacos.get_bridge_ip_address(), port = 8848);
+    let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = "127.0.0.1", port = nacos.get_host_port_ipv4(8848));
     env::set_var("TARDIS_FW.CONF_CENTER.URL", nacos_url.clone());
     nacos.start();
     println!("nacos server started at: {}", nacos_url);
@@ -75,8 +75,8 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
         schema = "amqp",
         user = "guest",
         pswd = "guest",
-        ip = mq.get_bridge_ip_address(),
-        port = 5672
+        ip = "127.0.0.1",
+        port = mq.get_host_port_ipv4(5672)
     );
     env::set_var("TARDIS_FW.MQ.URL", mq_url.clone());
     env::set_var("TARDIS_FW.MQ.MODULES.M1.URL", mq_url.clone());
@@ -103,7 +103,6 @@ async fn test_config_with_remote() -> TardisResult<()> {
 
     let docker = testcontainers::clients::Cli::docker();
     let docker_env = initialize_docker_env(&docker);
-    // let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = "0.0.0.0", port = 8848);
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_locale");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
