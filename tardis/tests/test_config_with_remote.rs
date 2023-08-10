@@ -47,6 +47,8 @@ struct DockerEnv<'d> {
     cache: Container<'d, Redis>,
 }
 
+const NACOS_TAG: &str = "v2.2.3-slim";
+
 fn initialize_docker_env(cli: &Cli) -> DockerEnv {
     // init nacos docker
     use tardis::test::test_container::nacos_server::NacosServerMode;
@@ -61,7 +63,7 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
         .nacos_auth_token(tardis::crypto::crypto_base64::TardisCryptoBase64.encode("nacos server for test_config_with_remote"))
         .nacos_auth_token_expire_seconds(10)
         .mode(NacosServerMode::Standalone);
-    nacos.tag = "v2.1.1-slim".to_string();
+    nacos.tag = NACOS_TAG.to_string();
     let nacos = cli.run(nacos);
     let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = "127.0.0.1", port = nacos.get_host_port_ipv4(8848));
     env::set_var("TARDIS_FW.CONF_CENTER.URL", nacos_url.clone());
