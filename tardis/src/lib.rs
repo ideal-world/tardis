@@ -137,6 +137,8 @@ pub use futures;
 #[cfg(feature = "future")]
 pub use futures_util;
 pub use lru;
+#[cfg(feature = "web-server-grpc")]
+pub use poem_grpc;
 pub use rand;
 pub use regex;
 pub use serde;
@@ -151,8 +153,6 @@ pub use testcontainers;
 pub use tokio;
 pub use tracing as log;
 pub use url;
-#[cfg(feature = "web-server-grpc")]
-pub use poem_grpc;
 
 use basic::error::TardisErrorWithExt;
 use basic::result::TardisResult;
