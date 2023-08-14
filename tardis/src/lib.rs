@@ -1199,6 +1199,7 @@ impl TardisFuns {
             TardisConfig { cs, fw }
         };
 
+        #[allow(unused_variables)]
         let fw_config = TardisFuns::fw_config();
 
         #[cfg(feature = "tracing")]
