@@ -29,6 +29,13 @@ use tardis::web::poem_openapi::{param::Path, payload::Json, Object, OpenApi, Tag
 use tardis::web::web_resp::{TardisApiResult, TardisResp};
 use tardis::TardisFuns;
 
+#[allow(non_snake_case)]
+mod helloworld_grpc {
+    include!("./grpc/rust/helloworld.rs");
+}
+pub use helloworld_grpc::*;
+use poem_grpc::{Request as GrpcRequest, Response as GrpcResponse, Status as GrpcStatus};
+
 const TLS_KEY: &str = r#"
 -----BEGIN RSA PRIVATE KEY-----
 MIIEpAIBAAKCAQEAqVYYdfxTT9qr1np22UoIWq4v1E4cHncp35xxu4HNyZsoJBHR
@@ -86,10 +93,11 @@ FZygs8miAhWPzqnpmgTj1cPiU1M=
 -----END CERTIFICATE-----
 "#;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_web_server() -> TardisResult<()> {
-    env::set_var("RUST_LOG", "info,tardis=trace");
-    let web_url = "https://localhost:8080";
+    env::set_var("RUST_LOG", "info,tardis=trace,poem_grpc=trace,poem=trace");
+    tardis::TardisFuns::init_log()?;
+    let web_url = "http://localhost:8080";
 
     let docker = clients::Cli::default();
     let redis_container = TardisTestContainer::redis_custom(&docker);
@@ -132,9 +140,17 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
                             ..Default::default()
                         },
                     ),
+                    (
+                        "grpc".to_string(),
+                        WebServerModuleConfig {
+                            name: "grpc app".to_string(),
+                            ..Default::default()
+                        },
+                    ),
                 ]),
-                tls_key: Some(TLS_KEY.to_string()),
-                tls_cert: Some(TLS_CERT.to_string()),
+                // grpc client doesn't accept these self-signed cert
+                // tls_key: Some(TLS_KEY.to_string()),
+                // tls_cert: Some(TLS_CERT.to_string()),
                 ..Default::default()
             },
             web_client: Default::default(),
@@ -167,7 +183,15 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
         },
     })
     .await?;
-    TardisFuns::web_server().add_module("todo", TodosApi).await.add_module("other", OtherApi).await.start().await?;
+    TardisFuns::web_server()
+        .add_module("todo", TodosApi)
+        .await
+        .add_module("other", OtherApi)
+        .await
+        .add_grpc_module("grpc", GreeterServer::new(GreeterGrpcService))
+        .await
+        .start()
+        .await?;
     // TardisFuns::web_server().shutdown().await?;
     Ok(())
 }
@@ -195,6 +219,10 @@ async fn test_basic(url: &str) -> TardisResult<()> {
     assert_eq!(response.code, TardisError::not_found("", "").code);
     assert_eq!(response.msg, "[Tardis.WebServer] Process error: not found");
 
+    let grpc_client = GreeterClient::new(poem_grpc::ClientConfig::builder().uri("http://localhost:8080/grpc").build().unwrap());
+    let grpc_response = grpc_client.say_hello(GrpcRequest::new(HelloRequest { name: "Tardis".into() })).await;
+    assert!(grpc_response.is_ok());
+    assert_eq!(grpc_response.unwrap().message, "Hello Tardis!");
     Ok(())
 }
 
@@ -1004,5 +1032,18 @@ impl Middleware<BoxEndpoint<'static>> for TodosApiMiddleware2 {
         }
 
         Box::new(TodosApiMWImpl2(ep))
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct GreeterGrpcService;
+#[poem::async_trait]
+impl Greeter for GreeterGrpcService {
+    async fn say_hello(&self, request: GrpcRequest<HelloRequest>) -> Result<GrpcResponse<HelloReply>, GrpcStatus> {
+        info!("GreeterGrpcService say_hello {:?}", request);
+        let reply = HelloReply {
+            message: format!("Hello {}!", request.into_inner().name),
+        };
+        Ok(GrpcResponse::new(reply))
     }
 }

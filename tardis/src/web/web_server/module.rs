@@ -137,3 +137,44 @@ impl Middleware<BoxEndpoint<'static>> for EmptyMiddleWare {
         ep
     }
 }
+
+#[cfg(feature = "web-server-grpc")]
+#[derive(Clone, Default)]
+pub struct WebServerGrpcModule<T, MW = EmptyMiddleWare, D = ()>(pub WebServerModule<T, MW, D>);
+
+#[cfg(feature = "web-server-grpc")]
+impl<T, MW, D> From<WebServerModule<T, MW, D>> for WebServerGrpcModule<T, MW, D> {
+    fn from(value: WebServerModule<T, MW, D>) -> Self {
+        WebServerGrpcModule(value)
+    }
+}
+
+#[cfg(feature = "web-server-grpc")]
+impl<T> From<T> for WebServerGrpcModule<T>
+where
+    T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service,
+{
+    fn from(apis: T) -> Self {
+        WebServerModule::new(apis).into()
+    }
+}
+
+#[cfg(feature = "web-server-grpc")]
+impl<T, MW> From<(T, MW)> for WebServerGrpcModule<T, MW>
+where
+    MW: Middleware<BoxEndpoint<'static>>,
+{
+    fn from(value: (T, MW)) -> Self {
+        WebServerModule::from(value).into()
+    }
+}
+
+#[cfg(feature = "web-server-grpc")]
+impl<T, MW, D> From<(T, MW, D)> for WebServerGrpcModule<T, MW, D>
+where
+    MW: Middleware<BoxEndpoint<'static>>,
+{
+    fn from(value: (T, MW, D)) -> Self {
+        WebServerModule::from(value).into()
+    }
+}
