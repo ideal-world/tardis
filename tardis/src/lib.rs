@@ -525,7 +525,7 @@ impl TardisFuns {
     ///
     /// # Arguments
     ///
-    /// * `code` - The specified code in the custom configuration / 配置中指定的模块名 
+    /// * `code` - The specified code in the custom configuration / 配置中指定的模块名
     /// * `lang` - The specified language (if project support multi-language) / 指定语种（如果项目支持多语种）
     ///
     /// # Examples
