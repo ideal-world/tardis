@@ -85,7 +85,7 @@ impl TardisTracing {
                     std::env::set_var("OTEL_SERVICE_NAME", tracing_config.server_name.as_str());
                 }
             }
-            let telemetry_layer = tracing_opentelemetry::layer().with_tracer( tardis_trace_exporter::create_otlp_tracer().map_err(|e| TardisError::conflict(&e.to_string(), ""))?);
+            let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tardis_trace_exporter::create_otlp_tracer().map_err(|e| TardisError::conflict(&e.to_string(), ""))?);
             builder.finish().with(telemetry_layer).init();
         }
         Ok(())

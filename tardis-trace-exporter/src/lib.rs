@@ -1,6 +1,5 @@
 use opentelemetry::global::Error;
 
-
 pub fn create_otlp_tracer() -> Result<opentelemetry::sdk::trace::Tracer, Error> {
     use opentelemetry_otlp::WithExportConfig;
 
