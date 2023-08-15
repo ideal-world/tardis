@@ -1,0 +1,31 @@
+[package]
+name = "tardis-trace-exporter"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+keywords.workspace = true
+categories.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+license.workspace = true
+edition.workspace = true
+readme = "README.md"
+
+[lib]
+name = "tardis_trace_exporter"
+path = "src/lib.rs"
+
+[dependencies]
+# Tracing
+tracing-opentelemetry = { version = "0.19"}
+opentelemetry = { version = "0.19", default-features = false, features = [
+    "trace",
+    "rt-tokio",
+]}
+opentelemetry-otlp = { version = "0.12", features = [
+    "reqwest-client",
+    "reqwest-rustls",
+    "http-proto",
+    "tls",
+]}

@@ -177,6 +177,8 @@ use crate::search::search_client::TardisSearchClient;
 use crate::web::web_client::TardisWebClient;
 #[cfg(feature = "web-server")]
 use crate::web::web_server::TardisWebServer;
+#[cfg(feature = "tardis-trace-exporter")]
+pub use tardis_trace_exporter;
 
 /// The operational portal for Tardis core features / Tardis核心功能的操作入口
 ///

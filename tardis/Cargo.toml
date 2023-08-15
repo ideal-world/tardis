@@ -43,7 +43,7 @@ os = ["async-trait", "anyhow", "rust-s3"]
 fs = ["tokio/fs"]
 process = ["tokio/process"]
 test = ["testcontainers"]
-tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp"]
+tracing = ["tracing-opentelemetry", "opentelemetry"]
 
 [dependencies]
 # Basic
@@ -76,16 +76,11 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Tracing
+tardis-trace-exporter = { version = "0.1.0-beta.11", path = "../tardis-trace-exporter", optional = true }
 tracing-opentelemetry = { version = "0.19", optional = true }
 opentelemetry = { version = "0.19", default-features = false, features = [
     "trace",
     "rt-tokio",
-], optional = true }
-opentelemetry-otlp = { version = "0.12", features = [
-    "reqwest-client",
-    "reqwest-rustls",
-    "http-proto",
-    "tls",
 ], optional = true }
 
 # TLS
