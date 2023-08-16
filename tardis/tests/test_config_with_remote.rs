@@ -6,6 +6,7 @@ use std::env;
 use poem_openapi_derive::OpenApi;
 use reqwest::StatusCode;
 use tardis::basic::result::TardisResult;
+use tardis::cache::cache_client::TardisCacheClient;
 use tardis::config::config_nacos::nacos_client::{NacosClient, NacosConfigDescriptor};
 use tardis::serde::{Deserialize, Serialize};
 
@@ -13,6 +14,7 @@ use tardis::test::test_container::nacos_server::NacosServer;
 use tardis::TardisFuns;
 use testcontainers::clients::Cli;
 use testcontainers::images::generic::GenericImage;
+use testcontainers::images::redis::Redis;
 use testcontainers::Container;
 use tracing::{info, warn};
 
@@ -42,7 +44,10 @@ struct DockerEnv<'d> {
     mq_url: String,
     nacos: Container<'d, NacosServer>,
     mq: Container<'d, GenericImage>,
+    cache: Container<'d, Redis>,
 }
+
+const NACOS_TAG: &str = "v2.2.3-slim";
 
 fn initialize_docker_env(cli: &Cli) -> DockerEnv {
     // init nacos docker
@@ -58,29 +63,39 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
         .nacos_auth_token(tardis::crypto::crypto_base64::TardisCryptoBase64.encode("nacos server for test_config_with_remote"))
         .nacos_auth_token_expire_seconds(10)
         .mode(NacosServerMode::Standalone);
-    nacos.tag = "v2.1.1-slim".to_string();
+    nacos.tag = NACOS_TAG.to_string();
     let nacos = cli.run(nacos);
-    let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = nacos.get_bridge_ip_address(), port = 8848);
+    let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = "127.0.0.1", port = nacos.get_host_port_ipv4(8848));
     env::set_var("TARDIS_FW.CONF_CENTER.URL", nacos_url.clone());
     nacos.start();
     println!("nacos server started at: {}", nacos_url);
 
     // mq
-
     let mq = TardisTestContainer::rabbit_custom(cli);
     let mq_url = format!(
         "{schema}://{user}:{pswd}@{ip}:{port}/%2f",
         schema = "amqp",
         user = "guest",
         pswd = "guest",
-        ip = mq.get_bridge_ip_address(),
-        port = 5672
+        ip = "127.0.0.1",
+        port = mq.get_host_port_ipv4(5672)
     );
     env::set_var("TARDIS_FW.MQ.URL", mq_url.clone());
     env::set_var("TARDIS_FW.MQ.MODULES.M1.URL", mq_url.clone());
     println!("rabbit-mq started at: {}", mq_url);
 
-    DockerEnv { mq_url, nacos_url, nacos, mq }
+    // redis
+    let redis = TardisTestContainer::redis_custom(cli);
+    let redis_url = format!("redis://localhost:{port}/0", port = redis.get_host_port_ipv4(6379));
+    env::set_var("TARDIS_FW.CACHE.URL", redis_url.clone());
+
+    DockerEnv {
+        mq_url,
+        nacos_url,
+        nacos,
+        mq,
+        cache: redis,
+    }
 }
 
 #[tokio::test]
@@ -90,7 +105,6 @@ async fn test_config_with_remote() -> TardisResult<()> {
 
     let docker = testcontainers::clients::Cli::docker();
     let docker_env = initialize_docker_env(&docker);
-    // let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = "0.0.0.0", port = 8848);
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_locale");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
@@ -143,12 +157,14 @@ async fn test_config_with_remote() -> TardisResult<()> {
     let server = TardisFuns::web_server();
     server.add_route(api).await;
     server.start().await?;
-    // wait for server to start
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    // wait for server to start
     let response = TardisFuns::web_client().get_to_str("http://localhost:8080/hello", None).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains(&key));
+    // 3.2 test cache
+    {
+        let cache_client = TardisFuns::cache();
+        test_cache(cache_client).await?;
+    }
     // 4. update remote config
     // wait for 5s
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
@@ -175,8 +191,14 @@ async fn test_config_with_remote() -> TardisResult<()> {
         assert!(response.body.unwrap().contains(&key));
     }
     // wait for server to start
-    // 5.2 test mq
+    // 5.2 test cache
     {
+        let cache_client = TardisFuns::cache();
+        test_cache(cache_client).await?;
+    }
+    // 5.3 test mq
+    {
+        info!("test mq");
         TardisFuns::mq();
         let mq_client = TardisFuns::mq_by_module("m1");
 
@@ -199,6 +221,13 @@ async fn test_config_with_remote() -> TardisResult<()> {
     Ok(())
 }
 
+async fn test_cache(cache_client: &TardisCacheClient) -> TardisResult<()> {
+    info!("test cache");
+    cache_client.set("test_key", "测试").await?;
+    let str_value = cache_client.get("test_key").await?.unwrap();
+    assert_eq!(str_value, "测试");
+    Ok(())
+}
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 struct TestConfig {

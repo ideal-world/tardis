@@ -14,7 +14,6 @@ pub struct TardisTracing;
 pub static mut GLOBAL_RELOAD_HANDLE: Option<Handle<EnvFilter, Layered<Layer<Registry>, Registry>>> = None;
 
 impl TardisTracing {
-    #[cfg(not(feature = "tracing"))]
     pub(crate) fn init_log() -> TardisResult<()> {
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());

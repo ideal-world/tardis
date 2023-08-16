@@ -30,7 +30,7 @@ impl TardisTestContainer {
     }
 
     pub fn redis_custom(docker: &Cli) -> Container<Redis> {
-        docker.run(images::redis::Redis::default())
+        docker.run(images::redis::Redis)
     }
 
     pub async fn rabbit<F, T>(fun: F) -> TardisResult<()>
@@ -138,22 +138,20 @@ impl TardisTestContainer {
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
         if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
-            fun("https://elastic:123456@127.0.0.1:9200".to_string()).await
+            fun("http://127.0.0.1:9200".to_string()).await
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::es_custom(&docker);
             let port = node.get_host_port_ipv4(9200);
-            fun(format!("https://elastic:123456@127.0.0.1:{port}")).await
+            fun(format!("http://127.0.0.1:{port}")).await
         }
     }
 
     pub fn es_custom(docker: &Cli) -> Container<GenericImage> {
         docker.run(
-            images::generic::GenericImage::new("elasticsearch", "8.7.1")
-                .with_env_var("ELASTIC_PASSWORD", "123456")
-                .with_env_var("discovery.type", "single-node")
-                .with_env_var("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
-                .with_wait_for(WaitFor::message_on_stdout("license mode is [basic], currently licensed security realms are")),
+            images::generic::GenericImage::new("rapidfort/elasticsearch", "7.17")
+                .with_env_var(" ELASTICSEARCH_HEAP_SIZE", "128m")
+                .with_wait_for(WaitFor::message_on_stdout("Cluster health status changed from [YELLOW] to [GREEN]")),
         )
     }
 

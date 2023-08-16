@@ -8,6 +8,7 @@ out
 # Cargo
 Cargo.lock
 target
+.cargo
 
 # gh pages docs
 util/gh-pages/lints.json
@@ -20,6 +21,7 @@ util/gh-pages/lints.json
 *.iml
 .vscode
 .idea
+
 
 #macos
 .DS_Store

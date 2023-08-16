@@ -11,9 +11,11 @@ use tardis::TardisFuns;
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_mq_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
+    // enable when debug tokio
+    // console_subscriber::init();
     TardisFuns::init_log()?;
     TardisTestContainer::rabbit(|url| async move {
         // Default test
@@ -58,10 +60,11 @@ async fn test_mq_client() -> TardisResult<()> {
 
         TardisFuns::mq();
         let client = TardisFuns::mq_by_module("m1");
-
         client
-            .response("test-addr", |(header, msg)| async move {
+            .response("test-addr", move |(header, msg)| async move {
                 println!("response1 {}", msg);
+                // tokio current thread runtime + tokio await point + lapin may block tokio task(only polled a few times)
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                 assert_eq!(header.get("k1").unwrap(), "v1");
                 assert_eq!(msg, "测试!");
                 COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -114,6 +117,7 @@ async fn test_mq_client() -> TardisResult<()> {
 
         loop {
             if COUNTER.load(Ordering::SeqCst) == 12 {
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                 break;
             }
         }

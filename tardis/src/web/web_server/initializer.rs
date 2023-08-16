@@ -48,6 +48,43 @@ impl Initializer for TardisWebServer {
     }
 }
 
+/*
+    gRPC support
+*/
+/// a tuple of (Code, WebServerModule) can be an initializer
+#[cfg(feature = "web-server-grpc")]
+#[async_trait::async_trait]
+impl<T, MW, D> Initializer for (String, WebServerGrpcModule<T, MW, D>)
+where
+    T: Clone + poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + 'static + Send + Sync,
+    D: Clone + Send + Sync + 'static,
+    MW: Clone + Middleware<BoxEndpoint<'static>> + Send + Sync + 'static,
+{
+    async fn init(&self, target: &TardisWebServer) {
+        let (code, ref module) = self;
+        let module_config = target.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {code} not found")).clone();
+        target.do_add_grpc_module_with_data(code, &module_config, module.clone()).await;
+    }
+}
+
+#[cfg(feature = "web-server-grpc")]
+#[async_trait::async_trait]
+impl<T, MW, D> Initializer for (String, WebServerGrpcModule<T, MW, D>, WebServerModuleConfig)
+where
+    T: Clone + poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + 'static + Send + Sync,
+    D: Clone + Send + Sync + 'static,
+    MW: Clone + Middleware<BoxEndpoint<'static>> + Send + Sync + 'static,
+{
+    async fn init(&self, target: &TardisWebServer) {
+        let (code, ref module, module_config) = self;
+        target.do_add_grpc_module_with_data(code, module_config, module.clone()).await;
+    }
+}
+
+/*
+    loader methods
+*/
+
 impl TardisWebServer {
     /// Load an single initializer
     #[inline]

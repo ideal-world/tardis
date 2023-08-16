@@ -179,6 +179,19 @@ impl TardisWebServer {
         self
     }
 
+    #[cfg(feature = "web-server-grpc")]
+    pub async fn add_grpc_module<T, MW, D>(&self, code: &str, module: impl Into<WebServerGrpcModule<T, MW, D>>) -> &Self
+    where
+        T: Clone + Send + Sync + poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + 'static,
+        D: Clone + Send + Sync + 'static,
+        MW: Clone + Send + Sync + Middleware<BoxEndpoint<'static>> + 'static,
+    {
+        let code = code.to_lowercase();
+        let code = code.as_str();
+        self.load_initializer((code.to_string(), module.into())).await;
+        self
+    }
+
     async fn do_add_module_with_data<T, MW, D>(&self, code: &str, module_config: &WebServerModuleConfig, module: WebServerModule<T, MW, D>) -> &Self
     where
         T: OpenApi + 'static,
@@ -226,6 +239,29 @@ impl TardisWebServer {
         self
     }
 
+    #[cfg(feature = "web-server-grpc")]
+    async fn do_add_grpc_module_with_data<T, MW, D>(&self, code: &str, _module_config: &WebServerModuleConfig, module: WebServerGrpcModule<T, MW, D>) -> &Self
+    where
+        T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + 'static,
+        D: Clone + Send + Sync + 'static,
+        MW: Middleware<BoxEndpoint<'static>> + 'static,
+    {
+        use poem_grpc::RouteGrpc;
+
+        info!("[Tardis.WebServer] Add grpc module {}", code);
+        let WebServerModule {
+            apis,
+            data,
+            middleware,
+            options: _module_options,
+        } = module.0;
+        let route = RouteGrpc::new().add_service(apis);
+        let route = route.boxed();
+        let route = route.with(middleware);
+        self.state.lock().await.add_route(code, route, data);
+        self
+    }
+
     /// # Warn
     /// Since `Route` didn't implement `Clone`, module create in this way cannot be reloaded while webserver restart
     pub async fn add_module_raw(&self, code: &str, route: Route) -> &Self {
@@ -261,10 +297,10 @@ impl TardisWebServer {
         let graceful_shutdown_signal = async move {
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
-                    debug!("[Tardis.WebServer] WebServer shutdown (Crtl+C signal)");
+                    debug!("[Tardis.WebServer] WebServer shutdown (Ctrl+C signal)");
                 },
                 _ = rx => {
-                    debug!("[Tardis.WebServer] WebServer shutdown (Webserver shutdown signal)");
+                    debug!("[Tardis.WebServer] WebServer shutdown (WebServer shutdown signal)");
                 },
             };
         };
