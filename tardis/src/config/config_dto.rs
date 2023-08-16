@@ -44,6 +44,8 @@ pub struct FrameworkConfig {
     pub conf_center: Option<ConfCenterConfig>,
     /// log configuration / 日志配置
     pub log: Option<LogConfig>,
+    /// Cluster configuration / 集群配置
+    pub cluster: Option<ClusterConfig>,
 }
 
 /// Application configuration / 应用配置
@@ -232,8 +234,12 @@ pub struct WebServerConfig {
     pub enabled: bool,
     /// Web service Host, default is `0.0.0.0` / Web服务Host，默认为 `0.0.0.0`
     pub host: String,
+    /// Directly accessible host, same as host by default / 可直接访问的host，默认与host相同
+    pub access_host: Option<String>,
     /// Web service port, default is `8080` / Web服务端口，默认为 `8080`
     pub port: u16,
+    /// Directly accessible port, same as port by default / 可直接访问的端口，默认与port相同
+    pub access_port: Option<u16>,
     /// Allowed cross-domain sources, default is `*` / 允许的跨域来源，默认为 `*`
     pub allowed_origin: String,
     /// TLS Key, if this configuration is included then the protocol is HTTPS / TLS Key，如果包含此配置则协议为HTTPS
@@ -363,6 +369,8 @@ impl Default for WebServerConfig {
             spec_path: Some("spec".to_string()),
             modules: Default::default(),
             uniform_error: true,
+            access_host: None,
+            access_port: None,
         }
     }
 }
@@ -800,6 +808,35 @@ impl Default for LogConfig {
         #[cfg(not(feature = "tracing"))]
         {
             LogConfig { level: "info".to_string() }
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(default)]
+pub struct ClusterConfig {
+    pub watch_kind: String,
+    #[cfg(feature = "k8s")]
+    pub k8s_svc: Option<String>,
+    pub cache_check_interval_sec: Option<i32>,
+}
+
+impl Default for ClusterConfig {
+    fn default() -> Self {
+        #[cfg(feature = "k8s")]
+        {
+            ClusterConfig {
+                watch_kind: "k8s".to_string(),
+                k8s_svc: None,
+                cache_check_interval_sec: None,
+            }
+        }
+        #[cfg(not(feature = "k8s"))]
+        {
+            ClusterConfig {
+                watch_kind: "cache".to_string(),
+                cache_check_interval_sec: Some(10),
+            }
         }
     }
 }

@@ -129,7 +129,6 @@ use std::ptr::replace;
 pub use async_stream;
 #[cfg(feature = "future")]
 pub use async_trait;
-use basic::tracing::TardisTracing;
 pub use chrono;
 pub use derive_more;
 #[cfg(feature = "future")]
@@ -143,9 +142,6 @@ pub use serde;
 use serde::de::DeserializeOwned;
 pub use serde_json;
 use serde_json::Value;
-#[cfg(feature = "tardis-macros")]
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
-pub use tardis_macros::{TardisCreateEntity, TardisCreateIndex, TardisCreateTable, TardisEmptyBehavior, TardisEmptyRelation};
 #[cfg(feature = "test")]
 pub use testcontainers;
 pub use tokio;
@@ -154,6 +150,10 @@ pub use url;
 
 use basic::error::TardisErrorWithExt;
 use basic::result::TardisResult;
+use basic::tracing::TardisTracing;
+#[cfg(feature = "tardis-macros")]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+pub use tardis_macros::{TardisCreateEntity, TardisCreateIndex, TardisCreateTable, TardisEmptyBehavior, TardisEmptyRelation};
 
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;
@@ -433,12 +433,15 @@ impl TardisFuns {
                     // if there's some inherit webserver
                     if let Some(inherit) = inherit {
                         // 1. should always shutdown first
-                        if let Err(e) = inherit.shutdown().await {
-                            log::error!("[Tardis.WebServer] encounter an error when trying to shutdown webserver: {e}")
+                        if let Err(error) = inherit.shutdown().await {
+                            log::error!("[Tardis.WebServer] encounter an error when trying to shutdown webserver: {error}")
                         }
                         // 2. load initializers
                         web_server.load_initializer(inherit).await;
-                        // 3. restart webserver
+                        // 3. Init cluster
+                        #[cfg(all(feature = "web-server", feature = "ws-client"))]
+                        cluster::cluster_processor::init_by_conf(TardisFuns::fw_config(), &web_server).await?;
+                        // 4. restart webserver
                         web_server.start().await?;
                     }
                     replace(&mut TARDIS_INST.web_server, Some(web_server));
@@ -883,10 +886,10 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "ws-client")]
-    pub async fn ws_client<F, T>(str_url: &str, fun: F) -> TardisResult<web::ws_client::TardisWSClient<F, T>>
+    pub async fn ws_client<F, T>(str_url: &str, fun: F) -> TardisResult<web::ws_client::TardisWSClient>
     where
         F: Fn(tokio_tungstenite::tungstenite::Message) -> T + Send + Sync + Copy + 'static,
-        T: futures::Future<Output = Option<tokio_tungstenite::tungstenite::Message>> + Send + 'static,
+        T: futures::Future<Output = Option<tokio_tungstenite::tungstenite::Message>> + Send + Sync + 'static,
     {
         web::ws_client::TardisWSClient::connect(str_url, fun).await
     }
@@ -1119,6 +1122,25 @@ impl TardisFuns {
                 },
             }
         }
+    }
+
+    #[cfg(all(feature = "web-server", feature = "ws-client"))]
+    pub fn cluster_subscribe_event<F, T>(event: &str, sub_fun: F)
+    where
+        F: Fn(cluster::cluster_processor::TardisClusterMessageReq) -> T + Send + Sync + Copy + 'static,
+        T: futures_util::Future<Output = TardisResult<Option<Value>>> + Send + 'static,
+    {
+        cluster::cluster_processor::subscribe_event(event, sub_fun);
+    }
+
+    #[cfg(all(feature = "web-server", feature = "ws-client"))]
+    pub async fn cluster_publish_event(event: &str, message: Value, node_ids: Option<Vec<&str>>) -> TardisResult<String> {
+        cluster::cluster_processor::publish_event(event, message, node_ids).await
+    }
+
+    #[cfg(all(feature = "web-server", feature = "ws-client"))]
+    pub async fn cluster_publish_event_and_wait_resp(event: &str, message: Value, node_id: &str) -> TardisResult<Value> {
+        cluster::cluster_processor::publish_event_and_wait_resp(event, message, node_id).await
     }
 
     /// # Parameters
@@ -1417,6 +1439,9 @@ pub mod basic;
 #[cfg(feature = "cache")]
 #[cfg_attr(docsrs, doc(cfg(feature = "cache")))]
 pub mod cache;
+#[cfg(all(feature = "web-server", feature = "ws-client"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "web-server", feature = "ws-client"))))]
+pub mod cluster;
 pub mod config;
 #[cfg(feature = "crypto")]
 #[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]

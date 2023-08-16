@@ -40,6 +40,7 @@ cache = ["futures-util", "redis", "deadpool-redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 mail = ["lettre"]
 os = ["async-trait", "anyhow", "rust-s3"]
+k8s = ["future", "kube", "k8s-openapi"]
 fs = ["tokio/fs"]
 process = ["tokio/process"]
 test = ["testcontainers"]
@@ -150,7 +151,7 @@ deadpool-redis = { version = "0.12", optional = true }
 # Rabbit
 lapin = { version = "2", optional = true }
 amq-protocol-types = { version = "7.0", optional = true }
-async-global-executor = { version = "2", optional = true, features = ["tokio"] }
+async-global-executor = { version = "2", features = ["tokio"], optional = true }
 
 # Mail
 lettre = { version = "0.10.4", features = [
@@ -163,6 +164,10 @@ lettre = { version = "0.10.4", features = [
 # Object Storage
 rust-s3 = { version = "0.33", optional = true }
 anyhow = { version = "1.0", optional = true }
+
+# K8s
+kube = { version = "0.85", features = ["runtime"], optional = true }
+k8s-openapi = { version = "0.19", features = ["v1_21"], optional = true }
 
 # Test
 testcontainers = { version = "0.14.0", optional = true }

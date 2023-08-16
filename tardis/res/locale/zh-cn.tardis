@@ -76,6 +76,10 @@
 400-tardis-ws-client-message-parse-error	Websocket客户端消息解析错误
 400-tardis-ws-client-message-not-text	Websocket客户端消息不是文本类型
 
+406-tardis-cluster-response-message-format-error	集群返回消息格式错误
+-1-tardis-cluster-publish-message-error	集群发布消息时发生错误
+-1-tardis-cluster-receive-message-error	集群接收返回消息时发生错误
+
 -1-tardis-reldb-error	SQL执行错误
 406-tardis-reldb-url-error	SQL Url解析错误
 406-tardis-reldb-conn-init-error	数据连接初始化错误

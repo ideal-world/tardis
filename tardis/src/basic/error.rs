@@ -1,8 +1,6 @@
 use crate::basic::locale::TardisLocale;
 use crate::serde::{Deserialize, Serialize};
 use core::fmt::Display;
-#[cfg(feature = "opentelemetry")]
-use opentelemetry::trace::TraceError;
 use std::convert::Infallible;
 use std::num::{ParseIntError, TryFromIntError};
 use std::str::Utf8Error;
@@ -226,8 +224,15 @@ impl From<SystemTimeError> for TardisError {
 }
 
 #[cfg(feature = "tracing")]
-impl From<TraceError> for TardisError {
-    fn from(error: TraceError) -> Self {
+impl From<opentelemetry::trace::TraceError> for TardisError {
+    fn from(error: opentelemetry::trace::TraceError) -> Self {
+        TardisError::internal_error(&format!("[Tardis.Basic] {error}"), "")
+    }
+}
+
+#[cfg(feature = "k8s")]
+impl From<kube::Error> for TardisError {
+    fn from(error: kube::Error) -> Self {
         TardisError::internal_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }

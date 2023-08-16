@@ -16,11 +16,11 @@ pub const WS_SYSTEM_EVENT_INFO: &str = "__sys_info__";
 pub const WS_SYSTEM_EVENT_AVATAR_ADD: &str = "__sys_avatar_add__";
 pub const WS_SYSTEM_EVENT_AVATAR_DEL: &str = "__sys_avatar_del__";
 pub const WS_SYSTEM_EVENT_ERROR: &str = "__sys_error__";
-pub const WS_CACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1000000) };
+pub const WS_SENDER_CACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1000000) };
 
 lazy_static! {
     // Single instance reply guard
-    static ref REPLY_ONCE_GUARD: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(WS_CACHE_SIZE)));
+    static ref REPLY_ONCE_GUARD: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(WS_SENDER_CACHE_SIZE)));
     // Websocket instance Id -> Avatars
     static ref WS_INSTS_MAPPING_AVATARS: Arc<RwLock<HashMap<String, Vec<String>>>> = Arc::new(RwLock::new(HashMap::new()));
 }
@@ -47,7 +47,7 @@ where
                         }
                     }
                     Message::Close(msg) => {
-                        trace!("[Tardis.WebServer] WS message receive: clone {:?}", msg);
+                        trace!("[Tardis.WebServer] WS message receive: close {:?}", msg);
                         close_fun(msg, ext.clone()).await
                     }
                     Message::Binary(_) => {
@@ -272,7 +272,7 @@ where
                     let Some(current_avatars) = ({
                         insts_in_receive.read().await.get(&current_receive_inst_id).cloned()
                     }) else {
-                        warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} notfound");
+                        warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} not found");
                         continue;
                     };
                     // only self
@@ -325,99 +325,6 @@ where
         })
         .boxed()
 }
-
-// pub mod cluster {
-//     use std::{collections::HashMap, sync::Arc};
-
-//     use futures_util::StreamExt;
-//     use poem::web::{
-//         websocket::{BoxWebSocketUpgraded, WebSocket},
-//         Data,
-//     };
-//     use tokio::sync::{
-//         mpsc::{Receiver, Sender},
-//         RwLock,
-//     };
-//     use tokio_tungstenite::tungstenite::Message;
-//     use tracing::{trace, warn};
-
-//     use crate::{
-//         basic::result::TardisResult,
-//         web::{web_server::TardisWebServer, ws_client::TardisWebSocketMessageExt, ws_processor::TardisWebsocketReq},
-//         TardisFuns,
-//     };
-
-//     use super::{TardisWebsocketMgrMessage, TardisWebsocketResp};
-
-//     pub const WS_CLIENT_EVENT_AVATAR_ADD: &str = "__cluster_avatar_add__";
-//     pub const WS_CLIENT_EVENT_AVATAR_DEL: &str = "__cluster_avatar_del__";
-//     pub const WS_CLIENT_EVENT_MSG: &str = "__cluster_msg__";
-
-//     lazy_static! {
-//         static ref CLUSTER_AVATARS: Arc<RwLock<HashMap<String, Sender<TardisWebsocketReq>>>> = Arc::new(RwLock::new(HashMap::new()));
-//     }
-
-//     pub async fn init(cluster_server: &TardisWebServer, fixed_nodes: Option<Vec<(String, u16)>>, node_changed_recv: Option<Receiver<(String, u16)>>) -> TardisResult<()> {
-//         cluster_server.add_route(ClusterAPI).await;
-//         if let Some(fixed_nodes) = fixed_nodes {
-//             for (node_host, node_port) in fixed_nodes {
-//                 add_node(node_host.as_str(), node_port).await?;
-//             }
-//         }
-//         if let Some(mut node_changed_recv) = node_changed_recv {
-//             tokio::spawn(async move {
-//                 while let Some((node_host, node_port)) = node_changed_recv.recv().await {
-//                     add_node(node_host.as_str(), node_port).await?;
-//                 }
-//             });
-//         }
-//         Ok(())
-//     }
-
-//     async fn add_node(node_host: &str, node_port: u16) -> TardisResult<()> {
-//         TardisFuns::ws_client(&format!("ws://{node_host}:{node_port}/tardis/cluster/ws/exchange"), move |msg| async move {
-//             let receive_msg = msg.str_to_obj::<TardisWebsocketMgrMessage>(&msg).unwrap();
-//             None
-//         })
-//         .await?;
-//         Ok(())
-//     }
-
-//     #[derive(Debug, Clone)]
-//     struct ClusterAPI;
-
-//     #[poem_openapi::OpenApi]
-//     impl ClusterAPI {
-//         #[oai(path = "/tardis/cluster/ws/exchange", method = "get")]
-//         async fn exchange(&self, websocket: WebSocket) -> BoxWebSocketUpgraded {
-//             websocket
-//                 .on_upgrade(|mut socket| async move {
-//                     while let Some(Ok(message)) = socket.next().await {
-//                         match message {
-//                             Message::Text(text) => {
-//                                 trace!("[Tardis.WebServer] WS cluster message receive: {}", text);
-//                                 // if let Some(msg) = process_fun(avatars.clone(), text, ext.clone()).await {
-//                                 //     trace!("[Tardis.WebServer] WS message send: {} to {}", msg, &avatars);
-//                                 //     if let Err(error) = socket.send(Message::Text(msg.clone())).await {
-//                                 //         warn!("[Tardis.WebServer] WS message send failed, message {msg} to {}: {error}", &avatars);
-//                                 //         break;
-//                                 //     }
-//                                 // }
-//                             }
-//                             Message::Close(msg) => {
-//                                 trace!("[Tardis.WebServer] WS cluster message receive: clone {:?}", msg);
-//                                 close_fun(msg, ext.clone()).await
-//                             }
-//                             _ => {
-//                                 warn!("[Tardis.WebServer] WS cluster message receive: the type is not implemented");
-//                             }
-//                         }
-//                     }
-//                 })
-//                 .boxed()
-//         }
-//     }
-// }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct TardisWebsocketReq {
