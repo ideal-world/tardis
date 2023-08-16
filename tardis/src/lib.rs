@@ -136,6 +136,8 @@ pub use futures;
 #[cfg(feature = "future")]
 pub use futures_util;
 pub use lru;
+#[cfg(feature = "web-server-grpc")]
+pub use poem_grpc;
 pub use rand;
 pub use regex;
 pub use serde;
@@ -1221,6 +1223,7 @@ impl TardisFuns {
             TardisConfig { cs, fw }
         };
 
+        #[allow(unused_variables)]
         let fw_config = TardisFuns::fw_config();
 
         #[cfg(feature = "tracing")]
