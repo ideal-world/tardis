@@ -20,3 +20,6 @@ util/gh-pages/lints.json
 *.iml
 .vscode
 .idea
+
+#macos
+.DS_Store

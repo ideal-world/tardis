@@ -47,6 +47,7 @@ impl TardisTracing {
         let env_filter = EnvFilter::from_default_env();
         let env_filter = env_filter
             .add_directive(format!("{domain_code}={log_level}").parse().map_err(|e| TardisError::internal_error(&format!("update_log_level_by_domain_code failed: {e:?}"), ""))?);
+        std::env::set_var("RUST_LOG", env_filter.to_string());
         unsafe {
             GLOBAL_RELOAD_HANDLE
                 .as_ref()
