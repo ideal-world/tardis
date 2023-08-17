@@ -18,6 +18,7 @@ pub struct TardisConfig {
 /// Configuration of each function of the Tardis framework / Tardis框架的各功能配置
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
+// TODO Replace with options / enums
 pub struct FrameworkConfig {
     /// Application configuration / 应用配置
     pub app: AppConfig,

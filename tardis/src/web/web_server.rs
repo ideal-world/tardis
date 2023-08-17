@@ -16,6 +16,7 @@ use tracing::{debug, error, info, warn};
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
 use crate::web::uniform_error_mw::UniformError;
+use crate::TardisFuns;
 mod initializer;
 use initializer::*;
 mod module;
@@ -274,6 +275,9 @@ impl TardisWebServer {
     ///
     /// to shutdown it by calling `TardisWebServer::shutdown()`
     pub async fn start(&self) -> TardisResult<()> {
+        #[cfg(feature = "cluster")]
+        crate::cluster::cluster_processor::init_by_conf(TardisFuns::fw_config(), &self).await?;
+
         let output_info = format!(
             r#"
 =================
@@ -350,7 +354,7 @@ impl TardisWebServer {
             match task.inner.await {
                 Ok(result) => return result,
                 Err(e) => {
-                    error!("[Tardis.WebServer] Fail to join webservert task: {e}")
+                    error!("[Tardis.WebServer] Fail to join webserver task: {e}")
                 }
             }
         }

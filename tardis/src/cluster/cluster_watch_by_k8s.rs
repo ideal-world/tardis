@@ -1,5 +1,5 @@
 use k8s_openapi::api::core::v1::{Endpoints, Service};
-use kube::{api::WatchParams, runtime::watcher, Api, Client};
+use kube::{api::WatchParams, Api, Client};
 use tracing::{error, trace};
 
 use crate::{
@@ -25,10 +25,9 @@ pub async fn init(cluster_config: &ClusterConfig, webserver_config: &WebServerCo
 }
 
 async fn watch(k8s_svc: &str, web_server_port: u16) -> TardisResult<()> {
-    let wc = watcher::Config::default();
     let endpoint_api: Api<Endpoints> = Api::all(get_client().await?);
     let mut endpoint_watcher = endpoint_api.watch(&WatchParams::default().fields(&format!("metadata.name={k8s_svc}")), "0").await?.boxed();
-    while let Some(gateway_obj) = endpoint_watcher.try_next().await.unwrap_or_default() {
+    while let Some(_) = endpoint_watcher.try_next().await.unwrap_or_default() {
         refresh(&k8s_svc, web_server_port).await?;
     }
     Ok(())

@@ -440,10 +440,7 @@ impl TardisFuns {
                         }
                         // 2. load initializers
                         web_server.load_initializer(inherit).await;
-                        // 3. Init cluster
-                        #[cfg(all(feature = "web-server", feature = "ws-client"))]
-                        cluster::cluster_processor::init_by_conf(TardisFuns::fw_config(), &web_server).await?;
-                        // 4. restart webserver
+                        // 3. restart webserver
                         web_server.start().await?;
                     }
                     replace(&mut TARDIS_INST.web_server, Some(web_server));
@@ -1126,7 +1123,7 @@ impl TardisFuns {
         }
     }
 
-    #[cfg(all(feature = "web-server", feature = "ws-client"))]
+    #[cfg(feature = "cluster")]
     pub fn cluster_subscribe_event<F, T>(event: &str, sub_fun: F)
     where
         F: Fn(cluster::cluster_processor::TardisClusterMessageReq) -> T + Send + Sync + Copy + 'static,
@@ -1135,13 +1132,13 @@ impl TardisFuns {
         cluster::cluster_processor::subscribe_event(event, sub_fun);
     }
 
-    #[cfg(all(feature = "web-server", feature = "ws-client"))]
+    #[cfg(feature = "cluster")]
     pub async fn cluster_publish_event(event: &str, message: Value, node_ids: Option<Vec<&str>>) -> TardisResult<String> {
         cluster::cluster_processor::publish_event(event, message, node_ids).await
     }
 
-    #[cfg(all(feature = "web-server", feature = "ws-client"))]
-    pub async fn cluster_publish_event_and_wait_resp(event: &str, message: Value, node_id: &str) -> TardisResult<Value> {
+    #[cfg(feature = "cluster")]
+    pub async fn cluster_publish_event_and_wait_resp(event: &str, message: Value, node_id: &str) -> TardisResult<cluster::cluster_processor::TardisClusterMessageResp> {
         cluster::cluster_processor::publish_event_and_wait_resp(event, message, node_id).await
     }
 
@@ -1442,9 +1439,11 @@ pub mod basic;
 #[cfg(feature = "cache")]
 #[cfg_attr(docsrs, doc(cfg(feature = "cache")))]
 pub mod cache;
-#[cfg(all(feature = "web-server", feature = "ws-client"))]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "web-server", feature = "ws-client"))))]
+
+#[cfg(feature = "cluster")]
+#[cfg_attr(docsrs, doc(cfg(feature = "cluster")))]
 pub mod cluster;
+
 pub mod config;
 #[cfg(feature = "crypto")]
 #[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]

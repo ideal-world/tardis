@@ -24,7 +24,12 @@ crypto-with-sm = ["crypto", "libsm", "num-bigint"]
 future = ["futures", "async-stream", "futures-util", "async-trait"]
 tls = ["native-tls"]
 reldb-core = ["future", "sqlparser", "sea-orm", "sqlx"]
-reldb-postgres = ["reldb-core", "sea-orm/postgres-array", "sea-orm/sqlx-postgres", "tardis-macros/reldb-postgres"]
+reldb-postgres = [
+    "reldb-core",
+    "sea-orm/postgres-array",
+    "sea-orm/sqlx-postgres",
+    "tardis-macros/reldb-postgres",
+]
 reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql", "tardis-macros/reldb-mysql"]
 reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
 reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
@@ -39,8 +44,9 @@ k8s = ["future", "kube", "k8s-openapi"]
 fs = ["tokio/fs"]
 process = ["tokio/process"]
 test = ["testcontainers"]
-tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp"]
+tracing = ["tracing-opentelemetry", "opentelemetry"]
 web-server-grpc = ["web-server", "dep:poem-grpc"]
+cluster = ["web-server", "ws-client"]
 
 [dependencies]
 # Basic
@@ -78,12 +84,12 @@ opentelemetry = { version = "0.18", default-features = false, features = [
     "trace",
     "rt-tokio",
 ], optional = true }
-opentelemetry-otlp = { version = "0.11", features = [
-    "reqwest-client",
-    "reqwest-rustls",
-    "http-proto",
-    "tls",
-], optional = true }
+# opentelemetry-otlp = { version = "0.11", features = [
+#     "reqwest-client",
+#     "reqwest-rustls",
+#     "http-proto",
+#     "tls",
+# ], optional = true }
 
 # TLS
 native-tls = { version = "0.2", optional = true }
@@ -202,7 +208,14 @@ required-features = ["test", "reldb"]
 
 [[test]]
 name = "test_web_server"
-required-features = ["test", "web-server", "cache", "web-client", "crypto", "web-server-grpc"]
+required-features = [
+    "test",
+    "web-server",
+    "cache",
+    "web-client",
+    "crypto",
+    "web-server-grpc",
+]
 
 [[test]]
 name = "test_web_client"
@@ -235,6 +248,10 @@ required-features = ["test", "os"]
 [[test]]
 name = "test_basic_tracing"
 required-features = ["test", "tracing"]
+
+[[test]]
+name = "test_cluster"
+required-features = ["test", "cluster", "k8s"]
 
 [[bench]]
 name = "json_benchmark"
