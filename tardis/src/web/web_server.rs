@@ -375,14 +375,19 @@ impl std::future::Future for &TardisWebServer {
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         use std::task::Poll;
         let lock = self.state.lock();
+        const POLL_DURATION: Duration = Duration::from_millis(100);
         futures_util::pin_mut!(lock);
-        cx.waker().wake_by_ref();
         match lock.poll(cx) {
             Poll::Ready(mut s) => {
                 match &*s {
                     ServerState::Halted(_) => return Poll::Ready(()),
                     ServerState::Running(t) => {
                         if !t.inner.is_finished() {
+                            let waker = cx.waker().clone();
+                            tokio::spawn(async move {
+                                tokio::time::sleep(POLL_DURATION).await;
+                                waker.wake();
+                            });
                             return Poll::Pending;
                         }
                     }
