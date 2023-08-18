@@ -142,6 +142,12 @@ pub async fn subscribe_event(event: &str, sub_fun: Box<dyn TardisClusterSubscrib
 pub async fn publish_event(event: &str, message: Value, node_ids: Option<Vec<&str>>) -> TardisResult<String> {
     trace!("[Tardis.Cluster] [Client] publish event {event} , message {message} , to {node_ids:?}");
     let cache_nodes = CLUSTER_CACHE_NODES.read().await;
+    if !cache_nodes.iter().any(|cache_node| !cache_node.current) {
+        return Err(TardisError::not_found(
+            &format!("[Tardis.Cluster] [Client] publish event {event} , message {message} : no active nodes found"),
+            "404-tardis-cluster-publish-message-node-not-exit",
+        ));
+    }
     trace!(
         "[Tardis.Cluster] [Client] cache nodes {}",
         cache_nodes
@@ -157,10 +163,12 @@ pub async fn publish_event(event: &str, message: Value, node_ids: Option<Vec<&st
         .collect::<Vec<_>>();
     if let Some(node_ids) = node_ids {
         if node_clients.len() != node_ids.len() {
-            node_ids
-                .into_iter()
-                .filter(|node_id| node_clients.iter().find(|node_client| node_client.1 == node_id).is_none())
-                .for_each(|node_id| warn!("[Tardis.Cluster] [Client] publish event {event} , message {message} , to {node_id} : node not found"));
+            let not_found_node_ids =
+                node_ids.into_iter().filter(|node_id| node_clients.iter().find(|node_client| node_client.1 == node_id).is_none()).collect::<Vec<_>>().join(",");
+            return Err(TardisError::not_found(
+                &format!("[Tardis.Cluster] [Client] publish event {event} , message {message} to [{not_found_node_ids}] not found"),
+                "404-tardis-cluster-publish-message-node-not-exit",
+            ));
         }
     }
     do_publish_event(event, message, node_clients.iter().map(|n| n.0).collect::<Vec<_>>()).await

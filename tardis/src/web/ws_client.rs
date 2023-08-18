@@ -38,7 +38,12 @@ impl TardisWSClient {
 
     async fn do_connect(str_url: &str, fun: Fun, retry: bool) -> TardisResult<TardisWSClient> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.WSClient] Invalid url {str_url}"), "406-tardis-ws-url-error"))?;
-        info!("[Tardis.WSClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
+        info!(
+            "[Tardis.WSClient] {}, host:{}, port:{}",
+            if retry { "Re-initializing" } else { "Initializing" },
+            url.host_str().unwrap_or(""),
+            url.port().unwrap_or(0)
+        );
         let connect = if !str_url.starts_with("wss") {
             tokio_tungstenite::connect_async(url.clone()).await
         } else {
@@ -62,7 +67,12 @@ impl TardisWSClient {
                 TardisError::format_error(&format!("[Tardis.WSClient] Failed to reconnect {str_url} {error}"), "500-tardis-ws-client-reconnect-error")
             }
         })?;
-        info!("[Tardis.WSClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
+        info!(
+            "[Tardis.WSClient] {}, host:{}, port:{}",
+            if retry { "Re-initialized" } else { "Initialized" },
+            url.host_str().unwrap_or(""),
+            url.port().unwrap_or(0)
+        );
         let (write, mut read) = client.split();
         let write = Arc::new(Mutex::new(write));
         let reply = write.clone();

@@ -181,6 +181,7 @@ criterion = { version = "0.5" }
 console-subscriber = "0.1.10"
 poem-grpc-build = "0.2.21"
 prost = "0.11.9"
+strip-ansi-escapes = "0.2.0"
 
 [[test]]
 name = "test_config"
