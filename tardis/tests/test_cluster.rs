@@ -1,8 +1,10 @@
 use std::{env, time::Duration};
 
+use async_trait::async_trait;
+use serde_json::Value;
 use tardis::{
     basic::result::TardisResult,
-    cluster::cluster_processor,
+    cluster::cluster_processor::{self, TardisClusterMessageReq, TardisClusterSubscriber},
     config::config_dto::{CacheConfig, ClusterConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig},
     test::test_container::TardisTestContainer,
     TardisFuns,
@@ -14,16 +16,19 @@ use tracing::info;
 #[tokio::test]
 async fn test_cluster() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
-    let node_id = if env::var("other").is_ok() { "2" } else { "1" };
+    let cluster_port = env::var("join");
+
+    let node_id = if cluster_port.is_ok() { "2" } else { "1" };
 
     let docker = clients::Cli::default();
     let redis_container = TardisTestContainer::redis_custom(&docker);
     let redis_port = redis_container.get_host_port_ipv4(6379);
-    let redis_url = if node_id == "1" {
+
+    let redis_url = if let Ok(port) = cluster_port {
+        format!("redis://127.0.0.1:{}/0", port)
+    } else {
         println!("=====\r\nredis port = {redis_port}\r\n=====");
         format!("redis://127.0.0.1:{redis_port}/0")
-    } else {
-        format!("redis://127.0.0.1:{}/0", env::var("redis_port").unwrap())
     };
 
     cluster_processor::set_node_id(&format!("node_{node_id}")).await;
@@ -81,13 +86,10 @@ async fn test_cluster() -> TardisResult<()> {
 }
 
 async fn test_by_cache(node_id: &str) -> TardisResult<()> {
-    TardisFuns::cluster_subscribe_event("echo", |message_req| async move {
-        info!("message_req:{message_req:?}");
-        Ok(Some(serde_json::Value::String(format!("pong {}", message_req.req_node_id))))
-    });
+    TardisFuns::cluster_subscribe_event("echo", Box::new(ClusterSubscriberTest {})).await;
     if node_id != "1" {
-        sleep(Duration::from_secs(1)).await;
-        let resp = TardisFuns::cluster_publish_event_and_wait_resp("echo", serde_json::Value::String("ping".to_string()), &format!("node_1")).await?;
+        sleep(Duration::from_secs(10)).await;
+        let resp = TardisFuns::cluster_publish_event_and_wait_resp("echo", serde_json::Value::String("ping".to_string()), "node_1").await?;
         assert_eq!(resp.msg.as_str().unwrap(), &format!("pong node_{node_id}"));
         assert_eq!(&resp.resp_node_id, "node_1");
     } else {
@@ -95,4 +97,14 @@ async fn test_by_cache(node_id: &str) -> TardisResult<()> {
     }
 
     Ok(())
+}
+
+struct ClusterSubscriberTest;
+
+#[async_trait]
+impl TardisClusterSubscriber for ClusterSubscriberTest {
+    async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
+        info!("message_req:{message_req:?}");
+        Ok(Some(serde_json::Value::String(format!("pong {}", message_req.req_node_id))))
+    }
 }

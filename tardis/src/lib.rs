@@ -1124,12 +1124,8 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "cluster")]
-    pub fn cluster_subscribe_event<F, T>(event: &str, sub_fun: F)
-    where
-        F: Fn(cluster::cluster_processor::TardisClusterMessageReq) -> T + Send + Sync + Copy + 'static,
-        T: futures_util::Future<Output = TardisResult<Option<Value>>> + Send + 'static,
-    {
-        cluster::cluster_processor::subscribe_event(event, sub_fun);
+    pub async fn cluster_subscribe_event(event: &str, sub_fun: Box<dyn cluster::cluster_processor::TardisClusterSubscriber>) {
+        cluster::cluster_processor::subscribe_event(event, sub_fun).await;
     }
 
     #[cfg(feature = "cluster")]

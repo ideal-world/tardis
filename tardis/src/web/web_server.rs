@@ -284,8 +284,8 @@ impl TardisWebServer {
 [Tardis.WebServer] The {app} application has been launched. Visited at: {protocol}://{host}:{port}
 ================="#,
             app = self.app_name,
-            host = self.config.host,
-            port = self.config.port,
+            host = self.config.access_host.as_ref().map(|access_host| access_host).unwrap_or(&self.config.host),
+            port = self.config.access_port.as_ref().map(|access_port| access_port).unwrap_or(&self.config.port),
             protocol = if self.config.tls_key.is_some() { "https" } else { "http" }
         );
 
