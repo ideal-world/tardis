@@ -105,16 +105,18 @@ pub struct TardisWebServer {
 
 impl TardisWebServer {
     pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServer> {
+        let route = poem::Route::new();
         TardisResult::Ok(TardisWebServer {
             app_name: conf.app.name.clone(),
             version: conf.app.version.clone(),
             config: conf.web_server.clone(),
-            state: Mutex::default(),
+            state: Mutex::new(ServerState::Halted(route)),
             initializers: Mutex::new(Vec::new()),
         })
     }
 
     pub fn init_simple(host: &str, port: u16) -> TardisResult<TardisWebServer> {
+        let route = poem::Route::new();
         TardisResult::Ok(TardisWebServer {
             app_name: "".to_string(),
             version: "".to_string(),
@@ -123,11 +125,22 @@ impl TardisWebServer {
                 port,
                 ..Default::default()
             },
-            state: Mutex::default(),
+            state: Mutex::new(ServerState::Halted(route)),
             initializers: Mutex::new(Vec::new()),
         })
     }
 
+    pub fn get_default_config(&self) -> WebServerModuleConfig {
+        WebServerModuleConfig {
+            name: self.app_name.clone(),
+            version: self.version.clone(),
+            doc_urls: self.config.doc_urls.clone(),
+            req_headers: self.config.req_headers.clone(),
+            ui_path: self.config.ui_path.clone(),
+            spec_path: self.config.spec_path.clone(),
+            uniform_error: self.config.uniform_error,
+        }
+    }
     /// add route
     /// # Usage
     /// ```ignore
@@ -151,15 +164,18 @@ impl TardisWebServer {
         D: Clone + Send + Sync + 'static,
         MW: Clone + Send + Sync + Middleware<BoxEndpoint<'static>> + 'static,
     {
-        let module_config = WebServerModuleConfig {
-            name: self.app_name.clone(),
-            version: self.version.clone(),
-            doc_urls: self.config.doc_urls.clone(),
-            req_headers: self.config.req_headers.clone(),
-            ui_path: self.config.ui_path.clone(),
-            spec_path: self.config.spec_path.clone(),
-            uniform_error: self.config.uniform_error,
-        };
+        let module_config = self.get_default_config();
+        self.load_initializer(("".to_owned(), module.into(), module_config)).await;
+        self
+    }
+
+    #[cfg(feature = "web-server-grpc")]
+    pub async fn add_grpc_route<MW, D>(&self, module: impl Into<WebServerGrpcModule<MW, D>>) -> &Self
+    where
+        D: Clone + Send + Sync + 'static,
+        MW: Clone + Send + Sync + Middleware<BoxEndpoint<'static>> + 'static,
+    {
+        let module_config = self.get_default_config();
         self.load_initializer(("".to_owned(), module.into(), module_config)).await;
         self
     }
@@ -180,9 +196,8 @@ impl TardisWebServer {
     }
 
     #[cfg(feature = "web-server-grpc")]
-    pub async fn add_grpc_module<T, MW, D>(&self, code: &str, module: impl Into<WebServerGrpcModule<T, MW, D>>) -> &Self
+    pub async fn add_grpc_module<MW, D>(&self, code: &str, module: impl Into<WebServerGrpcModule<MW, D>>) -> &Self
     where
-        T: Clone + Send + Sync + poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + 'static,
         D: Clone + Send + Sync + 'static,
         MW: Clone + Send + Sync + Middleware<BoxEndpoint<'static>> + 'static,
     {
@@ -240,23 +255,31 @@ impl TardisWebServer {
     }
 
     #[cfg(feature = "web-server-grpc")]
-    async fn do_add_grpc_module_with_data<T, MW, D>(&self, code: &str, _module_config: &WebServerModuleConfig, module: WebServerGrpcModule<T, MW, D>) -> &Self
+    async fn do_add_grpc_module_with_data<MW, D>(&self, code: &str, _module_config: &WebServerModuleConfig, module: WebServerGrpcModule<MW, D>) -> &Self
     where
-        T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + 'static,
         D: Clone + Send + Sync + 'static,
         MW: Middleware<BoxEndpoint<'static>> + 'static,
     {
         use poem_grpc::RouteGrpc;
-
         info!("[Tardis.WebServer] Add grpc module {}", code);
-        let WebServerModule {
-            apis,
+        let WebServerGrpcModule {
+            grpc_router_mapper,
+            descriptor_sets,
             data,
             middleware,
-            options: _module_options,
-        } = module.0;
-        let route = RouteGrpc::new().add_service(apis);
-        let route = route.boxed();
+        } = module;
+        let mut route = grpc_router_mapper(RouteGrpc::new());
+        let mut reflection = poem_grpc::Reflection::new();
+        if descriptor_sets.is_empty() {
+            warn!("[Tardis.WebServer] No descriptor set found for grpc module {}", code);
+        } else {
+            for descriptor in descriptor_sets {
+                reflection = reflection.add_file_descriptor_set(&descriptor);
+            }
+        }
+        route = route.add_service(reflection.build());
+        route = route.add_service(poem_grpc::health_service().0);
+        let route = route.with(poem::middleware::Tracing).boxed();
         let route = route.with(middleware);
         self.state.lock().await.add_route(code, route, data);
         self
@@ -315,6 +338,7 @@ impl TardisWebServer {
             let server = poem::Server::new(bind).run_with_graceful_shutdown(route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
             tokio::spawn(async {
                 server.await?;
+                info!("[Tardis.WebServer] Poem webserver shutdown finished");
                 Ok(())
             })
         } else {
@@ -322,6 +346,7 @@ impl TardisWebServer {
             let server = poem::Server::new(bind).run_with_graceful_shutdown(route, graceful_shutdown_signal, Some(Duration::from_secs(5)));
             tokio::spawn(async {
                 server.await?;
+                info!("[Tardis.WebServer] Poem webserver shutdown finished");
                 Ok(())
             })
         };
@@ -341,20 +366,23 @@ impl TardisWebServer {
         let mut state_locked = self.state.lock().await;
         let mut swap_state = ServerState::default();
         std::mem::swap(&mut *state_locked, &mut swap_state);
+        drop(state_locked);
         if let ServerState::Running(task) = swap_state {
             info!("[Tardis.WebServer] Shutdown web server");
             let send_result = task.shutdown_trigger.send(());
             if send_result.is_err() {
                 warn!("[Tardis.WebServer] Trying to shutdown webserver which seems already closed")
             };
-            match task.inner.await {
-                Ok(result) => return result,
-                Err(e) => {
+            match tokio::time::timeout(Duration::from_secs(5), task.inner).await {
+                Ok(Ok(result)) => return result,
+                Ok(Err(e)) => {
                     error!("[Tardis.WebServer] Fail to join webservert task: {e}")
+                }
+                Err(e) => {
+                    error!("[Tardis.WebServer] Shutdown webserver timeout: {e}")
                 }
             }
         }
-        drop(state_locked);
         Ok(())
     }
 

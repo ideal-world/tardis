@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use poem::{endpoint::BoxEndpoint, Middleware};
 use poem_openapi::OpenApi;
 use tokio::sync::broadcast;
@@ -139,42 +141,70 @@ impl Middleware<BoxEndpoint<'static>> for EmptyMiddleWare {
 }
 
 #[cfg(feature = "web-server-grpc")]
-#[derive(Clone, Default)]
-pub struct WebServerGrpcModule<T, MW = EmptyMiddleWare, D = ()>(pub WebServerModule<T, MW, D>);
+#[derive(Clone)]
+pub struct WebServerGrpcModule<MW = EmptyMiddleWare, D = ()> {
+    // pub web_server_module: WebServerModule<T, MW, D>,
+    pub data: Option<D>,
+    pub middleware: MW,
+    pub(crate) grpc_router_mapper: Arc<dyn Fn(poem_grpc::RouteGrpc) -> poem_grpc::RouteGrpc + 'static + Sync + Send>,
+    pub descriptor_sets: Vec<Vec<u8>>,
+}
 
 #[cfg(feature = "web-server-grpc")]
-impl<T, MW, D> From<WebServerModule<T, MW, D>> for WebServerGrpcModule<T, MW, D> {
-    fn from(value: WebServerModule<T, MW, D>) -> Self {
-        WebServerGrpcModule(value)
+impl Default for WebServerGrpcModule {
+    fn default() -> Self {
+        Self {
+            data: Default::default(),
+            middleware: Default::default(),
+            grpc_router_mapper: Arc::new(|route| route),
+            descriptor_sets: vec![]
+        }
     }
 }
 
 #[cfg(feature = "web-server-grpc")]
-impl<T> From<T> for WebServerGrpcModule<T>
-where
-    T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service,
-{
-    fn from(apis: T) -> Self {
-        WebServerModule::new(apis).into()
+impl<_MW, _D> WebServerGrpcModule<_MW, _D> {
+    pub fn data<D>(self, data: D) -> WebServerGrpcModule<_MW, D> {
+        WebServerGrpcModule {
+            data: Some(data),
+            grpc_router_mapper: self.grpc_router_mapper,
+            middleware: self.middleware,
+            descriptor_sets: self.descriptor_sets
+        }
+    }
+
+    pub fn middleware<MW>(self, middleware: MW) -> WebServerGrpcModule<MW, _D> {
+        WebServerGrpcModule {
+            data: self.data,
+            grpc_router_mapper: self.grpc_router_mapper,
+            middleware,
+            descriptor_sets: self.descriptor_sets
+        }
+    }
+}
+
+
+#[cfg(feature = "web-server-grpc")]
+impl<MW, D> WebServerGrpcModule<MW, D>{
+    pub fn with_grpc_service<T: Clone>(mut self, service: T) -> Self
+    where
+        T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + Send + Sync + 'static
+    {
+        self.grpc_router_mapper = Arc::new(move |route| route.add_service(service.clone()));
+        self
+    }
+    pub fn with_descriptor(mut self, descriptor: Vec<u8>) -> Self {
+        self.descriptor_sets.push(descriptor);
+        self
     }
 }
 
 #[cfg(feature = "web-server-grpc")]
-impl<T, MW> From<(T, MW)> for WebServerGrpcModule<T, MW>
+impl<T> From<T> for WebServerGrpcModule
 where
-    MW: Middleware<BoxEndpoint<'static>>,
+    T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + Clone + Send + Sync + 'static,
 {
-    fn from(value: (T, MW)) -> Self {
-        WebServerModule::from(value).into()
-    }
-}
-
-#[cfg(feature = "web-server-grpc")]
-impl<T, MW, D> From<(T, MW, D)> for WebServerGrpcModule<T, MW, D>
-where
-    MW: Middleware<BoxEndpoint<'static>>,
-{
-    fn from(value: (T, MW, D)) -> Self {
-        WebServerModule::from(value).into()
+    fn from(api: T) -> Self {
+        WebServerGrpcModule::default().with_grpc_service(api)
     }
 }
