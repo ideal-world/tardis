@@ -39,8 +39,16 @@ impl TardisError {
         Self::error("501", msg, locale_code)
     }
 
+    pub fn bad_gateway(msg: &str, locale_code: &str) -> TardisError {
+        Self::error("502", msg, locale_code)
+    }
+
     pub fn io_error(msg: &str, locale_code: &str) -> TardisError {
         Self::error("503", msg, locale_code)
+    }
+
+    pub fn gateway_timeout(msg: &str, locale_code: &str) -> TardisError {
+        Self::error("504", msg, locale_code)
     }
 
     pub fn bad_request(msg: &str, locale_code: &str) -> TardisError {

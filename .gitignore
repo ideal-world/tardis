@@ -22,4 +22,6 @@ util/gh-pages/lints.json
 .vscode
 .idea
 
+
+#macos
 .DS_Store
