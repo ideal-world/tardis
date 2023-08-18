@@ -75,7 +75,7 @@ impl TardisTracing {
                 std::env::set_var("OTEL_SERVICE_NAME", tracing_config.server_name.as_str());
             }
         }
-        let telemetry_layer = tracing_opentelemetry::layer();//.with_tracer(Self::create_otlp_tracer()?);
+        let telemetry_layer = tracing_opentelemetry::layer(); //.with_tracer(Self::create_otlp_tracer()?);
         let builder = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).with_filter_reloading();
         let reload_handle = builder.reload_handle();
         unsafe {
@@ -112,15 +112,15 @@ impl TardisTracing {
     //     Ok(tracer.install_batch(opentelemetry::runtime::Tokio)?)
     // }
 
-    #[cfg(feature = "tracing")]
-    fn parse_otlp_headers_from_env() -> Vec<(String, String)> {
-        let mut headers = Vec::new();
+    // #[cfg(feature = "tracing")]
+    // fn parse_otlp_headers_from_env() -> Vec<(String, String)> {
+    //     let mut headers = Vec::new();
 
-        if let Ok(hdrs) = std::env::var("OTEL_EXPORTER_OTLP_HEADERS") {
-            hdrs.split(',')
-                .map(|header| header.split_once('=').expect("Header should contain '=' character"))
-                .for_each(|(name, value)| headers.push((name.to_owned(), value.to_owned())));
-        }
-        headers
-    }
+    //     if let Ok(hdrs) = std::env::var("OTEL_EXPORTER_OTLP_HEADERS") {
+    //         hdrs.split(',')
+    //             .map(|header| header.split_once('=').expect("Header should contain '=' character"))
+    //             .for_each(|(name, value)| headers.push((name.to_owned(), value.to_owned())));
+    //     }
+    //     headers
+    // }
 }

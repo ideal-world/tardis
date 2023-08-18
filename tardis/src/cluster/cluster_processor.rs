@@ -121,7 +121,7 @@ async fn add_node(node_ip: &str, node_port: u16) -> TardisResult<TardisClusterNo
     let whoami_msg_id = do_publish_event(CLUSTER_NODE_WHOAMI, Value::Null, vec![&client]).await?;
     let resp_node_id = publish_event_wait_resp(&whoami_msg_id).await?.resp_node_id;
 
-    let is_current_node = &resp_node_id == CLUSTER_CURRENT_NODE_ID.read().await.as_str();
+    let is_current_node = resp_node_id == CLUSTER_CURRENT_NODE_ID.read().await.as_str();
     if !is_current_node {
         info!("[Tardis.Cluster] Join node: {node_ip}:{node_port}")
     }
@@ -163,8 +163,7 @@ pub async fn publish_event(event: &str, message: Value, node_ids: Option<Vec<&st
         .collect::<Vec<_>>();
     if let Some(node_ids) = node_ids {
         if node_clients.len() != node_ids.len() {
-            let not_found_node_ids =
-                node_ids.into_iter().filter(|node_id| node_clients.iter().find(|node_client| node_client.1 == node_id).is_none()).collect::<Vec<_>>().join(",");
+            let not_found_node_ids = node_ids.into_iter().filter(|node_id| !node_clients.iter().any(|node_client| node_client.1 == node_id)).collect::<Vec<_>>().join(",");
             return Err(TardisError::not_found(
                 &format!("[Tardis.Cluster] [Client] publish event {event} , message {message} to [{not_found_node_ids}] not found"),
                 "404-tardis-cluster-publish-message-node-not-exit",

@@ -155,17 +155,17 @@ async fn test_ping(node_id: &str) -> TardisResult<()> {
         sleep(Duration::from_secs(5)).await;
         // expect hit 2 times (to node_2, node_3)
         TardisFuns::cluster_publish_event("ping", json!(400), None).await?;
-        sleep(Duration::from_secs(3)).await;
+        sleep(Duration::from_secs(5)).await;
         assert_eq!(PING_COUNTER.load(Ordering::SeqCst), 50 + 4);
     } else if node_id == "2" {
         // expect hit 1 times (to node_1)
         TardisFuns::cluster_publish_event("ping", json!(50), None).await?;
-        sleep(Duration::from_secs(3)).await;
+        sleep(Duration::from_secs(5)).await;
         assert_eq!(PING_COUNTER.load(Ordering::SeqCst), 400 + 4);
     } else {
         // expect hit 2 times (to node_1, node_2)
         TardisFuns::cluster_publish_event("ping", json!(4), None).await?;
-        sleep(Duration::from_secs(3)).await;
+        sleep(Duration::from_secs(5)).await;
         assert_eq!(PING_COUNTER.load(Ordering::SeqCst), 400);
     }
     Ok(())

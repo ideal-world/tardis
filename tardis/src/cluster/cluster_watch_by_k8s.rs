@@ -27,8 +27,8 @@ pub async fn init(cluster_config: &ClusterConfig, webserver_config: &WebServerCo
 async fn watch(k8s_svc: &str, web_server_port: u16) -> TardisResult<()> {
     let endpoint_api: Api<Endpoints> = Api::all(get_client().await?);
     let mut endpoint_watcher = endpoint_api.watch(&WatchParams::default().fields(&format!("metadata.name={k8s_svc}")), "0").await?.boxed();
-    while let Some(_) = endpoint_watcher.try_next().await.unwrap_or_default() {
-        refresh(&k8s_svc, web_server_port).await?;
+    while endpoint_watcher.try_next().await.unwrap_or_default().is_some() {
+        refresh(k8s_svc, web_server_port).await?;
     }
     Ok(())
 }
