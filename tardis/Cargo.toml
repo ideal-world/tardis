@@ -24,7 +24,12 @@ crypto-with-sm = ["crypto", "libsm", "num-bigint"]
 future = ["futures", "async-stream", "futures-util", "async-trait"]
 tls = ["native-tls"]
 reldb-core = ["future", "sqlparser", "sea-orm", "sqlx"]
-reldb-postgres = ["reldb-core", "sea-orm/postgres-array", "sea-orm/sqlx-postgres", "tardis-macros/reldb-postgres"]
+reldb-postgres = [
+    "reldb-core",
+    "sea-orm/postgres-array",
+    "sea-orm/sqlx-postgres",
+    "tardis-macros/reldb-postgres",
+]
 reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql", "tardis-macros/reldb-mysql"]
 reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
 reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
@@ -35,11 +40,13 @@ cache = ["futures-util", "redis", "deadpool-redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 mail = ["lettre"]
 os = ["async-trait", "anyhow", "rust-s3"]
+k8s = ["future", "kube", "k8s-openapi"]
 fs = ["tokio/fs"]
 process = ["tokio/process"]
 test = ["testcontainers"]
-tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp"]
+tracing = ["tracing-opentelemetry", "opentelemetry"]
 web-server-grpc = ["web-server", "dep:poem-grpc"]
+cluster = ["web-server", "ws-client"]
 
 [dependencies]
 # Basic
@@ -77,12 +84,12 @@ opentelemetry = { version = "0.18", default-features = false, features = [
     "trace",
     "rt-tokio",
 ], optional = true }
-opentelemetry-otlp = { version = "0.11", features = [
-    "reqwest-client",
-    "reqwest-rustls",
-    "http-proto",
-    "tls",
-], optional = true }
+# opentelemetry-otlp = { version = "0.11", features = [
+#     "reqwest-client",
+#     "reqwest-rustls",
+#     "http-proto",
+#     "tls",
+# ], optional = true }
 
 # TLS
 native-tls = { version = "0.2", optional = true }
@@ -146,7 +153,7 @@ deadpool-redis = { version = "0.12", optional = true }
 # Rabbit
 lapin = { version = "2", optional = true }
 amq-protocol-types = { version = "7.0", optional = true }
-async-global-executor = { version = "2", optional = true, features = ["tokio"] }
+async-global-executor = { version = "2", features = ["tokio"], optional = true }
 
 # Mail
 lettre = { version = "0.10.4", features = [
@@ -160,6 +167,10 @@ lettre = { version = "0.10.4", features = [
 rust-s3 = { version = "0.33", optional = true }
 anyhow = { version = "1.0", optional = true }
 
+# K8s
+kube = { version = "0.85", features = ["runtime"], optional = true }
+k8s-openapi = { version = "0.19", features = ["v1_21"], optional = true }
+
 # Test
 testcontainers = { version = "0.14", optional = true }
 
@@ -170,6 +181,7 @@ criterion = { version = "0.5" }
 console-subscriber = "0.1.10"
 poem-grpc-build = "0.2.21"
 prost = "0.11.9"
+strip-ansi-escapes = "0.2.0"
 
 [[test]]
 name = "test_config"
@@ -197,7 +209,14 @@ required-features = ["test", "reldb"]
 
 [[test]]
 name = "test_web_server"
-required-features = ["test", "web-server", "cache", "web-client", "crypto", "web-server-grpc"]
+required-features = [
+    "test",
+    "web-server",
+    "cache",
+    "web-client",
+    "crypto",
+    "web-server-grpc",
+]
 
 [[test]]
 name = "test_web_client"
@@ -230,6 +249,10 @@ required-features = ["test", "os"]
 [[test]]
 name = "test_basic_tracing"
 required-features = ["test", "tracing"]
+
+[[test]]
+name = "test_cluster"
+required-features = ["test", "cluster", "k8s"]
 
 [[bench]]
 name = "json_benchmark"

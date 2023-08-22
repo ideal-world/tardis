@@ -1,8 +1,6 @@
+use std::pin::Pin;
 use std::sync::Arc;
 
-use crate::basic::error::TardisError;
-use crate::basic::result::TardisResult;
-use crate::TardisFuns;
 #[cfg(feature = "future")]
 use futures::stream::SplitSink;
 #[cfg(feature = "future")]
@@ -18,28 +16,34 @@ use tracing::info;
 use tracing::{trace, warn};
 use url::Url;
 
-pub struct TardisWSClient<F, T>
-where
-    F: Fn(Message) -> T + Send + Sync + 'static,
-    T: Future<Output = Option<Message>> + Send + 'static,
-{
+use crate::basic::error::TardisError;
+use crate::basic::result::TardisResult;
+use crate::TardisFuns;
+
+type Fun = Arc<dyn Fn(Message) -> Pin<Box<dyn Future<Output = Option<Message>> + Send + Sync>> + Send + Sync>;
+pub struct TardisWSClient {
     str_url: String,
-    fun: F,
+    fun: Fun,
     write: Mutex<Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>>,
 }
 
-impl<F, T> TardisWSClient<F, T>
-where
-    F: Fn(Message) -> T + Send + Sync + Copy + 'static,
-    T: Future<Output = Option<Message>> + Send + 'static,
-{
-    pub async fn connect(str_url: &str, fun: F) -> TardisResult<TardisWSClient<F, T>> {
-        Self::do_connect(str_url, fun, false).await
+impl TardisWSClient {
+    pub async fn connect<F, T>(str_url: &str, fun: F) -> TardisResult<TardisWSClient>
+    where
+        F: Fn(Message) -> T + Send + Sync + Copy + 'static,
+        T: Future<Output = Option<Message>> + Send + Sync + 'static,
+    {
+        Self::do_connect(str_url, Arc::new(move |m| Box::pin(fun(m))), false).await
     }
 
-    async fn do_connect(str_url: &str, fun: F, retry: bool) -> TardisResult<TardisWSClient<F, T>> {
+    async fn do_connect(str_url: &str, fun: Fun, retry: bool) -> TardisResult<TardisWSClient> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.WSClient] Invalid url {str_url}"), "406-tardis-ws-url-error"))?;
-        info!("[Tardis.WSClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
+        info!(
+            "[Tardis.WSClient] {}, host:{}, port:{}",
+            if retry { "Re-initializing" } else { "Initializing" },
+            url.host_str().unwrap_or(""),
+            url.port().unwrap_or(0)
+        );
         let connect = if !str_url.starts_with("wss") {
             tokio_tungstenite::connect_async(url.clone()).await
         } else {
@@ -63,14 +67,20 @@ where
                 TardisError::format_error(&format!("[Tardis.WSClient] Failed to reconnect {str_url} {error}"), "500-tardis-ws-client-reconnect-error")
             }
         })?;
-        info!("[Tardis.WSClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
+        info!(
+            "[Tardis.WSClient] {}, host:{}, port:{}",
+            if retry { "Re-initialized" } else { "Initialized" },
+            url.host_str().unwrap_or(""),
+            url.port().unwrap_or(0)
+        );
         let (write, mut read) = client.split();
         let write = Arc::new(Mutex::new(write));
         let reply = write.clone();
+        let fun_clone = fun.clone();
         tokio::spawn(async move {
             while let Some(Ok(message)) = read.next().await {
                 trace!("[Tardis.WSClient] WS receive: {}", message);
-                if let Some(resp) = fun(message).await {
+                if let Some(resp) = fun_clone(message).await {
                     trace!("[Tardis.WSClient] WS send: {}", resp);
                     if let Err(error) = reply.lock().await.send(resp).await {
                         warn!("[Tardis.WSClient] Failed to send message : {error}");
@@ -124,7 +134,8 @@ where
     }
 
     async fn reconnect(&self) -> TardisResult<()> {
-        let new_client = Self::do_connect(&self.str_url, self.fun, true).await?;
+        let new_fun = self.fun.clone();
+        let new_client = Self::do_connect(&self.str_url, new_fun, true).await?;
         *self.write.lock().await = new_client.write.lock().await.clone();
         Ok(())
     }

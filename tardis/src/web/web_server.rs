@@ -297,14 +297,17 @@ impl TardisWebServer {
     ///
     /// to shutdown it by calling `TardisWebServer::shutdown()`
     pub async fn start(&self) -> TardisResult<()> {
+        #[cfg(feature = "cluster")]
+        crate::cluster::cluster_processor::init_by_conf(crate::TardisFuns::fw_config(), self).await?;
+
         let output_info = format!(
             r#"
 =================
 [Tardis.WebServer] The {app} application has been launched. Visited at: {protocol}://{host}:{port}
 ================="#,
             app = self.app_name,
-            host = self.config.host,
-            port = self.config.port,
+            host = self.config.access_host.as_ref().unwrap_or(&self.config.host),
+            port = self.config.access_port.as_ref().unwrap_or(&self.config.port),
             protocol = if self.config.tls_key.is_some() { "https" } else { "http" }
         );
 
