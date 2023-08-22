@@ -52,7 +52,7 @@ async fn invoke_node(cluster_url: &str, node_id: &str, program: &str) -> TardisR
             .env("cluster_url", cluster_url)
             .env("node_id", node_id)
             .env("LS_COLORS", "rs=0:di=38;5;27:mh=44;38;5;15")
-            .args(&["/C", program])
+            .args(["/C", program])
             .output()
             .await
             .expect("failed to execute process")
@@ -67,7 +67,7 @@ async fn invoke_node(cluster_url: &str, node_id: &str, program: &str) -> TardisR
             .await
             .expect("failed to execute process")
     };
-    let output_msg = String::from_utf8(strip_ansi_escapes::strip(&output.stdout)).unwrap();
+    let output_msg = String::from_utf8(strip_ansi_escapes::strip(output.stdout)).unwrap();
     println!("{node_id} stdout:");
     output_msg.lines().for_each(|line| println!("{line}"));
 
@@ -131,8 +131,8 @@ async fn start_node(cluster_url: String, node_id: &str) -> TardisResult<()> {
     TardisFuns::web_server().start().await?;
     sleep(Duration::from_secs(1)).await;
 
-    test_ping(&node_id).await?;
-    test_echo(&node_id).await?;
+    test_ping(node_id).await?;
+    test_echo(node_id).await?;
 
     if node_id == "1" {
         sleep(Duration::from_secs(1)).await;
