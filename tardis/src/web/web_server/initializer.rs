@@ -54,9 +54,8 @@ impl Initializer for TardisWebServer {
 /// a tuple of (Code, WebServerModule) can be an initializer
 #[cfg(feature = "web-server-grpc")]
 #[async_trait::async_trait]
-impl<T, MW, D> Initializer for (String, WebServerGrpcModule<T, MW, D>)
+impl<MW, D> Initializer for (String, WebServerGrpcModule<MW, D>)
 where
-    T: Clone + poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + 'static + Send + Sync,
     D: Clone + Send + Sync + 'static,
     MW: Clone + Middleware<BoxEndpoint<'static>> + Send + Sync + 'static,
 {
@@ -69,9 +68,8 @@ where
 
 #[cfg(feature = "web-server-grpc")]
 #[async_trait::async_trait]
-impl<T, MW, D> Initializer for (String, WebServerGrpcModule<T, MW, D>, WebServerModuleConfig)
+impl<MW, D> Initializer for (String, WebServerGrpcModule<MW, D>, WebServerModuleConfig)
 where
-    T: Clone + poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + 'static + Send + Sync,
     D: Clone + Send + Sync + 'static,
     MW: Clone + Middleware<BoxEndpoint<'static>> + Send + Sync + 'static,
 {
