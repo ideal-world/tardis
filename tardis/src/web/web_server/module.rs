@@ -190,7 +190,8 @@ impl<MW, D> WebServerGrpcModule<MW, D> {
     where
         T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + Send + Sync + 'static,
     {
-        self.grpc_router_mapper = Arc::new(move |route| route.add_service(service.clone()));
+        let previous_mapper = self.grpc_router_mapper;
+        self.grpc_router_mapper = Arc::new(move |route| previous_mapper(route).add_service(service.clone()));
         self
     }
     pub fn with_descriptor(mut self, descriptor: Vec<u8>) -> Self {
