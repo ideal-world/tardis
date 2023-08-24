@@ -44,7 +44,7 @@ k8s = ["future", "kube", "k8s-openapi"]
 fs = ["tokio/fs"]
 process = ["tokio/process"]
 test = ["testcontainers"]
-tracing = ["tracing-opentelemetry", "opentelemetry"]
+tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp"]
 web-server-grpc = ["web-server", "dep:poem-grpc"]
 cluster = ["web-server", "ws-client"]
 
@@ -79,17 +79,17 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Tracing
-tracing-opentelemetry = { version = "0.18", optional = true }
-opentelemetry = { version = "0.18", default-features = false, features = [
+tracing-opentelemetry = { version = "0.19", optional = true }
+opentelemetry = { version = "0.19", default-features = false, features = [
     "trace",
     "rt-tokio",
 ], optional = true }
-# opentelemetry-otlp = { version = "0.11", features = [
-#     "reqwest-client",
-#     "reqwest-rustls",
-#     "http-proto",
-#     "tls",
-# ], optional = true }
+opentelemetry-otlp = { version = "0.12", features = [
+    "reqwest-client",
+    "reqwest-rustls",
+    "http-proto",
+    "tls",
+], optional = true }
 
 # TLS
 native-tls = { version = "0.2", optional = true }
