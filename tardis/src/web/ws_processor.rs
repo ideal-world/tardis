@@ -158,15 +158,20 @@ where
                                     // System process
                                     if req_msg.event == Some(WS_SYSTEM_EVENT_INFO.to_string()) {
                                         let Ok(msg) = TardisFuns::json
-                                        .obj_to_json(&TardisWebsocketInstInfo {
-                                            inst_id: inst_id.clone(),
-                                            avatars: current_avatars,
-                                            mgr_node,
-                                            subscribe_mode,
-                                        }).map_err(|error| {
-                                            crate::log::error!("[Tardis.WebServer] can't serialize {struct_name}, error: {error}", struct_name=stringify!(TardisWebsocketInstInfo));
-                                            ws_send_error_to_channel(&text, "message not illegal", &avatar_self, &inst_id, &inner_sender);
-                                        }) else {
+                                            .obj_to_json(&TardisWebsocketInstInfo {
+                                                inst_id: inst_id.clone(),
+                                                avatars: current_avatars,
+                                                mgr_node,
+                                                subscribe_mode,
+                                            })
+                                            .map_err(|error| {
+                                                crate::log::error!(
+                                                    "[Tardis.WebServer] can't serialize {struct_name}, error: {error}",
+                                                    struct_name = stringify!(TardisWebsocketInstInfo)
+                                                );
+                                                ws_send_error_to_channel(&text, "message not illegal", &avatar_self, &inst_id, &inner_sender);
+                                            })
+                                        else {
                                             break;
                                         };
                                         let send_msg = TardisWebsocketMgrMessage {
@@ -269,9 +274,7 @@ where
 
             tokio::spawn(async move {
                 while let Ok(mgr_message) = inner_receiver.recv().await {
-                    let Some(current_avatars) = ({
-                        insts_in_receive.read().await.get(&current_receive_inst_id).cloned()
-                    }) else {
+                    let Some(current_avatars) = ({ insts_in_receive.read().await.get(&current_receive_inst_id).cloned() }) else {
                         warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} not found");
                         continue;
                     };
@@ -301,13 +304,12 @@ where
                         let Ok(resp_msg) = (if mgr_node {
                             TardisFuns::json.obj_to_string(&mgr_message)
                         } else {
-                            TardisFuns::json
-                                .obj_to_string(&TardisWebsocketMessage {
-                                    msg: mgr_message.msg.clone(),
-                                    event: mgr_message.event.clone(),
-                                })
+                            TardisFuns::json.obj_to_string(&TardisWebsocketMessage {
+                                msg: mgr_message.msg.clone(),
+                                event: mgr_message.event.clone(),
+                            })
                         }) else {
-                            warn!("[Tardis.WebServer] Cannot serialize {:?} into json",mgr_message);
+                            warn!("[Tardis.WebServer] Cannot serialize {:?} into json", mgr_message);
                             continue;
                         };
                         if let Err(error) = ws_sink.send(Message::Text(resp_msg)).await {
