@@ -17,16 +17,16 @@ pub struct TardisCryptoAes;
 /// let data = TardisFuns::crypto.aes.decrypt_cbc(&encrypted_data, &key, &iv).unwrap();
 /// ```
 impl TardisCryptoAes {
-    pub fn encrypt_ecb(&self, data: &str, hex_key: &str) -> TardisResult<String> {
+    pub fn encrypt_ecb(&self, data: impl AsRef<[u8]>, hex_key: impl AsRef<[u8]>) -> TardisResult<String> {
         self.encrypt(data, hex_key, "", false)
     }
 
-    pub fn encrypt_cbc(&self, data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
+    pub fn encrypt_cbc(&self, data: impl AsRef<[u8]>, hex_key: impl AsRef<[u8]>, hex_iv: impl AsRef<[u8]>) -> TardisResult<String> {
         self.encrypt(data, hex_key, hex_iv, true)
     }
 
-    fn encrypt(&self, data: &str, hex_key: &str, hex_iv: &str, cbc_mode: bool) -> TardisResult<String> {
-        let key_size = match hex_key.len() {
+    fn encrypt(&self, data: impl AsRef<[u8]>, hex_key: impl AsRef<[u8]>, hex_iv: impl AsRef<[u8]>, cbc_mode: bool) -> TardisResult<String> {
+        let key_size = match hex_key.as_ref().len() {
             16 => crypto::aes::KeySize::KeySize128,
             24 => crypto::aes::KeySize::KeySize192,
             32 => crypto::aes::KeySize::KeySize256,
@@ -39,13 +39,13 @@ impl TardisCryptoAes {
         };
 
         let mut encryptor = if cbc_mode {
-            crypto::aes::cbc_encryptor(key_size, hex_key.as_bytes(), hex_iv.as_bytes(), crypto::blockmodes::PkcsPadding)
+            crypto::aes::cbc_encryptor(key_size, hex_key.as_ref(), hex_iv.as_ref(), crypto::blockmodes::PkcsPadding)
         } else {
-            crypto::aes::ecb_encryptor(key_size, hex_key.as_bytes(), crypto::blockmodes::PkcsPadding)
+            crypto::aes::ecb_encryptor(key_size, hex_key.as_ref(), crypto::blockmodes::PkcsPadding)
         };
 
         let mut final_result = Vec::<u8>::new();
-        let mut read_buffer = crypto::buffer::RefReadBuffer::new(data.as_bytes());
+        let mut read_buffer = crypto::buffer::RefReadBuffer::new(data.as_ref());
         let mut buffer = [0; 4096];
         let mut write_buffer = crypto::buffer::RefWriteBuffer::new(&mut buffer);
 
@@ -60,16 +60,16 @@ impl TardisCryptoAes {
         Ok(hex::encode(final_result))
     }
 
-    pub fn decrypt_ecb(&self, encrypted_data: &str, hex_key: &str) -> TardisResult<String> {
+    pub fn decrypt_ecb(&self, encrypted_data: impl AsRef<[u8]>, hex_key: impl AsRef<[u8]>) -> TardisResult<String> {
         self.decrypt(encrypted_data, hex_key, "", false)
     }
 
-    pub fn decrypt_cbc(&self, encrypted_data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
+    pub fn decrypt_cbc(&self, encrypted_data: impl AsRef<[u8]>, hex_key: impl AsRef<[u8]>, hex_iv: impl AsRef<[u8]>) -> TardisResult<String> {
         self.decrypt(encrypted_data, hex_key, hex_iv, true)
     }
 
-    fn decrypt(&self, encrypted_data: &str, hex_key: &str, hex_iv: &str, cbc_mode: bool) -> TardisResult<String> {
-        let key_size = match hex_key.len() {
+    fn decrypt(&self, encrypted_data: impl AsRef<[u8]>, hex_key: impl AsRef<[u8]>, hex_iv: impl AsRef<[u8]>, cbc_mode: bool) -> TardisResult<String> {
+        let key_size = match hex_key.as_ref().len() {
             16 => crypto::aes::KeySize::KeySize128,
             24 => crypto::aes::KeySize::KeySize192,
             32 => crypto::aes::KeySize::KeySize256,
@@ -84,9 +84,9 @@ impl TardisCryptoAes {
         let encrypted_data = hex::decode(encrypted_data)?;
 
         let mut decryptor = if cbc_mode {
-            crypto::aes::cbc_decryptor(key_size, hex_key.as_bytes(), hex_iv.as_bytes(), crypto::blockmodes::PkcsPadding)
+            crypto::aes::cbc_decryptor(key_size, hex_key.as_ref(), hex_iv.as_ref(), crypto::blockmodes::PkcsPadding)
         } else {
-            crypto::aes::ecb_decryptor(key_size, hex_key.as_bytes(), crypto::blockmodes::PkcsPadding)
+            crypto::aes::ecb_decryptor(key_size, hex_key.as_ref(), crypto::blockmodes::PkcsPadding)
         };
 
         let mut final_result = Vec::<u8>::new();
