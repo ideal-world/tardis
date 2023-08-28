@@ -72,14 +72,9 @@ async fn test_web_client() -> TardisResult<()> {
         "lang": "rust",
         "body": "json"
     });
-    let response = TardisFuns::web_client().post_obj_to_str("https://postman-echo.com/post", &request, None).await?;
+    let response = TardisFuns::web_client().post::<_, EchoPostResponse<serde_json::Value>>("https://postman-echo.com/post", &request, None).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
-    assert!(response.body.unwrap().contains(
-        r#"data": {
-    "body": "json",
-    "lang": "rust"
-  }"#
-    ));
+    assert_eq!(response.body.unwrap().data, request);
 
     let new_post = Post {
         id: None,
@@ -87,7 +82,7 @@ async fn test_web_client() -> TardisResult<()> {
         body: "http://idealworld.group/".into(),
         user_id: 1,
     };
-    let response = TardisFuns::web_client().post::<Post, PostWrap>("https://postman-echo.com/post", &new_post, None).await?;
+    let response = TardisFuns::web_client().post::<Post, EchoPostResponse<Post>>("https://postman-echo.com/post", &new_post, None).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert_eq!(response.body.unwrap().data.body, "http://idealworld.group/");
 
@@ -99,8 +94,8 @@ async fn test_web_client() -> TardisResult<()> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct PostWrap {
-    data: Post,
+struct EchoPostResponse<T> {
+    data: T,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
