@@ -298,7 +298,11 @@ impl TardisWebServer {
     /// to shutdown it by calling `TardisWebServer::shutdown()`
     pub async fn start(&self) -> TardisResult<()> {
         #[cfg(feature = "cluster")]
-        crate::cluster::cluster_processor::init_by_conf(crate::TardisFuns::fw_config(), self).await?;
+        {
+            if let Some(fw) = crate::TardisFuns::fw_config_opt() {
+                crate::cluster::cluster_processor::init_by_conf(fw, self).await?;
+            }
+        }
 
         let output_info = format!(
             r#"
