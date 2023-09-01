@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use std::sync::Arc;
+
 use futures_util::lock::Mutex;
 use poem::endpoint::BoxEndpoint;
 use poem::listener::{Listener, RustlsCertificate, RustlsConfig, TcpListener};
@@ -91,7 +93,30 @@ impl Default for ServerState {
     }
 }
 
-pub struct TardisWebServer {
+#[derive(Clone, Debug, Default)]
+pub struct TardisWebServer(Arc<TardisWebServerInner>);
+
+impl std::ops::Deref for TardisWebServer {
+    type Target = TardisWebServerInner;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
+    }
+}
+
+impl AsRef<TardisWebServerInner> for TardisWebServer {
+    fn as_ref(&self) -> &TardisWebServerInner {
+        self.0.as_ref()
+    }
+}
+
+impl From<Arc<TardisWebServerInner>> for TardisWebServer {
+    fn from(server: Arc<TardisWebServerInner>) -> Self {
+        Self(server)
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct TardisWebServerInner {
     app_name: String,
     version: String,
     config: WebServerConfig,
@@ -103,10 +128,10 @@ pub struct TardisWebServer {
     state: Mutex<ServerState>,
 }
 
-impl TardisWebServer {
-    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServer> {
+impl TardisWebServerInner {
+    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServerInner> {
         let route = poem::Route::new();
-        TardisResult::Ok(TardisWebServer {
+        TardisResult::Ok(TardisWebServerInner {
             app_name: conf.app.name.clone(),
             version: conf.app.version.clone(),
             config: conf.web_server.clone(),
@@ -115,9 +140,9 @@ impl TardisWebServer {
         })
     }
 
-    pub fn init_simple(host: &str, port: u16) -> TardisResult<TardisWebServer> {
+    pub fn init_simple(host: &str, port: u16) -> TardisResult<TardisWebServerInner> {
         let route = poem::Route::new();
-        TardisResult::Ok(TardisWebServer {
+        TardisResult::Ok(TardisWebServerInner {
             app_name: "".to_string(),
             version: "".to_string(),
             config: WebServerConfig {
@@ -300,7 +325,7 @@ impl TardisWebServer {
         #[cfg(feature = "cluster")]
         {
             if let Some(fw) = crate::TardisFuns::fw_config_opt() {
-                crate::cluster::cluster_processor::init_by_conf(fw, self).await?;
+                crate::cluster::cluster_processor::init_by_conf(&fw, self).await?;
             }
         }
 
@@ -401,7 +426,7 @@ impl TardisWebServer {
 }
 
 /// this await will pending until server is closed
-impl std::future::Future for &TardisWebServer {
+impl std::future::Future for &TardisWebServerInner {
     type Output = ();
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         use std::task::Poll;
@@ -428,5 +453,14 @@ impl std::future::Future for &TardisWebServer {
             }
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+impl std::future::Future for TardisWebServer {
+    type Output = ();
+    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        let inner = self.0.as_ref();
+        futures_util::pin_mut!(inner);
+        inner.poll(cx)
     }
 }

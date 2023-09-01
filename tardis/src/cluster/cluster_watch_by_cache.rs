@@ -37,7 +37,7 @@ pub async fn init(cluster_config: &ClusterConfig, web_server_config: &WebServerC
         let mut interval = time::interval(Duration::from_secs(cache_check_interval_sec as u64));
         loop {
             {
-                if let Err(error) = watch(client, cache_check_interval_sec).await {
+                if let Err(error) = watch(&client, cache_check_interval_sec).await {
                     error!("[Tardis.Cluster] [Client] watch error: {}", error);
                 }
             }

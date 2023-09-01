@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use super::*;
 
 #[async_trait::async_trait]
 pub(crate) trait Initializer {
-    async fn init(&self, target: &TardisWebServer);
+    async fn init(&self, target: &TardisWebServerInner);
 }
 
 /// a tuple of (Code, WebServerModule) can be an initializer
@@ -13,7 +15,7 @@ where
     MW: Clone + Middleware<BoxEndpoint<'static>> + 'static + Send + Sync,
     D: Clone + Send + Sync + 'static,
 {
-    async fn init(&self, target: &TardisWebServer) {
+    async fn init(&self, target: &TardisWebServerInner) {
         let (code, ref module) = self;
         let module_config = target.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {code} not found")).clone();
         target.do_add_module_with_data(code, &module_config, module.clone()).await;
@@ -28,7 +30,7 @@ where
     MW: Clone + Middleware<BoxEndpoint<'static>> + 'static + Send + Sync,
     D: Clone + Send + Sync + 'static,
 {
-    async fn init(&self, target: &TardisWebServer) {
+    async fn init(&self, target: &TardisWebServerInner) {
         let (code, ref module, module_config) = self;
         target.do_add_module_with_data(code, module_config, module.clone()).await;
     }
@@ -37,9 +39,23 @@ where
 /// `TardisWebServer` itself can serve as an `Initializer`, it applies all of it's initializer to another
 /// it will consume all initializer of stored previous webserver
 #[async_trait::async_trait]
-impl Initializer for TardisWebServer {
+impl Initializer for TardisWebServerInner {
     #[inline]
-    async fn init(&self, target: &TardisWebServer) {
+    async fn init(&self, target: &TardisWebServerInner) {
+        let mut target_initializers = target.initializers.lock().await;
+        for i in self.initializers.lock().await.drain(..) {
+            i.init(target).await;
+            target_initializers.push(i);
+        }
+    }
+}
+
+/// `TardisWebServer` itself can serve as an `Initializer`, it applies all of it's initializer to another
+/// it will consume all initializer of stored previous webserver
+#[async_trait::async_trait]
+impl Initializer for Arc<TardisWebServerInner> {
+    #[inline]
+    async fn init(&self, target: &TardisWebServerInner) {
         let mut target_initializers = target.initializers.lock().await;
         for i in self.initializers.lock().await.drain(..) {
             i.init(target).await;
@@ -59,7 +75,7 @@ where
     D: Clone + Send + Sync + 'static,
     MW: Clone + Middleware<BoxEndpoint<'static>> + Send + Sync + 'static,
 {
-    async fn init(&self, target: &TardisWebServer) {
+    async fn init(&self, target: &TardisWebServerInner) {
         let (code, ref module) = self;
         let module_config = target.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {code} not found")).clone();
         target.do_add_grpc_module_with_data(code, &module_config, module.clone()).await;
@@ -73,7 +89,7 @@ where
     D: Clone + Send + Sync + 'static,
     MW: Clone + Middleware<BoxEndpoint<'static>> + Send + Sync + 'static,
 {
-    async fn init(&self, target: &TardisWebServer) {
+    async fn init(&self, target: &TardisWebServerInner) {
         let (code, ref module, module_config) = self;
         target.do_add_grpc_module_with_data(code, module_config, module.clone()).await;
     }
@@ -83,7 +99,7 @@ where
     loader methods
 */
 
-impl TardisWebServer {
+impl TardisWebServerInner {
     /// Load an single initializer
     #[inline]
     pub(crate) async fn load_initializer(&self, initializer: impl Initializer + Send + Sync + 'static) {

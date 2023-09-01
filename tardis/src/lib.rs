@@ -115,15 +115,15 @@
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-world/tardis/main/logo.png")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![warn(clippy::unwrap_used)]
+#![warn(clippy::unwrap_used, clippy::undocumented_unsafe_blocks)]
 
 extern crate core;
 #[macro_use]
 extern crate lazy_static;
 
-use std::any::Any;
 use std::collections::HashMap;
-use std::ptr::replace;
+
+use std::{any::Any, sync::Arc};
 
 #[cfg(feature = "future")]
 pub use async_stream;
@@ -141,9 +141,9 @@ pub use poem_grpc;
 pub use rand;
 pub use regex;
 pub use serde;
-use serde::de::DeserializeOwned;
+use serde::Deserialize;
 pub use serde_json;
-use serde_json::Value;
+
 #[cfg(feature = "test")]
 pub use testcontainers;
 pub use tokio;
@@ -175,10 +175,11 @@ use crate::mq::mq_client::TardisMQClient;
 use crate::os::os_client::TardisOSClient;
 #[cfg(feature = "web-client")]
 use crate::search::search_client::TardisSearchClient;
+use crate::utils::*;
 #[cfg(feature = "web-client")]
 use crate::web::web_client::TardisWebClient;
 #[cfg(feature = "web-server")]
-use crate::web::web_server::TardisWebServer;
+use crate::web::web_server::TardisWebServerInner;
 
 /// The operational portal for Tardis core features / Tardis核心功能的操作入口
 ///
@@ -275,49 +276,47 @@ use crate::web::web_server::TardisWebServer;
 /// TardisFuns::cache();
 /// TardisFuns::mq();
 /// ```
+#[derive()]
 pub struct TardisFuns {
-    custom_config: Option<HashMap<ModuleCode, Value>>,
-    _custom_config_cached: Option<HashMap<ModuleCode, Box<dyn Any>>>,
-    framework_config: Option<FrameworkConfig>,
+    custom_config: TardisComponentMap<CachedJsonValue>,
+    framework_config: TardisComponent<FrameworkConfig>,
     #[cfg(feature = "reldb-core")]
-    reldb: Option<HashMap<ModuleCode, TardisRelDBClient>>,
+    reldb: TardisComponentMap<TardisRelDBClient>,
     #[cfg(feature = "web-server")]
-    web_server: Option<TardisWebServer>,
+    web_server: TardisComponent<TardisWebServerInner>,
     #[cfg(feature = "web-client")]
-    web_client: Option<HashMap<ModuleCode, TardisWebClient>>,
+    web_client: TardisComponentMap<TardisWebClient>,
     #[cfg(feature = "cache")]
-    cache: Option<HashMap<ModuleCode, TardisCacheClient>>,
+    cache: TardisComponentMap<TardisCacheClient>,
     #[cfg(feature = "mq")]
-    mq: Option<HashMap<ModuleCode, TardisMQClient>>,
+    mq: TardisComponentMap<TardisMQClient>,
     #[cfg(feature = "web-client")]
-    search: Option<HashMap<ModuleCode, TardisSearchClient>>,
+    search: TardisComponentMap<TardisSearchClient>,
     #[cfg(feature = "mail")]
-    mail: Option<HashMap<ModuleCode, TardisMailClient>>,
+    mail: TardisComponentMap<TardisMailClient>,
     #[cfg(feature = "os")]
-    os: Option<HashMap<ModuleCode, TardisOSClient>>,
+    os: TardisComponentMap<TardisOSClient>,
 }
-type ModuleCode = String;
 
-static mut TARDIS_INST: TardisFuns = TardisFuns {
-    custom_config: None,
-    _custom_config_cached: None,
-    framework_config: None,
+static TARDIS_INST: TardisFuns = TardisFuns {
+    custom_config: TardisComponentMap::new(),
+    framework_config: TardisComponent::new(),
     #[cfg(feature = "reldb-core")]
-    reldb: None,
+    reldb: TardisComponentMap::new(),
     #[cfg(feature = "web-server")]
-    web_server: None,
+    web_server: TardisComponent::new(),
     #[cfg(feature = "web-client")]
-    web_client: None,
+    web_client: TardisComponentMap::new(),
     #[cfg(feature = "cache")]
-    cache: None,
+    cache: TardisComponentMap::new(),
     #[cfg(feature = "mq")]
-    mq: None,
+    mq: TardisComponentMap::new(),
     #[cfg(feature = "web-client")]
-    search: None,
+    search: TardisComponentMap::new(),
     #[cfg(feature = "mail")]
-    mail: None,
+    mail: TardisComponentMap::new(),
     #[cfg(feature = "os")]
-    os: None,
+    os: TardisComponentMap::new(),
 };
 
 #[allow(unsafe_code)]
@@ -408,95 +407,73 @@ impl TardisFuns {
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
         #[cfg(feature = "tracing")]
         TardisTracing::init_tracing(&conf.fw)?;
-        unsafe {
-            replace(&mut TARDIS_INST.custom_config, Some(conf.cs));
-            replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
-            replace(&mut TARDIS_INST.framework_config, Some(conf.fw));
-        };
+        let custom_config = conf.cs.iter().map(|(k, v)| (k.clone(), CachedJsonValue::new(v.clone()))).collect::<HashMap<_, _>>();
+        TARDIS_INST.custom_config.replace_inner(custom_config);
+        TARDIS_INST.framework_config.set(conf.fw);
+        #[allow(unused_variables)]
+        let fw_conf = TardisFuns::fw_config();
         #[cfg(feature = "reldb-core")]
         {
             if TardisFuns::fw_config().db.enabled {
-                let reldb_clients = TardisRelDBClient::init_by_conf(TardisFuns::fw_config()).await?;
-                unsafe {
-                    replace(&mut TARDIS_INST.reldb, Some(reldb_clients));
-                };
+                let reldb_clients = TardisRelDBClient::init_by_conf(&fw_conf).await?;
+                TARDIS_INST.reldb.replace_inner(reldb_clients);
             }
         }
         #[cfg(feature = "web-server")]
         {
             if TardisFuns::fw_config().web_server.enabled {
-                let web_server = TardisWebServer::init_by_conf(TardisFuns::fw_config())?;
-                unsafe {
-                    // take out previous webserver first, because TARDIS_INST is not send and can't live cross an `await` point
-                    let inherit = {
-                        TARDIS_INST.web_server.take()
-                        // `&mut TARDIS_INST` dropped here
-                    };
-                    // if there's some inherit webserver
-                    if let Some(inherit) = inherit {
-                        // 1. should always shutdown first
-                        if let Err(error) = inherit.shutdown().await {
-                            log::error!("[Tardis.WebServer] encounter an error when trying to shutdown webserver: {error}")
-                        }
-                        // 2. load initializers
-                        web_server.load_initializer(inherit).await;
-                        // 3. restart webserver
-                        web_server.start().await?;
-                    }
-                    replace(&mut TARDIS_INST.web_server, Some(web_server));
-                };
+                let web_server = TardisWebServerInner::init_by_conf(&fw_conf)?;
+                // take out previous webserver first, because TARDIS_INST is not send and can't live cross an `await` point
+                let inherit = TARDIS_INST.web_server.get();
+                if inherit.is_running().await {
+                    // 1. should always shutdown first
+                    let _ = inherit.shutdown().await;
+                    // 2. load initializers
+                    web_server.load_initializer(inherit).await;
+                    // 3. restart webserver
+                    web_server.start().await?;
+                }
+                TARDIS_INST.web_server.set(web_server)
             }
         }
         #[cfg(feature = "web-client")]
         {
-            let web_clients = TardisWebClient::init_by_conf(TardisFuns::fw_config())?;
-            unsafe {
-                replace(&mut TARDIS_INST.web_client, Some(web_clients));
-            };
+            let web_clients = TardisWebClient::init_by_conf(&fw_conf)?;
+            TARDIS_INST.web_client.replace_inner(web_clients);
         }
         #[cfg(feature = "cache")]
         {
             if TardisFuns::fw_config().cache.enabled {
-                let cache_clients = TardisCacheClient::init_by_conf(TardisFuns::fw_config()).await?;
-                unsafe {
-                    replace(&mut TARDIS_INST.cache, Some(cache_clients));
-                };
+                let cache_clients = TardisCacheClient::init_by_conf(&fw_conf).await?;
+                TARDIS_INST.cache.replace_inner(cache_clients);
             }
         }
         #[cfg(feature = "mq")]
         {
             if TardisFuns::fw_config().mq.enabled {
-                let mq_clients = TardisMQClient::init_by_conf(TardisFuns::fw_config()).await?;
-                unsafe {
-                    replace(&mut TARDIS_INST.mq, Some(mq_clients));
-                };
+                let mq_clients = TardisMQClient::init_by_conf(&fw_conf).await?;
+                TARDIS_INST.mq.replace_inner(mq_clients);
             }
         }
         #[cfg(feature = "web-client")]
         {
             if TardisFuns::fw_config().search.enabled && !TardisFuns::fw_config().search.url.is_empty() {
-                let search_clients = TardisSearchClient::init_by_conf(TardisFuns::fw_config())?;
-                unsafe {
-                    replace(&mut TARDIS_INST.search, Some(search_clients));
-                };
+                let search_clients = TardisSearchClient::init_by_conf(&fw_conf)?;
+                TARDIS_INST.search.replace_inner(search_clients);
             }
         }
         #[cfg(feature = "mail")]
         {
             if TardisFuns::fw_config().mail.enabled {
-                let mail_clients = TardisMailClient::init_by_conf(TardisFuns::fw_config())?;
-                unsafe {
-                    replace(&mut TARDIS_INST.mail, Some(mail_clients));
-                };
+                let mail_clients = TardisMailClient::init_by_conf(&fw_conf)?;
+                TARDIS_INST.mail.replace_inner(mail_clients);
             }
         }
         #[cfg(feature = "os")]
         {
             if TardisFuns::fw_config().os.enabled {
-                let os_clients = TardisOSClient::init_by_conf(TardisFuns::fw_config())?;
-                unsafe {
-                    replace(&mut TARDIS_INST.os, Some(os_clients));
-                };
+                let os_clients = TardisOSClient::init_by_conf(&fw_conf)?;
+                TARDIS_INST.os.replace_inner(os_clients);
             }
         }
         Ok(())
@@ -538,53 +515,32 @@ impl TardisFuns {
     }
 
     /// Get the custom configuration object / 获取自定义配置对象
-    pub fn cs_config<T: 'static + DeserializeOwned>(code: &str) -> &T {
+    pub fn cs_config<T: 'static + for<'a> Deserialize<'a> + Any + Send + Sync>(code: &str) -> Arc<T> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            let conf = TARDIS_INST.custom_config.as_ref().expect("[Tardis.Config] Custom Config doesn't exist");
-            let cached_conf = TARDIS_INST._custom_config_cached.as_ref().expect("[Tardis.Config] Custom Config doesn't exist");
-            if let Some(t) = conf.get(code) {
-                if let Some(cached_t) = cached_conf.get(code) {
-                    return cached_t.downcast_ref::<T>().unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{code}] type error"));
-                }
-                let t: T = TardisFuns::json.json_to_obj(t.clone()).unwrap_or_else(|_| panic!("[Tardis.Config] Custom Config [{code}] type conversion error"));
-                TARDIS_INST._custom_config_cached.as_mut().expect("[Tardis.Config] Custom Config doesn't exist").insert(code.to_string(), Box::new(t));
-                return cached_conf
-                    .get(code)
-                    .unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{code}] doesn't exist"))
-                    .downcast_ref::<T>()
-                    .unwrap_or_else(|| panic!("[Tardis.Config] Custom Config [{code}] type error"));
-            }
-            if !code.is_empty() {
-                return Self::cs_config("");
-            }
-            panic!("[Tardis.Config] Custom Config [{code}] or [] doesn't exist");
+        let conf = &TARDIS_INST.custom_config;
+        if let Some(t) = conf.get(code) {
+            let t = t.get::<T>().unwrap_or_else(|e| panic!("[Tardis.Config] Custom Config [{code}] type conversion error {e}"));
+            return t;
         }
+        if !code.is_empty() {
+            return Self::cs_config("");
+        }
+        panic!("[Tardis.Config] Custom Config [{code}] or [] doesn't exist");
     }
 
     /// Get default language in the custom configuration / 从自定义配置中获取默认语言
     pub fn default_lang() -> Option<String> {
-        unsafe {
-            match &TARDIS_INST.framework_config {
-                None => None,
-                Some(t) => t.app.default_lang.clone(),
-            }
-        }
+        TARDIS_INST.framework_config.get().app.default_lang.clone()
     }
 
     /// Get the Tardis configuration object / 获取Tardis配置对象
-    pub fn fw_config() -> &'static FrameworkConfig {
-        unsafe {
-            match &TARDIS_INST.framework_config {
-                None => panic!("[Tardis.Config] Framework Config doesn't exist"),
-                Some(t) => t,
-            }
-        }
+    pub fn fw_config() -> Arc<FrameworkConfig> {
+        TARDIS_INST.framework_config.get()
     }
 
-    pub fn fw_config_opt() -> &'static Option<FrameworkConfig> {
-        unsafe { &TARDIS_INST.framework_config }
+    pub fn fw_config_opt() -> Option<Arc<FrameworkConfig>> {
+        Some(TARDIS_INST.framework_config.get())
     }
 
     /// Using the field feature / 使用字段功能
@@ -732,38 +688,22 @@ impl TardisFuns {
     ///     .await.unwrap();
     /// ```
     #[cfg(feature = "reldb-core")]
-    pub fn reldb() -> &'static TardisRelDBClient {
+    pub fn reldb() -> Arc<TardisRelDBClient> {
         Self::reldb_by_module("")
     }
 
     #[cfg(feature = "reldb-core")]
-    pub fn reldb_by_module(code: &str) -> &'static TardisRelDBClient {
+    pub fn reldb_by_module(code: &str) -> Arc<TardisRelDBClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.reldb {
-                None => panic!("[Tardis.Config] RelDB instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] RelDB {code} instance doesn't exist"),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.reldb.get(code).unwrap_or_else(|| panic!("[Tardis.Config] RelDB {code} instance doesn't exist"))
     }
 
     #[cfg(feature = "reldb-core")]
-    pub fn reldb_by_module_or_default(code: &str) -> &'static TardisRelDBClient {
+    pub fn reldb_by_module_or_default(code: &str) -> Arc<TardisRelDBClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.reldb {
-                None => panic!("[Tardis.Config] RelDB instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => Self::reldb(),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.reldb.get(code).unwrap_or_else(Self::reldb)
     }
 
     #[allow(non_upper_case_globals)]
@@ -771,13 +711,8 @@ impl TardisFuns {
     pub const dict: TardisDataDict = TardisDataDict {};
 
     #[cfg(feature = "web-server")]
-    pub fn web_server() -> &'static TardisWebServer {
-        unsafe {
-            match &mut TARDIS_INST.web_server {
-                None => panic!("[Tardis.Config] Web Server default instance doesn't exist"),
-                Some(t) => t,
-            }
-        }
+    pub fn web_server() -> web::web_server::TardisWebServer {
+        TARDIS_INST.web_server.get().into()
     }
 
     /// Use the web  client feature / 使用web客户端功能
@@ -850,38 +785,22 @@ impl TardisFuns {
     /// assert_eq!(response.body.unwrap().body, "http://idealworld.group/");
     /// ```
     #[cfg(feature = "web-client")]
-    pub fn web_client() -> &'static TardisWebClient {
+    pub fn web_client() -> Arc<TardisWebClient> {
         Self::web_client_by_module("")
     }
 
     #[cfg(feature = "web-client")]
-    pub fn web_client_by_module(code: &str) -> &'static TardisWebClient {
+    pub fn web_client_by_module(code: &str) -> Arc<TardisWebClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.web_client {
-                None => panic!("[Tardis.Config] Web Client instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Web Client {code} instance doesn't exist"),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.web_client.get(code).unwrap_or_else(|| panic!("[Tardis.Config] Web Client {code} instance doesn't exist"))
     }
 
     #[cfg(feature = "web-client")]
-    pub fn web_client_by_module_or_default(code: &str) -> &'static TardisWebClient {
+    pub fn web_client_by_module_or_default(code: &str) -> Arc<TardisWebClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.web_client {
-                None => panic!("[Tardis.Config] Web Client instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => Self::web_client(),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.web_client.get(code).unwrap_or_else(Self::web_client)
     }
 
     #[cfg(feature = "ws-client")]
@@ -913,38 +832,22 @@ impl TardisFuns {
     /// assert!(!TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
     /// ```
     #[cfg(feature = "cache")]
-    pub fn cache() -> &'static TardisCacheClient {
+    pub fn cache() -> Arc<TardisCacheClient> {
         Self::cache_by_module("")
     }
 
     #[cfg(feature = "cache")]
-    pub fn cache_by_module(code: &str) -> &'static TardisCacheClient {
+    pub fn cache_by_module(code: &str) -> Arc<TardisCacheClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.cache {
-                None => panic!("[Tardis.Config] Cache instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Cache {code} instance doesn't exist"),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.cache.get(code).unwrap_or_else(|| panic!("[Tardis.Config] Cache {code} instance doesn't exist"))
     }
 
     #[cfg(feature = "cache")]
-    pub fn cache_by_module_or_default(code: &str) -> &'static TardisCacheClient {
+    pub fn cache_by_module_or_default(code: &str) -> Arc<TardisCacheClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.cache {
-                None => panic!("[Tardis.Config] Cache instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => Self::cache(),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.cache.get(code).unwrap_or_else(Self::cache)
     }
 
     /// Use the message queue feature / 使用消息队列功能
@@ -966,38 +869,22 @@ impl TardisFuns {
     /// funs.mq().subscribe("mq_topic_user_add", |(_, _)| async { Ok(()) }).await?;
     /// ```
     #[cfg(feature = "mq")]
-    pub fn mq() -> &'static TardisMQClient {
+    pub fn mq() -> Arc<TardisMQClient> {
         Self::mq_by_module("")
     }
 
     #[cfg(feature = "mq")]
-    pub fn mq_by_module(code: &str) -> &'static TardisMQClient {
+    pub fn mq_by_module(code: &str) -> Arc<TardisMQClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.mq {
-                None => panic!("[Tardis.Config] MQ instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] MQ {code} instance doesn't exist"),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.mq.get(code).unwrap_or_else(|| panic!("[Tardis.Config] MQ {code} instance doesn't exist"))
     }
 
     #[cfg(feature = "mq")]
-    pub fn mq_by_module_or_default(code: &str) -> &'static TardisMQClient {
+    pub fn mq_by_module_or_default(code: &str) -> Arc<TardisMQClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.mq {
-                None => panic!("[Tardis.Config] MQ instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => Self::mq(),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.mq.get(code).unwrap_or_else(Self::mq)
     }
 
     /// Use the distributed search feature / 使用分布式搜索功能
@@ -1019,108 +906,60 @@ impl TardisFuns {
     /// TardisFuns::search().simple_search("test_index", "张三").await.unwrap();
     /// ```
     #[cfg(feature = "web-client")]
-    pub fn search() -> &'static TardisSearchClient {
+    pub fn search() -> Arc<TardisSearchClient> {
         Self::search_by_module("")
     }
 
     #[cfg(feature = "web-client")]
-    pub fn search_by_module(code: &str) -> &'static TardisSearchClient {
+    pub fn search_by_module(code: &str) -> Arc<TardisSearchClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.search {
-                None => panic!("[Tardis.Config] Search instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Search {code} instance doesn't exist"),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.search.get(code).unwrap_or_else(|| panic!("[Tardis.Config] Search {code} instance doesn't exist"))
     }
 
     #[cfg(feature = "web-client")]
-    pub fn search_by_module_or_default(code: &str) -> &'static TardisSearchClient {
+    pub fn search_by_module_or_default(code: &str) -> Arc<TardisSearchClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.search {
-                None => panic!("[Tardis.Config] Search instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => Self::search(),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.search.get(code).unwrap_or_else(Self::search)
     }
 
     #[cfg(feature = "mail")]
-    pub fn mail() -> &'static TardisMailClient {
+    pub fn mail() -> Arc<TardisMailClient> {
         Self::mail_by_module("")
     }
 
     #[cfg(feature = "mail")]
-    pub fn mail_by_module(code: &str) -> &'static TardisMailClient {
+    pub fn mail_by_module(code: &str) -> Arc<TardisMailClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.mail {
-                None => panic!("[Tardis.Config] Mail instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Mail {code} instance doesn't exist"),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.mail.get(code).unwrap_or_else(|| panic!("[Tardis.Config] Mail {code} instance doesn't exist"))
     }
 
     #[cfg(feature = "mail")]
-    pub fn mail_by_module_or_default(code: &str) -> &'static TardisMailClient {
+    pub fn mail_by_module_or_default(code: &str) -> Arc<TardisMailClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.mail {
-                None => panic!("[Tardis.Config] Mail instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => Self::mail(),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.mail.get(code).unwrap_or_else(Self::mail)
     }
 
     #[cfg(feature = "os")]
-    pub fn os() -> &'static TardisOSClient {
+    pub fn os() -> Arc<TardisOSClient> {
         Self::os_by_module("")
     }
 
     #[cfg(feature = "os")]
-    pub fn os_by_module(code: &str) -> &'static TardisOSClient {
+    pub fn os_by_module(code: &str) -> Arc<TardisOSClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.os {
-                None => panic!("[Tardis.Config] Object Storage instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => panic!("[Tardis.Config] Object Storage {code} instance doesn't exist"),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.os.get(code).unwrap_or_else(|| panic!("[Tardis.Config] Os {code} instance doesn't exist"))
     }
 
     #[cfg(feature = "os")]
-    pub fn os_by_module_or_default(code: &str) -> &'static TardisOSClient {
+    pub fn os_by_module_or_default(code: &str) -> Arc<TardisOSClient> {
         let code = code.to_lowercase();
         let code = code.as_str();
-        unsafe {
-            match &TARDIS_INST.os {
-                None => panic!("[Tardis.Config] Object Storage instance doesn't exist"),
-                Some(t) => match t.get(code) {
-                    None => Self::os(),
-                    Some(t) => t,
-                },
-            }
-        }
+        TARDIS_INST.os.get(code).unwrap_or_else(Self::os)
     }
 
     #[cfg(feature = "cluster")]
@@ -1129,12 +968,12 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "cluster")]
-    pub async fn cluster_publish_event(event: &str, message: Value, node_ids: Option<Vec<&str>>) -> TardisResult<String> {
+    pub async fn cluster_publish_event(event: &str, message: serde_json::Value, node_ids: Option<Vec<&str>>) -> TardisResult<String> {
         cluster::cluster_processor::publish_event(event, message, node_ids).await
     }
 
     #[cfg(feature = "cluster")]
-    pub async fn cluster_publish_event_and_wait_resp(event: &str, message: Value, node_id: &str) -> TardisResult<cluster::cluster_processor::TardisClusterMessageResp> {
+    pub async fn cluster_publish_event_and_wait_resp(event: &str, message: serde_json::Value, node_id: &str) -> TardisResult<cluster::cluster_processor::TardisClusterMessageResp> {
         cluster::cluster_processor::publish_event_and_wait_resp(event, message, node_id).await
     }
 
@@ -1144,49 +983,33 @@ impl TardisFuns {
         tracing::info!("[Tardis] Shutdown...");
         // using a join set to collect async task, because `&TARDIS_INST` is not `Send`
         #[cfg(feature = "web-client")]
-        unsafe {
-            let _ = &TARDIS_INST.web_client.take();
-        }
+        TARDIS_INST.web_client.clear();
         #[cfg(feature = "cache")]
-        unsafe {
-            let _ = &TARDIS_INST.cache.take();
-        }
+        TARDIS_INST.cache.clear();
         #[cfg(feature = "mail")]
-        unsafe {
-            let _ = &TARDIS_INST.mail.take();
-        }
+        TARDIS_INST.mail.clear();
         #[cfg(feature = "os")]
-        unsafe {
-            let _ = &TARDIS_INST.os.take();
-        }
+        TARDIS_INST.os.clear();
+        // reldb needn't shutdown
+        // connection will be closed by drop calling
+        // see: https://www.sea-ql.org/SeaORM/docs/install-and-config/connection/
         #[cfg(feature = "reldb-core")]
-        unsafe {
-            // reldb needn't shutdown
-            // connection will be closed by drop calling
-            // see: https://www.sea-ql.org/SeaORM/docs/install-and-config/connection/
-            let _ = &TARDIS_INST.reldb.take();
-        }
+        TARDIS_INST.reldb.clear();
         #[cfg(feature = "mq")]
-        unsafe {
-            let mq = TARDIS_INST.mq.take();
-            if let Some(t) = mq {
-                for v in t.values() {
-                    if let Err(e) = v.close().await {
-                        tracing::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
-                    }
+        {
+            let mq = TARDIS_INST.mq.drain();
+            for (code, client) in mq {
+                if let Err(e) = client.close().await {
+                    tracing::error!("[Tardis] Encounter an error while shutting down MQClient [{code}]: {}", e);
                 }
             }
         }
         #[cfg(feature = "web-server")]
-        unsafe {
-            let web_server = TARDIS_INST.web_server.take();
-            if let Some(web_server) = web_server {
+        {
+            let web_server = TARDIS_INST.web_server.get();
+            if web_server.is_running().await {
                 if let Err(e) = web_server.shutdown().await {
                     tracing::error!("[Tardis] Encounter an error while shutting down webserver: {}", e);
-                }
-                // put it back if not "clean"
-                if !clean {
-                    TARDIS_INST.web_server.replace(web_server);
                 }
             }
         }
@@ -1208,105 +1031,82 @@ impl TardisFuns {
 
     /// hot reload tardis instance
     pub async fn hot_reload(conf: TardisConfig) -> TardisResult<()> {
+        let new_custom_config = conf.cs.iter().map(|(k, v)| (k.clone(), CachedJsonValue::new(v.clone()))).collect::<HashMap<_, _>>();
+        let new_framework_config = conf.fw;
         #[allow(unused_variables)]
-        let old_config = unsafe {
-            let cs = replace(&mut TARDIS_INST.custom_config, Some(conf.cs)).expect("hot reload before tardis initialized");
-            replace(&mut TARDIS_INST._custom_config_cached, Some(HashMap::new()));
-            let fw = replace(&mut TARDIS_INST.framework_config, Some(conf.fw)).expect("hot reload before tardis initialized");
-            TardisConfig { cs, fw }
-        };
+        let old_custom_config = TARDIS_INST.custom_config.replace_inner(new_custom_config);
+        #[allow(unused_variables)]
+        let old_framework_config = TARDIS_INST.framework_config.replace(new_framework_config);
 
         #[allow(unused_variables)]
         let fw_config = TardisFuns::fw_config();
-
         #[cfg(feature = "tracing")]
         {
-            if fw_config.log.is_some() && fw_config.log != old_config.fw.log {
-                TardisTracing::init_tracing(fw_config)?;
+            if fw_config.log.is_some() && fw_config.log != old_framework_config.log {
+                TardisTracing::init_tracing(&fw_config)?;
             }
         }
 
         #[cfg(feature = "reldb-core")]
         {
-            if fw_config.db.enabled && fw_config.db != old_config.fw.db {
-                let reldb_clients = TardisRelDBClient::init_by_conf(TardisFuns::fw_config()).await?;
-                unsafe {
-                    replace(&mut TARDIS_INST.reldb, Some(reldb_clients));
-                };
+            if fw_config.db.enabled && fw_config.db != old_framework_config.db {
+                let reldb_clients = TardisRelDBClient::init_by_conf(&fw_config).await?;
+                TARDIS_INST.reldb.replace_inner(reldb_clients);
             }
         }
         #[cfg(feature = "web-server")]
         {
-            if fw_config.web_server.enabled && old_config.fw.web_server != fw_config.web_server {
-                let web_server = TardisWebServer::init_by_conf(fw_config)?;
-                unsafe {
-                    // take out previous webserver first, because TARDIS_INST is not send and can't live cross an `await` point
-                    let inherit = {
-                        TARDIS_INST.web_server.take()
-                        // `&mut TARDIS_INST` dropped here
-                    };
-                    // if there's some inherit webserver
-                    if let Some(inherit) = inherit {
-                        // 1. shutdown webserver
-                        inherit.shutdown().await?;
-                        // 2. load initializers
-                        web_server.load_initializer(inherit).await;
-                        // 3. restart webserver
-                        web_server.start().await?;
-                    }
-                    replace(&mut TARDIS_INST.web_server, Some(web_server));
-                };
+            if fw_config.web_server.enabled && old_framework_config.web_server != fw_config.web_server {
+                let web_server = TardisWebServerInner::init_by_conf(&fw_config)?;
+                let old_server = TARDIS_INST.web_server.get();
+                // if there's some inherit webserver
+                if old_server.is_running().await {
+                    // 1. shutdown webserver
+                    old_server.shutdown().await?;
+                    // 2. load initializers
+                    web_server.load_initializer(old_server).await;
+                    // 3. restart webserver
+                    web_server.start().await?;
+                }
+                TARDIS_INST.web_server.set(web_server)
             }
         }
         #[cfg(feature = "web-client")]
         {
-            let web_clients = TardisWebClient::init_by_conf(fw_config)?;
-            unsafe {
-                replace(&mut TARDIS_INST.web_client, Some(web_clients));
-            };
+            let web_clients = TardisWebClient::init_by_conf(&fw_config)?;
+            TARDIS_INST.web_client.replace_inner(web_clients);
         }
         #[cfg(feature = "cache")]
         {
             if fw_config.cache.enabled {
-                let cache_clients = TardisCacheClient::init_by_conf(fw_config).await?;
-                unsafe {
-                    replace(&mut TARDIS_INST.cache, Some(cache_clients));
-                };
+                let cache_clients = TardisCacheClient::init_by_conf(&fw_config).await?;
+                TARDIS_INST.cache.replace_inner(cache_clients);
             }
         }
         #[cfg(feature = "mq")]
         {
-            if fw_config.mq.enabled && fw_config.mq != old_config.fw.mq {
-                unsafe {
-                    let mq_clients = TARDIS_INST.mq.take();
-                    if let Some(mq_clients) = mq_clients {
-                        for v in mq_clients.values() {
-                            if let Err(e) = v.close().await {
-                                tracing::error!("[Tardis] Encounter an error while shutting down MQClient: {}", e);
-                            }
-                        }
+            if fw_config.mq.enabled && fw_config.mq != old_framework_config.mq {
+                let mq_clients = TardisMQClient::init_by_conf(&fw_config).await?;
+                let mut old_mq_clients = TARDIS_INST.mq.replace_inner(mq_clients);
+                for (code, client) in old_mq_clients.drain() {
+                    if let Err(e) = client.close().await {
+                        tracing::error!("[Tardis] Encounter an error while shutting down MQClient [{code}]: {}", e);
                     }
-                    let mq_clients = TardisMQClient::init_by_conf(fw_config).await?;
-                    replace(&mut TARDIS_INST.mq, Some(mq_clients));
                 }
             }
         }
         #[cfg(feature = "mail")]
         {
             if fw_config.mail.enabled {
-                let mail_clients = TardisMailClient::init_by_conf(fw_config)?;
-                unsafe {
-                    replace(&mut TARDIS_INST.mail, Some(mail_clients));
-                };
+                let mail_clients = TardisMailClient::init_by_conf(&fw_config)?;
+                TARDIS_INST.mail.replace_inner(mail_clients);
             }
         }
         #[cfg(feature = "os")]
         {
             if fw_config.os.enabled {
-                let os_clients = TardisOSClient::init_by_conf(fw_config)?;
-                unsafe {
-                    replace(&mut TARDIS_INST.os, Some(os_clients));
-                };
+                let os_clients = TardisOSClient::init_by_conf(&fw_config)?;
+                TARDIS_INST.os.replace_inner(os_clients);
             }
         }
         Ok(())
@@ -1367,7 +1167,7 @@ impl TardisFunsInst {
         &self.module_code
     }
 
-    pub fn conf<T: 'static + DeserializeOwned>(&self) -> &T {
+    pub fn conf<T: 'static + for<'a> Deserialize<'a> + Any + Send + Sync>(&self) -> Arc<T> {
         TardisFuns::cs_config(&self.module_code)
     }
 
@@ -1376,7 +1176,7 @@ impl TardisFunsInst {
     }
 
     #[cfg(feature = "reldb-core")]
-    pub fn reldb(&self) -> &'static TardisRelDBClient {
+    pub fn reldb(&self) -> Arc<TardisRelDBClient> {
         TardisFuns::reldb_by_module_or_default(&self.module_code)
     }
 
@@ -1401,32 +1201,32 @@ impl TardisFunsInst {
     }
 
     #[cfg(feature = "cache")]
-    pub fn cache(&self) -> &'static TardisCacheClient {
+    pub fn cache(&self) -> Arc<TardisCacheClient> {
         TardisFuns::cache_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "mq")]
-    pub fn mq(&self) -> &'static TardisMQClient {
+    pub fn mq(&self) -> Arc<TardisMQClient> {
         TardisFuns::mq_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "web-client")]
-    pub fn web_client(&self) -> &'static TardisWebClient {
+    pub fn web_client(&self) -> Arc<TardisWebClient> {
         TardisFuns::web_client_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "web-client")]
-    pub fn search(&self) -> &'static TardisSearchClient {
+    pub fn search(&self) -> Arc<TardisSearchClient> {
         TardisFuns::search_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "mail")]
-    pub fn mail(&self) -> &'static TardisMailClient {
+    pub fn mail(&self) -> Arc<TardisMailClient> {
         TardisFuns::mail_by_module_or_default(&self.module_code)
     }
 
     #[cfg(feature = "os")]
-    pub fn os(&self) -> &'static TardisOSClient {
+    pub fn os(&self) -> Arc<TardisOSClient> {
         TardisFuns::os_by_module_or_default(&self.module_code)
     }
 }
@@ -1463,3 +1263,5 @@ pub mod search;
 #[cfg_attr(docsrs, doc(cfg(feature = "test")))]
 pub mod test;
 pub mod web;
+
+pub mod utils;
