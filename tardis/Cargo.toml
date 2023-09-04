@@ -79,12 +79,12 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Tracing
-tracing-opentelemetry = { version = "0.19", optional = true }
-opentelemetry = { version = "0.19", default-features = false, features = [
+tracing-opentelemetry = { version = "0.21", optional = true }
+opentelemetry = { version = "0.20", default-features = false, features = [
     "trace",
     "rt-tokio",
 ], optional = true }
-opentelemetry-otlp = { version = "0.12", features = [
+opentelemetry-otlp = { version = "0.13", features = [
     "reqwest-client",
     "reqwest-rustls",
     "http-proto",
