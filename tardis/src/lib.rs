@@ -179,7 +179,7 @@ use crate::utils::*;
 #[cfg(feature = "web-client")]
 use crate::web::web_client::TardisWebClient;
 #[cfg(feature = "web-server")]
-use crate::web::web_server::TardisWebServerInner;
+use crate::web::web_server::TardisWebServer;
 
 /// The operational portal for Tardis core features / Tardis核心功能的操作入口
 ///
@@ -283,7 +283,7 @@ pub struct TardisFuns {
     #[cfg(feature = "reldb-core")]
     reldb: TardisComponentMap<TardisRelDBClient>,
     #[cfg(feature = "web-server")]
-    web_server: TardisComponent<TardisWebServerInner>,
+    web_server: TardisComponent<TardisWebServer>,
     #[cfg(feature = "web-client")]
     web_client: TardisComponentMap<TardisWebClient>,
     #[cfg(feature = "cache")]
@@ -422,7 +422,7 @@ impl TardisFuns {
         #[cfg(feature = "web-server")]
         {
             if TardisFuns::fw_config().web_server.enabled {
-                let web_server = TardisWebServerInner::init_by_conf(&fw_conf)?;
+                let web_server = TardisWebServer::init_by_conf(&fw_conf)?;
                 // take out previous webserver first, because TARDIS_INST is not send and can't live cross an `await` point
                 let inherit = TARDIS_INST.web_server.get();
                 if inherit.is_running().await {
@@ -711,7 +711,7 @@ impl TardisFuns {
     pub const dict: TardisDataDict = TardisDataDict {};
 
     #[cfg(feature = "web-server")]
-    pub fn web_server() -> web::web_server::TardisWebServer {
+    pub fn web_server() -> web::web_server::ArcTardisWebServer {
         TARDIS_INST.web_server.get().into()
     }
 
@@ -1057,7 +1057,7 @@ impl TardisFuns {
         #[cfg(feature = "web-server")]
         {
             if fw_config.web_server.enabled && old_framework_config.web_server != fw_config.web_server {
-                let web_server = TardisWebServerInner::init_by_conf(&fw_config)?;
+                let web_server = TardisWebServer::init_by_conf(&fw_config)?;
                 let old_server = TARDIS_INST.web_server.get();
                 // if there's some inherit webserver
                 if old_server.is_running().await {

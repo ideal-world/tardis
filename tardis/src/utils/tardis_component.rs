@@ -19,12 +19,6 @@ impl<T: Default> TardisComponent<T> {
     pub fn get_option(&self) -> Option<Arc<T>> {
         self.0.get().map(|x| x.get())
     }
-    // pub fn get(&self) -> Arc<T> {
-    //     self.0.get_or_init(Default::default).get()
-    // }
-    // pub fn set(&self, value: T) {
-    //     self.0.get_or_init(Default::default).set(value)
-    // }
 }
 
 #[repr(transparent)]

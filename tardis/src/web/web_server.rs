@@ -94,29 +94,30 @@ impl Default for ServerState {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct TardisWebServer(Arc<TardisWebServerInner>);
+#[repr(transparent)]
+pub struct ArcTardisWebServer(pub Arc<TardisWebServer>);
 
-impl std::ops::Deref for TardisWebServer {
-    type Target = TardisWebServerInner;
+impl std::ops::Deref for ArcTardisWebServer {
+    type Target = TardisWebServer;
     fn deref(&self) -> &Self::Target {
         self.0.as_ref()
     }
 }
 
-impl AsRef<TardisWebServerInner> for TardisWebServer {
-    fn as_ref(&self) -> &TardisWebServerInner {
+impl AsRef<TardisWebServer> for ArcTardisWebServer {
+    fn as_ref(&self) -> &TardisWebServer {
         self.0.as_ref()
     }
 }
 
-impl From<Arc<TardisWebServerInner>> for TardisWebServer {
-    fn from(server: Arc<TardisWebServerInner>) -> Self {
+impl From<Arc<TardisWebServer>> for ArcTardisWebServer {
+    fn from(server: Arc<TardisWebServer>) -> Self {
         Self(server)
     }
 }
 
 #[derive(Default, Debug)]
-pub struct TardisWebServerInner {
+pub struct TardisWebServer {
     app_name: String,
     version: String,
     config: WebServerConfig,
@@ -128,10 +129,10 @@ pub struct TardisWebServerInner {
     state: Mutex<ServerState>,
 }
 
-impl TardisWebServerInner {
-    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServerInner> {
+impl TardisWebServer {
+    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServer> {
         let route = poem::Route::new();
-        TardisResult::Ok(TardisWebServerInner {
+        TardisResult::Ok(TardisWebServer {
             app_name: conf.app.name.clone(),
             version: conf.app.version.clone(),
             config: conf.web_server.clone(),
@@ -140,9 +141,9 @@ impl TardisWebServerInner {
         })
     }
 
-    pub fn init_simple(host: &str, port: u16) -> TardisResult<TardisWebServerInner> {
+    pub fn init_simple(host: &str, port: u16) -> TardisResult<TardisWebServer> {
         let route = poem::Route::new();
-        TardisResult::Ok(TardisWebServerInner {
+        TardisResult::Ok(TardisWebServer {
             app_name: "".to_string(),
             version: "".to_string(),
             config: WebServerConfig {
@@ -426,7 +427,7 @@ impl TardisWebServerInner {
 }
 
 /// this await will pending until server is closed
-impl std::future::Future for &TardisWebServerInner {
+impl std::future::Future for &TardisWebServer {
     type Output = ();
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         use std::task::Poll;
@@ -456,7 +457,7 @@ impl std::future::Future for &TardisWebServerInner {
     }
 }
 
-impl std::future::Future for TardisWebServer {
+impl std::future::Future for ArcTardisWebServer {
     type Output = ();
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         let inner = self.0.as_ref();

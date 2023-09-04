@@ -14,7 +14,7 @@ use crate::cluster::cluster_watch_by_cache;
 #[cfg(feature = "k8s")]
 use crate::cluster::cluster_watch_by_k8s;
 use crate::config::config_dto::FrameworkConfig;
-use crate::web::web_server::TardisWebServerInner;
+use crate::web::web_server::TardisWebServer;
 use crate::web::ws_client::TardisWSClient;
 use crate::{basic::result::TardisResult, TardisFuns};
 use async_trait::async_trait;
@@ -43,7 +43,7 @@ impl TardisClusterSubscriber for ClusterSubscriberWhoAmI {
     }
 }
 
-pub async fn init_by_conf(conf: &FrameworkConfig, cluster_server: &TardisWebServerInner) -> TardisResult<()> {
+pub async fn init_by_conf(conf: &FrameworkConfig, cluster_server: &TardisWebServer) -> TardisResult<()> {
     if let Some(cluster_config) = &conf.cluster {
         info!("[Tardis.Cluster] Initializing cluster");
         init_node(cluster_server).await?;
@@ -64,7 +64,7 @@ pub async fn init_by_conf(conf: &FrameworkConfig, cluster_server: &TardisWebServ
     Ok(())
 }
 
-async fn init_node(cluster_server: &TardisWebServerInner) -> TardisResult<()> {
+async fn init_node(cluster_server: &TardisWebServer) -> TardisResult<()> {
     info!("[Tardis.Cluster] Initializing node");
     if CLUSTER_CURRENT_NODE_ID.read().await.is_empty() {
         *CLUSTER_CURRENT_NODE_ID.write().await = TardisFuns::field.nanoid();
