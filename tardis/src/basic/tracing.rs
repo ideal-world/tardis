@@ -1,4 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::OnceLock;
 
 use crate::basic::result::TardisResult;
 use tracing_subscriber::fmt::Layer;
@@ -11,7 +12,7 @@ static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 pub struct TardisTracing;
 
-pub static mut GLOBAL_RELOAD_HANDLE: Option<Handle<EnvFilter, Layered<Layer<Registry>, Registry>>> = None;
+pub static GLOBAL_RELOAD_HANDLE: OnceLock<Handle<EnvFilter, Layered<Layer<Registry>, Registry>>> = OnceLock::new();
 
 impl TardisTracing {
     pub(crate) fn init_log() -> TardisResult<()> {
@@ -25,20 +26,16 @@ impl TardisTracing {
         let builder = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).with_filter_reloading();
         let reload_handle = builder.reload_handle();
         builder.finish().init();
-        unsafe {
-            GLOBAL_RELOAD_HANDLE = Some(reload_handle);
-        }
+        GLOBAL_RELOAD_HANDLE.get_or_init(|| reload_handle);
         Ok(())
     }
 
     pub fn update_log_level(log_level: &str) -> TardisResult<()> {
         std::env::set_var("RUST_LOG", log_level);
-        unsafe {
-            GLOBAL_RELOAD_HANDLE
-                .as_ref()
-                .ok_or_else(|| TardisError::internal_error(&format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)), ""))?
-                .reload(EnvFilter::from_default_env())?;
-        }
+        GLOBAL_RELOAD_HANDLE
+            .get()
+            .ok_or_else(|| TardisError::internal_error(&format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)), ""))?
+            .reload(EnvFilter::from_default_env())?;
         Ok(())
     }
 
@@ -47,12 +44,10 @@ impl TardisTracing {
         let env_filter = env_filter
             .add_directive(format!("{domain_code}={log_level}").parse().map_err(|e| TardisError::internal_error(&format!("update_log_level_by_domain_code failed: {e:?}"), ""))?);
         std::env::set_var("RUST_LOG", env_filter.to_string());
-        unsafe {
-            GLOBAL_RELOAD_HANDLE
-                .as_ref()
-                .ok_or_else(|| TardisError::internal_error(&format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)), ""))?
-                .reload(env_filter)?;
-        }
+        GLOBAL_RELOAD_HANDLE
+            .get()
+            .ok_or_else(|| TardisError::internal_error(&format!("{} is none, tracing may not be initialized", stringify!(GLOBAL_RELOAD_HANDLE)), ""))?
+            .reload(env_filter)?;
         Ok(())
     }
 
@@ -78,9 +73,7 @@ impl TardisTracing {
         let telemetry_layer = tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?);
         let builder = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).with_filter_reloading();
         let reload_handle = builder.reload_handle();
-        unsafe {
-            GLOBAL_RELOAD_HANDLE = Some(reload_handle);
-        }
+        GLOBAL_RELOAD_HANDLE.get_or_init(|| reload_handle);
         builder.finish().with(telemetry_layer).init();
         Ok(())
     }

@@ -126,7 +126,6 @@ async fn start_node(cluster_url: String, node_id: &str) -> TardisResult<()> {
         sleep(Duration::from_secs(2)).await;
     } else if node_id == "3" {
         sleep(Duration::from_secs(4)).await;
-    } else {
     }
     TardisFuns::web_server().start().await?;
     sleep(Duration::from_secs(1)).await;

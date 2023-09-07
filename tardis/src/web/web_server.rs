@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use std::sync::Arc;
+
 use futures_util::lock::Mutex;
 use poem::endpoint::BoxEndpoint;
 use poem::listener::{Listener, RustlsCertificate, RustlsConfig, TcpListener};
@@ -91,6 +93,30 @@ impl Default for ServerState {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+#[repr(transparent)]
+pub struct ArcTardisWebServer(pub Arc<TardisWebServer>);
+
+impl std::ops::Deref for ArcTardisWebServer {
+    type Target = TardisWebServer;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
+    }
+}
+
+impl AsRef<TardisWebServer> for ArcTardisWebServer {
+    fn as_ref(&self) -> &TardisWebServer {
+        self.0.as_ref()
+    }
+}
+
+impl From<Arc<TardisWebServer>> for ArcTardisWebServer {
+    fn from(server: Arc<TardisWebServer>) -> Self {
+        Self(server)
+    }
+}
+
+#[derive(Default, Debug)]
 pub struct TardisWebServer {
     app_name: String,
     version: String,
@@ -319,7 +345,7 @@ impl TardisWebServer {
         #[cfg(feature = "cluster")]
         {
             if let Some(fw) = crate::TardisFuns::fw_config_opt() {
-                crate::cluster::cluster_processor::init_by_conf(fw, self).await?;
+                crate::cluster::cluster_processor::init_by_conf(&fw, self).await?;
             }
         }
 
@@ -447,5 +473,14 @@ impl std::future::Future for &TardisWebServer {
             }
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+impl std::future::Future for ArcTardisWebServer {
+    type Output = ();
+    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        let inner = self.0.as_ref();
+        futures_util::pin_mut!(inner);
+        inner.poll(cx)
     }
 }

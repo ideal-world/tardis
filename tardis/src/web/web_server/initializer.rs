@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::*;
 
 #[async_trait::async_trait]
@@ -38,6 +40,20 @@ where
 /// it will consume all initializer of stored previous webserver
 #[async_trait::async_trait]
 impl Initializer for TardisWebServer {
+    #[inline]
+    async fn init(&self, target: &TardisWebServer) {
+        let mut target_initializers = target.initializers.lock().await;
+        for i in self.initializers.lock().await.drain(..) {
+            i.init(target).await;
+            target_initializers.push(i);
+        }
+    }
+}
+
+/// `TardisWebServer` itself can serve as an `Initializer`, it applies all of it's initializer to another
+/// it will consume all initializer of stored previous webserver
+#[async_trait::async_trait]
+impl Initializer for Arc<TardisWebServer> {
     #[inline]
     async fn init(&self, target: &TardisWebServer) {
         let mut target_initializers = target.initializers.lock().await;

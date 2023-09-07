@@ -98,7 +98,7 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
     }
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis::config=debug");
     env::set_var("PROFILE", "remote");
@@ -111,7 +111,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     TardisFuns::shutdown().await?;
 
     // load remote config
-    let mut client: NacosClient = unsafe { NacosClient::new_test(&docker_env.nacos_url) };
+    let mut client: NacosClient = NacosClient::new_test(&docker_env.nacos_url);
     // get auth
     client.login("nacos", "nacos").await?;
     // going to put test-app-default into remote
@@ -163,7 +163,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // 3.2 test cache
     {
         let cache_client = TardisFuns::cache();
-        test_cache(cache_client).await?;
+        test_cache(&cache_client).await?;
     }
     // 4. update remote config
     // wait for 5s
@@ -194,7 +194,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     // 5.2 test cache
     {
         let cache_client = TardisFuns::cache();
-        test_cache(cache_client).await?;
+        test_cache(&cache_client).await?;
     }
     // 5.3 test mq
     {

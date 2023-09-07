@@ -16,6 +16,10 @@ pub const WS_SYSTEM_EVENT_INFO: &str = "__sys_info__";
 pub const WS_SYSTEM_EVENT_AVATAR_ADD: &str = "__sys_avatar_add__";
 pub const WS_SYSTEM_EVENT_AVATAR_DEL: &str = "__sys_avatar_del__";
 pub const WS_SYSTEM_EVENT_ERROR: &str = "__sys_error__";
+
+/// # Safety:
+/// It's safe for we set the cache size manually
+#[allow(clippy::undocumented_unsafe_blocks)]
 pub const WS_SENDER_CACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1000000) };
 
 lazy_static! {
