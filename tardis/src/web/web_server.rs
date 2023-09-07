@@ -228,16 +228,35 @@ impl TardisWebServer {
         for (name, desc) in &module_config.req_headers {
             api_serv = api_serv.extra_request_header::<String, _>(ExtraHeader::new(name).description(desc));
         }
-        let ui_serv = api_serv.rapidoc();
-        let spec_serv = api_serv.spec_yaml();
         let mut route = Route::new();
-        route = route.nest("/", api_serv);
         if let Some(ui_path) = &module_config.ui_path {
-            route = route.nest(format!("/{ui_path}"), ui_serv);
+            let mut has_doc = false;
+            #[cfg(feature = "openapi-redoc")]
+            {
+                let ui_serv = api_serv.redoc();
+                route = route.nest(format!("/{ui_path}"), ui_serv);
+                has_doc = true;
+            }
+            #[cfg(feature = "openapi-rapidoc")]
+            {
+                if !has_doc {
+                    let ui_serv = api_serv.rapidoc();
+                    route = route.nest(format!("/{ui_path}"), ui_serv);
+                }
+            }
+            #[cfg(feature = "openapi-swagger")]
+            {
+                if !has_doc {
+                    let ui_serv = api_serv.swagger_ui();
+                    route = route.nest(format!("/{ui_path}"), ui_serv);
+                }
+            }
         }
+        let spec_serv: String = api_serv.spec_yaml();
         if let Some(spec_path) = &module_config.spec_path {
             route = route.at(format!("/{spec_path}"), poem::endpoint::make_sync(move |_| spec_serv.clone()));
         }
+        route = route.nest("/", api_serv);
         let cors = if &self.config.allowed_origin == "*" {
             // https://github.com/poem-web/poem/issues/161
             Cors::new()
