@@ -20,10 +20,12 @@ use url::Url;
 use crate::basic::dto::TardisContext;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
+use crate::config::component_config::db::DBModuleConfig;
 use crate::config::config_dto::{CompatibleType, FrameworkConfig};
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
 use crate::serde::{Deserialize, Serialize};
 use crate::TardisFuns;
+use crate::utils::initializer::InitBy;
 
 /// Relational database handle / 关系型数据库操作
 ///
@@ -132,47 +134,56 @@ pub struct TardisRelDBClient {
     compatible_type: CompatibleType,
 }
 
+#[async_trait::async_trait]
+impl InitBy<DBModuleConfig> for TardisRelDBClient {
+    async fn init(config: &DBModuleConfig) -> TardisResult<Self> {
+        Self::init(config).await
+    }
+}
+
 impl TardisRelDBClient {
     /// Initialize configuration from the database configuration object / 从数据库配置对象中初始化配置
-    pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisRelDBClient>> {
-        let mut clients = HashMap::new();
-        clients.insert(
-            "".to_string(),
-            TardisRelDBClient::init(
-                &conf.db.url,
-                conf.db.max_connections,
-                conf.db.min_connections,
-                conf.db.connect_timeout_sec,
-                conf.db.idle_timeout_sec,
-                conf.db.compatible_type.clone(),
-            )
-            .await?,
-        );
-        for (k, v) in &conf.db.modules {
-            clients.insert(
-                k.to_string(),
-                TardisRelDBClient::init(
-                    &v.url,
-                    v.max_connections,
-                    v.min_connections,
-                    v.connect_timeout_sec,
-                    v.idle_timeout_sec,
-                    v.compatible_type.clone(),
-                )
-                .await?,
-            );
-        }
-        Ok(clients)
-    }
+    // pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisRelDBClient>> {
+    //     let mut clients = HashMap::new();
+    //     clients.insert(
+    //         "".to_string(),
+    //         TardisRelDBClient::init(
+    //             &conf.db.url,
+    //             conf.db.max_connections,
+    //             conf.db.min_connections,
+    //             conf.db.connect_timeout_sec,
+    //             conf.db.idle_timeout_sec,
+    //             conf.db.compatible_type.clone(),
+    //         )
+    //         .await?,
+    //     );
+    //     for (k, v) in &conf.db.modules {
+    //         clients.insert(
+    //             k.to_string(),
+    //             TardisRelDBClient::init(
+    //                 &v.url,
+    //                 v.max_connections,
+    //                 v.min_connections,
+    //                 v.connect_timeout_sec,
+    //                 v.idle_timeout_sec,
+    //                 v.compatible_type.clone(),
+    //             )
+    //             .await?,
+    //         );
+    //     }
+    //     Ok(clients)
+    // }
 
     /// Initialize configuration / 初始化配置
     pub async fn init(
-        str_url: &str,
-        max_connections: u32,
-        min_connections: u32,
-        connect_timeout_sec: Option<u64>,
-        idle_timeout_sec: Option<u64>,
-        compatible_type: CompatibleType,
+        DBModuleConfig {
+            url: str_url, 
+            max_connections,
+            min_connections,
+            connect_timeout_sec,
+            idle_timeout_sec,
+            compatible_type,
+        } : &DBModuleConfig
     ) -> TardisResult<TardisRelDBClient> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.RelDBClient] Invalid url {str_url}"), "406-tardis-reldb-url-error"))?;
         info!(
@@ -181,13 +192,13 @@ impl TardisRelDBClient {
             url.port().unwrap_or(0),
             max_connections
         );
-        let mut opt = ConnectOptions::new(str_url.to_string());
-        opt.max_connections(max_connections).min_connections(min_connections).sqlx_logging(true);
+        let mut opt = ConnectOptions::new(url.to_string());
+        opt.max_connections(*max_connections).min_connections(*min_connections).sqlx_logging(true);
         if let Some(connect_timeout_sec) = connect_timeout_sec {
-            opt.connect_timeout(Duration::from_secs(connect_timeout_sec));
+            opt.connect_timeout(Duration::from_secs(*connect_timeout_sec));
         }
         if let Some(idle_timeout_sec) = idle_timeout_sec {
-            opt.idle_timeout(Duration::from_secs(idle_timeout_sec));
+            opt.idle_timeout(Duration::from_secs(*idle_timeout_sec));
         }
         let con = if let Some(timezone) = url.query_pairs().find(|x| x.0.to_lowercase() == "timezone").map(|x| x.1.to_string()) {
             match url.scheme().to_lowercase().as_str() {

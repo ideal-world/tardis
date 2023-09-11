@@ -414,9 +414,8 @@ impl TardisFuns {
         let fw_conf = TardisFuns::fw_config();
         #[cfg(feature = "reldb-core")]
         {
-            if TardisFuns::fw_config().db.enabled {
-                let reldb_clients = TardisRelDBClient::init_by_conf(&fw_conf).await?;
-                TARDIS_INST.reldb.replace_inner(reldb_clients);
+            if let Some(db_config) = TardisFuns::fw_config().db {
+                TARDIS_INST.reldb.replace_inner_by_initializer(&db_config).await?;
             }
         }
         #[cfg(feature = "web-server")]
@@ -457,9 +456,8 @@ impl TardisFuns {
         }
         #[cfg(feature = "web-client")]
         {
-            if TardisFuns::fw_config().search.enabled && !TardisFuns::fw_config().search.url.is_empty() {
-                let search_clients = TardisSearchClient::init_by_conf(&fw_conf)?;
-                TARDIS_INST.search.replace_inner(search_clients);
+            if let Some(cfg) = TardisFuns::fw_config().search {
+                TARDIS_INST.search.replace_inner_by_initializer(&cfg).await?;
             }
         }
         #[cfg(feature = "mail")]

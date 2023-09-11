@@ -3,10 +3,14 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{debug, info, trace};
+use url::Url;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
+use crate::config::component_config::search::SearchModuleConfig;
+use crate::config::component_config::SearchConfig;
 use crate::config::config_dto::FrameworkConfig;
+use crate::utils::initializer::InitBy;
 use crate::{TardisFuns, TardisWebClient};
 
 /// Distributed search handle / 分布式搜索操作
@@ -29,7 +33,7 @@ use crate::{TardisFuns, TardisWebClient};
 /// ```
 pub struct TardisSearchClient {
     pub client: TardisWebClient,
-    pub server_url: String,
+    pub server_url: Url,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -68,26 +72,23 @@ pub struct TardisRawSearchShards {
     pub total: i32,
 }
 
-impl TardisSearchClient {
-    /// Initialize configuration from the search configuration object / 从搜索配置对象中初始化配置
-    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisSearchClient>> {
-        let mut clients = HashMap::new();
-        clients.insert("".to_string(), TardisSearchClient::init(&conf.search.url, conf.search.timeout_sec)?);
-        for (k, v) in &conf.search.modules {
-            clients.insert(k.to_string(), TardisSearchClient::init(&v.url, v.timeout_sec)?);
-        }
-        Ok(clients)
+#[async_trait::async_trait]
+impl InitBy<SearchModuleConfig> for TardisSearchClient {
+    async fn init(config: &SearchModuleConfig) -> TardisResult<Self> {
+        Self::init(config)
     }
+}
 
+impl TardisSearchClient {
     /// Initialize configuration / 初始化配置
-    pub fn init(str_url: &str, timeout_sec: u64) -> TardisResult<TardisSearchClient> {
+    pub fn init(SearchModuleConfig { url, timeout_sec }: &SearchModuleConfig) -> TardisResult<TardisSearchClient> {
         info!("[Tardis.SearchClient] Initializing");
-        let mut client = TardisWebClient::init(timeout_sec)?;
+        let mut client = TardisWebClient::init(*timeout_sec)?;
         client.set_default_header("Content-Type", "application/json");
         info!("[Tardis.SearchClient] Initialized");
         TardisResult::Ok(TardisSearchClient {
             client,
-            server_url: str_url.to_string(),
+            server_url: url.clone(),
         })
     }
 

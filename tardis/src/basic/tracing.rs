@@ -4,17 +4,37 @@ use std::sync::OnceLock;
 use crate::basic::result::TardisResult;
 use tracing_subscriber::fmt::Layer;
 use tracing_subscriber::layer::Layered;
+use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
-use tracing_subscriber::{prelude::*, reload::Handle, Registry};
+use tracing_subscriber::{layer::SubscriberExt, prelude::*, reload::Handle, Registry};
 
 use super::error::TardisError;
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
-pub struct TardisTracing;
+pub trait Initializer<T: ?Sized> {
+    fn setup(&self, target: &mut T);
+}
+
+pub trait TardisTracingInitializer {}
+pub struct TardisTracing {
+    layer_modifiers: Vec<Box<dyn Initializer<dyn SubscriberExt>>>,
+}
 
 pub static GLOBAL_RELOAD_HANDLE: OnceLock<Handle<EnvFilter, Layered<Layer<Registry>, Registry>>> = OnceLock::new();
 
 impl TardisTracing {
+    /// initialize the log layer
+    /// ```plaintext
+    /// +---------+
+    /// |  relaod |
+    /// | +-------+
+    /// | |   env |
+    /// | | +-----+
+    /// | | | fmt |
+    /// +-+-+-----+
+    /// ```
+    ///
+    ///
     pub(crate) fn init_log() -> TardisResult<()> {
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
@@ -24,8 +44,12 @@ impl TardisTracing {
         }
 
         let builder = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).with_filter_reloading();
+        let fmt_layer = tracing_subscriber::fmt::layer();
         let reload_handle = builder.reload_handle();
-        builder.finish().init();
+
+        let registry = Registry::default().with(fmt_layer).with(EnvFilter::from_default_env());
+        // let (layer, reload_handle): (_, Handle<EnvFilter, Layered<Layer<Registry>, Registry>>) = tracing_subscriber::reload::Layer::new(registry);
+        let fmt_sub = builder.finish().init();
         GLOBAL_RELOAD_HANDLE.get_or_init(|| reload_handle);
         Ok(())
     }
