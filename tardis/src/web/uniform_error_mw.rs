@@ -97,9 +97,10 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
 }
 
 fn process_err_msg(code: &str, msg: String) -> String {
-    match TardisFuns::fw_config_opt() {
+    let fw_config = TardisFuns::fw_config();
+    match fw_config.web_server.as_ref() {
         Some(config) => {
-            if config.web_server.security_hide_err_msg {
+            if config.security_hide_err_msg {
                 warn!("[Tardis.WebServer] Response error,code:{},msg:{}", code, msg);
                 "[Tardis.WebServer] Security is enabled, detailed errors are hidden, please check the server logs".to_string()
             } else {

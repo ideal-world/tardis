@@ -4,7 +4,7 @@ use std::env;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use tardis::config::config_dto::CompatibleType;
+use tardis::config::config_dto::{CompatibleType, DBModuleConfig};
 use tokio::time::sleep;
 
 use tardis::basic::dto::TardisContext;
@@ -25,8 +25,8 @@ async fn test_reldb_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug,tardis=trace,sqlx=off,sqlparser::parser=off");
     TardisFuns::init_log()?;
     TardisTestContainer::mysql(None, |url| async move {
-        let client = TardisRelDBClient::init(&url, 10, 5, None, None, CompatibleType::None).await?;
-
+        let db_config = DBModuleConfig::builder().url(&url).max_connections(10).min_connections(5).build();
+        let client = TardisRelDBClient::init(&db_config).await?;
         client.init_basic_tables().await?;
 
         test_basic(&client).await?;
@@ -41,8 +41,8 @@ async fn test_reldb_client() -> TardisResult<()> {
     })
     .await?;
     TardisTestContainer::postgres(None, |url| async move {
-        let client = TardisRelDBClient::init(&url, 10, 5, None, None, CompatibleType::None).await?;
-
+        let db_config = DBModuleConfig::builder().url(&url).max_connections(10).min_connections(5).build();
+        let client = TardisRelDBClient::init(&db_config).await?;
         client.init_basic_tables().await?;
 
         test_basic(&client).await?;
@@ -549,11 +549,14 @@ async fn test_data_dict(client: &TardisRelDBClient) -> TardisResult<()> {
 }
 
 async fn test_timezone(url: &str) -> TardisResult<()> {
-    let client_with_out_time_zone = TardisRelDBClient::init(url, 10, 5, None, None, CompatibleType::None).await?;
+    let mut db_config = DBModuleConfig::builder().url(url).max_connections(10).min_connections(5).build();
+
+    let client_with_out_time_zone = TardisRelDBClient::init(&db_config).await?;
 
     match client_with_out_time_zone.backend() {
         DatabaseBackend::Postgres => {
-            let client_with_time_zone = TardisRelDBClient::init(&format!("{url}?timezone=Asia/Shanghai"), 10, 5, None, None, CompatibleType::None).await?;
+            db_config.url = format!("{url}?timezone=Asia/Shanghai");
+            let client_with_time_zone = TardisRelDBClient::init(&db_config).await?;
 
             let tz = client_with_out_time_zone.conn().query_one("SHOW timezone", Vec::new()).await?.unwrap().try_get::<String>("", "TimeZone")?;
             assert_eq!(tz, "UTC");
@@ -567,7 +570,8 @@ async fn test_timezone(url: &str) -> TardisResult<()> {
             println!("client_with_out_time_zone：{},client_with_time_zone：{},", now1, now2);
         }
         _ => {
-            let client_with_time_zone = TardisRelDBClient::init(&format!("{url}?timezone=%2B08:00"), 10, 5, None, None, CompatibleType::None).await?;
+            db_config.url = format!("{url}?timezone=%2B08:00");
+            let client_with_time_zone = TardisRelDBClient::init(&db_config).await?;
 
             let tz = client_with_out_time_zone.conn().query_one("SELECT @@global.time_zone z1, @@session.time_zone z2", Vec::new()).await?.unwrap().try_get::<String>("", "z2")?;
             assert_eq!(tz, "+00:00");

@@ -20,8 +20,8 @@ use url::Url;
 use crate::basic::dto::TardisContext;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::component_config::db::DBModuleConfig;
-use crate::config::config_dto::{CompatibleType, FrameworkConfig};
+use crate::config::config_dto::component_config::db::CompatibleType;
+use crate::config::config_dto::{FrameworkConfig, component_config::db::DBModuleConfig};
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
 use crate::serde::{Deserialize, Serialize};
 use crate::TardisFuns;
@@ -136,7 +136,7 @@ pub struct TardisRelDBClient {
 
 #[async_trait::async_trait]
 impl InitBy<DBModuleConfig> for TardisRelDBClient {
-    async fn init(config: &DBModuleConfig) -> TardisResult<Self> {
+    async fn init_by(config: &DBModuleConfig) -> TardisResult<Self> {
         Self::init(config).await
     }
 }
@@ -276,7 +276,7 @@ impl TardisRelDBClient {
         );
         Ok(TardisRelDBClient {
             con: Arc::new(con),
-            compatible_type,
+            compatible_type: *compatible_type,
         })
     }
 
@@ -288,7 +288,7 @@ impl TardisRelDBClient {
     /// Get database compatible type / 获取数据库兼容类型
     /// eg. porlardb is compatible with Oracle
     pub fn compatible_type(&self) -> CompatibleType {
-        self.compatible_type.clone()
+        self.compatible_type
     }
 
     /// Get database connection
@@ -1497,7 +1497,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
 
     fn create_function_postgresql_auto_update_time(table_name: &str, update_time_field: &str, compatible_type: CompatibleType) -> Vec<String> {
         match compatible_type {
-            crate::config::config_dto::CompatibleType::None => {
+            CompatibleType::None => {
                 vec![
                     format!(
                         r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_TIME_{}()
@@ -1522,7 +1522,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
                     ),
                 ]
             }
-            crate::config::config_dto::CompatibleType::Oracle => vec![format!(
+            CompatibleType::Oracle => vec![format!(
                 r###"CREATE OR REPLACE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
             BEFORE UPDATE
             ON

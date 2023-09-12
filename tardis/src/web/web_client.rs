@@ -6,9 +6,11 @@ use tracing::{error, info, trace};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
+use crate::config::config_dto::component_config::web_client::WebClientModuleConfig;
 use crate::config::config_dto::FrameworkConfig;
 use crate::serde::de::DeserializeOwned;
 use crate::serde::Serialize;
+use crate::utils::initializer::InitBy;
 use crate::TardisFuns;
 
 pub struct TardisWebClient {
@@ -16,19 +18,22 @@ pub struct TardisWebClient {
     client: Client,
 }
 
-impl TardisWebClient {
-    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisWebClient>> {
-        let mut clients = HashMap::new();
-        clients.insert("".to_string(), TardisWebClient::init(conf.web_client.connect_timeout_sec)?);
-        for (k, v) in &conf.web_client.modules {
-            clients.insert(k.to_string(), TardisWebClient::init(v.connect_timeout_sec)?);
-        }
-        Ok(clients)
+#[async_trait::async_trait]
+impl InitBy<WebClientModuleConfig> for TardisWebClient {
+    async fn init_by(config: &WebClientModuleConfig) -> TardisResult<Self> {
+        Self::init(config)
     }
+}
 
-    pub fn init(connect_timeout_sec: u64) -> TardisResult<TardisWebClient> {
+impl TardisWebClient {
+    pub fn init(
+        WebClientModuleConfig {
+            connect_timeout_sec,
+            request_timeout_sec,
+        }: &WebClientModuleConfig,
+    ) -> TardisResult<TardisWebClient> {
         info!("[Tardis.WebClient] Initializing");
-        let client = reqwest::Client::builder().danger_accept_invalid_certs(true).connect_timeout(Duration::from_secs(connect_timeout_sec)).https_only(false).build()?;
+        let client = reqwest::Client::builder().danger_accept_invalid_certs(true).connect_timeout(Duration::from_secs(*connect_timeout_sec)).https_only(false).build()?;
         info!("[Tardis.WebClient] Initialized");
         TardisResult::Ok(TardisWebClient {
             client,

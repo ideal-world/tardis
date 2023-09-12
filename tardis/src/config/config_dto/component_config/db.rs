@@ -23,6 +23,7 @@ use super::TardisComponentConfig;
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
 #[serde(default)]
 pub struct DBModuleConfig {
+    #[builder(setter(into))]
     /// Database access Url, Url with permission information / 数据库访问Url，Url带权限信息
     pub url: String,
     /// Maximum number of connections, default 20 / 最大连接数，默认 20
@@ -44,11 +45,11 @@ pub struct DBModuleConfig {
 
 impl Default for DBModuleConfig {
     fn default() -> Self {
-        DBModuleConfig::builder().url(Default::default()).build()
+        DBModuleConfig::builder().url("").build()
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CompatibleType {
     #[default]
     None,

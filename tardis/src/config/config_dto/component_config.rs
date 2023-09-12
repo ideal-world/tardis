@@ -1,31 +1,64 @@
-use hot_sauce::{self, Hot};
+use config::builder;
 use serde::{Deserialize, Serialize};
 use url::Url;
 use std::collections::HashMap;
 use typed_builder::TypedBuilder;
 
-pub mod db;
-pub mod web_server;
-pub mod web_client;
-pub mod cache;
-pub mod mq;
-pub mod search;
-pub mod mail;
-pub mod os;
+pub(crate) mod db;
+pub use db::*;
+pub(crate) mod web_server;
+pub use web_server::*;
+pub(crate) mod web_client;
+pub use web_client::*;
+pub(crate) mod cache;
+pub use cache::*;
+pub(crate) mod mq;
+pub use mq::*;
+pub(crate) mod search;
+pub use search::*;
+pub(crate) mod mail;
+pub use mail::*;
+pub(crate) mod os;
+pub use os::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
-pub struct TardisComponentConfig<T, C = ()> {
+pub struct TardisComponentConfig<T, C: Default = ()> {
     #[serde(flatten)]
+    #[builder(default, setter(into))]
     common: C,
     #[serde(flatten)]
     pub default: T,
+    #[builder(default, setter(into))]
+    #[serde(default = "Default::default")]
     pub modules: HashMap<String, T>,
 }
 
-impl<T, C> std::ops::Deref for TardisComponentConfig<T, C> {
+impl<T, C: Default> std::ops::Deref for TardisComponentConfig<T, C> {
     type Target = C;
     fn deref(&self) -> &Self::Target {
         &self.common
+    }
+}
+
+impl<T, C> Default for TardisComponentConfig<T, C>
+where T: Default, C: Default
+{
+    fn default() -> Self {
+        Self {
+            common: Default::default(),
+            default: Default::default(),
+            modules: HashMap::new(),
+        }
+    }
+}
+
+impl<T, C: Default> From<T> for TardisComponentConfig<T, C> {
+    fn from(value: T) -> Self {
+        Self {
+            common: Default::default(),
+            default: value,
+            modules: HashMap::new(),
+        }
     }
 }
 
@@ -37,13 +70,13 @@ pub type WebServerConfig = TardisComponentConfig<web_server::WebServerModuleConf
 
 pub type WebClientConfig = TardisComponentConfig<web_client::WebClientModuleConfig>;
 
-pub type MqConfig = TardisComponentConfig<mq::MQModuleConfig>;
+pub type MQConfig = TardisComponentConfig<mq::MQModuleConfig>;
 
 pub type SearchConfig = TardisComponentConfig<search::SearchModuleConfig>;
 
 pub type MailConfig = TardisComponentConfig<mail::MailModuleConfig>;
 
-pub type OsConfig = TardisComponentConfig<os::OSModuleConfig>;
+pub type OSConfig = TardisComponentConfig<os::OSModuleConfig>;
 
 /// Advanced configuration / 高级配置
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]

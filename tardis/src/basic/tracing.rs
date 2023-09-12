@@ -2,11 +2,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 
 use crate::basic::result::TardisResult;
-use tracing_subscriber::fmt::Layer;
+use tracing::Subscriber;
+
 use tracing_subscriber::layer::Layered;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
-use tracing_subscriber::{layer::SubscriberExt, prelude::*, reload::Handle, Registry};
+use tracing_subscriber::{layer::SubscriberExt, prelude::*, reload::Handle, Registry, fmt::Layer as FmtLayer, reload::Layer as ReloadLayer};
 
 use super::error::TardisError;
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
@@ -20,7 +21,7 @@ pub struct TardisTracing {
     layer_modifiers: Vec<Box<dyn Initializer<dyn SubscriberExt>>>,
 }
 
-pub static GLOBAL_RELOAD_HANDLE: OnceLock<Handle<EnvFilter, Layered<Layer<Registry>, Registry>>> = OnceLock::new();
+pub static GLOBAL_RELOAD_HANDLE: OnceLock<Handle<EnvFilter, Layered<FmtLayer<Registry>, Registry>>> = OnceLock::new();
 
 impl TardisTracing {
     /// initialize the log layer
@@ -35,7 +36,7 @@ impl TardisTracing {
     /// ```
     ///
     ///
-    pub(crate) fn init_log() -> TardisResult<()> {
+    pub(crate) fn init_log(custom_layer: Registry) -> TardisResult<()> {
         if INITIALIZED.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
@@ -48,8 +49,9 @@ impl TardisTracing {
         let reload_handle = builder.reload_handle();
 
         let registry = Registry::default().with(fmt_layer).with(EnvFilter::from_default_env());
-        // let (layer, reload_handle): (_, Handle<EnvFilter, Layered<Layer<Registry>, Registry>>) = tracing_subscriber::reload::Layer::new(registry);
-        let fmt_sub = builder.finish().init();
+        let (layer, reload_handle): (_, Handle<EnvFilter, Layered<FmtLayer<Registry>, Registry>>) = ReloadLayer::new(registry);
+        let fmt_sub = builder.finish();
+        let all_layered = custom_layer.with(fmt_sub);
         GLOBAL_RELOAD_HANDLE.get_or_init(|| reload_handle);
         Ok(())
     }

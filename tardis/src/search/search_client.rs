@@ -7,8 +7,9 @@ use url::Url;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::component_config::search::SearchModuleConfig;
-use crate::config::component_config::SearchConfig;
+use crate::config::config_dto::component_config::search::SearchModuleConfig;
+use crate::config::config_dto::component_config::web_client::WebClientModuleConfig;
+use crate::config::config_dto::component_config::SearchConfig;
 use crate::config::config_dto::FrameworkConfig;
 use crate::utils::initializer::InitBy;
 use crate::{TardisFuns, TardisWebClient};
@@ -74,7 +75,7 @@ pub struct TardisRawSearchShards {
 
 #[async_trait::async_trait]
 impl InitBy<SearchModuleConfig> for TardisSearchClient {
-    async fn init(config: &SearchModuleConfig) -> TardisResult<Self> {
+    async fn init_by(config: &SearchModuleConfig) -> TardisResult<Self> {
         Self::init(config)
     }
 }
@@ -83,13 +84,10 @@ impl TardisSearchClient {
     /// Initialize configuration / 初始化配置
     pub fn init(SearchModuleConfig { url, timeout_sec }: &SearchModuleConfig) -> TardisResult<TardisSearchClient> {
         info!("[Tardis.SearchClient] Initializing");
-        let mut client = TardisWebClient::init(*timeout_sec)?;
+        let mut client = TardisWebClient::init(&WebClientModuleConfig::builder().request_timeout_sec(*timeout_sec).build())?;
         client.set_default_header("Content-Type", "application/json");
         info!("[Tardis.SearchClient] Initialized");
-        TardisResult::Ok(TardisSearchClient {
-            client,
-            server_url: url.clone(),
-        })
+        TardisResult::Ok(TardisSearchClient { client, server_url: url.clone() })
     }
 
     /// Create index / 创建索引

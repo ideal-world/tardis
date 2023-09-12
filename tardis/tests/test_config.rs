@@ -13,15 +13,18 @@ async fn test_config() -> TardisResult<()> {
     TardisFuns::init(Some("tests/config")).await?;
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
-    assert!(!TardisFuns::fw_config().db.enabled);
-    assert_eq!(TardisFuns::fw_config().db.url, "postgres://postgres@test");
+    let fw_config = TardisFuns::fw_config();
+    let db_config = fw_config.db.as_ref().expect("missing db config");
+    assert_eq!(db_config.default.url, "postgres://postgres@test");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").db_proj.url, "postgres://postgres@test.proj");
     assert_eq!(TardisFuns::fw_config().app.name, "APP1");
 
     env::set_var("PROFILE", "prod");
     TardisFuns::init(Some("tests/config")).await?;
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
-    assert_eq!(TardisFuns::fw_config().db.url, "postgres://postgres@prod");
+    let fw_config = TardisFuns::fw_config();
+    let db_config = fw_config.db.as_ref().expect("missing db config");
+    assert_eq!(db_config.default.url, "postgres://postgres@prod");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").db_proj.url, "postgres://postgres@prod.proj");
     assert_eq!(TardisFuns::fw_config().app.name, "Tardis Application");
     assert_eq!(TardisFuns::cs_config::<TestModuleConfig>("m1").db_proj.url, "postgres://postgres@m1.proj");
@@ -29,7 +32,8 @@ async fn test_config() -> TardisResult<()> {
     // cli example: env Tardis_DB.URL=test Tardis_app.name=xx ./xxx
     env::set_var("Tardis_FW.DB.URL", "test");
     TardisFuns::init(Some("tests/config")).await?;
-    assert_eq!(TardisFuns::fw_config().db.url, "test");
+    let fw_config = TardisFuns::fw_config();
+    assert_eq!(fw_config.db.as_ref().unwrap().default.url, "test");
     assert_eq!(TardisFuns::fw_config().app.name, "Tardis Application");
 
     Ok(())

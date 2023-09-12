@@ -63,6 +63,8 @@ pub struct WebServerCommonConfig {
     #[builder(default)]
     /// Tardis context configuration / Tardis上下文配置
     pub context_conf: WebServerContextConfig,
+    #[builder(default = false)]
+    pub security_hide_err_msg: bool,
 }
 
 /// Tardis context configuration / Tardis上下文配置
@@ -159,3 +161,9 @@ impl Default for WebServerModuleConfig {
     }
 }
 
+
+impl Default for WebServerCommonConfig {
+    fn default() -> Self {
+        Self::builder().build()
+    }
+}

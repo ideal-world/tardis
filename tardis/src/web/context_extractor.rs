@@ -25,7 +25,9 @@ async fn context_checker(req: &Request, _: ApiKey) -> Option<TardisContext> {
 }
 
 async fn extract_context(req: &Request) -> TardisResult<TardisContext> {
-    let context_header_name = &TardisFuns::fw_config().web_server.context_conf.context_header_name;
+    let fw_config = TardisFuns::fw_config();
+    let web_server_config = fw_config.web_server.as_ref().expect("missing web server config");
+    let context_header_name = &web_server_config.context_conf.context_header_name;
     let context = req
         .headers()
         .get(context_header_name)
@@ -53,7 +55,7 @@ async fn extract_context(req: &Request) -> TardisResult<TardisContext> {
                 .split(TOKEN_FLAG)
                 .nth(1)
                 .ok_or_else(|| TardisError::bad_request("[Tardis.WebServer] Context header is invalid", "400-tardis-webserver-context-not-valid"))?;
-            let context = TardisFuns::cache().get(format!("{}{}", TardisFuns::fw_config().web_server.context_conf.token_cache_key, token).as_str()).await?;
+            let context = TardisFuns::cache().get(format!("{}{}", web_server_config.context_conf.token_cache_key, token).as_str()).await?;
             let context = context.ok_or_else(|| TardisError::bad_request("[Tardis.WebServer] Token is not in cache", "400-tardis-webserver-context-not-in-cache"))?;
             let context = TardisFuns::json
                 .str_to_obj(&context)

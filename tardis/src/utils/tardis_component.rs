@@ -76,19 +76,6 @@ impl<T: ?Sized> TardisComponentMap<T> {
     }
 }
 
-impl<T: Sized> TardisComponentMap<T>
-where
-    T: Sync + Send,
-{
-    pub async fn get_by_initializer<I>(&self, initializer: I) -> TardisResult<&TardisComponentMapInner<T>>
-    where
-        TardisComponentMapInner<T>: InitBy<I>,
-    {
-        let inner = TardisComponentMapInner::<T>::init(&initializer).await?;
-        Ok(self.0.get_or_init(|| inner))
-    }
-}
-
 impl<T: ?Sized> Deref for TardisComponentMap<T> {
     type Target = TardisComponentMapInner<T>;
     fn deref(&self) -> &Self::Target {
@@ -96,9 +83,10 @@ impl<T: ?Sized> Deref for TardisComponentMap<T> {
     }
 }
 
+type ArcMap<T> = HashMap<ModuleCode, Arc<T>>;
 #[repr(transparent)]
 pub struct TardisComponentMapInner<T: ?Sized> {
-    pub(crate) inner: RwLock<HashMap<ModuleCode, Arc<T>>>,
+    pub(crate) inner: RwLock<ArcMap<T>>,
 }
 impl<T: ?Sized> Default for TardisComponentMapInner<T> {
     fn default() -> Self {
@@ -117,24 +105,23 @@ impl<T> TardisComponentMapInner<T> {
         wg.insert(code.into(), value.into())
     }
 
-    pub fn replace_inner(&self, iter: impl IntoIterator<Item = (String, T)>) -> HashMap<ModuleCode, Arc<T>> {
+    pub fn replace_inner(&self, iter: impl IntoIterator<Item = (String, T)>) -> ArcMap<T> {
         let mut wg = self.inner.write().expect(Self::LOCK_EXPECT);
         let new_inner = iter.into_iter().map(|(k, v)| (k, Arc::new(v))).collect::<HashMap<_, _>>();
         std::mem::replace(&mut wg, new_inner)
     }
 
-    pub fn drain(&self) -> HashMap<ModuleCode, Arc<T>> {
+    pub fn drain(&self) -> ArcMap<T> {
         self.replace_inner(std::iter::empty())
     }
 
-    pub async fn replace_inner_by_initializer<I>(&self, initializer: &I) -> TardisResult<()>
+    pub async fn init_by<I>(&self, initializer: &I) -> TardisResult<ArcMap<T>>
     where
-        HashMap<ModuleCode, Arc<T>>: InitBy<I>,
+        ArcMap<T>: InitBy<I>,
     {
-        let new_inner = HashMap::<ModuleCode, Arc<T>>::init(initializer).await?;
+        let new_inner = HashMap::<ModuleCode, Arc<T>>::init_by(initializer).await?;
         let wg = &mut *self.inner.write().expect(Self::LOCK_EXPECT);
-        std::mem::replace(wg, new_inner);
-        Ok(())
+        Ok(std::mem::replace(wg, new_inner))
     }
 }
 
@@ -179,13 +166,13 @@ impl<T: ?Sized> TardisComponentMapInner<T> {
 
     /// # Panic
     /// Panic if the lock is poisoned
-    pub fn read(&self) -> RwLockReadGuard<'_, HashMap<ModuleCode, Arc<T>>> {
+    pub fn read(&self) -> RwLockReadGuard<'_, ArcMap<T>> {
         self.inner.read().expect(Self::LOCK_EXPECT)
     }
 
     /// # Panic
     /// Panic if the lock is poisoned
-    pub fn write(&self) -> RwLockWriteGuard<'_, HashMap<ModuleCode, Arc<T>>> {
+    pub fn write(&self) -> RwLockWriteGuard<'_, ArcMap<T>> {
         self.inner.write().expect(Self::LOCK_EXPECT)
     }
 }

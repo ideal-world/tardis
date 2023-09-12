@@ -7,6 +7,8 @@ use s3::{Bucket, BucketConfiguration, Region};
 use tracing::{error, info, trace};
 
 use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
+use crate::config::config_dto::component_config::os::OSModuleConfig;
+use crate::utils::initializer::InitBy;
 use crate::{FrameworkConfig, TardisResult};
 
 pub struct TardisOSClient {
@@ -19,22 +21,26 @@ struct TardisOSS3Client {
     default_bucket: Option<Bucket>,
 }
 
-impl TardisOSClient {
-    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisOSClient>> {
-        let mut clients = HashMap::new();
-        clients.insert(
-            "".to_string(),
-            TardisOSClient::init(&conf.os.kind, &conf.os.endpoint, &conf.os.ak, &conf.os.sk, &conf.os.region, &conf.os.default_bucket)?,
-        );
-        for (k, v) in &conf.os.modules {
-            clients.insert(k.to_string(), TardisOSClient::init(&v.kind, &v.endpoint, &v.ak, &v.sk, &v.region, &v.default_bucket)?);
-        }
-        Ok(clients)
+#[async_trait::async_trait]
+impl InitBy<OSModuleConfig> for TardisOSClient {
+    async fn init_by(config: &OSModuleConfig) -> TardisResult<Self> {
+        Self::init(config)
     }
+}
 
-    pub fn init(kind: &str, endpoint: &str, ak: &str, sk: &str, region: &str, default_bucket: &str) -> TardisResult<TardisOSClient> {
+impl TardisOSClient {
+    pub fn init(
+        OSModuleConfig {
+            kind,
+            endpoint,
+            ak,
+            sk,
+            region,
+            default_bucket,
+        }: &OSModuleConfig,
+    ) -> TardisResult<TardisOSClient> {
         info!("[Tardis.OSClient] Initializing for {}", kind);
-        match kind {
+        match kind.as_str() {
             "s3" => {
                 let region = Region::Custom {
                     region: region.to_string(),

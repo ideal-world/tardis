@@ -49,7 +49,7 @@ process = ["tokio/process"]
 test = ["testcontainers"]
 tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp"]
 web-server-grpc = ["web-server", "dep:poem-grpc"]
-cluster = ["web-server", "ws-client"]
+cluster = ["web-server", "ws-client", "cache"]
 
 [dependencies]
 # Basic
@@ -65,8 +65,10 @@ rand_core = { version = "0.6" }
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.13" }
 regex = { version = "1.5" }
-url = { version = "2.2" }
+url = { version = "2.2" ,features = ["serde"] }
 lru = { version = "0.11.0" }
+typed-builder ={ version = "0.16" }
+hot_sauce = { version = "0.1" }
 # Tokio
 tokio = { version = "1", features = [
     "macros",

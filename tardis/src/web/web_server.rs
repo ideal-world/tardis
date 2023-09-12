@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use std::net::IpAddr;
 use std::sync::Arc;
 
 use futures_util::lock::Mutex;
@@ -16,7 +17,12 @@ use tokio::time::Duration;
 use tracing::{debug, error, info, warn};
 
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::{FrameworkConfig, WebServerConfig, WebServerModuleConfig};
+use crate::config::config_dto::component_config::web_server::WebServerCommonConfig;
+use crate::config::config_dto::{
+    component_config::{web_server::WebServerModuleConfig, WebServerConfig},
+    FrameworkConfig,
+};
+use crate::utils::initializer::InitBy;
 use crate::web::uniform_error_mw::UniformError;
 mod initializer;
 use initializer::*;
@@ -93,7 +99,7 @@ impl Default for ServerState {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 #[repr(transparent)]
 pub struct ArcTardisWebServer(pub Arc<TardisWebServer>);
 
@@ -116,7 +122,7 @@ impl From<Arc<TardisWebServer>> for ArcTardisWebServer {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct TardisWebServer {
     app_name: String,
     version: String,
@@ -129,28 +135,49 @@ pub struct TardisWebServer {
     state: Mutex<ServerState>,
 }
 
+impl Default for TardisWebServer {
+    fn default() -> Self {
+        TardisWebServer {
+            app_name: "".to_string(),
+            version: "".to_string(),
+            config: WebServerConfig::default(),
+            state: Mutex::new(ServerState::default()),
+            initializers: Mutex::new(Vec::new()),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl InitBy<FrameworkConfig> for TardisWebServer {
+    async fn init_by(conf: &FrameworkConfig) -> TardisResult<Self> {
+        let route = poem::Route::new();
+        TardisResult::Ok(TardisWebServer {
+            app_name: conf.app.name.clone(),
+            version: conf.app.version.clone(),
+            config: conf.web_server.clone().expect("missing web server config"),
+            state: Mutex::new(ServerState::Halted(route)),
+            initializers: Mutex::new(Vec::new()),
+        })
+    }
+}
 impl TardisWebServer {
     pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServer> {
         let route = poem::Route::new();
         TardisResult::Ok(TardisWebServer {
             app_name: conf.app.name.clone(),
             version: conf.app.version.clone(),
-            config: conf.web_server.clone(),
+            config: conf.web_server.clone().expect("missing web server config"),
             state: Mutex::new(ServerState::Halted(route)),
             initializers: Mutex::new(Vec::new()),
         })
     }
 
-    pub fn init_simple(host: &str, port: u16) -> TardisResult<TardisWebServer> {
+    pub fn init_simple(host: IpAddr, port: u16) -> TardisResult<TardisWebServer> {
         let route = poem::Route::new();
         TardisResult::Ok(TardisWebServer {
             app_name: "".to_string(),
             version: "".to_string(),
-            config: WebServerConfig {
-                host: host.to_string(),
-                port,
-                ..Default::default()
-            },
+            config: WebServerConfig::builder().common(WebServerCommonConfig::builder().host(host).port(port).build()).default(WebServerModuleConfig::builder().build()).build(),
             state: Mutex::new(ServerState::Halted(route)),
             initializers: Mutex::new(Vec::new()),
         })
@@ -160,11 +187,7 @@ impl TardisWebServer {
         WebServerModuleConfig {
             name: self.app_name.clone(),
             version: self.version.clone(),
-            doc_urls: self.config.doc_urls.clone(),
-            req_headers: self.config.req_headers.clone(),
-            ui_path: self.config.ui_path.clone(),
-            spec_path: self.config.spec_path.clone(),
-            uniform_error: self.config.uniform_error,
+            ..self.config.default.clone()
         }
     }
     /// add route
