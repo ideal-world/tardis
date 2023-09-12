@@ -1,5 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Once, OnceLock, OnceState};
 
 use crate::basic::result::TardisResult;
 use tracing::Subscriber;
@@ -7,21 +7,14 @@ use tracing::Subscriber;
 use tracing_subscriber::layer::Layered;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
-use tracing_subscriber::{layer::SubscriberExt, prelude::*, reload::Handle, Registry, fmt::Layer as FmtLayer, reload::Layer as ReloadLayer};
+use tracing_subscriber::{fmt::Layer as FmtLayer, layer::SubscriberExt, prelude::*, reload::Handle, reload::Layer as ReloadLayer, Registry};
 
 use super::error::TardisError;
-static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
-pub trait Initializer<T: ?Sized> {
-    fn setup(&self, target: &mut T);
-}
+static INITIALIZED: Once = Once::new();
+pub struct TardisTracing;
 
-pub trait TardisTracingInitializer {}
-pub struct TardisTracing {
-    layer_modifiers: Vec<Box<dyn Initializer<dyn SubscriberExt>>>,
-}
-
-pub static GLOBAL_RELOAD_HANDLE: OnceLock<Handle<EnvFilter, Layered<FmtLayer<Registry>, Registry>>> = OnceLock::new();
+pub static GLOBAL_RELOAD_HANDLE: OnceLock<Handle<EnvFilter, Registry>> = OnceLock::new();
 
 impl TardisTracing {
     /// initialize the log layer
@@ -36,23 +29,22 @@ impl TardisTracing {
     /// ```
     ///
     ///
-    pub(crate) fn init_log(custom_layer: Registry) -> TardisResult<()> {
-        if INITIALIZED.swap(true, Ordering::SeqCst) {
-            return Ok(());
-        }
-        if std::env::var_os("RUST_LOG").is_none() {
-            std::env::set_var("RUST_LOG", "info");
-        }
+    pub(crate) fn init_log() -> TardisResult<()> {
+        TardisTracing::init_log_with_registry(Registry::default())
+    }
 
-        let builder = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).with_filter_reloading();
-        let fmt_layer = tracing_subscriber::fmt::layer();
-        let reload_handle = builder.reload_handle();
+    pub(crate) fn init_log_with_registry(registry: Registry) -> TardisResult<()> {
+        INITIALIZED.call_once(|| {
+            if std::env::var_os("RUST_LOG").is_none() {
+                std::env::set_var("RUST_LOG", "info");
+            }
+            let (reload_filter, reload_handle) = ReloadLayer::new(EnvFilter::from_default_env());
+            let fmt_layer = tracing_subscriber::fmt::layer().with_filter(reload_filter);
+            let telemetry_layer = tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer().unwrap());
 
-        let registry = Registry::default().with(fmt_layer).with(EnvFilter::from_default_env());
-        let (layer, reload_handle): (_, Handle<EnvFilter, Layered<FmtLayer<Registry>, Registry>>) = ReloadLayer::new(registry);
-        let fmt_sub = builder.finish();
-        let all_layered = custom_layer.with(fmt_sub);
-        GLOBAL_RELOAD_HANDLE.get_or_init(|| reload_handle);
+            registry.with(fmt_layer).with(telemetry_layer).init();
+            GLOBAL_RELOAD_HANDLE.get_or_init(|| reload_handle);
+        });
         Ok(())
     }
 
@@ -79,9 +71,6 @@ impl TardisTracing {
 
     #[cfg(feature = "tracing")]
     pub(crate) fn init_tracing(conf: &crate::config::config_dto::FrameworkConfig) -> TardisResult<()> {
-        if INITIALIZED.swap(true, Ordering::SeqCst) {
-            return Ok(());
-        }
         if let Some(tracing_config) = conf.log.as_ref() {
             if std::env::var_os("RUST_LOG").is_none() {
                 std::env::set_var("RUST_LOG", tracing_config.level.as_str());
