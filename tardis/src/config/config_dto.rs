@@ -1,9 +1,11 @@
 use crate::{
+    basic::error::TardisError,
     serde::{Deserialize, Serialize},
     TardisFuns,
 };
 use serde_json::Value;
 use std::collections::HashMap;
+use tracing_subscriber::filter::Directive;
 use typed_builder::TypedBuilder;
 pub(crate) mod component_config;
 pub use component_config::*;
@@ -249,6 +251,8 @@ impl Default for ConfCenterConfig {
 #[serde(default)]
 pub struct LogConfig {
     pub level: String,
+    #[serde(deserialize_with = "deserialize_directives", serialize_with = "serialize_directives")]
+    pub directives: Vec<Directive>,
     #[cfg(feature = "tracing")]
     pub endpoint: String,
     #[cfg(feature = "tracing")]
@@ -259,12 +263,30 @@ pub struct LogConfig {
     pub headers: Option<String>,
 }
 
+fn serialize_directives<S>(value: &Vec<Directive>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let directives: Vec<String> = value.iter().map(|d| d.to_string()).collect();
+    directives.serialize(serializer)
+}
+
+fn deserialize_directives<'de, D>(deserializer: D) -> Result<Vec<Directive>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(Vec::<String>::deserialize(deserializer)?
+        .iter()
+        .filter_map(|s| s.parse::<Directive>().map_err(|e| TardisError::internal_error(&format!("update_log_level_by_domain_code failed: {e:?}"), "")).ok())
+        .collect())
+}
 impl Default for LogConfig {
     fn default() -> Self {
         #[cfg(feature = "tracing")]
         {
             LogConfig {
                 level: "info".to_string(),
+                directives: vec![],
                 endpoint: "http://localhost:4317".to_string(),
                 protocol: "grpc".to_string(),
                 server_name: "tardis-tracing".to_string(),

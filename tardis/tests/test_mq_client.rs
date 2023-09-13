@@ -18,43 +18,13 @@ async fn test_mq_client() -> TardisResult<()> {
     // console_subscriber::init();
     TardisFuns::init_log()?;
     TardisTestContainer::rabbit(|url| async move {
+        let mq_module_config = MQModuleConfig {
+            url: url.parse().expect("invalid url"),
+        };
         // Default test
         TardisFuns::init_conf(TardisConfig {
             cs: Default::default(),
-            fw: FrameworkConfig {
-                app: Default::default(),
-                web_server: WebServerConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                web_client: Default::default(),
-                cache: CacheConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                db: DBConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                mq: MQConfig {
-                    enabled: true,
-                    url: url.clone(),
-                    modules: HashMap::from([("m1".to_string(), MQModuleConfig { url: url.clone() })]),
-                },
-                search: SearchConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                mail: MailConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                os: OSConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
+            fw: FrameworkConfig::builder().mq(MQConfig::builder().default(mq_module_config.clone()).modules([("m1".to_string(), mq_module_config)]).build()).build(),
         })
         .await?;
 

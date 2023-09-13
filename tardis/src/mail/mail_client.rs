@@ -4,17 +4,17 @@ use lettre::message::{header, MultiPart, SinglePart};
 use lettre::transport::smtp::client::{Tls, TlsParametersBuilder, TlsVersion};
 use lettre::{address, error, transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use tracing::{error, info, trace, warn};
+use typed_builder::TypedBuilder;
 
 use crate::basic::error::TardisError;
 use crate::config::config_dto::component_config::mail::MailModuleConfig;
 use crate::utils::initializer::InitBy;
-use crate::{FrameworkConfig, TardisFuns, TardisResult};
+use crate::{TardisFuns, TardisResult};
 
 pub struct TardisMailClient {
     client: AsyncSmtpTransport<Tokio1Executor>,
     default_from: String,
 }
-
 
 #[async_trait::async_trait]
 impl InitBy<MailModuleConfig> for TardisMailClient {
@@ -24,14 +24,16 @@ impl InitBy<MailModuleConfig> for TardisMailClient {
 }
 
 impl TardisMailClient {
-    pub fn init(MailModuleConfig {
-        smtp_host,
-        smtp_port,
-        smtp_username,
-        smtp_password,
-        default_from,
-        starttls,
-    }: &MailModuleConfig) -> TardisResult<TardisMailClient> {
+    pub fn init(
+        MailModuleConfig {
+            smtp_host,
+            smtp_port,
+            smtp_username,
+            smtp_password,
+            default_from,
+            starttls,
+        }: &MailModuleConfig,
+    ) -> TardisResult<TardisMailClient> {
         info!("[Tardis.MailClient] Initializing");
         let creds = Credentials::new(smtp_username.to_string(), smtp_password.to_string());
         let tls = TlsParametersBuilder::new(smtp_host.to_string())
@@ -69,21 +71,15 @@ impl TardisMailClient {
         for to in &req.to {
             email = email.to(to.parse()?)
         }
-        if let Some(reply_to) = &req.reply_to {
-            for t in reply_to {
-                email = email.reply_to(t.parse()?)
-            }
-        };
-        if let Some(cc) = &req.cc {
-            for t in cc {
-                email = email.cc(t.parse()?)
-            }
-        };
-        if let Some(bcc) = &req.bcc {
-            for t in bcc {
-                email = email.bcc(t.parse()?)
-            }
-        };
+        for t in &req.reply_to {
+            email = email.reply_to(t.parse()?)
+        }
+        for t in &req.cc {
+            email = email.cc(t.parse()?)
+        }
+        for t in &req.bcc {
+            email = email.bcc(t.parse()?)
+        }
         email = email.subject(&req.subject);
         let email = if let Some(html_body) = &req.html_body {
             email.multipart(
@@ -121,15 +117,23 @@ impl TardisMailClient {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TypedBuilder)]
 pub struct TardisMailSendReq {
+    #[builder(default, setter(into))]
     pub subject: String,
+    #[builder(default, setter(into))]
     pub txt_body: String,
+    #[builder(default, setter(into, strip_option))]
     pub html_body: Option<String>,
+    #[builder(default, setter(into))]
     pub to: Vec<String>,
-    pub reply_to: Option<Vec<String>>,
-    pub cc: Option<Vec<String>>,
-    pub bcc: Option<Vec<String>>,
+    #[builder(default, setter(into))]
+    pub reply_to: Vec<String>,
+    #[builder(default, setter(into))]
+    pub cc: Vec<String>,
+    #[builder(default, setter(into))]
+    pub bcc: Vec<String>,
+    #[builder(default, setter(into, strip_option))]
     pub from: Option<String>,
 }
 

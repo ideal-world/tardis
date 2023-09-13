@@ -280,6 +280,7 @@ use crate::web::web_server::TardisWebServer;
 pub struct TardisFuns {
     custom_config: TardisComponentMap<CachedJsonValue>,
     framework_config: TardisComponent<FrameworkConfig>,
+    tracing: TardisComponent<TardisTracing>,
     #[cfg(feature = "reldb-core")]
     reldb: TardisComponentMap<TardisRelDBClient>,
     #[cfg(feature = "web-server")]
@@ -301,6 +302,7 @@ pub struct TardisFuns {
 static TARDIS_INST: TardisFuns = TardisFuns {
     custom_config: TardisComponentMap::new(),
     framework_config: TardisComponent::new(),
+    tracing: TardisComponent::new(),
     #[cfg(feature = "reldb-core")]
     reldb: TardisComponentMap::new(),
     #[cfg(feature = "web-server")]
@@ -337,8 +339,7 @@ impl TardisFuns {
     /// TardisFuns::init("proj/config").await;
     /// ```
     pub async fn init(relative_path: Option<&str>) -> TardisResult<()> {
-        #[cfg(not(feature = "tracing"))]
-        TardisTracing::init_log()?;
+        TardisTracing::init_default()?;
         let config = TardisConfig::init(relative_path).await?;
         TardisFuns::init_conf(config).await
     }
@@ -349,7 +350,7 @@ impl TardisFuns {
     ///
     /// [init](Self::init) 函数时会自动调用此函数
     pub fn init_log() -> TardisResult<()> {
-        TardisTracing::init_log()?;
+        TardisTracing::init_default()?;
         Ok(())
     }
 
@@ -405,13 +406,14 @@ impl TardisFuns {
     ///         .await;
     /// ```
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
-        #[cfg(feature = "tracing")]
-        TardisTracing::init_tracing(&conf.fw)?;
         let custom_config = conf.cs.iter().map(|(k, v)| (k.clone(), CachedJsonValue::new(v.clone()))).collect::<HashMap<_, _>>();
         TARDIS_INST.custom_config.replace_inner(custom_config);
         TARDIS_INST.framework_config.set(conf.fw);
         #[allow(unused_variables)]
         let fw_conf = TardisFuns::fw_config();
+        if let Some(log_config) = &fw_conf.log {
+            TARDIS_INST.tracing.get().update_config(log_config)?;
+        }
         #[cfg(feature = "reldb-core")]
         {
             if let Some(db_config) = &fw_conf.db {
@@ -1037,8 +1039,10 @@ impl TardisFuns {
         let fw_config = TardisFuns::fw_config();
         #[cfg(feature = "tracing")]
         {
-            if fw_config.log.is_some() && fw_config.log != old_framework_config.log {
-                TardisTracing::init_tracing(&fw_config)?;
+            if fw_config.log != old_framework_config.log {
+                if let Some(log_config) = &fw_config.log {
+                    TARDIS_INST.tracing.get().update_config(log_config)?;
+                }
             }
         }
 
@@ -1259,5 +1263,5 @@ pub mod search;
 pub mod test;
 pub mod web;
 
-pub mod utils;
 pub mod cheetsheet;
+pub mod utils;

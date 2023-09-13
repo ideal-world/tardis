@@ -7,17 +7,17 @@ use url::Url;
 #[serde(default)]
 pub struct OSModuleConfig {
     /// s3/oss/obs, Support amazon s3 / aliyun oss / huaweicloud obs
-    #[builder(default = "s3".to_string())]
+    #[builder(default = "s3".to_string(), setter(into))]
     pub kind: String,
-    #[builder(default)]
+    #[builder(default, setter(into))]
     pub endpoint: String,
-    #[builder(default)]
+    #[builder(default, setter(into))]
     pub ak: String,
-    #[builder(default)]
+    #[builder(default, setter(into))]
     pub sk: String,
-    #[builder(default)]
+    #[builder(default, setter(into))]
     pub region: String,
-    #[builder(default)]
+    #[builder(default, setter(into))]
     pub default_bucket: String,
 }
 

@@ -26,17 +26,14 @@ async fn test_mail_client() -> TardisResult<()> {
     TardisFuns::init_conf(TardisConfig::builder().fw(framework_config).build()).await?;
 
     TardisFuns::mail()
-        .send(&TardisMailSendReq {
-            subject: "测试".to_string(),
-            txt_body: "这是一封测试邮件".to_string(),
-            html_body: Some("<h1>测试</h1>这是一封测试邮件".to_string()),
-            to: vec!["<username>@outlook.com".to_string()],
-            reply_to: None,
-            cc: None,
-            bcc: None,
-            from: None,
-        })
+        .send(
+            &TardisMailSendReq::builder()
+                .subject("测试")
+                .txt_body("这是一封测试邮件")
+                .html_body("<h1>测试</h1>这是一封测试邮件")
+                .to(["<username>@outlook.com".to_string()])
+                .build(),
+        )
         .await?;
-
     Ok(())
 }

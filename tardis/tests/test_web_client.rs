@@ -21,15 +21,15 @@ async fn test_web_client() -> TardisResult<()> {
     let res = reqwest::get("https://postman-echo.com/get").await?;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let response = TardisFuns::web_client().get_to_str("https://www.baidu.com", Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec())).await?;
+    let response = TardisFuns::web_client().get_to_str("https://www.baidu.com", [("User-Agent", "Tardis")]).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains("baidu"));
 
-    let response = TardisFuns::web_client().get_to_str("https://postman-echo.com/get", Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec())).await?;
+    let response = TardisFuns::web_client().get_to_str("https://postman-echo.com/get", [("User-Agent", "Tardis")]).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains("Tardis"));
 
-    let response = TardisFuns::web_client().delete_to_void("https://postman-echo.com/delete", Some([("User-Agent".to_string(), "Tardis".to_string())].to_vec())).await?;
+    let response = TardisFuns::web_client().delete_to_void("https://postman-echo.com/delete", [("User-Agent", "Tardis")]).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
 
     let response = TardisFuns::web_client().post_str_to_str("https://postman-echo.com/post", "Raw body contents", None).await?;
