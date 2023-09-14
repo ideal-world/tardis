@@ -38,6 +38,7 @@ use super::TardisComponentConfig;
 /// ```
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
+#[serde(default)]
 pub struct WebServerCommonConfig {
     #[builder(default = IpAddr::V4(Ipv4Addr::UNSPECIFIED), setter(into))]
     /// Web service Host, default is `0.0.0.0` / Web服务Host，默认为 `0.0.0.0`

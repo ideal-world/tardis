@@ -7,6 +7,7 @@ use std::path::Path;
 #[cfg(feature = "conf-remote")]
 use {config::FileFormat, std::sync::Arc};
 
+use crate::TardisFuns;
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
@@ -43,7 +44,9 @@ impl TardisConfig {
         );
 
         let config = TardisConfig::do_init(relative_path, &profile, None).await?;
-
+        if let Some(log_config) = config.fw.log.as_ref() {
+            TardisFuns::tracing().update_config(log_config)?;
+        }
         #[cfg(feature = "conf-remote")]
         let config = if let Some(conf_center) = &config.fw.conf_center {
             if config.fw.app.id.is_empty() {
@@ -197,6 +200,39 @@ pub(crate) trait ConfCenterProcess: Sync + Send + std::fmt::Debug {
     fn listen_update(&self, reload_notifier: &tokio::sync::mpsc::Sender<()>);
     /// Add all sources to config
     fn register_to_config(&self, conf: ConfigBuilder<AsyncState>) -> ConfigBuilder<AsyncState>;
+}
+
+#[cfg(feature = "conf-remote")]
+impl ConfCenterConfig {
+    /// Reload configuration on remote configuration change / 远程配置变更时重新加载配置
+    #[must_use]
+    pub fn reload_on_remote_config_change(&self, relative_path: Option<&str>) -> tokio::sync::mpsc::Sender<()> {
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+        let relative_path = relative_path.map(str::to_string);
+        tokio::spawn(async move {
+            match rx.recv().await {
+                Some(_) => {}
+                None => {
+                    tracing::debug!("[Tardis.config] Configuration update channel closed");
+                    return;
+                }
+            };
+            if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
+                match TardisFuns::hot_reload(config).await {
+                    Ok(_) => {
+                        tracing::info!("[Tardis.config] Tardis hot reloaded");
+                    }
+                    Err(e) => {
+                        tracing::error!("[Tardis.config] Tardis shutdown with error {}", e);
+                    }
+                }
+            } else {
+                tracing::error!("[Tardis.config] Configuration update failed: Failed to load configuration");
+            }
+            tracing::debug!("[Tardis.config] Configuration update listener closed")
+        });
+        tx
+    }
 }
 
 #[cfg(feature = "crypto")]

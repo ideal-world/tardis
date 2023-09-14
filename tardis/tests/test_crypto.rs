@@ -57,7 +57,7 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
 
     let key = TardisFuns::crypto.key.rand_16_hex()?;
     let iv = TardisFuns::crypto.key.rand_16_hex()?;
-
+    
     let encrypted_data = TardisFuns::crypto.aes.encrypt_cbc(large_text, &key, &iv)?;
     let data = TardisFuns::crypto.aes.decrypt_cbc(&encrypted_data, &key, &iv)?;
     assert_eq!(data, large_text);

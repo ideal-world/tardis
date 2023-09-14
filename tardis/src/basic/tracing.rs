@@ -29,7 +29,6 @@ fn create_configurable_layer<L, S, C>(layer: L, configer: impl Fn(&C) -> TardisR
     Ok((reload_layer, config_layer_fn))
 }
 
-
 /// Tardis tracing initializer
 /// ```ignore
 /// # use crate::basic::tracing::TardisTracingInitializer;
@@ -104,6 +103,9 @@ where
     pub fn init(self) -> TardisTracing<C> {
         static INITIALIZED: Once = Once::new();
         let configer_list = self.configers;
+        if INITIALIZED.is_completed() {
+            tracing::error!("[Tardis.Tracing] Trying to initialize tardis tracing more than once");
+        }
         INITIALIZED.call_once(|| self.layered.init());
         TardisTracing { configer: configer_list }
     }
@@ -116,7 +118,7 @@ impl TardisTracing<LogConfig> {
     }
 
     /// Update tardis tracing config, and this will reload all configurable layers
-    /// 
+    ///
     pub fn update_config(&self, config: &LogConfig) -> TardisResult<()> {
         for configer in &self.configer {
             (configer)(config)?
@@ -124,8 +126,8 @@ impl TardisTracing<LogConfig> {
         Ok(())
     }
 
-
     pub(crate) fn init_default() -> TardisResult<Self> {
+        tracing::info!("[Tardis.Tracing] Initializing by defualt initializer.");
         let initializer = TardisTracingInitializer::default().with_layer(FmtLayer::default()).with_configurable_layer(EnvFilter::from_default_env(), |config: &LogConfig| {
             let mut env_filter = EnvFilter::from_default_env();
             for directive in &config.directives {
@@ -134,22 +136,28 @@ impl TardisTracing<LogConfig> {
             std::env::set_var("RUST_LOG", env_filter.to_string());
             Ok(env_filter)
         })?;
+        tracing::debug!("[Tardis.Tracing] Added fmt layer and env filter.");
         #[cfg(feature = "tracing")]
-        let initializer = initializer.with_configurable_layer(tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?), |conf: &LogConfig| {
-            if std::env::var_os("RUST_LOG").is_none() {
-                std::env::set_var("RUST_LOG", conf.level.as_str());
-            }
-            if std::env::var_os("OTEL_EXPORTER_OTLP_ENDPOINT").is_none() {
-                std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", conf.endpoint.as_str());
-            }
-            if std::env::var_os("OTEL_EXPORTER_OTLP_PROTOCOL").is_none() {
-                std::env::set_var("OTEL_EXPORTER_OTLP_PROTOCOL", conf.protocol.as_str());
-            }
-            if std::env::var_os("OTEL_SERVICE_NAME").is_none() {
-                std::env::set_var("OTEL_SERVICE_NAME", conf.server_name.as_str());
-            }
-            Ok(tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?))
-        })?;
+        let initializer = {
+            let initializer = initializer.with_configurable_layer(tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?), |conf: &LogConfig| {
+                if std::env::var_os("RUST_LOG").is_none() {
+                    std::env::set_var("RUST_LOG", conf.level.as_str());
+                }
+                if std::env::var_os("OTEL_EXPORTER_OTLP_ENDPOINT").is_none() {
+                    std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", conf.endpoint.as_str());
+                }
+                if std::env::var_os("OTEL_EXPORTER_OTLP_PROTOCOL").is_none() {
+                    std::env::set_var("OTEL_EXPORTER_OTLP_PROTOCOL", conf.protocol.to_string().as_str());
+                }
+                if std::env::var_os("OTEL_SERVICE_NAME").is_none() {
+                    std::env::set_var("OTEL_SERVICE_NAME", conf.server_name.as_str());
+                }
+                Ok(tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?))
+            })?;
+            tracing::debug!("[Tardis.Tracing] Added fmt layer and env filter.");
+            initializer
+        };
+        tracing::info!("[Tardis.Tracing] Initialize finished.");
         let tardis_tracing = initializer.init();
         Ok(tardis_tracing)
     }
@@ -158,10 +166,12 @@ impl TardisTracing<LogConfig> {
     fn create_otlp_tracer() -> TardisResult<opentelemetry::sdk::trace::Tracer> {
         use opentelemetry_otlp::WithExportConfig;
 
-        let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or("grpc".to_string());
+        use crate::config::config_dto::OtlpProtocol;
+        tracing::debug!("[Tardis.Tracing] Initializing otlp tracer");
+        let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").ok().map(|s| s.parse::<OtlpProtocol>()).transpose()?.unwrap_or_default();
         let mut tracer = opentelemetry_otlp::new_pipeline().tracing();
-        match protocol.as_str() {
-            "grpc" => {
+        match protocol {
+            OtlpProtocol::Grpc => {
                 let mut exporter = opentelemetry_otlp::new_exporter().tonic().with_env();
                 // Check if we need TLS
                 if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
@@ -171,14 +181,16 @@ impl TardisTracing<LogConfig> {
                 }
                 tracer = tracer.with_exporter(exporter)
             }
-            "http/protobuf" => {
+            OtlpProtocol::HttpProtobuf => {
                 let headers = Self::parse_otlp_headers_from_env();
                 let exporter = opentelemetry_otlp::new_exporter().http().with_headers(headers.into_iter().collect()).with_env();
                 tracer = tracer.with_exporter(exporter)
             }
-            p => return Err(TardisError::conflict(&format!("[Tracing] Unsupported protocol {p}"), "")),
         };
-        Ok(tracer.install_batch(opentelemetry::runtime::Tokio)?)
+        tracing::debug!("[Tardis.Tracing] Batch installing tracer. If you are blocked here, try running tokio in multithread.");
+        let tracer = tracer.install_batch(opentelemetry::runtime::Tokio)?;
+        tracing::debug!("[Tardis.Tracing] Initialized otlp tracer");
+        Ok(tracer)
     }
 
     #[cfg(feature = "tracing")]

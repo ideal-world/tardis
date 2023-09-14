@@ -6,7 +6,7 @@ use futures::stream::SplitSink;
 #[cfg(feature = "future")]
 use futures::{Future, SinkExt, StreamExt};
 use native_tls::TlsConnector;
-use serde::de::DeserializeOwned;
+use serde::de::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use tokio::{net::TcpStream, sync::Mutex};
@@ -142,12 +142,12 @@ impl TardisWSClient {
 }
 
 pub trait TardisWebSocketMessageExt {
-    fn str_to_obj<T: DeserializeOwned>(&self) -> TardisResult<T>;
+    fn str_to_obj<T: for<'de> Deserialize<'de>>(&self) -> TardisResult<T>;
     fn str_to_json(&self) -> TardisResult<Value>;
 }
 
 impl TardisWebSocketMessageExt for Message {
-    fn str_to_obj<T: DeserializeOwned>(&self) -> TardisResult<T> {
+    fn str_to_obj<T: for<'de> Deserialize<'de>>(&self) -> TardisResult<T> {
         if let Message::Text(msg) = self {
             TardisFuns::json.str_to_obj(msg).map_err(|_| {
                 TardisError::format_error(

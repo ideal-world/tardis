@@ -123,6 +123,7 @@ extern crate lazy_static;
 
 use std::collections::HashMap;
 
+use std::sync::OnceState;
 use std::{any::Any, sync::Arc};
 
 #[cfg(feature = "future")]
@@ -417,6 +418,7 @@ impl TardisFuns {
         #[cfg(feature = "reldb-core")]
         {
             if let Some(db_config) = &fw_conf.db {
+                log::info!("[Tardis.DB] Initializing");
                 TARDIS_INST.reldb.init_by(db_config).await?;
             }
         }
@@ -615,6 +617,10 @@ impl TardisFuns {
         sm2: crypto::crypto_sm2_4::TardisCryptoSm2 {},
         digest: crypto::crypto_digest::TardisCryptoDigest {},
     };
+
+    pub fn tracing() -> Arc<TardisTracing> {
+        TARDIS_INST.tracing.get()
+    }
 
     /// Use the relational database feature / 使用关系型数据库功能
     ///
@@ -1037,12 +1043,10 @@ impl TardisFuns {
 
         #[allow(unused_variables)]
         let fw_config = TardisFuns::fw_config();
-        #[cfg(feature = "tracing")]
-        {
-            if fw_config.log != old_framework_config.log {
-                if let Some(log_config) = &fw_config.log {
-                    TARDIS_INST.tracing.get().update_config(log_config)?;
-                }
+
+        if fw_config.log != old_framework_config.log {
+            if let Some(log_config) = &fw_config.log {
+                TARDIS_INST.tracing.get().update_config(log_config)?;
             }
         }
 
@@ -1080,7 +1084,7 @@ impl TardisFuns {
         #[cfg(feature = "cache")]
         {
             if let Some(cache_config) = &fw_config.cache {
-                TARDIS_INST.cache.init_by(&cache_config).await?;
+                TARDIS_INST.cache.init_by(cache_config).await?;
             }
         }
         #[cfg(feature = "mq")]
@@ -1264,4 +1268,4 @@ pub mod test;
 pub mod web;
 
 pub mod cheetsheet;
-pub mod utils;
+mod utils;

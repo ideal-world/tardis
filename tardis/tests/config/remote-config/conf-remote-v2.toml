@@ -4,7 +4,7 @@ id = "test-app"
 
 [fw.web_server]
 enabled = true
-host="localhost"
+host="127.0.0.1"
 port=8080
 allowed_origin="*"
 spec_path="spec"

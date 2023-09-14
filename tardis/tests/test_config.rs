@@ -7,9 +7,10 @@ use tardis::basic::result::TardisResult;
 use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_config() -> TardisResult<()> {
     env::set_var("PROFILE", "test");
+    env::set_var("RUST_LOG", "debug");
     TardisFuns::init(Some("tests/config")).await?;
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
@@ -20,6 +21,7 @@ async fn test_config() -> TardisResult<()> {
     assert_eq!(TardisFuns::fw_config().app.name, "APP1");
 
     env::set_var("PROFILE", "prod");
+    tardis::log::info!("init the second time");
     TardisFuns::init(Some("tests/config")).await?;
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
     let fw_config = TardisFuns::fw_config();

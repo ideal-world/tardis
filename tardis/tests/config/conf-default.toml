@@ -5,3 +5,5 @@ level_num = 2
 [fw]
 [fw.app]
 default_lang = "zh-CN"
+
+[fw.web_client]

@@ -4,7 +4,7 @@ use crate::{
     TardisFuns,
 };
 use serde_json::Value;
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 use tracing_subscriber::filter::Directive;
 use typed_builder::TypedBuilder;
 pub(crate) mod component_config;
@@ -199,39 +199,6 @@ pub struct ConfCenterConfig {
     pub config_change_polling_interval: Option<u64>,
 }
 
-#[cfg(feature = "conf-remote")]
-impl ConfCenterConfig {
-    /// Reload configuration on remote configuration change / 远程配置变更时重新加载配置
-    #[must_use]
-    pub fn reload_on_remote_config_change(&self, relative_path: Option<&str>) -> tokio::sync::mpsc::Sender<()> {
-        let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
-        let relative_path = relative_path.map(str::to_string);
-        tokio::spawn(async move {
-            match rx.recv().await {
-                Some(_) => {}
-                None => {
-                    tracing::debug!("[Tardis.config] Configuration update channel closed");
-                    return;
-                }
-            };
-            if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
-                match TardisFuns::hot_reload(config).await {
-                    Ok(_) => {
-                        tracing::info!("[Tardis.config] Tardis hot reloaded");
-                    }
-                    Err(e) => {
-                        tracing::error!("[Tardis.config] Tardis shutdown with error {}", e);
-                    }
-                }
-            } else {
-                tracing::error!("[Tardis.config] Configuration update failed: Failed to load configuration");
-            }
-            tracing::debug!("[Tardis.config] Configuration update listener closed")
-        });
-        tx
-    }
-}
-
 impl Default for ConfCenterConfig {
     fn default() -> Self {
         ConfCenterConfig {
@@ -247,23 +214,57 @@ impl Default for ConfCenterConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+pub enum OtlpProtocol {
+    #[default]
+    Grpc,
+    HttpProtobuf,
+}
+
+impl ToString for OtlpProtocol {
+    fn to_string(&self) -> String {
+        match self {
+            OtlpProtocol::Grpc => "grpc".to_string(),
+            OtlpProtocol::HttpProtobuf => "http/protobuf".to_string(),
+        }
+    }
+}
+
+impl FromStr for OtlpProtocol {
+    type Err = TardisError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "grpc" => Ok(OtlpProtocol::Grpc),
+            "http/protobuf" => Ok(OtlpProtocol::HttpProtobuf),
+            _ => Err(TardisError::conflict(&format!("[Tracing] Unsupported protocol {s}"), "")),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
 #[serde(default)]
 pub struct LogConfig {
+    #[builder(default = "info".to_string(), setter(into))]
     pub level: String,
+    #[builder(default, setter(into))]
     #[serde(deserialize_with = "deserialize_directives", serialize_with = "serialize_directives")]
     pub directives: Vec<Directive>,
     #[cfg(feature = "tracing")]
+    #[builder(default = "http://localhost:4317".to_string(), setter(into))]
     pub endpoint: String,
     #[cfg(feature = "tracing")]
-    pub protocol: String,
+    #[builder(default)]
+    pub protocol: OtlpProtocol,
     #[cfg(feature = "tracing")]
+    #[builder(default = "tardis-tracing".to_string(), setter(into))]
     pub server_name: String,
     #[cfg(feature = "tracing")]
+    #[builder(default, setter(into, strip_option))]
     pub headers: Option<String>,
 }
 
-fn serialize_directives<S>(value: &Vec<Directive>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_directives<S>(value: &[Directive], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -280,23 +281,10 @@ where
         .filter_map(|s| s.parse::<Directive>().map_err(|e| TardisError::internal_error(&format!("update_log_level_by_domain_code failed: {e:?}"), "")).ok())
         .collect())
 }
+
 impl Default for LogConfig {
     fn default() -> Self {
-        #[cfg(feature = "tracing")]
-        {
-            LogConfig {
-                level: "info".to_string(),
-                directives: vec![],
-                endpoint: "http://localhost:4317".to_string(),
-                protocol: "grpc".to_string(),
-                server_name: "tardis-tracing".to_string(),
-                headers: None,
-            }
-        }
-        #[cfg(not(feature = "tracing"))]
-        {
-            LogConfig { level: "info".to_string() }
-        }
+        LogConfig::builder().build()
     }
 }
 
