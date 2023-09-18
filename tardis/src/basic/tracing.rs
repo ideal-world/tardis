@@ -3,15 +3,14 @@ use std::sync::Once;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::LogConfig;
 
-use crate::cheetsheet::*;
 use crate::TARDIS_INST;
-use tracing::Subscriber;
 
+#[allow(unused_imports)]
+use crate::cheetsheet::*;
 use tracing_subscriber::layer::Layered;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::{fmt::Layer as FmtLayer, layer::SubscriberExt, prelude::*, reload::Layer as ReloadLayer, Registry};
-
 #[derive(Default)]
 pub struct TardisTracing<C = LogConfig> {
     configer: Vec<Box<dyn Fn(&C) -> TardisResult<()> + Send + Sync>>,
@@ -170,13 +169,17 @@ impl TardisTracing<LogConfig> {
         };
         #[cfg(feature = "tracing-appender")]
         let initializer = {
-            let empty_output_layer = FmtLayer::default().with_writer(std::io::sink).boxed();
-            initializer.with_configurable_layer(empty_output_layer, |cfg| {
-                let cfg = &cfg.tracing_appender;
-                let file_appender = tracing_appender::rolling::RollingFileAppender::new(cfg.rotation.into(), &cfg.dir, &cfg.filename);
-                let fmt_file_layer = FmtLayer::default().with_writer(file_appender);
-                Ok(fmt_file_layer.boxed())
-            })?
+            use crate::config::config_dto::log::TracingAppenderConfig;
+            let config_file_layer = |cfg: Option<&TracingAppenderConfig>| {
+                let fmt_file_layer = if let Some(cfg) = &cfg {
+                    let file_appender = tracing_appender::rolling::RollingFileAppender::new(cfg.rotation.into(), &cfg.dir, &cfg.filename);
+                    FmtLayer::default().with_writer(file_appender).boxed()
+                } else {
+                    FmtLayer::default().with_writer(std::io::sink).boxed()
+                };
+                fmt_file_layer
+            };
+            initializer.with_configurable_layer(config_file_layer(None), move |cfg| TardisResult::Ok(config_file_layer(cfg.tracing_appender.as_ref())))?
         };
         tracing::info!("[Tardis.Tracing] Initialize finished.");
         initializer.init();

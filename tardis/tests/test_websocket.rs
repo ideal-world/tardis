@@ -1,3 +1,4 @@
+#![allow(unreachable_code)]
 use std::collections::HashMap;
 use std::env;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -239,7 +240,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
             ));
         }
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
-            assert!(1 == 2);
+            panic!();
             DEL_COUNTER.fetch_add(1, Ordering::SeqCst);
         }
         None
@@ -249,11 +250,11 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
         let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(msg.to_text().unwrap()).unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
-            assert!(1 == 2);
+            panic!();
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
         }
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
-            assert!(1 == 2);
+            panic!();
             DEL_COUNTER.fetch_add(1, Ordering::SeqCst);
         }
         None
@@ -263,11 +264,11 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     let a_client = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
         let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(msg.to_text().unwrap()).unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
-            assert!(1 == 2);
+            panic!();
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
         }
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
-            assert!(1 == 2);
+            panic!();
             DEL_COUNTER.fetch_add(1, Ordering::SeqCst);
         }
         if receive_msg.event == Some(WS_SYSTEM_EVENT_INFO.to_string()) {
@@ -283,7 +284,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
         let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(msg.to_text().unwrap()).unwrap();
         if receive_msg.msg.as_str().unwrap() == "a" {
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
-            assert!(1 == 2);
+            panic!();
         }
         None
     })

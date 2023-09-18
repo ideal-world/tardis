@@ -256,6 +256,7 @@ impl TardisWebServer {
         self
     }
 
+    #[allow(unused_variables, unused_mut)]
     async fn do_add_module_with_data<T, MW, D>(&self, code: &str, module_config: &WebServerModuleConfig, module: WebServerModule<T, MW, D>) -> &Self
     where
         T: OpenApi + 'static,
@@ -279,6 +280,7 @@ impl TardisWebServer {
         }
         let mut route = Route::new();
         if let Some(ui_path) = &module_config.ui_path {
+            #[allow(unused_assignments)]
             let mut has_doc = false;
             #[cfg(feature = "openapi-redoc")]
             {

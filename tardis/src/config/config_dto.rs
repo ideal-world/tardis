@@ -2,12 +2,11 @@ use crate::{
     serde::{Deserialize, Serialize},
     TardisFuns,
 };
-use serde_json::Value;
 use std::collections::HashMap;
 
 use typed_builder::TypedBuilder;
 pub(crate) mod component;
-pub(crate) mod log;
+pub mod log;
 pub use component::*;
 pub use log::*;
 /// Configuration of Tardis / Tardis的配置
@@ -15,7 +14,7 @@ pub use log::*;
 pub struct TardisConfig {
     #[builder(default, setter(into))]
     /// Project custom configuration / 项目自定义的配置
-    pub cs: HashMap<String, Value>,
+    pub cs: HashMap<String, serde_json::Value>,
     #[builder(default)]
     /// Tardis framework configuration / Tardis框架的各功能配置
     pub fw: FrameworkConfig,

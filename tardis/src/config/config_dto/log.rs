@@ -4,7 +4,6 @@ use typed_builder::TypedBuilder;
 
 use crate::basic::error::TardisError;
 
-use self::tracing_appender::TracingAppenderConfig;
 #[cfg(feature = "tracing")]
 mod tracing;
 #[cfg(feature = "tracing")]
@@ -12,7 +11,7 @@ pub use tracing::*;
 #[cfg(feature = "tracing-appender")]
 mod tracing_appender;
 #[cfg(feature = "tracing-appender")]
-pub use tracing::*;
+pub use tracing_appender::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
 #[serde(default)]
@@ -28,7 +27,7 @@ pub struct LogConfig {
     pub tracing: TracingConfig,
     #[cfg(feature = "tracing-appender")]
     #[builder(default)]
-    pub tracing_appender: TracingAppenderConfig,
+    pub tracing_appender: Option<TracingAppenderConfig>,
 }
 
 fn serialize_directive<S>(value: &Directive, serializer: S) -> Result<S::Ok, S::Error>
