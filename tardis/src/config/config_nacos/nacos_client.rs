@@ -6,7 +6,7 @@ use crypto::{digest::Digest, md5::Md5};
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
-use tracing::debug;
+use tracing::{debug, trace};
 
 const ACCESS_TOKEN_FIELD: &str = "accessToken";
 
@@ -208,11 +208,11 @@ impl NacosClient {
         }
         let mut params = HashMap::new();
         params.insert("Listening-Configs", descriptor.as_listening_configs().await);
-        debug!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
+        trace!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
 
         let mut resp = self.listen_config_inner(&params).await?;
 
-        debug!("[Tardis.Config] listen_config resp: {:?}", resp);
+        trace!("[Tardis.Config] listen_config resp: {:?}", resp);
         // case of token expired
         if resp.status() == reqwest::StatusCode::FORBIDDEN {
             self.relogin().await?;

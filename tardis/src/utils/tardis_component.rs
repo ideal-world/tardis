@@ -10,6 +10,8 @@ use super::initializer::InitBy;
 
 type ModuleCode = String;
 
+
+/// A once-rwlock-arc wrapper, used to store multi-thread shared and once-initialized data
 #[repr(transparent)]
 #[derive(Default)]
 pub struct TardisComponent<T>(OnceLock<TardisComponentInner<T>>);
@@ -67,6 +69,8 @@ impl<T> TardisComponentInner<T> {
     }
 }
 
+
+/// A once-rwlock-hashmap-arc wrapper, used to store multi-thread shared and once-initialized map
 #[repr(transparent)]
 #[derive(Default)]
 pub struct TardisComponentMap<T: ?Sized>(OnceLock<TardisComponentMapInner<T>>);

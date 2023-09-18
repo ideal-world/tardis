@@ -17,9 +17,9 @@ use tokio::time::Duration;
 use tracing::{debug, error, info, warn};
 
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::component_config::web_server::WebServerCommonConfig;
+use crate::config::config_dto::component::web_server::WebServerCommonConfig;
 use crate::config::config_dto::{
-    component_config::{web_server::WebServerModuleConfig, WebServerConfig},
+    component::{web_server::WebServerModuleConfig, WebServerConfig},
     FrameworkConfig,
 };
 use crate::utils::initializer::InitBy;

@@ -7,7 +7,7 @@ use tracing::{error, info, trace, warn};
 use typed_builder::TypedBuilder;
 
 use crate::basic::error::TardisError;
-use crate::config::config_dto::component_config::mail::MailModuleConfig;
+use crate::config::config_dto::component::mail::MailModuleConfig;
 use crate::utils::initializer::InitBy;
 use crate::{TardisFuns, TardisResult};
 

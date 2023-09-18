@@ -5,6 +5,8 @@ use std::sync::{Once, OnceLock, OnceState};
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::{FrameworkConfig, LogConfig};
 use crate::utils::TardisComponentMap;
+use crate::{TardisFuns, TARDIS_INST};
+use crate::cheetsheet::*;
 use tracing::Subscriber;
 
 use super::error::TardisError;
@@ -96,18 +98,19 @@ where
     }
 }
 
-impl<L, C: 'static> TardisTracingInitializer<L, C>
+impl<L> TardisTracingInitializer<L>
 where
     L: SubscriberInitExt + 'static,
 {
-    pub fn init(self) -> TardisTracing<C> {
+    pub fn init(self) {
         static INITIALIZED: Once = Once::new();
         let configer_list = self.configers;
         if INITIALIZED.is_completed() {
-            tracing::error!("[Tardis.Tracing] Trying to initialize tardis tracing more than once");
+            tracing::error!("[Tardis.Tracing] Trying to initialize tardis tracing more than once, this initialization will be ignored. If you want to use new config for tracing, use update_config() instead.");
+        } else {
+            INITIALIZED.call_once(|| self.layered.init());
+            TARDIS_INST.tracing.set(TardisTracing { configer: configer_list });
         }
-        INITIALIZED.call_once(|| self.layered.init());
-        TardisTracing { configer: configer_list }
     }
 }
 
@@ -123,13 +126,18 @@ impl TardisTracing<LogConfig> {
         for configer in &self.configer {
             (configer)(config)?
         }
+        tracing::debug!("[Tardis.Tracing] Config updated.");
+        tracing::trace!("[Tardis.Tracing] New config: {:?}", config);
         Ok(())
     }
 
-    pub(crate) fn init_default() -> TardisResult<Self> {
+    pub(crate) fn init_default() -> TardisResult<()> {
         tracing::info!("[Tardis.Tracing] Initializing by defualt initializer.");
-        let initializer = TardisTracingInitializer::default().with_layer(FmtLayer::default()).with_configurable_layer(EnvFilter::from_default_env(), |config: &LogConfig| {
+        let initializer = TardisTracingInitializer::default();
+        let initializer = initializer.with_layer(FmtLayer::default());
+        let initializer = initializer.with_configurable_layer(EnvFilter::from_default_env(), |config: &LogConfig| {
             let mut env_filter = EnvFilter::from_default_env();
+            env_filter = env_filter.add_directive(config.level.clone());
             for directive in &config.directives {
                 env_filter = env_filter.add_directive(directive.clone());
             }
@@ -141,25 +149,42 @@ impl TardisTracing<LogConfig> {
         let initializer = {
             let initializer = initializer.with_configurable_layer(tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?), |conf: &LogConfig| {
                 if std::env::var_os("RUST_LOG").is_none() {
-                    std::env::set_var("RUST_LOG", conf.level.as_str());
+                    std::env::set_var("RUST_LOG", conf.level.to_string());
                 }
-                if std::env::var_os("OTEL_EXPORTER_OTLP_ENDPOINT").is_none() {
-                    std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", conf.endpoint.as_str());
+                if std::env::var_os(OTEL_EXPORTER_OTLP_ENDPOINT).is_none() {
+                    std::env::set_var(OTEL_EXPORTER_OTLP_ENDPOINT, conf.tracing.endpoint.as_str());
                 }
-                if std::env::var_os("OTEL_EXPORTER_OTLP_PROTOCOL").is_none() {
-                    std::env::set_var("OTEL_EXPORTER_OTLP_PROTOCOL", conf.protocol.to_string().as_str());
+                if std::env::var_os(OTEL_EXPORTER_OTLP_PROTOCOL).is_none() {
+                    std::env::set_var(OTEL_EXPORTER_OTLP_PROTOCOL, conf.tracing.protocol.to_string());
                 }
-                if std::env::var_os("OTEL_SERVICE_NAME").is_none() {
-                    std::env::set_var("OTEL_SERVICE_NAME", conf.server_name.as_str());
+                if std::env::var_os(OTEL_SERVICE_NAME).is_none() {
+                    std::env::set_var(OTEL_SERVICE_NAME, conf.tracing.server_name.as_str());
                 }
                 Ok(tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?))
             })?;
             tracing::debug!("[Tardis.Tracing] Added fmt layer and env filter.");
             initializer
         };
+        #[cfg(feature = "console-subscriber")]
+        let initializer = {
+            use console_subscriber::ConsoleLayer;
+            tracing::info!("[Tardis.Tracing] Initializing console subscriber. To make it work, you need to enable tokio and runtime tracing targets at **TRACE** level.");
+            let layer = ConsoleLayer::builder().with_default_env().spawn();
+            initializer.with_layer(layer)
+        };
+        #[cfg(feature = "tracing-appender")]
+        let initializer = {
+            let empty_output_layer = FmtLayer::default().with_writer(std::io::sink).boxed();
+            initializer.with_configurable_layer(empty_output_layer, |cfg| {
+                let cfg = &cfg.tracing_appender;
+                let file_appender = tracing_appender::rolling::RollingFileAppender::new(cfg.rotation.into(), &cfg.dir, &cfg.filename);
+                let fmt_file_layer = FmtLayer::default().with_writer(file_appender);
+                Ok(fmt_file_layer.boxed())
+            })?
+        };
         tracing::info!("[Tardis.Tracing] Initialize finished.");
-        let tardis_tracing = initializer.init();
-        Ok(tardis_tracing)
+        initializer.init();
+        Ok(())
     }
 
     #[cfg(feature = "tracing")]
@@ -168,13 +193,13 @@ impl TardisTracing<LogConfig> {
 
         use crate::config::config_dto::OtlpProtocol;
         tracing::debug!("[Tardis.Tracing] Initializing otlp tracer");
-        let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").ok().map(|s| s.parse::<OtlpProtocol>()).transpose()?.unwrap_or_default();
+        let protocol = std::env::var(OTEL_EXPORTER_OTLP_PROTOCOL).ok().map(|s| s.parse::<OtlpProtocol>()).transpose()?.unwrap_or_default();
         let mut tracer = opentelemetry_otlp::new_pipeline().tracing();
         match protocol {
             OtlpProtocol::Grpc => {
                 let mut exporter = opentelemetry_otlp::new_exporter().tonic().with_env();
                 // Check if we need TLS
-                if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
+                if let Ok(endpoint) = std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
                     if endpoint.to_lowercase().starts_with("https") {
                         exporter = exporter.with_tls_config(Default::default());
                     }
@@ -197,7 +222,7 @@ impl TardisTracing<LogConfig> {
     fn parse_otlp_headers_from_env() -> Vec<(String, String)> {
         let mut headers = Vec::new();
 
-        if let Ok(hdrs) = std::env::var("OTEL_EXPORTER_OTLP_HEADERS") {
+        if let Ok(hdrs) = std::env::var(OTEL_EXPORTER_OTLP_HEADERS) {
             hdrs.split(',')
                 .map(|header| header.split_once('=').expect("Header should contain '=' character"))
                 .for_each(|(name, value)| headers.push((name.to_owned(), value.to_owned())));

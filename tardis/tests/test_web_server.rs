@@ -115,8 +115,8 @@ async fn test_web_server() -> TardisResult<()> {
     test_context(web_url).await?;
     test_security().await?;
     test_middleware().await?;
-
     TardisFuns::shutdown().await?;
+
     Ok(())
 }
 
@@ -484,10 +484,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
             format!("{url}/other/context_in_header").as_str(),
-            [(
-                web_server_config.context_conf.context_header_name.as_str(),
-                format!("{TOKEN_FLAG}token1").as_str(),
-            )],
+            [(web_server_config.context_conf.context_header_name.as_str(), format!("{TOKEN_FLAG}token1").as_str())],
         )
         .await?
         .body
@@ -628,7 +625,7 @@ async fn test_middleware() -> TardisResult<()> {
         let fw_config = FrameworkConfig::builder()
             .web_server(
                 WebServerConfig::builder()
-                    .common(WebServerCommonConfig::builder().port(8082).tls_key(TLS_KEY).tls_cert(TLS_CERT).security_hide_err_msg(true).build())
+                    .common(WebServerCommonConfig::builder().port(8082).build())
                     .modules([
                         (
                             "todo".to_string(),

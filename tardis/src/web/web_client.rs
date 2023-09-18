@@ -7,7 +7,7 @@ use tracing::{error, info, trace};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::component_config::web_client::WebClientModuleConfig;
+use crate::config::config_dto::component::web_client::WebClientModuleConfig;
 use crate::serde::Serialize;
 use crate::utils::initializer::InitBy;
 use crate::TardisFuns;

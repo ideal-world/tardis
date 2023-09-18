@@ -281,7 +281,7 @@ use crate::web::web_server::TardisWebServer;
 pub struct TardisFuns {
     custom_config: TardisComponentMap<CachedJsonValue>,
     framework_config: TardisComponent<FrameworkConfig>,
-    tracing: TardisComponent<TardisTracing>,
+    pub(crate) tracing: TardisComponent<TardisTracing>,
     #[cfg(feature = "reldb-core")]
     reldb: TardisComponentMap<TardisRelDBClient>,
     #[cfg(feature = "web-server")]
@@ -418,7 +418,6 @@ impl TardisFuns {
         #[cfg(feature = "reldb-core")]
         {
             if let Some(db_config) = &fw_conf.db {
-                log::info!("[Tardis.DB] Initializing");
                 TARDIS_INST.reldb.init_by(db_config).await?;
             }
         }
@@ -1268,4 +1267,4 @@ pub mod test;
 pub mod web;
 
 pub mod cheetsheet;
-mod utils;
+pub mod utils;

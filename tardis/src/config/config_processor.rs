@@ -44,9 +44,7 @@ impl TardisConfig {
         );
 
         let config = TardisConfig::do_init(relative_path, &profile, None).await?;
-        if let Some(log_config) = config.fw.log.as_ref() {
-            TardisFuns::tracing().update_config(log_config)?;
-        }
+
         #[cfg(feature = "conf-remote")]
         let config = if let Some(conf_center) = &config.fw.conf_center {
             if config.fw.app.id.is_empty() {
@@ -159,12 +157,6 @@ impl TardisConfig {
         };
 
         env::set_var("RUST_BACKTRACE", if framework_config.adv.backtrace { "1" } else { "0" });
-        // If set log level,reload trace filter
-        if let Some(log_config) = framework_config.log.as_mut() {
-            if let Some(log_level) = std::env::var_os("RUST_LOG") {
-                log_config.level = log_level.into_string().unwrap_or_default();
-            }
-        }
 
         let config = if framework_config.adv.salt.is_empty() {
             TardisConfig {

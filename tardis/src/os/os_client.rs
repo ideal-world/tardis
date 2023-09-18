@@ -7,7 +7,7 @@ use s3::{Bucket, BucketConfiguration, Region};
 use tracing::{error, info, trace};
 
 use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
-use crate::config::config_dto::component_config::os::OSModuleConfig;
+use crate::config::config_dto::component::os::OSModuleConfig;
 use crate::utils::initializer::InitBy;
 use crate::{FrameworkConfig, TardisResult};
 

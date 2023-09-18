@@ -7,10 +7,12 @@ use serde_json::Value;
 use std::{collections::HashMap, str::FromStr};
 use tracing_subscriber::filter::Directive;
 use typed_builder::TypedBuilder;
-pub(crate) mod component_config;
-pub use component_config::*;
+pub(crate) mod component;
+pub(crate) mod log;
+pub use component::*;
+pub use log::*;
 /// Configuration of Tardis / Tardis的配置
-#[derive(Serialize, Deserialize, Clone, TypedBuilder)]
+#[derive(Serialize, Deserialize, Clone, TypedBuilder, Debug)]
 pub struct TardisConfig {
     #[builder(default, setter(into))]
     /// Project custom configuration / 项目自定义的配置
@@ -214,79 +216,6 @@ impl Default for ConfCenterConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
-pub enum OtlpProtocol {
-    #[default]
-    Grpc,
-    HttpProtobuf,
-}
-
-impl ToString for OtlpProtocol {
-    fn to_string(&self) -> String {
-        match self {
-            OtlpProtocol::Grpc => "grpc".to_string(),
-            OtlpProtocol::HttpProtobuf => "http/protobuf".to_string(),
-        }
-    }
-}
-
-impl FromStr for OtlpProtocol {
-    type Err = TardisError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "grpc" => Ok(OtlpProtocol::Grpc),
-            "http/protobuf" => Ok(OtlpProtocol::HttpProtobuf),
-            _ => Err(TardisError::conflict(&format!("[Tracing] Unsupported protocol {s}"), "")),
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
-#[serde(default)]
-pub struct LogConfig {
-    #[builder(default = "info".to_string(), setter(into))]
-    pub level: String,
-    #[builder(default, setter(into))]
-    #[serde(deserialize_with = "deserialize_directives", serialize_with = "serialize_directives")]
-    pub directives: Vec<Directive>,
-    #[cfg(feature = "tracing")]
-    #[builder(default = "http://localhost:4317".to_string(), setter(into))]
-    pub endpoint: String,
-    #[cfg(feature = "tracing")]
-    #[builder(default)]
-    pub protocol: OtlpProtocol,
-    #[cfg(feature = "tracing")]
-    #[builder(default = "tardis-tracing".to_string(), setter(into))]
-    pub server_name: String,
-    #[cfg(feature = "tracing")]
-    #[builder(default, setter(into, strip_option))]
-    pub headers: Option<String>,
-}
-
-fn serialize_directives<S>(value: &[Directive], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    let directives: Vec<String> = value.iter().map(|d| d.to_string()).collect();
-    directives.serialize(serializer)
-}
-
-fn deserialize_directives<'de, D>(deserializer: D) -> Result<Vec<Directive>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    Ok(Vec::<String>::deserialize(deserializer)?
-        .iter()
-        .filter_map(|s| s.parse::<Directive>().map_err(|e| TardisError::internal_error(&format!("update_log_level_by_domain_code failed: {e:?}"), "")).ok())
-        .collect())
-}
-
-impl Default for LogConfig {
-    fn default() -> Self {
-        LogConfig::builder().build()
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]

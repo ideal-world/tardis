@@ -8,7 +8,7 @@ use lapin::{options::*, types::FieldTable, BasicProperties, Channel, Connection,
 use url::Url;
 
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::component_config::mq::MQModuleConfig;
+use crate::config::config_dto::component::mq::MQModuleConfig;
 use crate::config::config_dto::FrameworkConfig;
 use crate::{basic::error::TardisError, utils::initializer::InitBy};
 use tracing::{error, info, trace};

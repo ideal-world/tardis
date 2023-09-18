@@ -9,5 +9,4 @@ url = "postgres://postgres@test"
 [fw.app]
 name = "APP1"
 
-[fw.log]
-level = "info"
+

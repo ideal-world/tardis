@@ -7,9 +7,9 @@ use url::Url;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::component_config::search::SearchModuleConfig;
-use crate::config::config_dto::component_config::web_client::WebClientModuleConfig;
-use crate::config::config_dto::component_config::SearchConfig;
+use crate::config::config_dto::component::search::SearchModuleConfig;
+use crate::config::config_dto::component::web_client::WebClientModuleConfig;
+use crate::config::config_dto::component::SearchConfig;
 use crate::config::config_dto::FrameworkConfig;
 use crate::utils::initializer::InitBy;
 use crate::{TardisFuns, TardisWebClient};

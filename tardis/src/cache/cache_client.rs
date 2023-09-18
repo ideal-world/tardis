@@ -7,7 +7,7 @@ use url::Url;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::component_config::cache::CacheModuleConfig;
+use crate::config::config_dto::component::cache::CacheModuleConfig;
 use crate::config::config_dto::FrameworkConfig;
 use crate::utils::initializer::InitBy;
 

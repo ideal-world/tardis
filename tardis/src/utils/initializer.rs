@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::{basic::result::TardisResult, config::config_dto::component_config::TardisComponentConfig};
+use crate::{basic::result::TardisResult, config::config_dto::component::TardisComponentConfig};
 
 use super::{TardisComponentMap, TardisComponentMapInner};
 

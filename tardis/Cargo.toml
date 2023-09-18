@@ -50,6 +50,8 @@ fs = ["tokio/fs"]
 process = ["tokio/process"]
 test = ["testcontainers"]
 tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp"]
+tokio-console = ["console-subscriber"]
+tracing-appender = ["dep:tracing-appender"]
 web-server-grpc = ["web-server", "dep:poem-grpc"]
 cluster = ["web-server", "ws-client", "cache"]
 
@@ -84,7 +86,8 @@ tardis-macros = { version = "0.1.0-beta.11", path = "../tardis-macros", optional
 # Log
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
+tracing-appender = { version = "0.2", optional = true }
+console-subscriber = { version = "0.1", optional = true }
 # Tracing
 tracing-opentelemetry = { version = "0.21", optional = true }
 opentelemetry = { version = "0.20", default-features = false, features = [
@@ -97,7 +100,6 @@ opentelemetry-otlp = { version = "0.13", features = [
     "http-proto",
     "tls",
 ], optional = true }
-
 # TLS
 native-tls = { version = "0.2", optional = true }
 
@@ -203,7 +205,6 @@ testcontainers = { version = "0.14", optional = true }
 # Common
 tokio = { version = "1", features = ["time", "rt", "macros", "sync"] }
 criterion = { version = "0.5" }
-console-subscriber = "0.1.10"
 poem-grpc-build = "0.2.21"
 prost = "0.11.9"
 strip-ansi-escapes = "0.2.0"
