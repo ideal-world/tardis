@@ -3,7 +3,7 @@ use std::env;
 use tracing::info;
 
 use tardis::basic::result::TardisResult;
-use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, OSModuleConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::config::config_dto::{FrameworkConfig, OSModuleConfig, TardisConfig};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 

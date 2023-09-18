@@ -1,12 +1,7 @@
-use std::{
-    collections::HashMap,
-    net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4},
-};
+use std::net::{IpAddr, Ipv4Addr};
 
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
-
-use super::TardisComponentConfig;
 
 /// Web service configuration / Web服务配置
 ///
@@ -161,7 +156,6 @@ impl Default for WebServerModuleConfig {
         Self::builder().build()
     }
 }
-
 
 impl Default for WebServerCommonConfig {
     fn default() -> Self {

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use tracing_appender::rolling::Rotation;
@@ -21,9 +21,9 @@ pub enum TracingAppenderRotation {
     Daily,
 }
 
-impl Into<Rotation> for TracingAppenderRotation {
-    fn into(self) -> Rotation {
-        match self {
+impl From<TracingAppenderRotation> for Rotation {
+    fn from(val: TracingAppenderRotation) -> Self {
+        match val {
             TracingAppenderRotation::Never => Rotation::NEVER,
             TracingAppenderRotation::Minutely => Rotation::MINUTELY,
             TracingAppenderRotation::Hourly => Rotation::HOURLY,

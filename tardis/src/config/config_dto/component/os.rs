@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
 use typed_builder::TypedBuilder;
-use url::Url;
 
 #[derive(Debug, Serialize, Deserialize, Clone, TypedBuilder)]
 #[serde(default)]

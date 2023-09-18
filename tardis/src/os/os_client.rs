@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::ops::Deref;
 
 use async_trait::async_trait;
@@ -9,7 +8,7 @@ use tracing::{error, info, trace};
 use crate::basic::error::{TardisError, ERROR_DEFAULT_CODE};
 use crate::config::config_dto::component::os::OSModuleConfig;
 use crate::utils::initializer::InitBy;
-use crate::{FrameworkConfig, TardisResult};
+use crate::TardisResult;
 
 pub struct TardisOSClient {
     client: Box<dyn TardisOSOperations + Sync + Send>,

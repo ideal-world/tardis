@@ -1,10 +1,8 @@
-use std::io::Read;
-
 // use crypto::mac::Mac;
 use crate::basic::{error::TardisError, result::TardisResult};
 use algorithm::*;
 use digest::KeyInit;
-use futures_util::Stream;
+
 use output::*;
 pub struct TardisCryptoDigest;
 pub mod algorithm {
@@ -120,7 +118,7 @@ impl TardisCryptoDigest {
     }
 
     /// Digest a sequence of data.
-    /// 
+    ///
     /// Get the raw digest output from Digest trait, the type is determined by althogrim itself (most time it's a GenericArray).
     pub fn digest_iter_raw<A: digest::Digest, T: AsRef<[u8]>>(&self, data_iter: impl IntoIterator<Item = T>) -> TardisResult<Output<A>> {
         let mut hasher = A::new();

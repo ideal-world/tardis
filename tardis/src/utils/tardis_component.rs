@@ -10,7 +10,6 @@ use super::initializer::InitBy;
 
 type ModuleCode = String;
 
-
 /// A once-rwlock-arc wrapper, used to store multi-thread shared and once-initialized data
 #[repr(transparent)]
 #[derive(Default)]
@@ -68,7 +67,6 @@ impl<T> TardisComponentInner<T> {
         std::mem::replace(&mut wg, val.into())
     }
 }
-
 
 /// A once-rwlock-hashmap-arc wrapper, used to store multi-thread shared and once-initialized map
 #[repr(transparent)]

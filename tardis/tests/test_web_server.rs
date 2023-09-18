@@ -2,7 +2,6 @@
 
 extern crate core;
 
-use std::collections::HashMap;
 use std::env;
 use std::time::Duration;
 
@@ -20,10 +19,7 @@ use tardis::basic::dto::TardisContext;
 use tardis::basic::error::TardisError;
 use tardis::basic::field::TrimString;
 use tardis::basic::result::{TardisResult, TARDIS_RESULT_ACCEPTED_CODE, TARDIS_RESULT_SUCCESS_CODE};
-use tardis::config::config_dto::{
-    CacheConfig, CacheModuleConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebClientConfig, WebServerCommonConfig, WebServerConfig,
-    WebServerModuleConfig,
-};
+use tardis::config::config_dto::{CacheModuleConfig, FrameworkConfig, TardisConfig, WebClientConfig, WebServerCommonConfig, WebServerConfig, WebServerModuleConfig};
 use tardis::serde::{Deserialize, Serialize};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::web::context_extractor::{TardisContextExtractor, TOKEN_FLAG};

@@ -5,11 +5,10 @@ use amq_protocol_types::{AMQPValue, LongString, ShortString};
 use futures_util::lock::Mutex;
 use futures_util::stream::StreamExt;
 use lapin::{options::*, types::FieldTable, BasicProperties, Channel, Connection, ConnectionProperties, Consumer, ExchangeKind};
-use url::Url;
 
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::component::mq::MQModuleConfig;
-use crate::config::config_dto::FrameworkConfig;
+
 use crate::{basic::error::TardisError, utils::initializer::InitBy};
 use tracing::{error, info, trace};
 

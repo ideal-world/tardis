@@ -1,10 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
 use typed_builder::TypedBuilder;
-use url::Url;
-
-use super::TardisComponentConfig;
-
 
 /// Database configuration / 数据库配置
 ///

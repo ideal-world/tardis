@@ -1,11 +1,6 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{basic::result::TardisResult, config::config_dto::component::TardisComponentConfig};
-
-use super::{TardisComponentMap, TardisComponentMapInner};
 
 #[async_trait::async_trait]
 pub trait InitBy<Initializer>: Sized {

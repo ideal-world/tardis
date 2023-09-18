@@ -7,12 +7,12 @@ use std::path::Path;
 #[cfg(feature = "conf-remote")]
 use {config::FileFormat, std::sync::Arc};
 
-use crate::TardisFuns;
 use crate::basic::error::TardisError;
 use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
+use crate::TardisFuns;
 use tracing::{debug, info};
 
 use super::config_dto::{ConfCenterConfig, TardisConfig};
@@ -145,7 +145,7 @@ impl TardisConfig {
                 _ => return Err(error.into()),
             },
         }
-        let mut framework_config = match conf.get::<FrameworkConfig>("fw") {
+        let framework_config = match conf.get::<FrameworkConfig>("fw") {
             Ok(fw) => fw,
             Err(error) => match error {
                 ConfigError::NotFound(_) => {

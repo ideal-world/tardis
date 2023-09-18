@@ -1,10 +1,7 @@
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-use tracing_appender::rolling::Rotation;
+
 use typed_builder::TypedBuilder;
 
 use crate::basic::error::TardisError;

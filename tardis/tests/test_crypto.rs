@@ -8,7 +8,7 @@ async fn test_crypto() -> TardisResult<()> {
     assert_eq!(str, "测试".as_bytes());
 
     let b64_str = TardisFuns::crypto.base64.encode("测试");
-    let str = TardisFuns::crypto.base64.decode(&b64_str)?;
+    let str = TardisFuns::crypto.base64.decode(b64_str)?;
     assert_eq!(str, "测试");
 
     assert_eq!(TardisFuns::crypto.digest.md5("测试")?, "db06c78d1e24cf708a14ce81c9b617ec");
@@ -52,14 +52,14 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
     let key = TardisFuns::crypto.key.rand_16_hex()?;
 
     let encrypted_data = TardisFuns::crypto.aes.encrypt_ecb(large_text, &key)?;
-    let data = TardisFuns::crypto.aes.decrypt_ecb(&encrypted_data, &key)?;
+    let data = TardisFuns::crypto.aes.decrypt_ecb(encrypted_data, &key)?;
     assert_eq!(data, large_text);
 
     let key = TardisFuns::crypto.key.rand_16_hex()?;
     let iv = TardisFuns::crypto.key.rand_16_hex()?;
-    
+
     let encrypted_data = TardisFuns::crypto.aes.encrypt_cbc(large_text, &key, &iv)?;
-    let data = TardisFuns::crypto.aes.decrypt_cbc(&encrypted_data, &key, &iv)?;
+    let data = TardisFuns::crypto.aes.decrypt_cbc(encrypted_data, &key, &iv)?;
     assert_eq!(data, large_text);
 
     // RSA

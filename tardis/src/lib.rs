@@ -123,7 +123,6 @@ extern crate lazy_static;
 
 use std::collections::HashMap;
 
-use std::sync::OnceState;
 use std::{any::Any, sync::Arc};
 
 #[cfg(feature = "future")]

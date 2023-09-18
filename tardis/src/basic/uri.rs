@@ -1,4 +1,3 @@
-use reqwest::IntoUrl;
 use url::Url;
 
 use crate::basic::result::TardisResult;

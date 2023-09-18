@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -21,11 +20,11 @@ use crate::basic::dto::TardisContext;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::component::db::CompatibleType;
-use crate::config::config_dto::{FrameworkConfig, component::db::DBModuleConfig};
+use crate::config::config_dto::component::db::DBModuleConfig;
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
 use crate::serde::{Deserialize, Serialize};
-use crate::TardisFuns;
 use crate::utils::initializer::InitBy;
+use crate::TardisFuns;
 
 /// Relational database handle / 关系型数据库操作
 ///
@@ -177,13 +176,13 @@ impl TardisRelDBClient {
     /// Initialize configuration / 初始化配置
     pub async fn init(
         DBModuleConfig {
-            url: str_url, 
+            url: str_url,
             max_connections,
             min_connections,
             connect_timeout_sec,
             idle_timeout_sec,
             compatible_type,
-        } : &DBModuleConfig
+        }: &DBModuleConfig,
     ) -> TardisResult<TardisRelDBClient> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.RelDBClient] Invalid url {str_url}"), "406-tardis-reldb-url-error"))?;
         info!(
@@ -302,13 +301,13 @@ impl TardisRelDBClient {
     pub async fn init_basic_tables(&self) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] Initializing basic tables");
         let tx = self.con.begin().await?;
-        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"), self.compatible_type.clone());
+        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"), self.compatible_type);
         TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
         TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         for function_sql in create_all.2 {
             TardisRelDBClient::execute_one_inner(&function_sql, Vec::new(), &tx).await?;
         }
-        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None, self.compatible_type.clone());
+        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None, self.compatible_type);
         TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
         TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         tx.commit().await?;

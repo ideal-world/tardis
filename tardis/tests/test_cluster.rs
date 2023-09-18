@@ -11,8 +11,9 @@ use futures_util::future::join_all;
 use serde_json::{json, Value};
 use tardis::{
     basic::result::TardisResult,
+    cheetsheet::IP_LOCALHOST,
     cluster::cluster_processor::{self, TardisClusterMessageReq, TardisClusterSubscriber},
-    config::config_dto::{CacheConfig, ClusterConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig},
+    config::config_dto::{CacheModuleConfig, ClusterConfig, FrameworkConfig, TardisConfig, WebServerCommonConfig, WebServerConfig, WebServerModuleConfig},
     test::test_container::TardisTestContainer,
     TardisFuns,
 };
@@ -78,46 +79,17 @@ async fn start_node(cluster_url: String, node_id: &str) -> TardisResult<()> {
     cluster_processor::set_node_id(&format!("node_{node_id}")).await;
     TardisFuns::init_conf(TardisConfig {
         cs: Default::default(),
-        fw: FrameworkConfig {
-            app: Default::default(),
-            web_server: WebServerConfig {
-                enabled: true,
-                access_host: Some("127.0.0.1".to_string()),
-                port: format!("80{node_id}").parse().unwrap(),
-                ..Default::default()
-            },
-            cache: CacheConfig {
-                enabled: true,
-                url: cluster_url,
-                ..Default::default()
-            },
-            db: DBConfig {
-                enabled: false,
-                ..Default::default()
-            },
-            mq: MQConfig {
-                enabled: false,
-                ..Default::default()
-            },
-            search: SearchConfig {
-                enabled: false,
-                ..Default::default()
-            },
-            mail: MailConfig {
-                enabled: false,
-                ..Default::default()
-            },
-            os: OSConfig {
-                enabled: false,
-                ..Default::default()
-            },
-            cluster: Some(ClusterConfig {
+        fw: FrameworkConfig::builder()
+            .web_server(
+                WebServerConfig::builder().common(WebServerCommonConfig::builder().access_host(IP_LOCALHOST).port(80).build()).default(WebServerModuleConfig::default()).build(),
+            )
+            .cache(CacheModuleConfig::builder().url(cluster_url.parse().unwrap()).build())
+            .cluster(ClusterConfig {
                 watch_kind: "cache".to_string(),
                 k8s_svc: None,
                 cache_check_interval_sec: Some(1),
-            }),
-            ..Default::default()
-        },
+            })
+            .build(),
     })
     .await
     .unwrap();

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use lettre::message::{header, MultiPart, SinglePart};
 use lettre::transport::smtp::client::{Tls, TlsParametersBuilder, TlsVersion};
 use lettre::{address, error, transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};

@@ -1,8 +1,7 @@
-use config::builder;
 use serde::{Deserialize, Serialize};
-use url::Url;
 use std::collections::HashMap;
 use typed_builder::TypedBuilder;
+use url::Url;
 
 pub(crate) mod db;
 pub use db::*;
@@ -41,7 +40,9 @@ impl<T, C: Default> std::ops::Deref for TardisComponentConfig<T, C> {
 }
 
 impl<T, C> Default for TardisComponentConfig<T, C>
-where T: Default, C: Default
+where
+    T: Default,
+    C: Default,
 {
     fn default() -> Self {
         Self {
@@ -101,7 +102,6 @@ pub struct AdvConfig {
     #[builder(default)]
     pub salt: String,
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Clone, TypedBuilder)]
 pub struct ConfCenterConfig {

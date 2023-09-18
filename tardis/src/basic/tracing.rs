@@ -1,20 +1,16 @@
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Once, OnceLock, OnceState};
+use std::sync::Once;
 
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::{FrameworkConfig, LogConfig};
-use crate::utils::TardisComponentMap;
-use crate::{TardisFuns, TARDIS_INST};
+use crate::config::config_dto::LogConfig;
+
 use crate::cheetsheet::*;
+use crate::TARDIS_INST;
 use tracing::Subscriber;
 
-use super::error::TardisError;
-use std::pin::Pin;
 use tracing_subscriber::layer::Layered;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
-use tracing_subscriber::{fmt::Layer as FmtLayer, layer::SubscriberExt, prelude::*, reload::Handle, reload::Layer as ReloadLayer, Registry};
+use tracing_subscriber::{fmt::Layer as FmtLayer, layer::SubscriberExt, prelude::*, reload::Layer as ReloadLayer, Registry};
 
 #[derive(Default)]
 pub struct TardisTracing<C = LogConfig> {

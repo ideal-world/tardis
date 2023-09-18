@@ -2,9 +2,7 @@ use std::collections::HashMap;
 use std::env;
 
 use tardis::basic::result::TardisResult;
-use tardis::config::config_dto::{
-    CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebClientConfig, WebServerConfig,
-};
+use tardis::config::config_dto::{FrameworkConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebClientConfig};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 

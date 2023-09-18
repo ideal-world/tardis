@@ -1,6 +1,5 @@
 // https://github.com/mitsuhiko/redis-rs
 
-use std::collections::HashMap;
 use std::env;
 
 use tardis::cache::AsyncCommands;
@@ -10,7 +9,7 @@ use tracing::info;
 
 use tardis::basic::result::TardisResult;
 use tardis::cache::cache_client::TardisCacheClient;
-use tardis::config::config_dto::{CacheConfig, CacheModuleConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::config::config_dto::{CacheConfig, CacheModuleConfig, FrameworkConfig, TardisConfig};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 use url::Url;

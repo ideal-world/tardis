@@ -1,11 +1,10 @@
 use crate::{
-    basic::error::TardisError,
     serde::{Deserialize, Serialize},
     TardisFuns,
 };
 use serde_json::Value;
-use std::{collections::HashMap, str::FromStr};
-use tracing_subscriber::filter::Directive;
+use std::collections::HashMap;
+
 use typed_builder::TypedBuilder;
 pub(crate) mod component;
 pub(crate) mod log;
@@ -215,7 +214,6 @@ impl Default for ConfCenterConfig {
         }
     }
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(default)]
