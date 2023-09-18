@@ -131,7 +131,7 @@ pub struct TardisWebServer {
     ///
     /// Don't manually add initializer into here if you wan't `Initializer::init()` to be called,
     /// use `load_initializer` or `load_boxed_initializer` instead
-    pub(self) initializers: Mutex<Vec<Box<dyn Initializer + Send + Sync>>>,
+    pub(self) initializers: Mutex<Vec<Box<dyn WebServerInitializer + Send + Sync>>>,
     state: Mutex<ServerState>,
 }
 

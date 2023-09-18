@@ -1265,5 +1265,5 @@ pub mod search;
 pub mod test;
 pub mod web;
 
-pub mod cheetsheet;
+pub mod consts;
 pub mod utils;

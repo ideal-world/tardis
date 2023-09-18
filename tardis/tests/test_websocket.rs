@@ -10,7 +10,7 @@ use poem::web::websocket::{BoxWebSocketUpgraded, WebSocket};
 use poem_openapi::param::Path;
 use serde_json::json;
 use tardis::basic::result::TardisResult;
-use tardis::cheetsheet::IP_LOCALHOST;
+use tardis::consts::IP_LOCALHOST;
 use tardis::web::web_server::{TardisWebServer, WebServerModule};
 use tardis::web::ws_client::TardisWebSocketMessageExt;
 use tardis::web::ws_processor::{

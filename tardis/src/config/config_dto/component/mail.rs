@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use typed_builder::TypedBuilder;
 
+/// Mail module configuration / 邮件模块配置
+/// 
 #[derive(Debug, Serialize, Deserialize, Clone, TypedBuilder)]
 pub struct MailModuleConfig {
     #[builder(setter(into))]

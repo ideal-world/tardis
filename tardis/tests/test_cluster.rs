@@ -11,7 +11,7 @@ use futures_util::future::join_all;
 use serde_json::{json, Value};
 use tardis::{
     basic::result::TardisResult,
-    cheetsheet::IP_LOCALHOST,
+    consts::IP_LOCALHOST,
     cluster::cluster_processor::{self, TardisClusterMessageReq, TardisClusterSubscriber},
     config::config_dto::{CacheModuleConfig, ClusterConfig, FrameworkConfig, TardisConfig, WebServerCommonConfig, WebServerConfig, WebServerModuleConfig},
     test::test_container::TardisTestContainer,

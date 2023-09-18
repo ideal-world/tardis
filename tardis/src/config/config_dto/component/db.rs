@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use typed_builder::TypedBuilder;
 
-/// Database configuration / 数据库配置
+/// Database module configuration / 数据库模块配置
 ///
 /// Database operations need to be enabled ```#[cfg(feature = "reldb")]``` .
 ///

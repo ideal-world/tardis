@@ -1,9 +1,11 @@
-use crypto::buffer::{ReadBuffer, WriteBuffer};
-
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
+use crypto::buffer::{ReadBuffer, WriteBuffer};
+use ring::{aead::{Aad, BoundKey, Nonce, UnboundKey, AES_128_GCM, AES_256_GCM, NONCE_LEN}, rand::{SystemRandom, SecureRandom}};
 
-pub struct TardisCryptoAes;
+pub struct TardisCryptoAes {
+    nonce: 
+}
 
 /// AES handle / AES处理
 ///
@@ -17,6 +19,18 @@ pub struct TardisCryptoAes;
 /// let data = TardisFuns::crypto.aes.decrypt_cbc(&encrypted_data, &key, &iv).unwrap();
 /// ```
 impl TardisCryptoAes {
+    pub fn aes_cbc_encrypt(&self, key: impl AsRef<[u8]>, iv: impl AsRef<[u8]>, data: impl AsRef<[u8]>) {
+        let mut encrypted_data = Vec::new();
+        let mut nonce = [0u8; NONCE_LEN];
+        let mut rng = SystemRandom::new();
+        rng.fill(&mut nonce).unwrap();
+        let unbound_key = UnboundKey::new(&AES_256_GCM, key.as_ref()).unwrap();
+        let nonce = Nonce::assume_unique_for_key(&nonce);
+        let mut bound_key = BoundKey::new(unbound_key, nonce).unwrap();
+        let aad = Aad::empty();
+        bound_key.seal_in_place_append_tag(nonce, aad, &mut encrypted_data).unwrap();
+        encrypted_data
+    }
     pub fn encrypt_ecb(&self, data: impl AsRef<[u8]>, hex_key: impl AsRef<[u8]>) -> TardisResult<String> {
         self.encrypt(data, hex_key, "", false)
     }

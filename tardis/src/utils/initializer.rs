@@ -7,6 +7,23 @@ pub trait InitBy<Initializer>: Sized {
     async fn init_by(initializer: &Initializer) -> TardisResult<Self>;
 }
 
+pub trait InitBySync<Initializer>: Sized
+where
+    Initializer: Sync,
+{
+    fn init_by(initializer: &Initializer) -> TardisResult<Self>;
+}
+
+#[async_trait::async_trait]
+impl<Initializer, T: InitBySync<Initializer>> InitBy<Initializer> for T
+where
+    Initializer: Sync,
+{
+    async fn init_by(initializer: &Initializer) -> TardisResult<Self> {
+        <Self as InitBySync<Initializer>>::init_by(initializer)
+    }
+}
+
 #[async_trait::async_trait]
 impl<ModuleConfig, CommonConfig: Default, Component> InitBy<TardisComponentConfig<ModuleConfig, CommonConfig>> for HashMap<String, Arc<Component>>
 where

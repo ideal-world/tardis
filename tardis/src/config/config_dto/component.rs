@@ -20,6 +20,21 @@ pub use mail::*;
 pub(crate) mod os;
 pub use os::*;
 
+/// # Tardis Component Configuration
+///
+/// common structure for components with one defualt module and many submodules
+///
+/// - common: common config for all modules, default to `()`
+/// - default: default module config
+/// - modules: submodule configs
+///
+/// Common config should have a default value.
+///
+/// ## Construct from submodule config
+/// For those common config has a default value, you can construct it from submodule config through `From` trait.
+/// ```ignore
+/// SomeConfig::from(submodule_config);
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
 pub struct TardisComponentConfig<T, C: Default = ()> {
     #[serde(flatten)]

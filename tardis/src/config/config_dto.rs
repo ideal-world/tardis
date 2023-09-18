@@ -185,6 +185,8 @@ impl Default for AppConfig {
     }
 }
 
+
+/// ConfCenterConfig / 配置中心的配置
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct ConfCenterConfig {

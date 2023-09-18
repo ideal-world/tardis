@@ -6,7 +6,7 @@ use crate::config::config_dto::LogConfig;
 use crate::TARDIS_INST;
 
 #[allow(unused_imports)]
-use crate::cheetsheet::*;
+use crate::consts::*;
 use tracing_subscriber::layer::Layered;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;

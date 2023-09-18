@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 use tracing_subscriber::filter::Directive;
 use typed_builder::TypedBuilder;
 
-use crate::basic::error::TardisError;
-
 #[cfg(feature = "tracing")]
 mod tracing;
 #[cfg(feature = "tracing")]
@@ -13,6 +11,16 @@ mod tracing_appender;
 #[cfg(feature = "tracing-appender")]
 pub use tracing_appender::*;
 
+/// # Log configure
+///
+/// - level: global log level, default to `info`
+/// - directives: log level with targets and modules, e.g. `tardis=debug,sqlx=info`
+/// ## Example
+/// ```toml
+/// [fw.log]
+/// level = "info"
+/// directives = ["tardis=debug", "sqlx=info"]
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
 #[serde(default)]
 pub struct LogConfig {
@@ -27,6 +35,8 @@ pub struct LogConfig {
     pub tracing: TracingConfig,
     #[cfg(feature = "tracing-appender")]
     #[builder(default)]
+    /// tracing appender config
+    /// a `None` value means no file output
     pub tracing_appender: Option<TracingAppenderConfig>,
 }
 
@@ -41,8 +51,7 @@ fn deserialize_directive<'de, D>(deserializer: D) -> Result<Directive, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let s = String::deserialize(deserializer)?;
-    Ok(s.parse::<Directive>().unwrap_or_default())
+    String::deserialize(deserializer)?.parse::<Directive>().map_err(serde::de::Error::custom)
 }
 fn serialize_directives<S>(value: &[Directive], serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -56,10 +65,8 @@ fn deserialize_directives<'de, D>(deserializer: D) -> Result<Vec<Directive>, D::
 where
     D: serde::Deserializer<'de>,
 {
-    Ok(Vec::<String>::deserialize(deserializer)?
-        .iter()
-        .filter_map(|s| s.parse::<Directive>().map_err(|e| TardisError::internal_error(&format!("update_log_level_by_domain_code failed: {e:?}"), "")).ok())
-        .collect())
+    let directives: Vec<String> = Vec::deserialize(deserializer)?;
+    directives.into_iter().map(|d| d.parse::<Directive>().map_err(serde::de::Error::custom)).collect()
 }
 
 impl Default for LogConfig {
