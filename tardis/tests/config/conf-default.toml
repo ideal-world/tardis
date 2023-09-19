@@ -10,5 +10,5 @@ default_lang = "zh-CN"
 
 [fw.log]
 level = "info"
-# directives = ["tokio=trace", "runtime=trace"]
+directives = ["tokio=trace", "runtime=trace"]
 tracing_appender = { rotation = "minutely", dir = "./tests/log", filename = "app.log" }

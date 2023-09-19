@@ -9,22 +9,38 @@ macro_rules! gen_rand_n_hex {
         $(
             paste! {
                 #[inline]
-                pub fn [<rand_ $N _hex>](&self) -> TardisResult<String> {
+                pub fn [<rand_ $N _hex>](&self) -> String {
                     self.rand_n_hex::<$N>()
                 }
             }
         )*
     };
 }
-
+macro_rules! gen_rand_n_bytes {
+    {$($N: literal),*} => {
+        $(
+            paste! {
+                #[inline]
+                pub fn [<rand_ $N _bytes>](&self) -> [u8; $N] {
+                    self.rand_n_bytes::<$N>()
+                }
+            }
+        )*
+    };
+}
 impl TardisCryptoKey {
-    pub fn rand_n_hex<const N: usize>(&self) -> TardisResult<String> {
+    pub fn rand_n_hex<const N: usize>(&self) -> String {
         let mut key = vec![0; N / 2];
         rand::rngs::OsRng.fill_bytes(&mut key);
-        Ok(hex::encode(key))
+        hex::encode(key)
+    }
+    pub fn rand_n_bytes<const N: usize>(&self) -> [u8; N] {
+        let mut key = [0; N];
+        rand::rngs::OsRng.fill_bytes(&mut key);
+        key
     }
     gen_rand_n_hex! {8, 16, 32, 64, 128, 256}
-
+    gen_rand_n_bytes! {8, 16, 32, 64, 128, 256}
     pub fn generate_token(&self) -> TardisResult<String> {
         Ok(format!("tk{}", TardisFuns::field.nanoid()))
     }

@@ -3,6 +3,7 @@ use tardis::TardisFuns;
 
 #[tokio::test]
 async fn test_crypto() -> TardisResult<()> {
+    use tardis::crypto::crypto_aead::algorithm::*;
     let hex_str = TardisFuns::crypto.hex.encode("测试".as_bytes());
     let str = TardisFuns::crypto.hex.decode(hex_str)?;
     assert_eq!(str, "测试".as_bytes());
@@ -49,18 +50,18 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
     // let key = TardisFuns::crypto.key.rand_32_hex()?;
     // let iv = TardisFuns::crypto.key.rand_16_hex()?;
 
-    let key = TardisFuns::crypto.key.rand_16_hex()?;
+    let key = TardisFuns::crypto.key.rand_16_bytes();
 
-    let encrypted_data = TardisFuns::crypto.aes.encrypt_ecb(large_text, &key)?;
-    let data = TardisFuns::crypto.aes.decrypt_ecb(encrypted_data, &key)?;
-    assert_eq!(data, large_text);
+    let encrypted_data = TardisFuns::crypto.aead.encrypt_ecb::<Aes128>(large_text, &key)?;
+    let data = TardisFuns::crypto.aead.decrypt_ecb::<Aes128>(encrypted_data, &key)?;
+    assert_eq!(data, large_text.as_bytes());
 
-    let key = TardisFuns::crypto.key.rand_16_hex()?;
-    let iv = TardisFuns::crypto.key.rand_16_hex()?;
+    let key = TardisFuns::crypto.key.rand_16_bytes();
+    let iv = TardisFuns::crypto.key.rand_16_bytes();
 
-    let encrypted_data = TardisFuns::crypto.aes.encrypt_cbc(large_text, &key, &iv)?;
-    let data = TardisFuns::crypto.aes.decrypt_cbc(encrypted_data, &key, &iv)?;
-    assert_eq!(data, large_text);
+    let encrypted_data = TardisFuns::crypto.aead.encrypt_cbc::<Aes128>(large_text, &key, &iv)?;
+    let data = TardisFuns::crypto.aead.decrypt_cbc::<Aes128>(encrypted_data, &key, &iv)?;
+    assert_eq!(data, large_text.as_bytes());
 
     // RSA
 
@@ -98,11 +99,11 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
 
     // SM4
 
-    let key = TardisFuns::crypto.key.rand_16_hex()?;
-    let iv = TardisFuns::crypto.key.rand_16_hex()?;
+    let key = TardisFuns::crypto.key.rand_16_hex();
+    let iv = TardisFuns::crypto.key.rand_16_hex();
 
     let encrypted_data = TardisFuns::crypto.sm4.encrypt_cbc(large_text, &key, &iv)?;
-    let data = TardisFuns::crypto.sm4.decrypt_cbc(&encrypted_data, &key, &iv)?;
+    let data = TardisFuns::crypto.sm4.decrypt_cbc(encrypted_data, &key, &iv)?;
     assert_eq!(data, large_text);
 
     // SM2

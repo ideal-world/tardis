@@ -607,7 +607,7 @@ impl TardisFuns {
         key: crypto::crypto_key::TardisCryptoKey {},
         hex: crypto::crypto_hex::TardisCryptoHex {},
         base64: crypto::crypto_base64::TardisCryptoBase64 {},
-        aes: crypto::crypto_aes::TardisCryptoAes {},
+        aead: crypto::crypto_aead::TardisCryptoAead {},
         rsa: crypto::crypto_rsa::TardisCryptoRsa {},
         #[cfg(feature = "crypto-with-sm")]
         sm4: crypto::crypto_sm2_4::TardisCryptoSm4 {},

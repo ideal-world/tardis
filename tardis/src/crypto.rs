@@ -1,4 +1,4 @@
-pub mod crypto_aes;
+pub mod crypto_aead;
 pub mod crypto_base64;
 pub mod crypto_digest;
 pub mod crypto_hex;

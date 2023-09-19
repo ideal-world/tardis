@@ -229,6 +229,7 @@ impl ConfCenterConfig {
 
 #[cfg(feature = "crypto")]
 fn decryption(text: &str, salt: &str) -> TardisResult<String> {
+    use crate::crypto::crypto_aead::algorithm::Aes128;
     if salt.len() != 16 {
         return Err(TardisError::format_error("[Tardis.Config] [salt] Length must be 16", ""));
     }
@@ -237,7 +238,13 @@ fn decryption(text: &str, salt: &str) -> TardisResult<String> {
         .replace_all(text, |captures: &regex::Captures| {
             let data = captures.get(1).map_or("", |m| m.as_str()).to_string();
             let data = &data[4..data.len() - 1];
-            crate::TardisFuns::crypto.aes.decrypt_ecb(data, salt).expect("[Tardis.Config] Decryption error")
+            let data = hex::decode(data).expect("[Tardis.Config] Decryption error: invalid hex");
+            crate::TardisFuns::crypto
+                .aead
+                .decrypt_ecb::<Aes128>(data, salt)
+                .map(String::from_utf8)
+                .expect("[Tardis.Config] Decryption error")
+                .expect("[Tardis.Config] Uft8 decode error")
         })
         .to_string();
     Ok(text)
