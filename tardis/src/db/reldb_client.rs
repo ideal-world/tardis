@@ -141,38 +141,6 @@ impl InitBy<DBModuleConfig> for TardisRelDBClient {
 }
 
 impl TardisRelDBClient {
-    /// Initialize configuration from the database configuration object / 从数据库配置对象中初始化配置
-    // pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisRelDBClient>> {
-    //     let mut clients = HashMap::new();
-    //     clients.insert(
-    //         "".to_string(),
-    //         TardisRelDBClient::init(
-    //             &conf.db.url,
-    //             conf.db.max_connections,
-    //             conf.db.min_connections,
-    //             conf.db.connect_timeout_sec,
-    //             conf.db.idle_timeout_sec,
-    //             conf.db.compatible_type.clone(),
-    //         )
-    //         .await?,
-    //     );
-    //     for (k, v) in &conf.db.modules {
-    //         clients.insert(
-    //             k.to_string(),
-    //             TardisRelDBClient::init(
-    //                 &v.url,
-    //                 v.max_connections,
-    //                 v.min_connections,
-    //                 v.connect_timeout_sec,
-    //                 v.idle_timeout_sec,
-    //                 v.compatible_type.clone(),
-    //             )
-    //             .await?,
-    //         );
-    //     }
-    //     Ok(clients)
-    // }
-
     /// Initialize configuration / 初始化配置
     pub async fn init(
         DBModuleConfig {
