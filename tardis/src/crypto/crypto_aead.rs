@@ -1,15 +1,11 @@
-use std::sync::OnceLock;
-
 use aead::generic_array::GenericArray;
 use aead::{Aead, AeadCore, KeyInit, Payload};
+use cipher::BlockDecryptMut;
 use cipher::{block_padding::Pkcs7, BlockCipher, BlockEncryptMut, KeyIvInit};
-use cipher::{BlockDecrypt, BlockDecryptMut};
-use rand_core::RngCore;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use aes_gcm::Aes256Gcm;
-use cbc::{Decryptor, Encryptor};
+
 use rand::rngs::ThreadRng;
 
 /// # TardisCryptoAead
@@ -21,7 +17,7 @@ pub struct TardisCryptoAead {}
 impl TardisCryptoAead {
     /// Encrypy with cbc,
     /// `A` could be any algorithem implemented `BlockEncryptMut + BlockCipher`, a typical one would be `Aes128`.
-    /// 
+    ///
     /// # **Warning**
     /// cbc mode is not recommended, it is not safe enough.
     pub fn encrypt_cbc<A: BlockEncryptMut + BlockCipher>(&self, message: impl AsRef<[u8]>, iv: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> TardisResult<Vec<u8>>
@@ -31,7 +27,7 @@ impl TardisCryptoAead {
         let iv = GenericArray::from_slice(iv.as_ref());
         let message = message.as_ref();
         let key = GenericArray::from_slice(key.as_ref());
-        let mut encryptor = <cbc::Encryptor<A> as KeyIvInit>::new(key, iv);
+        let encryptor = <cbc::Encryptor<A> as KeyIvInit>::new(key, iv);
         let ct = <cbc::Encryptor<A> as cipher::BlockEncryptMut>::encrypt_padded_vec_mut::<Pkcs7>(encryptor, message);
         // let ct = encryptor.encrypt_padded_vec_mut::<Pkcs7>(message);
         Ok(ct)
@@ -47,7 +43,7 @@ impl TardisCryptoAead {
     {
         let message = message.as_ref();
         let key = GenericArray::from_slice(key.as_ref());
-        let mut encryptor = <ecb::Encryptor<A> as KeyInit>::new(key);
+        let encryptor = <ecb::Encryptor<A> as KeyInit>::new(key);
         let ct = encryptor.encrypt_padded_vec_mut::<Pkcs7>(message);
         Ok(ct)
     }
@@ -61,7 +57,7 @@ impl TardisCryptoAead {
         let iv = GenericArray::from_slice(iv.as_ref());
         let message = message.as_ref();
         let key = GenericArray::from_slice(key.as_ref());
-        let mut decryptor = <cbc::Decryptor<A> as KeyIvInit>::new(key, iv);
+        let decryptor = <cbc::Decryptor<A> as KeyIvInit>::new(key, iv);
         let pt = decryptor.decrypt_padded_vec_mut::<Pkcs7>(message).map_err(|e| TardisError::internal_error(&e.to_string(), "406-tardis-crypto-aead-decrypt-failed"))?;
         Ok(pt)
     }
@@ -73,12 +69,12 @@ impl TardisCryptoAead {
         ecb::Decryptor<A>: KeyInit + BlockDecryptMut,
     {
         let key = GenericArray::from_slice(key.as_ref());
-        let mut decryptor = <ecb::Decryptor<A> as KeyInit>::new(key);
+        let decryptor = <ecb::Decryptor<A> as KeyInit>::new(key);
         let pt = decryptor.decrypt_padded_vec_mut::<Pkcs7>(message.as_ref()).map_err(|e| TardisError::internal_error(&e.to_string(), "406-tardis-crypto-aead-decrypt-failed"))?;
         Ok(pt)
     }
 
-    /// Encrypt with aead algorithm, 
+    /// Encrypt with aead algorithm,
     /// `A` could be any algorithem implemented `Aead + KeyInit`, a typical one would be `Aes256Gcm`.
     pub fn encrypt<A: Aead + KeyInit>(&self, key: impl AsRef<[u8]>, aad: impl AsRef<[u8]>, nonce: impl AsRef<[u8]>, message: impl AsRef<[u8]>) -> TardisResult<(Vec<u8>, Vec<u8>)> {
         let key = GenericArray::from_slice(key.as_ref());

@@ -1,3 +1,4 @@
+use aes::Aes128;
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use tardis::TardisFuns;
@@ -24,17 +25,17 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
 
     // AES
 
-    let key = TardisFuns::crypto.key.rand_16_hex().unwrap();
-    let iv = TardisFuns::crypto.key.rand_16_hex().unwrap();
-    let encrypted_data = TardisFuns::crypto.aead.encrypt_cbc(large_text, &key, &iv).unwrap();
+    let key = TardisFuns::crypto.key.rand_16_bytes();
+    let iv = TardisFuns::crypto.key.rand_16_bytes();
+    let encrypted_data = TardisFuns::crypto.aead.encrypt_cbc::<Aes128>(large_text, &key, &iv).unwrap();
     c.bench_function("CRYPTO: aes_encrypt_cbc", |b| {
         b.iter(|| {
-            TardisFuns::crypto.aead.encrypt_cbc(large_text, &key, &iv).unwrap();
+            TardisFuns::crypto.aead.encrypt_cbc::<Aes128>(large_text, &key, &iv).unwrap();
         })
     });
     c.bench_function("CRYPTO: aes_decrypt_cbc", |b| {
         b.iter(|| {
-            TardisFuns::crypto.aead.decrypt_cbc(&encrypted_data, &key, &iv).unwrap();
+            TardisFuns::crypto.aead.decrypt_cbc::<Aes128>(&encrypted_data, &key, &iv).unwrap();
         })
     });
 
@@ -77,17 +78,17 @@ Rust 拥有出色的文档、友好的编译器和清晰的错误提示信息，
     });
 
     // SM4
-    let key = TardisFuns::crypto.key.rand_16_hex().unwrap();
-    let iv = TardisFuns::crypto.key.rand_16_hex().unwrap();
-    let encrypted_data = TardisFuns::crypto.sm4.encrypt_cbc(large_text, &key, &iv).unwrap();
+    let key = TardisFuns::crypto.key.rand_16_bytes();
+    let iv = TardisFuns::crypto.key.rand_16_bytes();
+    let encrypted_data = TardisFuns::crypto.sm4.encrypt_cbc(large_text, key, iv).unwrap();
     c.bench_function("CRYPTO: sm4_encrypt_cbc", |b| {
         b.iter(|| {
-            TardisFuns::crypto.sm4.encrypt_cbc(large_text, &key, &iv).unwrap();
+            TardisFuns::crypto.sm4.encrypt_cbc(large_text, key, iv).unwrap();
         })
     });
     c.bench_function("CRYPTO: sm4_decrypt_cbc", |b| {
         b.iter(|| {
-            TardisFuns::crypto.sm4.decrypt_cbc(&encrypted_data, &key, &iv).unwrap();
+            TardisFuns::crypto.sm4.decrypt_cbc(&encrypted_data, key, iv).unwrap();
         })
     });
 

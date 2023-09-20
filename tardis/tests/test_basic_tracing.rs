@@ -17,11 +17,10 @@ async fn test_basic_tracing() -> TardisResult<()> {
 
 mod app {
     pub mod req {
-        use tardis::log::{error, info, Event};
+        use tardis::log::{error, info};
 
         pub fn test_req() {
-
-            info!({module = "spi-conf"}, "app::req info");
+            info!({ module = "spi-conf" }, "app::req info");
             error!("app::req error");
         }
     }

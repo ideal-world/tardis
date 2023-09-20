@@ -26,7 +26,6 @@ impl Default for WebServerModuleOption {
     }
 }
 
-
 /// A module of web server
 #[derive(Clone)]
 pub struct WebServerModule<T, MW = EmptyMiddleWare, D = ()> {

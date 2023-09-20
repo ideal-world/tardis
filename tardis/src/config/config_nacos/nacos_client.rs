@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use tracing::{debug, trace};
 
-use crate::{TardisFuns, TardisFunsInst};
+use crate::TardisFuns;
 
 const ACCESS_TOKEN_FIELD: &str = "accessToken";
 
