@@ -6,7 +6,7 @@ use typed_builder::TypedBuilder;
 
 use crate::basic::error::TardisError;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum OtlpProtocol {
     #[default]
     Grpc,
@@ -31,6 +31,19 @@ impl FromStr for OtlpProtocol {
             "http/protobuf" => Ok(OtlpProtocol::HttpProtobuf),
             _ => Err(TardisError::conflict(&format!("[Tracing] Unsupported protocol {s}"), "")),
         }
+    }
+}
+
+impl Serialize for OtlpProtocol {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.to_string().as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for OtlpProtocol {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        OtlpProtocol::from_str(s.as_str()).map_err(serde::de::Error::custom)
     }
 }
 

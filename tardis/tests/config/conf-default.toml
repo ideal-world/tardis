@@ -9,6 +9,7 @@ default_lang = "zh-CN"
 [fw.web_client]
 
 [fw.log]
-level = "info"
-directives = ["tokio=trace", "runtime=trace"]
+level = "debug"
+# directives = ["tokio=trace", "runtime=trace"]
 tracing_appender = { rotation = "minutely", dir = "./tests/log", filename = "app.log" }
+tracing = { endpoint = "http://localhost:4317", protocol = "grpc", server_name = "tardis-test" }

@@ -6,7 +6,7 @@ use tardis::web::web_resp::{TardisApiResult, TardisResp};
 
 use crate::processor::{self, TaskKind};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Api;
 
 #[poem_openapi::OpenApi]

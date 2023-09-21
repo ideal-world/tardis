@@ -17,7 +17,7 @@ name = "tardis"
 path = "src/lib.rs"
 
 [features]
-default = ["tardis-macros"]
+default = ["tardis-macros", "async-trait"]
 conf-remote = ["web-client", "async-trait", "crypto"]
 digest = ["sha1", "sha2", "hmac", "md-5", "sm3", "dep:digest"]
 aead = ["aes-gcm-siv", "aes-gcm", "aes-siv", "dep:aead"]
