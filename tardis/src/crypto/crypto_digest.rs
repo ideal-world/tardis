@@ -1,5 +1,8 @@
 // use crypto::mac::Mac;
-use crate::basic::{error::TardisError, result::TardisResult};
+use crate::{
+    basic::{error::TardisError, result::TardisResult},
+    utils::mapper::Mapper,
+};
 use algorithm::*;
 use digest::KeyInit;
 
@@ -18,27 +21,24 @@ pub mod algorithm {
 }
 
 pub mod output {
+    use std::marker::PhantomData;
+
     pub use digest::Output;
 
-    /// Map the digest output into a specific type, such as `String` or `Vec<u8>`.
-    ///
-    pub trait Mapper {
-        type MappedType;
-        fn map_output<A: digest::Digest>(raw_output: digest::Output<A>) -> Self::MappedType;
-    }
+    use crate::utils::mapper::Mapper;
 
-    pub struct HexCodeMapper;
-    impl Mapper for HexCodeMapper {
-        type MappedType = String;
-        fn map_output<A: digest::Digest>(raw_output: digest::Output<A>) -> Self::MappedType {
+    pub struct HexCodeMapper<A: digest::Digest>(PhantomData<A>);
+    impl<A: digest::Digest> Mapper<digest::Output<A>> for HexCodeMapper<A> {
+        type Output = String;
+        fn map(raw_output: digest::Output<A>) -> Self::Output {
             hex::encode(raw_output)
         }
     }
 
-    pub struct BytesMapper;
-    impl Mapper for BytesMapper {
-        type MappedType = Vec<u8>;
-        fn map_output<A: digest::Digest>(raw_output: digest::Output<A>) -> Self::MappedType {
+    pub struct BytesMapper<A: digest::Digest>(PhantomData<A>);
+    impl<A: digest::Digest> Mapper<digest::Output<A>> for BytesMapper<A> {
+        type Output = Vec<u8>;
+        fn map(raw_output: digest::Output<A>) -> Self::Output {
             raw_output.to_vec()
         }
     }
@@ -99,22 +99,22 @@ impl TardisCryptoDigest {
 
     /// Digest the data, and map the output into hexcode.
     pub fn digest_hex<A: digest::Digest>(&self, data: impl AsRef<[u8]>) -> TardisResult<String> {
-        self.digest_as::<A, HexCodeMapper>(data)
+        self.digest_as::<A, HexCodeMapper<A>>(data)
     }
 
     /// Digest the data, and map the output into `Vec<u8>`.
     pub fn digest_bytes<A: digest::Digest>(&self, data: impl AsRef<[u8]>) -> TardisResult<Vec<u8>> {
-        self.digest_as::<A, BytesMapper>(data)
+        self.digest_as::<A, BytesMapper<A>>(data)
     }
 
     /// Digest the data, and map the output into a specific type which determined by `M`.
-    pub fn digest_as<A: digest::Digest, M: Mapper>(&self, data: impl AsRef<[u8]>) -> TardisResult<M::MappedType> {
+    pub fn digest_as<A: digest::Digest, M: Mapper<digest::Output<A>>>(&self, data: impl AsRef<[u8]>) -> TardisResult<M::Output> {
         self.digest_iter_as::<A, M, _>(Some(data))
     }
 
     /// Digest a sequence of data, and map the output into a specific type which determined by `M`.
-    pub fn digest_iter_as<A: digest::Digest, M: Mapper, T: AsRef<[u8]>>(&self, data_iter: impl IntoIterator<Item = T>) -> TardisResult<M::MappedType> {
-        self.digest_iter_raw::<A, T>(data_iter).map(|raw| M::map_output::<A>(raw))
+    pub fn digest_iter_as<A: digest::Digest, M: Mapper<digest::Output<A>>, T: AsRef<[u8]>>(&self, data_iter: impl IntoIterator<Item = T>) -> TardisResult<M::Output> {
+        self.digest_iter_raw::<A, T>(data_iter).map(M::map)
     }
 
     /// Digest a sequence of data.

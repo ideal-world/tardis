@@ -65,21 +65,21 @@ async fn test_basic_json() -> TardisResult<()> {
     assert_eq!(ctx, r#"{"own_paths":"ss/","ak":"","owner":"","roles":[],"groups":[]}"#);
 
     let req_dto = UserAddReq {
-        name: TrimString("星航大大".to_lowercase()),
+        name: TrimString::new("星航大大".to_lowercase()),
         pwd: "123456".to_string(),
         age: 10,
         roles: vec![
             UserRoleReq {
-                code: TrimString("admin".to_lowercase()),
+                code: TrimString::new("admin".to_lowercase()),
                 name: "管理员".to_string(),
             },
             UserRoleReq {
-                code: TrimString("user".to_lowercase()),
+                code: TrimString::new("user".to_lowercase()),
                 name: "用户".to_string(),
             },
         ],
         org: Some(UserOrgReq {
-            code: TrimString("org1".to_lowercase()),
+            code: TrimString::new("org1".to_lowercase()),
             name: "组织1".to_string(),
         }),
         status: Some(true),

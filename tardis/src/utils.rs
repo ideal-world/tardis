@@ -4,3 +4,5 @@ pub mod tardis_component;
 pub(crate) use tardis_component::*;
 // pub mod hot;
 pub mod initializer;
+
+pub mod mapper;

@@ -4,7 +4,7 @@ use std::{collections::HashMap, fmt, pin::Pin, sync::Arc};
 use tokio::sync::{Mutex, RwLock};
 use tracing::error;
 
-use crate::serde::{Deserialize, Serialize};
+use crate::{serde::{Deserialize, Serialize}, TardisFuns};
 
 use super::result::TardisResult;
 
@@ -96,6 +96,16 @@ impl Default for TardisContext {
 }
 
 impl TardisContext {
+    pub fn to_json(&self) -> TardisResult<String> {
+        TardisFuns::json.obj_to_string(self)
+    }
+    
+    pub fn to_base64(&self) -> TardisResult<String> {
+        let ctx = TardisContext::default();
+        let ctx = TardisFuns::json.obj_to_string(&ctx)?;
+        Ok(TardisFuns::crypto.base64.encode(ctx))
+    }
+
     pub async fn add_ext(&self, key: &str, value: &str) -> TardisResult<()> {
         self.ext.write().await.insert(key.to_string(), value.to_string());
         Ok(())

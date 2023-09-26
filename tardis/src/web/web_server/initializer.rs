@@ -17,8 +17,12 @@ where
 {
     async fn init(&self, target: &TardisWebServer) {
         let (code, ref module) = self;
-        let module_config = target.config.modules.get(code).unwrap_or_else(|| panic!("[Tardis.WebServer] Module {code} not found")).clone();
-        target.do_add_module_with_data(code, &module_config, module.clone()).await;
+        if let Some(module_config) = target.config.modules.get(code) {
+            target.do_add_module_with_data(code, module_config, module.clone()).await;
+        } else {
+            crate::log::debug!("[Tardis.WebServer] Module {code} not found, using a default config.", code = code);
+            target.do_add_module_with_data(code, &WebServerModuleConfig::default(), module.clone()).await;
+        }
     }
 }
 
