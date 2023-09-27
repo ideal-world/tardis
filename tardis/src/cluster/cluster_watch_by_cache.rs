@@ -8,7 +8,7 @@ use crate::{
     basic::result::TardisResult,
     cache::cache_client::TardisCacheClient,
     cluster::cluster_processor,
-    config::config_dto::{ClusterConfig, WebServerConfig},
+    config::config_dto::{component::WebServerConfig, ClusterConfig},
     TardisFuns,
 };
 

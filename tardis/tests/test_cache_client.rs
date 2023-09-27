@@ -1,6 +1,5 @@
 // https://github.com/mitsuhiko/redis-rs
 
-use std::collections::HashMap;
 use std::env;
 
 use tardis::cache::AsyncCommands;
@@ -10,9 +9,10 @@ use tracing::info;
 
 use tardis::basic::result::TardisResult;
 use tardis::cache::cache_client::TardisCacheClient;
-use tardis::config::config_dto::{CacheConfig, CacheModuleConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::config::config_dto::{CacheConfig, CacheModuleConfig, FrameworkConfig, TardisConfig};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
+use url::Url;
 
 #[tokio::test]
 async fn test_cache_client() -> TardisResult<()> {
@@ -20,7 +20,9 @@ async fn test_cache_client() -> TardisResult<()> {
     TardisFuns::init_log()?;
     // let url = "redis://:123456@127.0.0.1:6379/1".to_lowercase();
     TardisTestContainer::redis(|url| async move {
-        let client = TardisCacheClient::init(&url).await?;
+        let url = url.parse::<Url>().expect("invalid url");
+        let cache_module_config = CacheModuleConfig::builder().url(url).build();
+        let client = TardisCacheClient::init(&cache_module_config).await?;
         // basic operations
 
         let mut opt_value = client.get("test_key").await?;
@@ -141,43 +143,13 @@ async fn test_cache_client() -> TardisResult<()> {
         assert!(!mem.contains(&"m3".to_string()));
 
         // Default test
-        TardisFuns::init_conf(TardisConfig {
-            cs: Default::default(),
-            fw: FrameworkConfig {
-                app: Default::default(),
-                web_server: WebServerConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                web_client: Default::default(),
-                cache: CacheConfig {
-                    enabled: true,
-                    url: url.clone(),
-                    modules: HashMap::from([("m1".to_string(), CacheModuleConfig { url: url.clone() })]),
-                },
-                db: DBConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                mq: MQConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                search: SearchConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                mail: MailConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                os: OSConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        })
+        TardisFuns::init_conf(
+            TardisConfig::builder()
+                .fw(FrameworkConfig::builder()
+                    .cache(CacheConfig::builder().default(cache_module_config.clone()).modules([("m1".to_string(), cache_module_config.clone())]).build())
+                    .build())
+                .build(),
+        )
         .await?;
 
         let map_result = TardisFuns::cache().hgetall("h").await?;

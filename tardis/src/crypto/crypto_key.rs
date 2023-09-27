@@ -1,46 +1,46 @@
 use rand::RngCore;
 
 use crate::{basic::result::TardisResult, TardisFuns};
-
+use paste::paste;
 pub struct TardisCryptoKey;
 
+macro_rules! gen_rand_n_hex {
+    {$($N: literal),*} => {
+        $(
+            paste! {
+                #[inline]
+                pub fn [<rand_ $N _hex>](&self) -> String {
+                    self.rand_n_hex::<$N>()
+                }
+            }
+        )*
+    };
+}
+macro_rules! gen_rand_n_bytes {
+    {$($N: literal),*} => {
+        $(
+            paste! {
+                #[inline]
+                pub fn [<rand_ $N _bytes>](&self) -> [u8; $N] {
+                    self.rand_n_bytes::<$N>()
+                }
+            }
+        )*
+    };
+}
 impl TardisCryptoKey {
-    pub fn rand_8_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 4] = [0; 4];
+    pub fn rand_n_hex<const N: usize>(&self) -> String {
+        let mut key = vec![0; N / 2];
         rand::rngs::OsRng.fill_bytes(&mut key);
-        Ok(hex::encode(key))
+        hex::encode(key)
     }
-
-    pub fn rand_16_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 8] = [0; 8];
+    pub fn rand_n_bytes<const N: usize>(&self) -> [u8; N] {
+        let mut key = [0; N];
         rand::rngs::OsRng.fill_bytes(&mut key);
-        Ok(hex::encode(key))
+        key
     }
-
-    pub fn rand_32_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 16] = [0; 16];
-        rand::rngs::OsRng.fill_bytes(&mut key);
-        Ok(hex::encode(key))
-    }
-
-    pub fn rand_64_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 32] = [0; 32];
-        rand::rngs::OsRng.fill_bytes(&mut key);
-        Ok(hex::encode(key))
-    }
-
-    pub fn rand_128_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 64] = [0; 64];
-        rand::rngs::OsRng.fill_bytes(&mut key);
-        Ok(hex::encode(key))
-    }
-
-    pub fn rand_256_hex(&self) -> TardisResult<String> {
-        let mut key: [u8; 128] = [0; 128];
-        rand::rngs::OsRng.fill_bytes(&mut key);
-        Ok(hex::encode(key))
-    }
-
+    gen_rand_n_hex! {8, 16, 32, 64, 128, 256}
+    gen_rand_n_bytes! {8, 16, 32, 64, 128, 256}
     pub fn generate_token(&self) -> TardisResult<String> {
         Ok(format!("tk{}", TardisFuns::field.nanoid()))
     }

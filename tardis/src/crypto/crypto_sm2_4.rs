@@ -164,21 +164,21 @@ impl TardisCryptoSm2PublicKey {
 /// ```
 #[cfg(feature = "crypto-with-sm")]
 impl TardisCryptoSm4 {
-    pub fn encrypt_cbc(&self, data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
-        let cipher = Cipher::new(hex_key.as_bytes(), Mode::Cbc)
+    pub fn encrypt_cbc(&self, data: impl AsRef<[u8]>, hex_key: impl AsRef<[u8]>, hex_iv: impl AsRef<[u8]>) -> TardisResult<String> {
+        let cipher = Cipher::new(hex_key.as_ref(), Mode::Cbc)
             .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] SM4 new cipher error:{error}"), "406-tardis-crypto-sm4-cipher-error"))?;
         let encrypted_data = cipher
-            .encrypt(data.as_bytes(), hex_iv.as_bytes())
+            .encrypt(data.as_ref(), hex_iv.as_ref())
             .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] SM4 encrypt error:{error}"), "406-tardis-crypto-sm4-encrypt-error"))?;
         Ok(hex::encode(encrypted_data))
     }
 
-    pub fn decrypt_cbc(&self, encrypted_data: &str, hex_key: &str, hex_iv: &str) -> TardisResult<String> {
-        let cipher = Cipher::new(hex_key.as_bytes(), Mode::Cbc)
+    pub fn decrypt_cbc(&self, encrypted_data: impl AsRef<[u8]>, hex_key: impl AsRef<[u8]>, hex_iv: impl AsRef<[u8]>) -> TardisResult<String> {
+        let cipher = Cipher::new(hex_key.as_ref(), Mode::Cbc)
             .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] SM4 new cipher error:{error}"), "406-tardis-crypto-sm4-cipher-error"))?;
-        let encrypted_data = hex::decode(encrypted_data)?;
+        let encrypted_data = hex::decode(encrypted_data.as_ref())?;
         let data = cipher
-            .decrypt(encrypted_data.as_slice(), hex_iv.as_bytes())
+            .decrypt(encrypted_data.as_slice(), hex_iv.as_ref())
             .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] SM4 decrypt error:{error}"), "406-tardis-crypto-sm4-decrypt-error"))?;
         Ok(String::from_utf8(data)?)
     }

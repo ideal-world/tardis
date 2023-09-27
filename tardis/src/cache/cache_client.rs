@@ -3,11 +3,12 @@ use std::collections::HashMap;
 use deadpool_redis::{Config, Connection, Pool, Runtime};
 use redis::{AsyncCommands, ErrorKind, RedisError, RedisResult};
 use tracing::{error, info, trace};
-use url::Url;
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::FrameworkConfig;
+use crate::config::config_dto::component::cache::CacheModuleConfig;
+
+use crate::utils::initializer::InitBy;
 
 /// Distributed cache handle / 分布式缓存操作
 ///
@@ -31,28 +32,23 @@ use crate::config::config_dto::FrameworkConfig;
 pub struct TardisCacheClient {
     pool: Pool,
 }
+#[async_trait::async_trait]
+impl InitBy<CacheModuleConfig> for TardisCacheClient {
+    async fn init_by(config: &CacheModuleConfig) -> TardisResult<Self> {
+        Self::init(config).await
+    }
+}
 
 impl TardisCacheClient {
-    /// Initialize configuration from the cache configuration object / 从缓存配置对象中初始化配置
-    pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisCacheClient>> {
-        let mut clients = HashMap::new();
-        clients.insert("".to_string(), TardisCacheClient::init(&conf.cache.url).await?);
-        for (k, v) in &conf.cache.modules {
-            clients.insert(k.to_string(), TardisCacheClient::init(&v.url).await?);
-        }
-        Ok(clients)
-    }
-
     /// Initialize configuration / 初始化配置
-    pub async fn init(str_url: &str) -> TardisResult<TardisCacheClient> {
-        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.CacheClient] Invalid url {str_url}"), "406-tardis-cache-url-error"))?;
+    pub async fn init(CacheModuleConfig { url }: &CacheModuleConfig) -> TardisResult<TardisCacheClient> {
         info!(
             "[Tardis.CacheClient] Initializing, host:{}, port:{}, db:{}",
             url.host_str().unwrap_or(""),
             url.port().unwrap_or(0),
             if url.path().is_empty() { "" } else { &url.path()[1..] },
         );
-        let cfg = Config::from_url(str_url);
+        let cfg = Config::from_url(url.clone());
         let pool = cfg
             .create_pool(Some(Runtime::Tokio1))
             .map_err(|e| TardisError::format_error(&format!("[Tardis.CacheClient] Create pool error: {e}"), "500-tardis-cache-pool-error"))?;

@@ -2,11 +2,12 @@ use std::{collections::HashMap, fmt::Display, io::Read, sync::Arc};
 
 use derive_more::Display;
 // use futures::TryFutureExt;
-use crypto::{digest::Digest, md5::Md5};
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
-use tracing::debug;
+use tracing::{debug, trace};
+
+use crate::TardisFuns;
 
 const ACCESS_TOKEN_FIELD: &str = "accessToken";
 
@@ -208,11 +209,11 @@ impl NacosClient {
         }
         let mut params = HashMap::new();
         params.insert("Listening-Configs", descriptor.as_listening_configs().await);
-        debug!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
+        trace!("[Tardis.Config] listen_config Listening-Configs: {:?}", params.get("Listening-Configs"));
 
         let mut resp = self.listen_config_inner(&params).await?;
 
-        debug!("[Tardis.Config] listen_config resp: {:?}", resp);
+        trace!("[Tardis.Config] listen_config resp: {:?}", resp);
         // case of token expired
         if resp.status() == reqwest::StatusCode::FORBIDDEN {
             self.relogin().await?;
@@ -257,10 +258,8 @@ impl<'a> NacosConfigDescriptor<'a> {
 
     /// update md5 value by content
     pub async fn update_by_content(&self, content: &str) {
-        let mut encoder = Md5::new();
-        encoder.input_str(content);
-        let result = encoder.result_str();
-        self.md5.lock().await.replace(result);
+        let md5 = TardisFuns::crypto.digest.md5(content).expect("fail to calculate md5");
+        self.md5.lock().await.replace(md5);
     }
 
     /// data format: `dataId%02Group%02contentMD5%02tenant%01` or `dataId%02Group%02contentMD5%01`

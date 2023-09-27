@@ -8,11 +8,16 @@ version = "1.0.0"
 port = 8089
 doc_urls = [["test env", "http://localhost:8089/"]]
 
-[fw.db]
-url = "postgres://postgres:ENC(5892ae51dbeedacdf10ba4c0d7af42a7)@localhost:5432/test"
+# [fw.db]
+# url = "postgres://postgres:ENC(5892ae51dbeedacdf10ba4c0d7af42a7)@localhost:5432/test"
 
 [fw.log]
-level = "info"
+level = "debug"
+
+[fw.log.tracing]
+# https://www.jaegertracing.io/docs/1.49/getting-started/
+# endpoint = "http://localhost:4318/"
 endpoint = "http://localhost:4317"
+# protocol = "http/protobuf"
 protocol = "grpc"
 server_name = "tracing示例"

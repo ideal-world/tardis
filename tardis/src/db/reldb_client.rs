@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,9 +19,11 @@ use url::Url;
 use crate::basic::dto::TardisContext;
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::{CompatibleType, FrameworkConfig};
+use crate::config::config_dto::component::db::CompatibleType;
+use crate::config::config_dto::component::db::DBModuleConfig;
 use crate::db::domain::{tardis_db_config, tardis_db_del_record};
 use crate::serde::{Deserialize, Serialize};
+use crate::utils::initializer::InitBy;
 use crate::TardisFuns;
 
 /// Relational database handle / 关系型数据库操作
@@ -132,47 +133,24 @@ pub struct TardisRelDBClient {
     compatible_type: CompatibleType,
 }
 
-impl TardisRelDBClient {
-    /// Initialize configuration from the database configuration object / 从数据库配置对象中初始化配置
-    pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisRelDBClient>> {
-        let mut clients = HashMap::new();
-        clients.insert(
-            "".to_string(),
-            TardisRelDBClient::init(
-                &conf.db.url,
-                conf.db.max_connections,
-                conf.db.min_connections,
-                conf.db.connect_timeout_sec,
-                conf.db.idle_timeout_sec,
-                conf.db.compatible_type.clone(),
-            )
-            .await?,
-        );
-        for (k, v) in &conf.db.modules {
-            clients.insert(
-                k.to_string(),
-                TardisRelDBClient::init(
-                    &v.url,
-                    v.max_connections,
-                    v.min_connections,
-                    v.connect_timeout_sec,
-                    v.idle_timeout_sec,
-                    v.compatible_type.clone(),
-                )
-                .await?,
-            );
-        }
-        Ok(clients)
+#[async_trait::async_trait]
+impl InitBy<DBModuleConfig> for TardisRelDBClient {
+    async fn init_by(config: &DBModuleConfig) -> TardisResult<Self> {
+        Self::init(config).await
     }
+}
 
+impl TardisRelDBClient {
     /// Initialize configuration / 初始化配置
     pub async fn init(
-        str_url: &str,
-        max_connections: u32,
-        min_connections: u32,
-        connect_timeout_sec: Option<u64>,
-        idle_timeout_sec: Option<u64>,
-        compatible_type: CompatibleType,
+        DBModuleConfig {
+            url: str_url,
+            max_connections,
+            min_connections,
+            connect_timeout_sec,
+            idle_timeout_sec,
+            compatible_type,
+        }: &DBModuleConfig,
     ) -> TardisResult<TardisRelDBClient> {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.RelDBClient] Invalid url {str_url}"), "406-tardis-reldb-url-error"))?;
         info!(
@@ -181,13 +159,13 @@ impl TardisRelDBClient {
             url.port().unwrap_or(0),
             max_connections
         );
-        let mut opt = ConnectOptions::new(str_url.to_string());
-        opt.max_connections(max_connections).min_connections(min_connections).sqlx_logging(true);
+        let mut opt = ConnectOptions::new(url.to_string());
+        opt.max_connections(*max_connections).min_connections(*min_connections).sqlx_logging(true);
         if let Some(connect_timeout_sec) = connect_timeout_sec {
-            opt.connect_timeout(Duration::from_secs(connect_timeout_sec));
+            opt.connect_timeout(Duration::from_secs(*connect_timeout_sec));
         }
         if let Some(idle_timeout_sec) = idle_timeout_sec {
-            opt.idle_timeout(Duration::from_secs(idle_timeout_sec));
+            opt.idle_timeout(Duration::from_secs(*idle_timeout_sec));
         }
         let con = if let Some(timezone) = url.query_pairs().find(|x| x.0.to_lowercase() == "timezone").map(|x| x.1.to_string()) {
             match url.scheme().to_lowercase().as_str() {
@@ -265,7 +243,7 @@ impl TardisRelDBClient {
         );
         Ok(TardisRelDBClient {
             con: Arc::new(con),
-            compatible_type,
+            compatible_type: *compatible_type,
         })
     }
 
@@ -277,7 +255,7 @@ impl TardisRelDBClient {
     /// Get database compatible type / 获取数据库兼容类型
     /// eg. porlardb is compatible with Oracle
     pub fn compatible_type(&self) -> CompatibleType {
-        self.compatible_type.clone()
+        self.compatible_type
     }
 
     /// Get database connection
@@ -291,13 +269,13 @@ impl TardisRelDBClient {
     pub async fn init_basic_tables(&self) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] Initializing basic tables");
         let tx = self.con.begin().await?;
-        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"), self.compatible_type.clone());
+        let create_all = tardis_db_config::ActiveModel::init(self.con.get_database_backend(), Some("update_time"), self.compatible_type);
         TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
         TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         for function_sql in create_all.2 {
             TardisRelDBClient::execute_one_inner(&function_sql, Vec::new(), &tx).await?;
         }
-        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None, self.compatible_type.clone());
+        let create_all = tardis_db_del_record::ActiveModel::init(self.con.get_database_backend(), None, self.compatible_type);
         TardisRelDBClient::create_table_inner(&create_all.0, &tx).await?;
         TardisRelDBClient::create_index_inner(&create_all.1, &tx).await?;
         tx.commit().await?;
@@ -1486,7 +1464,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
 
     fn create_function_postgresql_auto_update_time(table_name: &str, update_time_field: &str, compatible_type: CompatibleType) -> Vec<String> {
         match compatible_type {
-            crate::config::config_dto::CompatibleType::None => {
+            CompatibleType::None => {
                 vec![
                     format!(
                         r###"CREATE OR REPLACE FUNCTION TARDIS_AUTO_UPDATE_TIME_{}()
@@ -1511,7 +1489,7 @@ pub trait TardisActiveModel: ActiveModelBehavior {
                     ),
                 ]
             }
-            crate::config::config_dto::CompatibleType::Oracle => vec![format!(
+            CompatibleType::Oracle => vec![format!(
                 r###"CREATE OR REPLACE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
             BEFORE UPDATE
             ON

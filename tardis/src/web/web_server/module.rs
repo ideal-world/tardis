@@ -5,8 +5,11 @@ use poem_openapi::OpenApi;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
+/// Options for web server module
+/// - uniform_error: whether to use uniform error response
 #[derive(Clone)]
 pub struct WebServerModuleOption {
+    /// whether to use uniform error response
     pub uniform_error: bool,
 }
 
@@ -23,11 +26,16 @@ impl Default for WebServerModuleOption {
     }
 }
 
+/// A module of web server
 #[derive(Clone)]
 pub struct WebServerModule<T, MW = EmptyMiddleWare, D = ()> {
+    /// A poem `Openapi` data structure
     pub apis: T,
+    /// Shared data for this module
     pub data: Option<D>,
+    /// Middleware for this module
     pub middleware: MW,
+    /// Custom options for this module
     pub options: WebServerModuleOption,
 }
 

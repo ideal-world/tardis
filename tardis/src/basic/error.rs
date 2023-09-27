@@ -88,6 +88,8 @@ impl TardisError {
     }
 }
 
+impl std::error::Error for TardisError {}
+
 pub struct TardisErrorWithExt {
     pub ext: String,
     /// https://www.andiamo.co.uk/resources/iso-language-codes/
@@ -144,6 +146,13 @@ impl TardisErrorWithExt {
 
     pub fn conflict(&self, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
         self.error("409", obj_name, obj_opt, msg, locale_code)
+    }
+}
+
+// dynamic cast any error into TardisError
+impl From<&dyn std::error::Error> for TardisError {
+    fn from(error: &dyn std::error::Error) -> Self {
+        TardisError::format_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
 

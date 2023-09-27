@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use reqwest::{Client, Method, Response};
+use reqwest::{Client, IntoUrl, Method, RequestBuilder, Response};
+use serde::Deserialize;
 use tracing::{error, info, trace};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::FrameworkConfig;
-use crate::serde::de::DeserializeOwned;
+use crate::config::config_dto::component::web_client::WebClientModuleConfig;
 use crate::serde::Serialize;
+use crate::utils::initializer::InitBy;
 use crate::TardisFuns;
 
 pub struct TardisWebClient {
@@ -16,19 +17,40 @@ pub struct TardisWebClient {
     client: Client,
 }
 
-impl TardisWebClient {
-    pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisWebClient>> {
-        let mut clients = HashMap::new();
-        clients.insert("".to_string(), TardisWebClient::init(conf.web_client.connect_timeout_sec)?);
-        for (k, v) in &conf.web_client.modules {
-            clients.insert(k.to_string(), TardisWebClient::init(v.connect_timeout_sec)?);
-        }
-        Ok(clients)
+#[async_trait::async_trait]
+impl InitBy<WebClientModuleConfig> for TardisWebClient {
+    async fn init_by(config: &WebClientModuleConfig) -> TardisResult<Self> {
+        Self::init(config)
     }
+}
+trait TardisRequestBody {
+    fn apply_on(self, builder: RequestBuilder) -> RequestBuilder;
+}
 
-    pub fn init(connect_timeout_sec: u64) -> TardisResult<TardisWebClient> {
+impl TardisRequestBody for () {
+    fn apply_on(self, builder: RequestBuilder) -> RequestBuilder {
+        builder
+    }
+}
+struct PlainText<T>(T);
+struct Json<'a, T>(&'a T);
+
+impl<T: Into<String>> TardisRequestBody for PlainText<T> {
+    fn apply_on(self, builder: RequestBuilder) -> RequestBuilder {
+        builder.body(self.0.into())
+    }
+}
+
+impl<T: Serialize> TardisRequestBody for Json<'_, T> {
+    fn apply_on(self, builder: RequestBuilder) -> RequestBuilder {
+        builder.json(&self.0)
+    }
+}
+
+impl TardisWebClient {
+    pub fn init(WebClientModuleConfig { connect_timeout_sec, .. }: &WebClientModuleConfig) -> TardisResult<TardisWebClient> {
         info!("[Tardis.WebClient] Initializing");
-        let client = reqwest::Client::builder().danger_accept_invalid_certs(true).connect_timeout(Duration::from_secs(connect_timeout_sec)).https_only(false).build()?;
+        let client = reqwest::Client::builder().danger_accept_invalid_certs(true).connect_timeout(Duration::from_secs(*connect_timeout_sec)).https_only(false).build()?;
         info!("[Tardis.WebClient] Initialized");
         TardisResult::Ok(TardisWebClient {
             client,
@@ -46,122 +68,145 @@ impl TardisWebClient {
         self.default_headers.retain(|(k, _)| k != key);
     }
 
-    pub async fn get_to_str(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
-        let (code, headers, response) = self.request::<()>(Method::GET, url, headers, None, None).await?;
+    pub async fn get_to_str(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<String>> {
+        let (code, headers, response) = self.request(Method::GET, url, headers, ()).await?;
         self.to_text(code, headers, response).await
     }
 
-    pub async fn get<T: DeserializeOwned>(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
-        let (code, headers, response) = self.request::<()>(Method::GET, url, headers, None, None).await?;
+    pub async fn get<T: for<'de> Deserialize<'de>>(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::GET, url, headers, ()).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn head_to_void(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<()>> {
-        let (code, headers, _) = self.request::<()>(Method::HEAD, url, headers, None, None).await?;
+    pub async fn head_to_void(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<()>> {
+        let (code, headers, _) = self.request(Method::HEAD, url, headers, ()).await?;
         Ok(TardisHttpResponse { code, headers, body: None })
     }
 
-    pub async fn head<T: DeserializeOwned>(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
-        let (code, headers, response) = self.request::<()>(Method::HEAD, url, headers, None, None).await?;
+    pub async fn head<T: for<'de> Deserialize<'de>>(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::HEAD, url, headers, ()).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn delete_to_void(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<()>> {
-        let (code, headers, _) = self.request::<()>(Method::DELETE, url, headers, None, None).await?;
+    pub async fn delete_to_void(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<()>> {
+        let (code, headers, _) = self.request(Method::DELETE, url, headers, ()).await?;
         Ok(TardisHttpResponse { code, headers, body: None })
     }
 
-    pub async fn delete<T: DeserializeOwned>(&self, url: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
-        let (code, headers, response) = self.request::<()>(Method::DELETE, url, headers, None, None).await?;
+    pub async fn delete<T: for<'de> Deserialize<'de>>(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::DELETE, url, headers, ()).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn post_str_to_str(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
-        let (code, headers, response) = self.request::<()>(Method::POST, url, headers, None, Some(body)).await?;
+    pub async fn post_str_to_str(&self, url: impl IntoUrl, body: impl Into<String>, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<String>> {
+        let (code, headers, response) = self.request(Method::POST, url, headers, PlainText(body)).await?;
         self.to_text(code, headers, response).await
     }
 
-    pub async fn post_obj_to_str<B: Serialize>(&self, url: &str, body: &B, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
-        let (code, headers, response) = self.request::<B>(Method::POST, url, headers, Some(body), None).await?;
+    pub async fn post_obj_to_str<B: Serialize>(&self, url: impl IntoUrl, body: &B, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<String>> {
+        let (code, headers, response) = self.request(Method::POST, url, headers, Json(body)).await?;
         self.to_text(code, headers, response).await
     }
 
-    pub async fn post_to_obj<T: DeserializeOwned>(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
-        let (code, headers, response) = self.request::<()>(Method::POST, url, headers, None, Some(body)).await?;
+    pub async fn post_to_obj<T: for<'de> Deserialize<'de>>(
+        &self,
+        url: impl IntoUrl,
+        body: impl Into<String>,
+        headers: impl IntoIterator<Item = (&str, &str)>,
+    ) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::POST, url, headers, PlainText(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn post<B: Serialize, T: DeserializeOwned>(&self, url: &str, body: &B, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
-        let (code, headers, response) = self.request(Method::POST, url, headers, Some(body), None).await?;
+    pub async fn post<B: Serialize, T: for<'de> Deserialize<'de>>(
+        &self,
+        url: impl IntoUrl,
+        body: &B,
+        headers: impl IntoIterator<Item = (&str, &str)>,
+    ) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::POST, url, headers, Json(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn put_str_to_str(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
-        let (code, headers, response) = self.request::<()>(Method::PUT, url, headers, None, Some(body)).await?;
+    pub async fn put_str_to_str(&self, url: impl IntoUrl, body: impl Into<String>, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<String>> {
+        let (code, headers, response) = self.request(Method::PUT, url, headers, PlainText(body)).await?;
         self.to_text(code, headers, response).await
     }
 
-    pub async fn put_obj_to_str<B: Serialize>(&self, url: &str, body: &B, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
-        let (code, headers, response) = self.request::<B>(Method::PUT, url, headers, Some(body), None).await?;
+    pub async fn put_obj_to_str<B: Serialize>(&self, url: impl IntoUrl, body: &B, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<String>> {
+        let (code, headers, response) = self.request(Method::PUT, url, headers, Json(body)).await?;
         self.to_text(code, headers, response).await
     }
 
-    pub async fn put_to_obj<T: DeserializeOwned>(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
-        let (code, headers, response) = self.request::<()>(Method::PUT, url, headers, None, Some(body)).await?;
+    pub async fn put_to_obj<T: for<'de> Deserialize<'de>>(
+        &self,
+        url: impl IntoUrl,
+        body: impl Into<String>,
+        headers: impl IntoIterator<Item = (&str, &str)>,
+    ) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::PUT, url, headers, PlainText(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn put<B: Serialize, T: DeserializeOwned>(&self, url: &str, body: &B, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
-        let (code, headers, response) = self.request(Method::PUT, url, headers, Some(body), None).await?;
+    pub async fn put<B: Serialize, T: for<'de> Deserialize<'de>>(
+        &self,
+        url: impl IntoUrl,
+        body: &B,
+        headers: impl IntoIterator<Item = (&str, &str)>,
+    ) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::PUT, url, headers, Json(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn patch_str_to_str(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
-        let (code, headers, response) = self.request::<()>(Method::PATCH, url, headers, None, Some(body)).await?;
+    pub async fn patch_str_to_str(&self, url: impl IntoUrl, body: impl Into<String>, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<String>> {
+        let (code, headers, response) = self.request(Method::PATCH, url, headers, PlainText(body)).await?;
         self.to_text(code, headers, response).await
     }
 
-    pub async fn patch_obj_to_str<B: Serialize>(&self, url: &str, body: &B, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<String>> {
-        let (code, headers, response) = self.request::<B>(Method::PATCH, url, headers, Some(body), None).await?;
+    pub async fn patch_obj_to_str<B: Serialize>(&self, url: impl IntoUrl, body: &B, headers: impl IntoIterator<Item = (&str, &str)>) -> TardisResult<TardisHttpResponse<String>> {
+        let (code, headers, response) = self.request(Method::PATCH, url, headers, Json(body)).await?;
         self.to_text(code, headers, response).await
     }
 
-    pub async fn patch_to_obj<T: DeserializeOwned>(&self, url: &str, body: &str, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
-        let (code, headers, response) = self.request::<()>(Method::PATCH, url, headers, None, Some(body)).await?;
+    pub async fn patch_to_obj<T: for<'de> Deserialize<'de>>(
+        &self,
+        url: impl IntoUrl,
+        body: impl Into<String>,
+        headers: impl IntoIterator<Item = (&str, &str)>,
+    ) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::PATCH, url, headers, PlainText(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
-    pub async fn patch<B: Serialize, T: DeserializeOwned>(&self, url: &str, body: &B, headers: Option<Vec<(String, String)>>) -> TardisResult<TardisHttpResponse<T>> {
-        let (code, headers, response) = self.request(Method::PATCH, url, headers, Some(body), None).await?;
+    pub async fn patch<B: Serialize, T: for<'de> Deserialize<'de>>(
+        &self,
+        url: impl IntoUrl,
+        body: &B,
+        headers: impl IntoIterator<Item = (&str, &str)>,
+    ) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::PATCH, url, headers, Json(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
-    async fn request<B: Serialize>(
+    async fn request(
         &self,
         method: Method,
-        url: &str,
-        headers: Option<Vec<(String, String)>>,
-        body: Option<&B>,
-        str_body: Option<&str>,
+        url: impl IntoUrl,
+        headers: impl IntoIterator<Item = (&str, &str)>,
+        body: impl TardisRequestBody,
     ) -> TardisResult<(u16, HashMap<String, String>, Response)> {
-        let formatted_url = TardisFuns::uri.format(url)?;
+        let mut url = url.into_url()?;
+        TardisFuns::uri.sort_url_query(&mut url);
         let method_str = method.to_string();
-        trace!("[Tardis.WebClient] Request {}:{}", method_str, &formatted_url);
-        let mut result = self.client.request(method, formatted_url.clone());
+        trace!("[Tardis.WebClient] Request {}:{}", method_str, &url);
+        let mut result = self.client.request(method, url.clone());
         for (key, value) in &self.default_headers {
             result = result.header(key, value);
         }
-        if let Some(headers) = headers {
-            for (key, value) in headers {
-                result = result.header(key, value);
-            }
+        for (key, value) in headers {
+            result = result.header(key, value);
         }
-        if let Some(body) = body {
-            result = result.json(body);
-        }
-        if let Some(body) = str_body {
-            result = result.body(body.to_string());
-        }
+        result = body.apply_on(result);
         let response = result.send().await?;
         let code = response.status().as_u16();
         let headers = response
@@ -174,7 +219,7 @@ impl TardisWebClient {
                 )
             })
             .collect();
-        trace!("[Tardis.WebClient] Request {}:{}, Response {}", method_str, formatted_url, code);
+        trace!("[Tardis.WebClient] Request {}:{}, Response {}", method_str, url, code);
         Ok((code, headers, response))
     }
 
@@ -185,7 +230,7 @@ impl TardisWebClient {
         }
     }
 
-    async fn to_json<T: DeserializeOwned>(&self, code: u16, headers: HashMap<String, String>, response: Response) -> TardisResult<TardisHttpResponse<T>> {
+    async fn to_json<T: for<'de> Deserialize<'de>>(&self, code: u16, headers: HashMap<String, String>, response: Response) -> TardisResult<TardisHttpResponse<T>> {
         match response.json().await {
             Ok(body) => Ok(TardisHttpResponse { code, headers, body: Some(body) }),
             Err(error) => Err(TardisError::format_error(&format!("[Tardis.WebClient] {error:?}"), "406-tardis-webclient-json-error")),

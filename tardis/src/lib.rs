@@ -280,6 +280,7 @@ use crate::web::web_server::TardisWebServer;
 pub struct TardisFuns {
     custom_config: TardisComponentMap<CachedJsonValue>,
     framework_config: TardisComponent<FrameworkConfig>,
+    pub(crate) tracing: TardisComponent<TardisTracing>,
     #[cfg(feature = "reldb-core")]
     reldb: TardisComponentMap<TardisRelDBClient>,
     #[cfg(feature = "web-server")]
@@ -301,6 +302,7 @@ pub struct TardisFuns {
 static TARDIS_INST: TardisFuns = TardisFuns {
     custom_config: TardisComponentMap::new(),
     framework_config: TardisComponent::new(),
+    tracing: TardisComponent::new(),
     #[cfg(feature = "reldb-core")]
     reldb: TardisComponentMap::new(),
     #[cfg(feature = "web-server")]
@@ -337,8 +339,7 @@ impl TardisFuns {
     /// TardisFuns::init("proj/config").await;
     /// ```
     pub async fn init(relative_path: Option<&str>) -> TardisResult<()> {
-        #[cfg(not(feature = "tracing"))]
-        TardisTracing::init_log()?;
+        TardisTracing::init_default()?;
         let config = TardisConfig::init(relative_path).await?;
         TardisFuns::init_conf(config).await
     }
@@ -349,7 +350,7 @@ impl TardisFuns {
     ///
     /// [init](Self::init) 函数时会自动调用此函数
     pub fn init_log() -> TardisResult<()> {
-        TardisTracing::init_log()?;
+        TardisTracing::init_default()?;
         Ok(())
     }
 
@@ -405,23 +406,23 @@ impl TardisFuns {
     ///         .await;
     /// ```
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
-        #[cfg(feature = "tracing")]
-        TardisTracing::init_tracing(&conf.fw)?;
         let custom_config = conf.cs.iter().map(|(k, v)| (k.clone(), CachedJsonValue::new(v.clone()))).collect::<HashMap<_, _>>();
         TARDIS_INST.custom_config.replace_inner(custom_config);
         TARDIS_INST.framework_config.set(conf.fw);
         #[allow(unused_variables)]
         let fw_conf = TardisFuns::fw_config();
+        if let Some(log_config) = &fw_conf.log {
+            TARDIS_INST.tracing.get().update_config(log_config)?;
+        }
         #[cfg(feature = "reldb-core")]
         {
-            if TardisFuns::fw_config().db.enabled {
-                let reldb_clients = TardisRelDBClient::init_by_conf(&fw_conf).await?;
-                TARDIS_INST.reldb.replace_inner(reldb_clients);
+            if let Some(db_config) = &fw_conf.db {
+                TARDIS_INST.reldb.init_by(db_config).await?;
             }
         }
         #[cfg(feature = "web-server")]
         {
-            if TardisFuns::fw_config().web_server.enabled {
+            if let Some(_web_server_config) = &fw_conf.web_server {
                 let web_server = TardisWebServer::init_by_conf(&fw_conf)?;
                 // take out previous webserver first, because TARDIS_INST is not send and can't live cross an `await` point
                 let inherit = TARDIS_INST.web_server.get();
@@ -438,42 +439,38 @@ impl TardisFuns {
         }
         #[cfg(feature = "web-client")]
         {
-            let web_clients = TardisWebClient::init_by_conf(&fw_conf)?;
-            TARDIS_INST.web_client.replace_inner(web_clients);
+            if let Some(web_client_config) = &fw_conf.web_client {
+                TARDIS_INST.web_client.init_by(web_client_config).await?;
+            }
         }
         #[cfg(feature = "cache")]
         {
-            if TardisFuns::fw_config().cache.enabled {
-                let cache_clients = TardisCacheClient::init_by_conf(&fw_conf).await?;
-                TARDIS_INST.cache.replace_inner(cache_clients);
+            if let Some(cache_config) = &fw_conf.cache {
+                TARDIS_INST.cache.init_by(cache_config).await?;
             }
         }
         #[cfg(feature = "mq")]
         {
-            if TardisFuns::fw_config().mq.enabled {
-                let mq_clients = TardisMQClient::init_by_conf(&fw_conf).await?;
-                TARDIS_INST.mq.replace_inner(mq_clients);
+            if let Some(mq_config) = &fw_conf.mq {
+                TARDIS_INST.mq.init_by(mq_config).await?;
             }
         }
         #[cfg(feature = "web-client")]
         {
-            if TardisFuns::fw_config().search.enabled && !TardisFuns::fw_config().search.url.is_empty() {
-                let search_clients = TardisSearchClient::init_by_conf(&fw_conf)?;
-                TARDIS_INST.search.replace_inner(search_clients);
+            if let Some(search_config) = &fw_conf.search {
+                TARDIS_INST.search.init_by(search_config).await?;
             }
         }
         #[cfg(feature = "mail")]
         {
-            if TardisFuns::fw_config().mail.enabled {
-                let mail_clients = TardisMailClient::init_by_conf(&fw_conf)?;
-                TARDIS_INST.mail.replace_inner(mail_clients);
+            if let Some(mail_config) = &fw_conf.mail {
+                TARDIS_INST.mail.init_by(mail_config).await?;
             }
         }
         #[cfg(feature = "os")]
         {
-            if TardisFuns::fw_config().os.enabled {
-                let os_clients = TardisOSClient::init_by_conf(&fw_conf)?;
-                TARDIS_INST.os.replace_inner(os_clients);
+            if let Some(os_config) = &fw_conf.os {
+                TARDIS_INST.os.init_by(os_config).await?;
             }
         }
         Ok(())
@@ -610,7 +607,7 @@ impl TardisFuns {
         key: crypto::crypto_key::TardisCryptoKey {},
         hex: crypto::crypto_hex::TardisCryptoHex {},
         base64: crypto::crypto_base64::TardisCryptoBase64 {},
-        aes: crypto::crypto_aes::TardisCryptoAes {},
+        aead: crypto::crypto_aead::TardisCryptoAead {},
         rsa: crypto::crypto_rsa::TardisCryptoRsa {},
         #[cfg(feature = "crypto-with-sm")]
         sm4: crypto::crypto_sm2_4::TardisCryptoSm4 {},
@@ -618,6 +615,10 @@ impl TardisFuns {
         sm2: crypto::crypto_sm2_4::TardisCryptoSm2 {},
         digest: crypto::crypto_digest::TardisCryptoDigest {},
     };
+
+    pub fn tracing() -> Arc<TardisTracing> {
+        TARDIS_INST.tracing.get()
+    }
 
     /// Use the relational database feature / 使用关系型数据库功能
     ///
@@ -1040,23 +1041,24 @@ impl TardisFuns {
 
         #[allow(unused_variables)]
         let fw_config = TardisFuns::fw_config();
-        #[cfg(feature = "tracing")]
-        {
-            if fw_config.log.is_some() && fw_config.log != old_framework_config.log {
-                TardisTracing::init_tracing(&fw_config)?;
+
+        if fw_config.log != old_framework_config.log {
+            if let Some(log_config) = &fw_config.log {
+                TARDIS_INST.tracing.get().update_config(log_config)?;
             }
         }
 
         #[cfg(feature = "reldb-core")]
         {
-            if fw_config.db.enabled && fw_config.db != old_framework_config.db {
-                let reldb_clients = TardisRelDBClient::init_by_conf(&fw_config).await?;
-                TARDIS_INST.reldb.replace_inner(reldb_clients);
+            if fw_config.db != old_framework_config.db {
+                if let Some(db_config) = &fw_config.db {
+                    TARDIS_INST.reldb.init_by(db_config).await?;
+                }
             }
         }
         #[cfg(feature = "web-server")]
         {
-            if fw_config.web_server.enabled && old_framework_config.web_server != fw_config.web_server {
+            if fw_config.web_server.is_some() && old_framework_config.web_server != fw_config.web_server {
                 let web_server = TardisWebServer::init_by_conf(&fw_config)?;
                 let old_server = TARDIS_INST.web_server.get();
                 // if there's some inherit webserver
@@ -1073,40 +1075,39 @@ impl TardisFuns {
         }
         #[cfg(feature = "web-client")]
         {
-            let web_clients = TardisWebClient::init_by_conf(&fw_config)?;
-            TARDIS_INST.web_client.replace_inner(web_clients);
+            if let Some(web_client_config) = &fw_config.web_client {
+                TARDIS_INST.web_client.init_by(web_client_config).await?;
+            }
         }
         #[cfg(feature = "cache")]
         {
-            if fw_config.cache.enabled {
-                let cache_clients = TardisCacheClient::init_by_conf(&fw_config).await?;
-                TARDIS_INST.cache.replace_inner(cache_clients);
+            if let Some(cache_config) = &fw_config.cache {
+                TARDIS_INST.cache.init_by(cache_config).await?;
             }
         }
         #[cfg(feature = "mq")]
         {
-            if fw_config.mq.enabled && fw_config.mq != old_framework_config.mq {
-                let mq_clients = TardisMQClient::init_by_conf(&fw_config).await?;
-                let mut old_mq_clients = TARDIS_INST.mq.replace_inner(mq_clients);
-                for (code, client) in old_mq_clients.drain() {
-                    if let Err(e) = client.close().await {
-                        tracing::error!("[Tardis] Encounter an error while shutting down MQClient [{code}]: {}", e);
+            if fw_config.mq != old_framework_config.mq {
+                if let Some(mq_config) = &fw_config.mq {
+                    let mut old_mq_clients = TARDIS_INST.mq.init_by(mq_config).await?;
+                    for (code, client) in old_mq_clients.drain() {
+                        if let Err(e) = client.close().await {
+                            tracing::error!("[Tardis] Encounter an error while shutting down MQClient [{code}]: {}", e);
+                        }
                     }
                 }
             }
         }
         #[cfg(feature = "mail")]
         {
-            if fw_config.mail.enabled {
-                let mail_clients = TardisMailClient::init_by_conf(&fw_config)?;
-                TARDIS_INST.mail.replace_inner(mail_clients);
+            if let Some(mail_config) = &fw_config.mail {
+                TARDIS_INST.mail.init_by(mail_config).await?;
             }
         }
         #[cfg(feature = "os")]
         {
-            if fw_config.os.enabled {
-                let os_clients = TardisOSClient::init_by_conf(&fw_config)?;
-                TARDIS_INST.os.replace_inner(os_clients);
+            if let Some(os_config) = &fw_config.os {
+                TARDIS_INST.os.init_by(os_config).await?;
             }
         }
         Ok(())
@@ -1264,4 +1265,5 @@ pub mod search;
 pub mod test;
 pub mod web;
 
+pub mod consts;
 pub mod utils;

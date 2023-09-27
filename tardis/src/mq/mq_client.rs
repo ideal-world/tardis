@@ -5,11 +5,11 @@ use amq_protocol_types::{AMQPValue, LongString, ShortString};
 use futures_util::lock::Mutex;
 use futures_util::stream::StreamExt;
 use lapin::{options::*, types::FieldTable, BasicProperties, Channel, Connection, ConnectionProperties, Consumer, ExchangeKind};
-use url::Url;
 
-use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::config::config_dto::FrameworkConfig;
+use crate::config::config_dto::component::mq::MQModuleConfig;
+
+use crate::{basic::error::TardisError, utils::initializer::InitBy};
 use tracing::{error, info, trace};
 
 pub struct TardisMQClient {
@@ -17,20 +17,17 @@ pub struct TardisMQClient {
     channels: Mutex<Vec<Channel>>,
 }
 
-impl TardisMQClient {
-    pub async fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<HashMap<String, TardisMQClient>> {
-        let mut clients = HashMap::new();
-        clients.insert("".to_string(), TardisMQClient::init(&conf.mq.url).await?);
-        for (k, v) in &conf.mq.modules {
-            clients.insert(k.to_string(), TardisMQClient::init(&v.url).await?);
-        }
-        Ok(clients)
+#[async_trait::async_trait]
+impl InitBy<MQModuleConfig> for TardisMQClient {
+    async fn init_by(config: &MQModuleConfig) -> TardisResult<Self> {
+        TardisMQClient::init(config).await
     }
+}
 
-    pub async fn init(str_url: &str) -> TardisResult<TardisMQClient> {
-        let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.MQClient] Invalid url {str_url}"), "406-tardis-mq-url-error"))?;
+impl TardisMQClient {
+    pub async fn init(MQModuleConfig { url }: &MQModuleConfig) -> TardisResult<TardisMQClient> {
         info!("[Tardis.MQClient] Initializing, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
-        let con = Connection::connect(str_url, ConnectionProperties::default().with_connection_name("tardis".into())).await?;
+        let con = Connection::connect(url.as_str(), ConnectionProperties::default().with_connection_name("tardis".into())).await?;
         info!("[Tardis.MQClient] Initialized, host:{}, port:{}", url.host_str().unwrap_or(""), url.port().unwrap_or(0));
         Ok(TardisMQClient {
             con,

@@ -1,3 +1,5 @@
+use url::Url;
+
 use crate::basic::result::TardisResult;
 
 /// Uri handle / Uri处理
@@ -50,7 +52,8 @@ impl TardisUri {
     /// assert_eq!(TardisFuns::uri.format("api://a1.t1/e1?q2=2&q1=1&q3=3").unwrap(), "api://a1.t1/e1?q1=1&q2=2&q3=3");
     /// ```
     pub fn format(&self, uri_str: &str) -> TardisResult<String> {
-        let uri = url::Url::parse(uri_str)?;
+        let mut uri = url::Url::parse(uri_str)?;
+        self.sort_url_query(&mut uri);
         let authority = if let Some(password) = uri.password() {
             format!("{}:{}@", uri.username(), password)
         } else if !uri.username().is_empty() {
@@ -67,7 +70,7 @@ impl TardisUri {
             }
         };
         let port = match uri.port() {
-            Some(port) => format!(":{port}"),
+            Some(port) => format!(":{}", port),
             None => "".to_string(),
         };
         let path = if uri.path().is_empty() {
@@ -77,9 +80,8 @@ impl TardisUri {
         } else {
             uri.path()
         };
-        let query = self.sort_query(uri.query());
         let query = match uri.query() {
-            Some(_) => format!("?{query}"),
+            Some(query) => format!("?{}", query),
             None => "".to_string(),
         };
         let formatted_uri = format!("{}://{}{}{}{}{}", uri.scheme(), authority, host, port, path, query);
@@ -108,14 +110,12 @@ impl TardisUri {
         Ok(format!("{path}{query}"))
     }
 
-    fn sort_query(&self, query: Option<&str>) -> String {
-        match query {
-            None => "".to_string(),
-            Some(query) => {
-                let mut query = query.split('&').collect::<Vec<&str>>();
-                query.sort_by(|a, b| Ord::cmp(a.split('=').next().unwrap_or(""), b.split('=').next().unwrap_or("")));
-                query.join("&")
-            }
+    /// Sort the Query parameters in the Uri / 对Uri中的Query参数进行排序
+    pub fn sort_url_query(&self, uri: &mut Url) {
+        let mut query_pairs = uri.query_pairs().map(|(k, v)| (k.to_string(), v.to_string())).collect::<Vec<_>>();
+        if !query_pairs.is_empty() {
+            query_pairs.sort_by(|(ka, _), (kb, _)| Ord::cmp(ka, kb));
+            uri.query_pairs_mut().clear().extend_pairs(query_pairs);
         }
     }
 }

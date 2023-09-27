@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::env;
 
 use tardis::basic::result::TardisResult;
-use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebServerConfig};
+use tardis::config::config_dto::{FrameworkConfig, SearchConfig, SearchModuleConfig, TardisConfig, WebClientConfig};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 
@@ -11,52 +11,16 @@ async fn test_search_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
     TardisTestContainer::es(|url| async move {
+        let search_config = SearchModuleConfig::builder().url(url.parse().expect("invalid url")).build();
+        let fw_config = FrameworkConfig::builder()
+            .web_client(WebClientConfig::default())
+            .search(SearchConfig::builder().default(search_config.clone()).modules([("m1".to_string(), search_config)]).build())
+            .build();
         TardisFuns::init_conf(TardisConfig {
             cs: Default::default(),
-            fw: FrameworkConfig {
-                app: Default::default(),
-                web_server: WebServerConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                web_client: Default::default(),
-                cache: CacheConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                db: DBConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                mq: MQConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                search: SearchConfig {
-                    enabled: true,
-                    url: url.clone(),
-                    modules: HashMap::from([(
-                        "m1".to_string(),
-                        SearchModuleConfig {
-                            url: url.clone(),
-                            ..Default::default()
-                        },
-                    )]),
-                    ..Default::default()
-                },
-                mail: MailConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                os: OSConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
+            fw: fw_config,
         })
         .await?;
-
         TardisFuns::search();
         let client = TardisFuns::search_by_module("m1");
 

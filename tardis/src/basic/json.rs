@@ -1,6 +1,6 @@
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
-use crate::serde::de::DeserializeOwned;
+use crate::serde::de::Deserialize;
 use crate::serde::Serialize;
 use crate::serde_json::Value;
 use std::fs::File;
@@ -54,7 +54,7 @@ impl TardisJson {
     /// use tardis::TardisFuns;
     /// TardisFuns::json.str_to_obj::<TestConfig<DatabaseConfig>>(&json_str);
     /// ```
-    pub fn str_to_obj<T: DeserializeOwned>(&self, str: &str) -> TardisResult<T> {
+    pub fn str_to_obj<T: for<'de> Deserialize<'de>>(&self, str: &str) -> TardisResult<T> {
         let result = serde_json::from_str(str);
         match result {
             Ok(r) => Ok(r),
@@ -76,7 +76,7 @@ impl TardisJson {
     /// let file = fs::File::open("text.json")?
     /// TardisFuns::json.reader_to_obj::<Value>(file);
     /// ```
-    pub fn reader_to_obj<R: std::io::Read, T: DeserializeOwned>(&self, rdr: R) -> TardisResult<T> {
+    pub fn reader_to_obj<R: std::io::Read, T: for<'de> Deserialize<'de>>(&self, rdr: R) -> TardisResult<T> {
         let result = serde_json::from_reader::<R, T>(rdr);
         match result {
             Ok(r) => Ok(r),
@@ -96,7 +96,7 @@ impl TardisJson {
     ///
     /// TardisFuns::json.file_to_obj::<Value, &str>("text.json")?;
     /// ```
-    pub fn file_to_obj<T: DeserializeOwned, P: AsRef<Path>>(&self, path: P) -> TardisResult<T> {
+    pub fn file_to_obj<T: for<'de> Deserialize<'de>, P: AsRef<Path>>(&self, path: P) -> TardisResult<T> {
         let file = File::open(path);
         match file {
             Ok(f) => self.reader_to_obj::<File, T>(f),
@@ -134,7 +134,7 @@ impl TardisJson {
     /// use tardis::TardisFuns;
     /// TardisFuns::json.json_to_obj::<TestConfig<DatabaseConfig>>(json_value);
     /// ```
-    pub fn json_to_obj<T: DeserializeOwned>(&self, value: Value) -> TardisResult<T> {
+    pub fn json_to_obj<T: for<'de> Deserialize<'de>>(&self, value: Value) -> TardisResult<T> {
         let result = serde_json::from_value::<T>(value);
         match result {
             Ok(r) => Ok(r),
@@ -199,7 +199,7 @@ impl TardisJson {
         }
     }
 
-    pub fn copy<F: Serialize, T: DeserializeOwned>(&self, source: &F) -> TardisResult<T> {
+    pub fn copy<F: Serialize, T: for<'de> Deserialize<'de>>(&self, source: &F) -> TardisResult<T> {
         let result = serde_json::to_value(source);
         match result {
             Ok(value) => {

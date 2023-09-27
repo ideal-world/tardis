@@ -12,6 +12,7 @@ use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
+use crate::TardisFuns;
 use tracing::{debug, info};
 
 use super::config_dto::{ConfCenterConfig, TardisConfig};
@@ -144,7 +145,7 @@ impl TardisConfig {
                 _ => return Err(error.into()),
             },
         }
-        let mut framework_config = match conf.get::<FrameworkConfig>("fw") {
+        let framework_config = match conf.get::<FrameworkConfig>("fw") {
             Ok(fw) => fw,
             Err(error) => match error {
                 ConfigError::NotFound(_) => {
@@ -156,16 +157,6 @@ impl TardisConfig {
         };
 
         env::set_var("RUST_BACKTRACE", if framework_config.adv.backtrace { "1" } else { "0" });
-        // If set log level,reload trace filter
-        if let Some(log_config) = framework_config.log.as_mut() {
-            if let Some(log_level) = std::env::var_os("RUST_LOG") {
-                log_config.level = log_level.into_string().unwrap_or_default();
-            }
-            if crate::basic::tracing::GLOBAL_RELOAD_HANDLE.get().is_some() {
-                let log_level = log_config.level.as_str();
-                crate::basic::tracing::TardisTracing::update_log_level(log_level)?;
-            }
-        }
 
         let config = if framework_config.adv.salt.is_empty() {
             TardisConfig {
@@ -203,8 +194,42 @@ pub(crate) trait ConfCenterProcess: Sync + Send + std::fmt::Debug {
     fn register_to_config(&self, conf: ConfigBuilder<AsyncState>) -> ConfigBuilder<AsyncState>;
 }
 
+#[cfg(feature = "conf-remote")]
+impl ConfCenterConfig {
+    /// Reload configuration on remote configuration change / 远程配置变更时重新加载配置
+    #[must_use]
+    pub fn reload_on_remote_config_change(&self, relative_path: Option<&str>) -> tokio::sync::mpsc::Sender<()> {
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
+        let relative_path = relative_path.map(str::to_string);
+        tokio::spawn(async move {
+            match rx.recv().await {
+                Some(_) => {}
+                None => {
+                    tracing::debug!("[Tardis.config] Configuration update channel closed");
+                    return;
+                }
+            };
+            if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
+                match TardisFuns::hot_reload(config).await {
+                    Ok(_) => {
+                        tracing::info!("[Tardis.config] Tardis hot reloaded");
+                    }
+                    Err(e) => {
+                        tracing::error!("[Tardis.config] Tardis shutdown with error {}", e);
+                    }
+                }
+            } else {
+                tracing::error!("[Tardis.config] Configuration update failed: Failed to load configuration");
+            }
+            tracing::debug!("[Tardis.config] Configuration update listener closed")
+        });
+        tx
+    }
+}
+
 #[cfg(feature = "crypto")]
 fn decryption(text: &str, salt: &str) -> TardisResult<String> {
+    use crate::crypto::crypto_aead::algorithm::Aes128;
     if salt.len() != 16 {
         return Err(TardisError::format_error("[Tardis.Config] [salt] Length must be 16", ""));
     }
@@ -213,7 +238,13 @@ fn decryption(text: &str, salt: &str) -> TardisResult<String> {
         .replace_all(text, |captures: &regex::Captures| {
             let data = captures.get(1).map_or("", |m| m.as_str()).to_string();
             let data = &data[4..data.len() - 1];
-            crate::TardisFuns::crypto.aes.decrypt_ecb(data, salt).expect("[Tardis.Config] Decryption error")
+            let data = hex::decode(data).expect("[Tardis.Config] Decryption error: invalid hex");
+            crate::TardisFuns::crypto
+                .aead
+                .decrypt_ecb::<Aes128>(data, salt)
+                .map(String::from_utf8)
+                .expect("[Tardis.Config] Decryption error")
+                .expect("[Tardis.Config] Uft8 decode error")
         })
         .to_string();
     Ok(text)

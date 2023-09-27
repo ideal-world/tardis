@@ -45,17 +45,18 @@ impl TardisClusterSubscriber for ClusterSubscriberWhoAmI {
 
 pub async fn init_by_conf(conf: &FrameworkConfig, cluster_server: &TardisWebServer) -> TardisResult<()> {
     if let Some(cluster_config) = &conf.cluster {
+        let web_server_config = conf.web_server.as_ref().expect("missing web server config");
         info!("[Tardis.Cluster] Initializing cluster");
         init_node(cluster_server).await?;
         match cluster_config.watch_kind.to_lowercase().as_str() {
             #[cfg(feature = "k8s")]
             "k8s" => {
                 info!("[Tardis.Cluster] Initializing cluster by k8s watch");
-                cluster_watch_by_k8s::init(cluster_config, &conf.web_server).await?;
+                cluster_watch_by_k8s::init(cluster_config, web_server_config).await?;
             }
             "cache" => {
                 info!("[Tardis.Cluster] Initializing cluster by default watch");
-                cluster_watch_by_cache::init(cluster_config, &conf.web_server).await?;
+                cluster_watch_by_cache::init(cluster_config, web_server_config).await?;
             }
             _ => panic!("[Tardis.Cluster] Unsupported cluster watch kind: {}", cluster_config.watch_kind),
         }

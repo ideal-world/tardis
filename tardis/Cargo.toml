@@ -17,9 +17,12 @@ name = "tardis"
 path = "src/lib.rs"
 
 [features]
-default = ["tardis-macros"]
-conf-remote = ["web-client", "async-trait", "rust-crypto"]
-crypto = ["rust-crypto", "rsa"]
+default = ["tardis-macros", "async-trait"]
+conf-remote = ["web-client", "async-trait", "crypto"]
+digest = ["sha1", "sha2", "hmac", "md-5", "sm3", "dep:digest"]
+aead = ["aes-gcm-siv", "aes-gcm", "aes-siv", "dep:aead"]
+block_modes = ["cbc", "ecb", "aes", "cipher"]
+crypto = ["rsa", "digest", "aead", "block_modes"]
 crypto-with-sm = ["crypto", "libsm", "num-bigint"]
 future = ["futures", "async-stream", "futures-util", "async-trait"]
 tls = ["native-tls"]
@@ -48,8 +51,10 @@ fs = ["tokio/fs"]
 process = ["tokio/process"]
 test = ["testcontainers"]
 tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp"]
+tokio-console = ["console-subscriber"]
+tracing-appender = ["dep:tracing-appender"]
 web-server-grpc = ["web-server", "dep:poem-grpc"]
-cluster = ["web-server", "ws-client"]
+cluster = ["web-server", "ws-client", "cache"]
 
 [dependencies]
 # Basic
@@ -65,8 +70,10 @@ rand_core = { version = "0.6" }
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.13" }
 regex = { version = "1.5" }
-url = { version = "2.2" }
+url = { version = "2.2", features = ["serde"] }
 lru = { version = "0.11.0" }
+typed-builder = { version = "0.16" }
+paste = { version = "1.0" }
 # Tokio
 tokio = { version = "1", features = [
     "macros",
@@ -80,7 +87,8 @@ tardis-macros = { version = "0.1.0-beta.11", path = "../tardis-macros", optional
 # Log
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
+tracing-appender = { version = "0.2", optional = true }
+console-subscriber = { version = "0.1", optional = true }
 # Tracing
 tracing-opentelemetry = { version = "0.21", optional = true }
 opentelemetry = { version = "0.20", default-features = false, features = [
@@ -93,15 +101,36 @@ opentelemetry-otlp = { version = "0.13", features = [
     "http-proto",
     "tls",
 ], optional = true }
-
 # TLS
 native-tls = { version = "0.2", optional = true }
 
 # Crypto
-rust-crypto = { version = "0.2", optional = true }
+cipher = { version = "0.4", optional = true, features = ["block-padding", "alloc"]}
+## Digest
+## see https://github.com/RustCrypto/hashes
+sha1 = { version = "0.10", optional = true }
+sha2 = { version = "0.10", optional = true }
+# md5 is no longer considered secure 
+md-5 = { version = "0.10", optional = true }
+# this sm3 lib support digest trait
+sm3 = { version = "0.4", optional = true }
+hmac = { version = "0.12", optional = true }
+digest = { version = "0.10", optional = true }
+# RSA
 rsa = { version = "0.9", features = ["pem"], optional = true }
+# AES
+aead = { version = "0.5", optional = true }
+aes ={ version = "0.8", optional = true }
+aes-gcm-siv = { version = "0.11", optional = true }
+aes-gcm = { version = "0.10", optional = true }
+aes-siv = { version = "0.7", optional = true }
+## block-mode
+cbc = { version = "0.1", optional = true }
+ecb = { version = "0.1", optional = true }
+# 
 libsm = { version = "0.5", optional = true }
 num-bigint = { version = "0.4.3", optional = true }
+
 
 # Future
 futures = { version = "0.3", optional = true }
@@ -180,7 +209,6 @@ testcontainers = { version = "0.14", optional = true }
 # Common
 tokio = { version = "1", features = ["time", "rt", "macros", "sync"] }
 criterion = { version = "0.5" }
-console-subscriber = "0.1.10"
 poem-grpc-build = "0.2.21"
 prost = "0.11.9"
 strip-ansi-escapes = "0.2.0"

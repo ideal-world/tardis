@@ -3,7 +3,7 @@ use std::env;
 use tracing::info;
 
 use tardis::basic::result::TardisResult;
-use tardis::config::config_dto::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, MailConfig, OSConfig, SearchConfig, TardisConfig, WebServerConfig};
+use tardis::config::config_dto::{FrameworkConfig, OSModuleConfig, TardisConfig};
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 
@@ -13,49 +13,8 @@ async fn test_os_client() -> TardisResult<()> {
     TardisFuns::init_log()?;
 
     TardisTestContainer::minio(|url| async move {
-        TardisFuns::init_conf(TardisConfig {
-            cs: Default::default(),
-            fw: FrameworkConfig {
-                app: Default::default(),
-                web_server: WebServerConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                web_client: Default::default(),
-                cache: CacheConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                db: DBConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                mq: MQConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                search: SearchConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                mail: MailConfig {
-                    enabled: false,
-                    ..Default::default()
-                },
-                os: OSConfig {
-                    enabled: true,
-                    kind: "s3".to_string(),
-                    endpoint: url.to_string(),
-                    ak: "minioadmin".to_string(),
-                    sk: "minioadmin".to_string(),
-                    region: "us-east-1".to_string(),
-                    default_bucket: "".to_string(),
-                    modules: Default::default(),
-                },
-                ..Default::default()
-            },
-        })
-        .await?;
+        let os_module_config = OSModuleConfig::builder().kind("s3").endpoint(url).ak("minioadmin").sk("minioadmin").region("us-east-1").build();
+        TardisFuns::init_conf(TardisConfig::builder().fw(FrameworkConfig::builder().os(os_module_config).build()).build()).await?;
         let bucket_name = "test".to_string();
 
         TardisFuns::os().bucket_create_simple(&bucket_name, true).await?;

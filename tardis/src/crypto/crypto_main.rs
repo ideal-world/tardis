@@ -1,5 +1,5 @@
 use super::{
-    crypto_aes::TardisCryptoAes, crypto_base64::TardisCryptoBase64, crypto_digest::TardisCryptoDigest, crypto_hex::TardisCryptoHex, crypto_key::TardisCryptoKey,
+    crypto_aead::TardisCryptoAead, crypto_base64::TardisCryptoBase64, crypto_digest::TardisCryptoDigest, crypto_hex::TardisCryptoHex, crypto_key::TardisCryptoKey,
     crypto_rsa::TardisCryptoRsa,
 };
 
@@ -15,7 +15,7 @@ pub struct TardisCrypto {
     pub key: TardisCryptoKey,
     pub hex: TardisCryptoHex,
     pub base64: TardisCryptoBase64,
-    pub aes: TardisCryptoAes,
+    pub aead: TardisCryptoAead,
     pub rsa: TardisCryptoRsa,
     pub digest: TardisCryptoDigest,
     #[cfg(feature = "crypto-with-sm")]

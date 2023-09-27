@@ -1,8 +1,8 @@
-use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 
 use regex::Regex;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::utils::mapper::{Mapped, Trim, Base64Encode, Base64Decode};
 
 lazy_static! {
     static ref R_PHONE: Regex = Regex::new(r"^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$").expect("Regular parsing error");
@@ -204,105 +204,27 @@ impl TardisField {
 ///     done: bool,
 /// }
 /// ```
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub struct TrimString(pub String);
+pub type TrimString = Mapped<String, Trim>;
+
+// This function is `non_snake_case` for being compatible with the old version
+#[allow(non_snake_case)]
+#[deprecated(since="1.0.0", note="Please use `TrimString::new` instead")]
+pub fn TrimString(string: String) -> TrimString {
+    TrimString::new(string)
+}
 
 impl From<&str> for TrimString {
     fn from(str: &str) -> Self {
-        TrimString(str.to_string())
-    }
-}
-
-impl From<String> for TrimString {
-    fn from(str: String) -> Self {
-        TrimString(str)
-    }
-}
-
-impl Clone for TrimString {
-    fn clone(&self) -> Self {
-        TrimString(self.0.clone())
-    }
-}
-
-impl Display for TrimString {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self.0.trim(), f)
-    }
-}
-
-impl Serialize for TrimString {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0)
-    }
-}
-
-impl<'de> Deserialize<'de> for TrimString {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        Deserialize::deserialize(deserializer).map(TrimString)
+        TrimString::new(str.to_string())
     }
 }
 
 impl AsRef<str> for TrimString {
     fn as_ref(&self) -> &str {
-        self.0.as_str()
+        self.deref()
     }
 }
 
-impl Deref for TrimString {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.trim()
-    }
-}
-
-#[cfg(feature = "web-server")]
-impl crate::web::poem_openapi::types::Type for TrimString {
-    const IS_REQUIRED: bool = true;
-
-    type RawValueType = Self;
-
-    type RawElementValueType = Self;
-
-    fn name() -> std::borrow::Cow<'static, str> {
-        "trim_string".into()
-    }
-
-    fn schema_ref() -> poem_openapi::registry::MetaSchemaRef {
-        String::schema_ref()
-    }
-
-    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
-        Some(self)
-    }
-
-    fn raw_element_iter<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Self::RawElementValueType> + 'a> {
-        Box::new(self.as_raw_value().into_iter())
-    }
-}
-
-#[cfg(feature = "web-server")]
-impl crate::web::poem_openapi::types::ToJSON for TrimString {
-    fn to_json(&self) -> Option<serde_json::Value> {
-        self.0.to_json()
-    }
-}
-
-#[cfg(feature = "web-server")]
-impl crate::web::poem_openapi::types::ParseFromJSON for TrimString {
-    fn parse_from_json(value: Option<serde_json::Value>) -> poem_openapi::types::ParseResult<Self> {
-        let value = value.unwrap_or_default();
-        if let serde_json::Value::String(value) = value {
-            Ok(TrimString(value))
-        } else {
-            Err(poem_openapi::types::ParseError::expected_type(value))
-        }
-    }
-}
+pub type TrimStr<'a> = Mapped<&'a str, Trim>;
+pub type Base64EncodedString = Mapped<String, Base64Encode>;
+pub type Base64DecodedString = Mapped<String, Base64Decode>;

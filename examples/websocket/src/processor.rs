@@ -17,7 +17,7 @@ impl Page {
     #[oai(path = "/echo", method = "get")]
     async fn echo(&self) -> Html<&'static str> {
         Html(
-            r###"
+            r##"
     <body>
         <form id="loginForm">
             Name: <input id="nameInput" type="text" />
@@ -58,14 +58,14 @@ impl Page {
             msgInput.value = "";
         });
     </script>
-    "###,
+    "##,
         )
     }
 
     #[oai(path = "/broadcast", method = "get")]
     async fn broadcast(&self) -> Html<&'static str> {
         Html(
-            r###"
+            r##"
     <body>
         <form id="loginForm">
             Name: <input id="nameInput" type="text" />
@@ -108,7 +108,7 @@ impl Page {
             msgInput.value = "";
         });
     </script>
-    "###,
+    "##,
         )
     }
 

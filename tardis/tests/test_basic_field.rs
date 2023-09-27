@@ -32,8 +32,8 @@ async fn test_basic_field() -> TardisResult<()> {
     assert_eq!(TardisFuns::field.nanoid().len(), 21);
     assert_eq!(TardisFuns::field.nanoid_len(4).len(), 4);
 
-    let ts = TrimString(" a ".to_string());
-    assert_eq!(ts.0, " a ");
+    let ts = TrimString::new(" a ".to_string());
+    assert_eq!(&*ts, " a ");
     let s: &str = &ts;
     assert_eq!(s, "a");
     let ts: TrimString = " a ".into();
