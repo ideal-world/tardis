@@ -115,7 +115,7 @@ where
         match self.nacos_client.get_config(&self.get_nacos_config_descriptor()).await {
             Ok(config_text) => {
                 trace!("[Tardis.config] Nacos Remote config server response: {}", config_text);
-                self.format.parse(None, &config_text).map_err(|error| ConfigError::Foreign(error))
+                self.format.parse(None, &config_text).map_err(ConfigError::Foreign)
             }
             Err(NacosClientError::ReqwestError(e)) => {
                 if e.status().map(|s| u16::from(s) == 404).unwrap_or(false) {

@@ -4,7 +4,10 @@ use std::{collections::HashMap, fmt, pin::Pin, sync::Arc};
 use tokio::sync::{Mutex, RwLock};
 use tracing::error;
 
-use crate::{serde::{Deserialize, Serialize}, TardisFuns};
+use crate::{
+    serde::{Deserialize, Serialize},
+    TardisFuns,
+};
 
 use super::result::TardisResult;
 
@@ -99,7 +102,7 @@ impl TardisContext {
     pub fn to_json(&self) -> TardisResult<String> {
         TardisFuns::json.obj_to_string(self)
     }
-    
+
     pub fn to_base64(&self) -> TardisResult<String> {
         let ctx = TardisContext::default();
         let ctx = TardisFuns::json.obj_to_string(&ctx)?;

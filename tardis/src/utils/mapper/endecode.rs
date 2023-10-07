@@ -1,4 +1,4 @@
-use crate::{TardisFuns, basic::result::TardisResult};
+use crate::{basic::result::TardisResult, TardisFuns};
 
 use super::Mapper;
 pub struct Base64Encode;
@@ -17,7 +17,6 @@ impl<'a> Mapper<&'a str> for Base64Encode {
         TardisFuns::crypto.base64.encode(value)
     }
 }
-
 
 impl Mapper<String> for Base64Decode {
     type Output = TardisResult<String>;

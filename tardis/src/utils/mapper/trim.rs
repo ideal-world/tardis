@@ -15,5 +15,3 @@ impl<'a> Mapper<&'a str> for Trim {
         value.trim()
     }
 }
-
-

@@ -1,14 +1,13 @@
-mod trim;
 mod endecode;
+mod trim;
+pub use endecode::*;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::{
     fmt::{Display, Formatter},
-    marker::PhantomData,
     ops::Deref,
 };
 pub use trim::*;
-pub use endecode::*;
-use serde::{Deserialize, Serialize};
 
 pub trait Mapper<T> {
     type Output;
@@ -22,7 +21,6 @@ where
     M: Mapper<T>,
 {
     pub(crate) inner: M::Output,
-    _modifier_marker: PhantomData<M>,
 }
 
 impl<T, M> Clone for Mapped<T, M>
@@ -31,10 +29,7 @@ where
     M::Output: Clone,
 {
     fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-            _modifier_marker: PhantomData,
-        }
+        Self { inner: self.inner.clone() }
     }
 }
 
@@ -82,7 +77,7 @@ where
     pub fn new(value: T) -> Self {
         Mapped {
             inner: M::map(value),
-            _modifier_marker: PhantomData,
+            // _modifier_marker: PhantomData,
         }
     }
     pub fn into_inner(self) -> M::Output {

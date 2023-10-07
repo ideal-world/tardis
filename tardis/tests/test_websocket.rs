@@ -430,7 +430,7 @@ impl Api {
             |req_msg, _ext| async move {
                 Some(TardisWebsocketResp {
                     msg: req_msg.msg,
-                    to_avatars: req_msg.to_avatars.unwrap_or(vec![]),
+                    to_avatars: req_msg.to_avatars.unwrap_or_default(),
                     ignore_avatars: vec![],
                 })
             },
