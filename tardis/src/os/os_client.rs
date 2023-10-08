@@ -86,32 +86,32 @@ impl TardisOSClient {
         self.get_client().bucket_delete(bucket_name).await
     }
 
-    pub async fn object_create(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<String>) -> TardisResult<()> {
+    pub async fn object_create(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.OSClient] Creating object {}", path);
         self.get_client().object_create(path, content, content_type, bucket_name).await
     }
 
-    pub async fn object_get(&self, path: &str, bucket_name: Option<String>) -> TardisResult<Vec<u8>> {
+    pub async fn object_get(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<Vec<u8>> {
         trace!("[Tardis.OSClient] Getting object {}", path);
         self.get_client().object_get(path, bucket_name).await
     }
 
-    pub async fn object_delete(&self, path: &str, bucket_name: Option<String>) -> TardisResult<()> {
+    pub async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.OSClient] Deleting object {}", path);
         self.get_client().object_delete(path, bucket_name).await
     }
 
-    pub fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<String>) -> TardisResult<String> {
+    pub fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Creating object url {}", path);
         self.get_client().object_create_url(path, expire_sec, bucket_name)
     }
 
-    pub fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<String>) -> TardisResult<String> {
+    pub fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Getting object url {}", path);
         self.get_client().object_get_url(path, expire_sec, bucket_name)
     }
 
-    pub fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<String>) -> TardisResult<String> {
+    pub fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Deleting object url {}", path);
         self.get_client().object_delete_url(path, expire_sec, bucket_name)
     }
@@ -123,17 +123,17 @@ trait TardisOSOperations {
 
     async fn bucket_delete(&self, bucket_name: &str) -> TardisResult<()>;
 
-    async fn object_create(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<String>) -> TardisResult<()>;
+    async fn object_create(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()>;
 
-    async fn object_get(&self, path: &str, bucket_name: Option<String>) -> TardisResult<Vec<u8>>;
+    async fn object_get(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<Vec<u8>>;
 
-    async fn object_delete(&self, path: &str, bucket_name: Option<String>) -> TardisResult<()>;
+    async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()>;
 
-    fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<String>) -> TardisResult<String>;
+    fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
 
-    fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<String>) -> TardisResult<String>;
+    fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
 
-    fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<String>) -> TardisResult<String>;
+    fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
 }
 
 #[async_trait]
@@ -174,7 +174,7 @@ impl TardisOSOperations for TardisOSS3Client {
         }
     }
 
-    async fn object_create(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<String>) -> TardisResult<()> {
+    async fn object_create(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
         let bucket = self.get_bucket(bucket_name)?;
         let response_data = if let Some(content_type) = content_type {
             bucket.put_object_with_content_type(path, content, content_type).await?
@@ -197,7 +197,7 @@ impl TardisOSOperations for TardisOSS3Client {
         }
     }
 
-    async fn object_get(&self, path: &str, bucket_name: Option<String>) -> TardisResult<Vec<u8>> {
+    async fn object_get(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<Vec<u8>> {
         let bucket = self.get_bucket(bucket_name)?;
         let response_data = bucket.get_object(path).await?;
         if response_data.status_code() == 200 {
@@ -216,7 +216,7 @@ impl TardisOSOperations for TardisOSS3Client {
         }
     }
 
-    async fn object_delete(&self, path: &str, bucket_name: Option<String>) -> TardisResult<()> {
+    async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()> {
         let bucket = self.get_bucket(bucket_name)?;
         let response_data = bucket.delete_object(path).await?;
         if response_data.status_code() == 200 || response_data.status_code() == 204 {
@@ -235,23 +235,23 @@ impl TardisOSOperations for TardisOSS3Client {
         }
     }
 
-    fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<String>) -> TardisResult<String> {
+    fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         Ok(self.get_bucket(bucket_name)?.presign_put(path, expire_sec, None)?)
     }
 
-    fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<String>) -> TardisResult<String> {
+    fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         Ok(self.get_bucket(bucket_name)?.presign_get(path, expire_sec, None)?)
     }
 
-    fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<String>) -> TardisResult<String> {
+    fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         Ok(self.get_bucket(bucket_name)?.presign_delete(path, expire_sec)?)
     }
 }
 
 impl TardisOSS3Client {
-    fn get_bucket(&self, bucket_name: Option<String>) -> TardisResult<Bucket> {
+    fn get_bucket(&self, bucket_name: Option<&str>) -> TardisResult<Bucket> {
         if let Some(bucket_name) = bucket_name {
-            Ok(Bucket::new(&bucket_name, self.region.clone(), self.credentials.clone())?.with_path_style())
+            Ok(Bucket::new(bucket_name, self.region.clone(), self.credentials.clone())?.with_path_style())
         } else {
             let bucket =
                 self.default_bucket.as_ref().ok_or_else(|| TardisError::not_found("[Tardis.OSClient] No default bucket configured", "404-tardis-os-default-bucket-not-exist"))?;

@@ -148,6 +148,9 @@ pub use serde_json;
 pub use testcontainers;
 pub use tokio;
 pub use tracing as log;
+// we still need to pub use tracing for some macros
+// in tracing relies on `$crate` witch infers `tracing`.
+pub use tracing;
 pub use url;
 
 use basic::error::TardisErrorWithExt;
