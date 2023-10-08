@@ -71,7 +71,7 @@ async fn refresh(k8s_svc: &str, web_server_port: u16) -> TardisResult<()> {
         .flat_map(|subsets| {
             subsets
                 .iter()
-                .flat_map(|subset| subset.addresses.as_ref().map(|addresses| addresses.iter().map(|address| address.ip.to_string()).collect::<Vec<_>>()).unwrap_or(Vec::new()))
+                .flat_map(|subset| subset.addresses.as_ref().map(|addresses| addresses.iter().map(|address| address.ip.to_string()).collect::<Vec<_>>()).unwrap_or_default())
         })
         .map(|ip: String| (ip, port_mapping))
         .collect::<Vec<_>>();
