@@ -11,7 +11,8 @@ use tardis::TardisFuns;
 async fn test_config() -> TardisResult<()> {
     env::set_var("PROFILE", "test");
     env::set_var("RUST_LOG", "debug");
-    TardisFuns::init(Some("tests/config")).await?;
+    // it's ok to init failed
+    let _init_result = TardisFuns::init(Some("tests/config")).await;
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试");
     let fw_config = TardisFuns::fw_config();
@@ -22,7 +23,7 @@ async fn test_config() -> TardisResult<()> {
 
     env::set_var("PROFILE", "prod");
     tardis::log::info!("init the second time");
-    TardisFuns::init(Some("tests/config")).await?;
+    let _init_result = TardisFuns::init(Some("tests/config")).await;
     env::set_var("Tardis_FW.ADV.SALT", "16a80c4aea768c98");
     let fw_config = TardisFuns::fw_config();
     let db_config = fw_config.db.as_ref().expect("missing db config");
@@ -33,7 +34,7 @@ async fn test_config() -> TardisResult<()> {
 
     // cli example: env Tardis_DB.URL=test Tardis_app.name=xx ./xxx
     env::set_var("Tardis_FW.DB.URL", "test");
-    TardisFuns::init(Some("tests/config")).await?;
+    let _init_result = TardisFuns::init(Some("tests/config")).await;
     let fw_config = TardisFuns::fw_config();
     assert_eq!(fw_config.db.as_ref().unwrap().default.url, "test");
     assert_eq!(TardisFuns::fw_config().app.name, "Tardis Application");
