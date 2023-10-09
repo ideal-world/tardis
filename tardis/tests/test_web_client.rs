@@ -9,7 +9,7 @@ use tardis::config::config_dto::{FrameworkConfig, TardisConfig, WebClientConfig}
 use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_web_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_conf(TardisConfig {

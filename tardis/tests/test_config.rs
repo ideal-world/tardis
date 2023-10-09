@@ -41,7 +41,7 @@ async fn test_config() -> TardisResult<()> {
     Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_crypto_config() -> TardisResult<()> {
     let re = Regex::new(r"(?P<ENC>ENC\([A-Za-z0-9+/]*\))").unwrap();
     let before = r#"{"fw":{"app":{"name":"Hi{x}(a)"},"ak":"ENC(32ns9+s2/3df2v343)"},"sk":"ENC(4ewk2fsmd2)"}"#;

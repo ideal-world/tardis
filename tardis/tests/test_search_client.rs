@@ -6,7 +6,7 @@ use tardis::config::config_dto::{FrameworkConfig, SearchConfig, SearchModuleConf
 use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_search_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;

@@ -5,7 +5,7 @@ use tardis::config::config_dto::{FrameworkConfig, MailModuleConfig, TardisConfig
 use tardis::mail::mail_client::TardisMailSendReq;
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn test_mail_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");

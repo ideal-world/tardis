@@ -3,7 +3,7 @@ use tardis::basic::locale::TardisLocale;
 use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_basic_locale() -> TardisResult<()> {
     TardisFuns::init(Some("tests/config")).await?;
 

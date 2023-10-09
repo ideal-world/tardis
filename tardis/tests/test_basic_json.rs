@@ -7,7 +7,7 @@ use tardis::basic::result::TardisResult;
 use tardis::serde::{Deserialize, Serialize};
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_basic_json() -> TardisResult<()> {
     let test_config = TestConfig {
         project_name: "测试".to_string(),

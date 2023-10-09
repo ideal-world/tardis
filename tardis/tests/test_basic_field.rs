@@ -2,7 +2,7 @@ use tardis::basic::field::TrimString;
 use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_basic_field() -> TardisResult<()> {
     assert!(TardisFuns::field.is_phone("18657120202"));
 
