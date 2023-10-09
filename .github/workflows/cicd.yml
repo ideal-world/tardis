@@ -82,7 +82,7 @@ jobs:
           large-packages: true
 
       - name: Run test
-        run: cargo test --all-features
+        run: RUSTFLAGS="--cfg tokio_unstable" cargo test --all-features
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
