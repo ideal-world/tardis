@@ -20,7 +20,7 @@ use tracing::info;
 
 use crate::entities::RbumExampleResp;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_reldb_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug,tardis=trace,sqlx=off,sqlparser::parser=off");
     TardisFuns::init_log()?;

@@ -171,13 +171,12 @@ impl TardisTracing<LogConfig> {
         let initializer = {
             use crate::config::config_dto::log::TracingAppenderConfig;
             let config_file_layer = |cfg: Option<&TracingAppenderConfig>| {
-                let fmt_file_layer = if let Some(cfg) = &cfg {
+                if let Some(cfg) = &cfg {
                     let file_appender = tracing_appender::rolling::RollingFileAppender::new(cfg.rotation.into(), &cfg.dir, &cfg.filename);
                     FmtLayer::default().with_writer(file_appender).boxed()
                 } else {
                     FmtLayer::default().with_writer(std::io::sink).boxed()
-                };
-                fmt_file_layer
+                }
             };
             initializer.with_configurable_layer(config_file_layer(None), move |cfg| TardisResult::Ok(config_file_layer(cfg.tracing_appender.as_ref())))?
         };

@@ -8,7 +8,7 @@ use tokio::{
     time::sleep,
 };
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_basic_dto() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     let ctx = TardisContext {

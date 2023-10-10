@@ -89,6 +89,11 @@ impl TardisSearchClient {
         TardisResult::Ok(TardisSearchClient { client, server_url: url.clone() })
     }
 
+    fn get_url_with_path<'a>(&self, path: impl IntoIterator<Item = &'a str>) -> Url {
+        let mut url = self.server_url.clone();
+        url.path_segments_mut().expect("search server_url can't be a base").extend(path);
+        url
+    }
     /// Create index / 创建索引
     ///
     /// # Arguments
@@ -102,8 +107,8 @@ impl TardisSearchClient {
     /// ```
     pub async fn create_index(&self, index_name: &str, mappings: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.SearchClient] Creating index: {}", index_name);
-        let url = format!("{}/{}", self.server_url, index_name);
-        let resp = self.client.put_str_to_str(&url, mappings.unwrap_or_default(), None).await?;
+        let url = self.get_url_with_path(Some(index_name));
+        let resp = self.client.put_str_to_str(url, mappings.unwrap_or_default(), None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             Ok(())
         } else {
@@ -129,8 +134,8 @@ impl TardisSearchClient {
     /// ```
     pub async fn create_record(&self, index_name: &str, data: &str) -> TardisResult<String> {
         trace!("[Tardis.SearchClient] Creating record: {}, data:{}", index_name, data);
-        let url = format!("{}/{}/_doc/", self.server_url, index_name);
-        let resp = self.client.post_str_to_str(&url, data, None).await?;
+        let url = self.get_url_with_path([index_name, "_doc"]);
+        let resp = self.client.post_str_to_str(url, data, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             let result = TardisFuns::json.str_to_json(&resp.body.unwrap_or_default())?;
             Ok(result["_id"].as_str().ok_or_else(|| TardisError::bad_request("[Tardis.SearchClient] [_id] structure not found", "400-tardis-search-id-not-exist"))?.to_string())
@@ -157,8 +162,8 @@ impl TardisSearchClient {
     /// ```
     pub async fn get_record(&self, index_name: &str, id: &str) -> TardisResult<String> {
         trace!("[Tardis.SearchClient] Getting record: {}, id:{}", index_name, id);
-        let url = format!("{}/{}/_doc/{}", self.server_url, index_name, id);
-        let resp = self.client.get_to_str(&url, None).await?;
+        let url = self.get_url_with_path([index_name, "_doc", id]);
+        let resp = self.client.get_to_str(url, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             let result = TardisFuns::json.str_to_json(&resp.body.unwrap_or_default())?;
             Ok(result["_source"].to_string())
@@ -185,8 +190,9 @@ impl TardisSearchClient {
     /// ```
     pub async fn simple_search(&self, index_name: &str, q: &str) -> TardisResult<Vec<String>> {
         trace!("[Tardis.SearchClient] Simple search: {}, q:{}", index_name, q);
-        let url = format!("{}/{}/_search?q={}", self.server_url, index_name, q);
-        let resp = self.client.get_to_str(&url, None).await?;
+        let mut url = self.get_url_with_path([index_name, "_search"]);
+        url.query_pairs_mut().append_pair("q", q);
+        let resp = self.client.get_to_str(url, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             Self::parse_search_result(&resp.body.unwrap_or_default())
         } else {
@@ -242,22 +248,18 @@ impl TardisSearchClient {
             from,
             track_scores
         );
-        let mut url = format!("{}/{}/_search", self.server_url, index_name);
-        let mut queries = vec![];
-
+        let mut url = self.server_url.clone();
+        url.path_segments_mut().expect("search server_url can't be a base").extend([index_name, "_search"]);
         if let Some(size) = size {
-            queries.push(format!("size={}", size));
+            url.query_pairs_mut().append_pair("size", &size.to_string());
         }
         if let Some(from) = from {
-            queries.push(format!("from={}", from));
+            url.query_pairs_mut().append_pair("from", &from.to_string());
         }
         if let Some(track_scores) = track_scores {
-            queries.push(format!("track_scores={}", track_scores));
+            url.query_pairs_mut().append_pair("track_scores", &track_scores.to_string());
         }
-        if !queries.is_empty() {
-            url = format!("{}?{}", url, queries.join("&").as_str());
-        }
-        let resp = self.client.post_str_to_str(&url, q, None).await?;
+        let resp = self.client.post_str_to_str(url, q, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             trace!("[Tardis.SearchClient] resp.body: {:?}", &resp.body);
             Ok(TardisFuns::json.str_to_obj(&resp.body.unwrap_or_default())?)
@@ -283,8 +285,8 @@ impl TardisSearchClient {
     /// ```
     pub async fn check_index_exist(&self, index_name: &str) -> TardisResult<bool> {
         trace!("[Tardis.SearchClient] Check index exist: {}", index_name);
-        let url = format!("{}/{}", self.server_url, index_name);
-        let resp = self.client.head_to_void(&url, None).await?;
+        let url = self.get_url_with_path([index_name]);
+        let resp = self.client.head_to_void(url, None).await?;
         match resp.code {
             200 => Ok(true),
             404 => Ok(false),
@@ -321,8 +323,9 @@ impl TardisSearchClient {
         let params = params_vec.join(",");
         let q = format!(r#"{{ "script": {{"source": "{source}", "params":{{{params}}}}}}}"#);
         debug!("[Tardis.SearchClient] Update: {}, q:{}", index_name, q);
-        let url = format!("{}/{}/_update/{}?refresh=true", self.server_url, index_name, id);
-        let resp = self.client.post_str_to_str(&url, &q, None).await?;
+        let mut url = self.get_url_with_path([index_name, "_update", id]);
+        url.query_pairs_mut().append_pair("refresh", "true");
+        let resp = self.client.post_str_to_str(url, &q, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             trace!("[Tardis.SearchClient] resp.body: {:?}", &resp.body);
             Ok(())
@@ -348,8 +351,8 @@ impl TardisSearchClient {
     /// TardisFuns::search().delete_by_query("test_index" r#"{}"#).await.unwrap();
     /// ```
     pub async fn delete_by_query(&self, index_name: &str, q: &str) -> TardisResult<()> {
-        let url = format!("{}/{}/_delete_by_query", self.server_url, index_name);
-        let resp = self.client.post_str_to_str(&url, q, None).await?;
+        let url = self.get_url_with_path([index_name, "_delete_by_query"]);
+        let resp = self.client.post_str_to_str(url, q, None).await?;
         if resp.code >= 200 && resp.code <= 300 {
             debug!("[Tardis.SearchClient] resp.body: {:?}", &resp.body);
             Ok(())

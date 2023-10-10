@@ -14,7 +14,7 @@ use tardis::test::test_container::TardisTestContainer;
 use tardis::TardisFuns;
 use url::Url;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_cache_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;

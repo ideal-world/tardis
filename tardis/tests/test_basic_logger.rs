@@ -5,7 +5,7 @@ use tracing::{error, info};
 
 use crate::app::req::test_req;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_basic_logger() -> TardisResult<()> {
     // env::set_var("RUST_LOG", "OFF");
     env::set_var("RUST_LOG", "info");

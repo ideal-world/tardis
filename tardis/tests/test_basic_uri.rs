@@ -1,7 +1,7 @@
 use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_basic_uri() -> TardisResult<()> {
     assert_eq!(TardisFuns::uri.format("http://idealwrold.group").unwrap().to_string(), "http://idealwrold.group");
     assert_eq!(TardisFuns::uri.format("jdbc:h2:men:iam").unwrap().to_string(), "jdbc:h2:men:iam");

@@ -65,9 +65,26 @@ jobs:
       - name: Check clippy
         run: cargo clippy --all --all-features
    
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          docker-images: false
+          swap-storage: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+
       - name: Run test
         run: cargo test --all-features
-
+        env: 
+          RUSTFLAGS: --cfg tokio_unstable
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:

@@ -1,7 +1,7 @@
 use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_crypto() -> TardisResult<()> {
     use tardis::crypto::crypto_aead::algorithm::*;
     let hex_str = TardisFuns::crypto.hex.encode("测试".as_bytes());

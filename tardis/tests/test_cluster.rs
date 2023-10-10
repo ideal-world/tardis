@@ -21,7 +21,7 @@ use testcontainers::clients;
 use tokio::{process::Command, time::sleep};
 use tracing::info;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_cluster() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=debug");
     let cluster_url = env::var("cluster_url");

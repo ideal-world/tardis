@@ -2,7 +2,7 @@ use tardis::basic::field::TrimString;
 use tardis::basic::result::TardisResult;
 use tardis::TardisFuns;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_basic_field() -> TardisResult<()> {
     assert!(TardisFuns::field.is_phone("18657120202"));
 
@@ -33,7 +33,7 @@ async fn test_basic_field() -> TardisResult<()> {
     assert_eq!(TardisFuns::field.nanoid_len(4).len(), 4);
 
     let ts = TrimString::new(" a ".to_string());
-    assert_eq!(&*ts, " a ");
+    assert_eq!(&*ts, "a");
     let s: &str = &ts;
     assert_eq!(s, "a");
     let ts: TrimString = " a ".into();

@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use regex::Regex;
 
-use crate::utils::mapper::{Mapped, Trim, Base64Encode, Base64Decode};
+use crate::utils::mapper::{Base64Decode, Base64Encode, Mapped, Trim};
 
 lazy_static! {
     static ref R_PHONE: Regex = Regex::new(r"^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$").expect("Regular parsing error");
@@ -208,9 +208,9 @@ pub type TrimString = Mapped<String, Trim>;
 
 // This function is `non_snake_case` for being compatible with the old version
 #[allow(non_snake_case)]
-#[deprecated(since="1.0.0", note="Please use `TrimString::new` instead")]
-pub fn TrimString(string: String) -> TrimString {
-    TrimString::new(string)
+#[deprecated(since = "1.0.0", note = "Please use `TrimString::new` instead")]
+pub fn TrimString(string: impl Into<String>) -> TrimString {
+    TrimString::new(string.into())
 }
 
 impl From<&str> for TrimString {

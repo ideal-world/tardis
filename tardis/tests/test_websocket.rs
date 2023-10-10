@@ -27,7 +27,7 @@ lazy_static! {
     static ref SENDERS: Arc<RwLock<HashMap<String, Sender<TardisWebsocketMgrMessage>>>> = Arc::new(RwLock::new(HashMap::new()));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_websocket() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
@@ -430,7 +430,7 @@ impl Api {
             |req_msg, _ext| async move {
                 Some(TardisWebsocketResp {
                     msg: req_msg.msg,
-                    to_avatars: req_msg.to_avatars.unwrap_or(vec![]),
+                    to_avatars: req_msg.to_avatars.unwrap_or_default(),
                     ignore_avatars: vec![],
                 })
             },
