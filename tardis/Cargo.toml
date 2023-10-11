@@ -17,11 +17,12 @@ name = "tardis"
 path = "src/lib.rs"
 
 [features]
-default = ["tardis-macros", "async-trait"]
+default = ["tardis-macros", "async-trait", "base64"]
 conf-remote = ["web-client", "async-trait", "crypto"]
 digest = ["sha1", "sha2", "hmac", "md-5", "sm3", "dep:digest"]
 aead = ["aes-gcm-siv", "aes-gcm", "aes-siv", "dep:aead"]
 block_modes = ["cbc", "ecb", "aes", "cipher"]
+base64 = []
 crypto = ["rsa", "digest", "aead", "block_modes"]
 crypto-with-sm = ["crypto", "libsm", "num-bigint"]
 future = ["futures", "async-stream", "futures-util", "async-trait"]

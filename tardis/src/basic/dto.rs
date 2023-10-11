@@ -103,12 +103,6 @@ impl TardisContext {
         TardisFuns::json.obj_to_string(self)
     }
 
-    pub fn to_base64(&self) -> TardisResult<String> {
-        let ctx = TardisContext::default();
-        let ctx = TardisFuns::json.obj_to_string(&ctx)?;
-        Ok(TardisFuns::crypto.base64.encode(ctx))
-    }
-
     pub async fn add_ext(&self, key: &str, value: &str) -> TardisResult<()> {
         self.ext.write().await.insert(key.to_string(), value.to_string());
         Ok(())

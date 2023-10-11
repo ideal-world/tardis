@@ -1245,8 +1245,8 @@ pub mod cache;
 pub mod cluster;
 
 pub mod config;
-#[cfg(feature = "crypto")]
-#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
+#[cfg(any(feature = "crypto", feature = "base64"))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "crypto", feature = "base64"))))]
 pub mod crypto;
 #[cfg(feature = "reldb-core")]
 #[cfg_attr(docsrs, doc(cfg(feature = "reldb-core")))]
