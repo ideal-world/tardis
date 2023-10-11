@@ -12,7 +12,6 @@ use crate::basic::fetch_profile;
 use crate::basic::locale::TardisLocale;
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::FrameworkConfig;
-use crate::TardisFuns;
 use tracing::{debug, info};
 
 use super::config_dto::{ConfCenterConfig, TardisConfig};
@@ -210,7 +209,7 @@ impl ConfCenterConfig {
                 }
             };
             if let Ok(config) = TardisConfig::init(relative_path.as_deref()).await {
-                match TardisFuns::hot_reload(config).await {
+                match crate::TardisFuns::hot_reload(config).await {
                     Ok(_) => {
                         tracing::info!("[Tardis.config] Tardis hot reloaded");
                     }

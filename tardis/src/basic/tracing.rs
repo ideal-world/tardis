@@ -10,6 +10,7 @@ use crate::consts::*;
 use tracing_subscriber::layer::Layered;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
+#[allow(unused_imports)]
 use tracing_subscriber::{fmt::Layer as FmtLayer, layer::SubscriberExt, prelude::*, reload::Layer as ReloadLayer, Registry};
 #[derive(Default)]
 pub struct TardisTracing<C = LogConfig> {
