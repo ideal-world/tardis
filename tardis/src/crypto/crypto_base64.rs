@@ -30,8 +30,7 @@ impl TardisCryptoBase64 {
 
 impl TardisContext {
     pub fn to_base64(&self) -> TardisResult<String> {
-        let ctx = TardisContext::default();
-        let ctx = TardisFuns::json.obj_to_string(&ctx)?;
+        let ctx = TardisFuns::json.obj_to_string(&self)?;
         Ok(TardisCryptoBase64.encode(ctx))
     }
 }

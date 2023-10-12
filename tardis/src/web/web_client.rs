@@ -47,6 +47,10 @@ impl<T: Serialize> TardisRequestBody for Json<'_, T> {
     }
 }
 
+pub fn string_pair_to_str_pair(p: &(String, String)) -> (&str, &str) {
+    (&p.0, &p.1)
+}
+
 impl TardisWebClient {
     pub fn init(WebClientModuleConfig { connect_timeout_sec, .. }: &WebClientModuleConfig) -> TardisResult<TardisWebClient> {
         info!("[Tardis.WebClient] Initializing");
@@ -188,13 +192,17 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
-    async fn request(
+    async fn request<K, V>(
         &self,
         method: Method,
         url: impl IntoUrl,
-        headers: impl IntoIterator<Item = (&str, &str)>,
+        headers: impl IntoIterator<Item = (K, V)>,
         body: impl TardisRequestBody,
-    ) -> TardisResult<(u16, HashMap<String, String>, Response)> {
+    ) -> TardisResult<(u16, HashMap<String, String>, Response)>
+    where
+        K: Into<String>,
+        V: Into<String>,
+    {
         let mut url = url.into_url()?;
         TardisFuns::uri.sort_url_query(&mut url);
         let method_str = method.to_string();
@@ -204,7 +212,7 @@ impl TardisWebClient {
             result = result.header(key, value);
         }
         for (key, value) in headers {
-            result = result.header(key, value);
+            result = result.header(key.into(), value.into());
         }
         result = body.apply_on(result);
         let response = result.send().await?;
