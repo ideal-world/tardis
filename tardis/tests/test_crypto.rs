@@ -9,7 +9,7 @@ async fn test_crypto() -> TardisResult<()> {
     assert_eq!(str, "测试".as_bytes());
 
     let b64_str = TardisFuns::crypto.base64.encode("测试");
-    let str = TardisFuns::crypto.base64.decode(b64_str)?;
+    let str = TardisFuns::crypto.base64.decode_to_string(b64_str)?;
     assert_eq!(str, "测试");
 
     assert_eq!(TardisFuns::crypto.digest.md5("测试")?, "db06c78d1e24cf708a14ce81c9b617ec");

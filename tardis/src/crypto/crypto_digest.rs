@@ -8,6 +8,8 @@ use digest::KeyInit;
 
 use output::*;
 pub struct TardisCryptoDigest;
+
+/// algorithms for digest
 pub mod algorithm {
     pub use digest::Digest;
     pub use hmac::{Hmac, Mac};
@@ -27,6 +29,8 @@ pub mod output {
 
     use crate::utils::mapper::Mapper;
 
+    /// Mapper digest output into hexcode
+    #[derive(Default, Debug)]
     pub struct HexCodeMapper<A: digest::Digest>(PhantomData<A>);
     impl<A: digest::Digest> Mapper<digest::Output<A>> for HexCodeMapper<A> {
         type Output = String;
@@ -35,6 +39,8 @@ pub mod output {
         }
     }
 
+    /// Mapper digest output into bytes
+    #[derive(Default, Debug)]
     pub struct BytesMapper<A: digest::Digest>(PhantomData<A>);
     impl<A: digest::Digest> Mapper<digest::Output<A>> for BytesMapper<A> {
         type Output = Vec<u8>;
@@ -43,6 +49,7 @@ pub mod output {
         }
     }
 }
+
 /// Digest handle / 摘要处理
 ///
 /// # Examples
@@ -93,6 +100,11 @@ impl TardisCryptoDigest {
     }
 
     /// Digest the data, and map the output into hexcode by default.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// TardisCryptoDigest.digest::<algorithm::Sha1>("测试").unwrap();
+    /// ```
     pub fn digest<A: digest::Digest>(&self, data: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest_hex::<A>(data)
     }
@@ -108,6 +120,12 @@ impl TardisCryptoDigest {
     }
 
     /// Digest the data, and map the output into a specific type which determined by `M`.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// use tardis::crypto::crypto_digest::{TardisCryptoDigest, algorithm::Sha1, output::HexCodeMapper};
+    /// let hexcode = TardisCryptoDigest.digest_as::<Sha1, HexCodeMapper<Sha1>>("测试").unwrap();
+    /// ```
     pub fn digest_as<A: digest::Digest, M: Mapper<digest::Output<A>>>(&self, data: impl AsRef<[u8]>) -> TardisResult<M::Output> {
         self.digest_iter_as::<A, M, _>(Some(data))
     }
@@ -129,10 +147,12 @@ impl TardisCryptoDigest {
         Ok(out)
     }
 
+    /// Digest the data, and map the output into hexcode by default.
     pub fn digest_hmac<A: Mac + KeyInit>(&self, data: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest_hmac_raw::<A>(data, key).map(hex::encode)
     }
 
+    /// Digest the data
     pub fn digest_hmac_raw<A: Mac + KeyInit>(&self, data: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> TardisResult<Vec<u8>> {
         let mut hmac = <A as Mac>::new_from_slice(key.as_ref()).map_err(|_| TardisError::internal_error("hmac key with invalid length", "406-tardis-crypto-hmac-key-invalid"))?;
         hmac.update(data.as_ref());

@@ -206,9 +206,11 @@ impl TardisField {
 /// ```
 pub type TrimString = Mapped<String, Trim>;
 
-// This function is `non_snake_case` for being compatible with the old version
+/// This function is `non_snake_case` for being compatible with the old version
+/// # Deprecated
+/// Please use `TrimString::new` instead
 #[allow(non_snake_case)]
-#[deprecated(since = "1.0.0", note = "Please use `TrimString::new` instead")]
+// #[deprecated(since = "1.0.0", note = "Please use `TrimString::new` instead")]
 pub fn TrimString(string: impl Into<String>) -> TrimString {
     TrimString::new(string.into())
 }
@@ -221,6 +223,12 @@ impl From<&str> for TrimString {
 
 impl AsRef<str> for TrimString {
     fn as_ref(&self) -> &str {
+        self.deref()
+    }
+}
+
+impl TrimString {
+    pub fn as_str(&self) -> &str {
         self.deref()
     }
 }

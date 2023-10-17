@@ -115,22 +115,32 @@ impl TardisMailClient {
     }
 }
 
+/// # TardisMailSendReq
+/// The mail send request.
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct TardisMailSendReq {
+    /// Email subject.
     #[builder(default, setter(into))]
     pub subject: String,
+    /// Plain text body. If `html_body` is also set, this will be used as single part of a multipart message.
     #[builder(default, setter(into))]
     pub txt_body: String,
+    /// HTML body.
     #[builder(default, setter(into, strip_option))]
     pub html_body: Option<String>,
+    /// Email recipients.
     #[builder(default, setter(into))]
     pub to: Vec<String>,
+    /// Email reply-to addresses.
     #[builder(default, setter(into))]
     pub reply_to: Vec<String>,
+    /// Email CC headers.
     #[builder(default, setter(into))]
     pub cc: Vec<String>,
+    /// Email BCC headers.
     #[builder(default, setter(into))]
     pub bcc: Vec<String>,
+    /// Email sender.
     #[builder(default, setter(into, strip_option))]
     pub from: Option<String>,
 }

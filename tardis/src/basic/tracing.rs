@@ -12,11 +12,20 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 #[allow(unused_imports)]
 use tracing_subscriber::{fmt::Layer as FmtLayer, layer::SubscriberExt, prelude::*, reload::Layer as ReloadLayer, Registry};
+
+/// # Tardis Tracing
+/// Tardis tracing is a wrapper of tracing-subscriber. It provides configurable layers as runtime.
+///
+/// To initialize the tracing, use [TardisTracingInitializer].
+///
+/// To update config at runtime, use method [`TardisTracing::update_config`].
+///
 #[derive(Default)]
 pub struct TardisTracing<C = LogConfig> {
     configer: Vec<Box<dyn Fn(&C) -> TardisResult<()> + Send + Sync>>,
 }
 
+// create a configurable layer, recieve a layer and a configer, return a reload layer and a config function
 fn create_configurable_layer<L, S, C>(layer: L, configer: impl Fn(&C) -> TardisResult<L> + Send + Sync) -> TardisResult<(ReloadLayer<L, S>, impl Fn(&C) -> TardisResult<()>)> {
     let (reload_layer, reload_handle) = ReloadLayer::new(layer);
     let config_layer_fn = move |conf: &C| -> TardisResult<()> {
@@ -117,7 +126,7 @@ impl TardisTracing<LogConfig> {
     }
 
     /// Update tardis tracing config, and this will reload all configurable layers
-    ///
+    /// LogConfig
     pub fn update_config(&self, config: &LogConfig) -> TardisResult<()> {
         for configer in &self.configer {
             (configer)(config)?

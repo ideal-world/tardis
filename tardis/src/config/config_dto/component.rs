@@ -39,11 +39,14 @@ pub use os::*;
 pub struct TardisComponentConfig<T, C: Default = ()> {
     #[serde(flatten)]
     #[builder(default, setter(into))]
+    /// common config for all modules
     common: C,
     #[serde(flatten)]
+    /// the default module config
     pub default: T,
     #[builder(default, setter(into))]
     #[serde(default = "Default::default")]
+    /// submodule configs
     pub modules: HashMap<String, T>,
 }
 

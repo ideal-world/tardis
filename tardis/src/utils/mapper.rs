@@ -9,11 +9,42 @@ use std::{
 };
 pub use trim::*;
 
+/// The trait for mapping T into another type. A trait version of `Fn(T) -> Output`
 pub trait Mapper<T> {
     type Output;
     fn map(value: T) -> Self::Output;
 }
 
+/// A wrapper of the mapped value of a mapper `M: Mapper<T>`.
+///
+/// Notice that the computation of the mapped value is **not** lazy. It will be computed when the `Mapped` value is created.
+///
+/// To take the inner output value, use [`Mapped::into_inner()`].
+///
+/// # Deserialize
+/// It can be used as a type to deserialize from json.
+/// ```ignore
+/// #[derive(Serialize, Deserialize)]
+/// struct SomeReq {
+///     trimed_string: Mapped<String, Trim>,
+///     base64_decoded: Mapped<String, Base64Decoded>
+/// }
+///
+/// ```
+///
+/// # Combination
+/// You can combinate multiple mappers into one mapper by using tuple.
+/// ```ignore
+/// #[derive(Serialize, Deserialize)]
+/// struct SomeReq {
+///     trimed_base64_decoded_string: Mapped<String, (Trim, Base64Decode)>,
+/// }
+/// ```
+///
+/// # Work with poem-openapi
+/// Enable feature `web-server` to allow you use `Mapped` in poem-openapi object.
+/// A `Mapped` value implements `poem-openapi`'s `Type`, `ToJSON` and `ParseFromJSON` trait.
+///
 #[derive(Copy)]
 #[repr(transparent)]
 pub struct Mapped<T, M>
@@ -74,12 +105,12 @@ impl<T, M> Mapped<T, M>
 where
     M: Mapper<T>,
 {
+    /// create a new mapped value
     pub fn new(value: T) -> Self {
-        Mapped {
-            inner: M::map(value),
-            // _modifier_marker: PhantomData,
-        }
+        Mapped { inner: M::map(value) }
     }
+
+    /// take the inner value
     pub fn into_inner(self) -> M::Output {
         self.inner
     }

@@ -9,6 +9,7 @@ macro_rules! gen_rand_n_hex {
         $(
             paste! {
                 #[inline]
+                #[doc = "generate a random hex string with length of " $N "."]
                 pub fn [<rand_ $N _hex>](&self) -> String {
                     self.rand_n_hex::<$N>()
                 }
@@ -21,6 +22,7 @@ macro_rules! gen_rand_n_bytes {
         $(
             paste! {
                 #[inline]
+                #[doc = "generate random " $N " bytes."]
                 pub fn [<rand_ $N _bytes>](&self) -> [u8; $N] {
                     self.rand_n_bytes::<$N>()
                 }
@@ -29,11 +31,14 @@ macro_rules! gen_rand_n_bytes {
     };
 }
 impl TardisCryptoKey {
+    /// generate a random hex string with length of N
     pub fn rand_n_hex<const N: usize>(&self) -> String {
         let mut key = vec![0; N / 2];
         rand::rngs::OsRng.fill_bytes(&mut key);
         hex::encode(key)
     }
+
+    /// generate random N bytes
     pub fn rand_n_bytes<const N: usize>(&self) -> [u8; N] {
         let mut key = [0; N];
         rand::rngs::OsRng.fill_bytes(&mut key);
