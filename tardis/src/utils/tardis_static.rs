@@ -33,7 +33,7 @@ macro_rules! tardis_static {
     ($(#[$attr:meta])* $vis:vis async $ident:ident :$Type:ty = $init: expr; $($rest: tt)*) => {
         $(#[$attr])*
         $vis async fn $ident() -> &'static $Type {
-            use tokio::sync::OnceCell;
+            use $crate::tokio::sync::OnceCell;
             static STATIC_VAL: OnceCell<$Type> = OnceCell::const_new();
 
             STATIC_VAL.get_or_init(|| $init).await
