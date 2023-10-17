@@ -109,6 +109,7 @@ impl<T, _MW, _D> WebServerModule<T, _MW, _D> {
         }
     }
 
+    /// set the data for this module, this function will replace the previous data
     pub fn data<D>(self, data: D) -> WebServerModule<T, _MW, D> {
         WebServerModule {
             apis: self.apis,
@@ -118,6 +119,7 @@ impl<T, _MW, _D> WebServerModule<T, _MW, _D> {
         }
     }
 
+    /// set the middleware for this module, this function will replace the previous middleware
     pub fn middleware<MW>(self, middleware: MW) -> WebServerModule<T, MW, _D> {
         WebServerModule {
             apis: self.apis,
@@ -127,6 +129,7 @@ impl<T, _MW, _D> WebServerModule<T, _MW, _D> {
         }
     }
 
+    /// set the options for this module, this function will replace the previous options
     pub fn options(self, options: WebServerModuleOption) -> Self {
         WebServerModule { options, ..self }
     }
@@ -173,6 +176,7 @@ impl Default for WebServerGrpcModule {
 
 #[cfg(feature = "web-server-grpc")]
 impl<_MW, _D> WebServerGrpcModule<_MW, _D> {
+    /// set the data for this module, this function will replace the previous data
     pub fn data<D>(self, data: D) -> WebServerGrpcModule<_MW, D> {
         WebServerGrpcModule {
             data: Some(data),
@@ -182,6 +186,7 @@ impl<_MW, _D> WebServerGrpcModule<_MW, _D> {
         }
     }
 
+    /// set the middleware for this module, this function will replace the previous middleware
     pub fn middleware<MW>(self, middleware: MW) -> WebServerGrpcModule<MW, _D> {
         WebServerGrpcModule {
             data: self.data,
@@ -194,6 +199,7 @@ impl<_MW, _D> WebServerGrpcModule<_MW, _D> {
 
 #[cfg(feature = "web-server-grpc")]
 impl<MW, D> WebServerGrpcModule<MW, D> {
+    /// with new grpc service T, T must be a [`poem_grpc::Service`]
     pub fn with_grpc_service<T: Clone>(mut self, service: T) -> Self
     where
         T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + Send + Sync + 'static,
@@ -202,6 +208,8 @@ impl<MW, D> WebServerGrpcModule<MW, D> {
         self.grpc_router_mapper = Arc::new(move |route| previous_mapper(route).add_service(service.clone()));
         self
     }
+
+    /// with grpc descriptor
     pub fn with_descriptor(mut self, descriptor: Vec<u8>) -> Self {
         self.descriptor_sets.push(descriptor);
         self

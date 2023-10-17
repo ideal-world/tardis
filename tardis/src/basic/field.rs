@@ -2,14 +2,17 @@ use std::ops::Deref;
 
 use regex::Regex;
 
-use crate::utils::mapper::{Base64Decode, Base64Encode, Mapped, Trim};
+use crate::{
+    tardis_static,
+    utils::mapper::{Base64Decode, Base64Encode, Mapped, Trim},
+};
 
-lazy_static! {
-    static ref R_PHONE: Regex = Regex::new(r"^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$").expect("Regular parsing error");
-    static ref R_MAIL: Regex = Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+tardis_static! {
+    pub r_phone: Regex = Regex::new(r"^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$").expect("Regular parsing error");
+    pub r_mail: Regex = Regex::new(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
         .expect("Regular parsing error");
-    static ref R_CODE_NCS: Regex = Regex::new(r"^[a-z0-9_]+$").expect("Regular parsing error");
-    static ref R_CODE_CS: Regex = Regex::new(r"^[A-Za-z0-9_]+$").expect("Regular parsing error");
+    pub r_code_ncs: Regex = Regex::new(r"^[a-z0-9_]+$").expect("Regular parsing error");
+    pub r_code_cs: Regex = Regex::new(r"^[A-Za-z0-9_]+$").expect("Regular parsing error");
 }
 
 static BASE62: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -42,24 +45,24 @@ pub struct TardisField;
 impl TardisField {
     /// Determine if it is a cell phone number (only supports mainland China) / 判断是否是手机号（仅支持中国大陆）
     pub fn is_phone(&self, phone: &str) -> bool {
-        R_PHONE.is_match(phone)
+        r_phone().is_match(phone)
     }
 
     /// Determine if it is a email / 判断是否是邮箱
     pub fn is_mail(&self, mail: &str) -> bool {
-        R_MAIL.is_match(mail)
+        r_mail().is_match(mail)
     }
 
     /// Determine if it contains only numbers, lowercase letters and underscores /
     /// 判断是否只包含数字、小写字母及下划线
     pub fn is_code_cs(&self, str: &str) -> bool {
-        R_CODE_CS.is_match(str)
+        r_code_cs().is_match(str)
     }
 
     /// Determine if only numbers, upper and lower case letters and underscores are included /
     /// 判断是否只包含数字、大小写字母及下划线
     pub fn is_code_ncs(&self, str: &str) -> bool {
-        R_CODE_NCS.is_match(str)
+        r_code_ncs().is_match(str)
     }
 
     /// Generate NanoId / 生成NanoId

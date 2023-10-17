@@ -131,5 +131,5 @@ where
     pub records: Vec<T>,
 }
 
-#[derive(Object, Deserialize, Serialize, Clone, Debug)]
-pub struct Void {}
+#[derive(Object, Deserialize, Serialize, Clone, Debug, Default, Copy)]
+pub struct Void;
