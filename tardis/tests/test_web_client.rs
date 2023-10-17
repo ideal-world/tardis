@@ -7,6 +7,7 @@ use reqwest::StatusCode;
 use tardis::basic::result::TardisResult;
 use tardis::config::config_dto::{FrameworkConfig, TardisConfig, WebClientConfig};
 use tardis::serde::{Deserialize, Serialize};
+use tardis::web::web_client::str_pair_to_string_pair;
 use tardis::TardisFuns;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -21,15 +22,15 @@ async fn test_web_client() -> TardisResult<()> {
     let res = reqwest::get("https://postman-echo.com/get").await?;
     assert_eq!(res.status(), StatusCode::OK);
 
-    let response = TardisFuns::web_client().get_to_str("https://www.baidu.com", [("User-Agent", "Tardis")]).await?;
+    let response = TardisFuns::web_client().get_to_str("https://www.baidu.com", [str_pair_to_string_pair(("User-Agent", "Tardis"))]).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains("baidu"));
 
-    let response = TardisFuns::web_client().get_to_str("https://postman-echo.com/get", [("User-Agent", "Tardis")]).await?;
+    let response = TardisFuns::web_client().get_to_str("https://postman-echo.com/get", [str_pair_to_string_pair(("User-Agent", "Tardis"))]).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
     assert!(response.body.unwrap().contains("Tardis"));
 
-    let response = TardisFuns::web_client().delete_to_void("https://postman-echo.com/delete", [("User-Agent", "Tardis")]).await?;
+    let response = TardisFuns::web_client().delete_to_void("https://postman-echo.com/delete", [str_pair_to_string_pair(("User-Agent", "Tardis"))]).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
 
     let response = TardisFuns::web_client().post_str_to_str("https://postman-echo.com/post", "Raw body contents", None).await?;

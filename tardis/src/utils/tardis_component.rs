@@ -21,6 +21,7 @@ impl<T> TardisComponent<T> {
 }
 
 impl<T: Default> TardisComponent<T> {
+    /// Get the inner value if it's initialized, otherwise a `None` is returned.
     pub fn get_option(&self) -> Option<Arc<T>> {
         self.0.get().map(|x| x.get())
     }

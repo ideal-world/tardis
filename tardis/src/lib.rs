@@ -91,8 +91,10 @@
 //!     // Initial configuration
 //!     TardisFuns::init("config").await?;
 //!     // Register the processor and start the web service
-//!     TardisFuns::web_server().add_module("", Api).start().await?;
-//!     TardisFuns::web_server().await;
+//!     let web_server = TardisFuns::web_server();
+//!     web_server.add_module("", Api).start().await?;
+//!     // wait web service stop
+//!     web_server.await;
 //!     Ok(());
 //! }
 //! ```
@@ -371,42 +373,23 @@ impl TardisFuns {
     /// # Examples
     ///
     /// ```ignore
-    /// use tardis::basic::config::{CacheConfig, DBConfig, FrameworkConfig, MQConfig, SearchConfig, MailConfig, OSConfig, TardisConfig, WebServerConfig};
+    /// use tardis::basic::config::{CacheConfig, FrameworkConfig, TardisConfig};
     /// use tardis::TardisFuns;
-    /// let result = TardisFuns::init_conf(TardisConfig {
-    ///             cs: Default::default(),
-    ///             fw: FrameworkConfig {
-    ///                 app: Default::default(),
-    ///                 web_server: WebServerConfig {
-    ///                     enabled: false,
-    ///                     ..Default::default()
-    ///                 },
-    ///                 web_client: Default::default(),
-    ///                 cache: CacheConfig { enabled: true, url:"".to_string(),..Default::default() },
-    ///                 db: DBConfig {
-    ///                     enabled: false,
-    ///                     ..Default::default()
-    ///                 },
-    ///                 mq: MQConfig {
-    ///                     enabled: false,
-    ///                     ..Default::default()
-    ///                 },
-    ///                 search: SearchConfig{
-    ///                    enabled: false,
-    ///                    ..Default::default()
-    ///                 },
-    ///                 mail: MailConfig{
-    ///                    enabled: false,
-    ///                    ..Default::default()
-    ///                 },
-    ///                 os: OSConfig{
-    ///                    enabled: false,
-    ///                    ..Default::default()
-    ///                 },
-    ///                 adv: Default::default(),
-    ///             },
-    ///         })
-    ///         .await;
+    /// let cache_module_config = CacheModuleConfig::builder().url(url).build();
+    /// TardisFuns::init_conf(
+    ///     TardisConfig::builder()
+    ///         .fw(FrameworkConfig::builder()
+    ///             .cache(
+    ///                 CacheConfig::builder()
+    ///                 .default(
+    ///                     cache_module_config.clone()
+    ///                 ).modules([
+    ///                     ("m1".to_string(), cache_module_config.clone())
+    ///                 ]).build())
+    ///             .build())
+    ///         .build(),
+    /// )
+    /// .await?;
     /// ```
     pub async fn init_conf(conf: TardisConfig) -> TardisResult<()> {
         let custom_config = conf.cs.iter().map(|(k, v)| (k.clone(), CachedJsonValue::new(v.clone()))).collect::<HashMap<_, _>>();
@@ -490,10 +473,10 @@ impl TardisFuns {
     ///
     ///  ```ignore
     /// use tardis::TardisFuns;
-    /// let funs = TardisFuns::inst("product".to_string(), None);
+    /// let funs = TardisFuns::inst("product", None);
     /// ```
-    pub fn inst(code: String, lang: Option<String>) -> TardisFunsInst {
-        TardisFunsInst::new(code, lang)
+    pub fn inst(code: impl Into<String>, lang: Option<String>) -> TardisFunsInst {
+        TardisFunsInst::new(code.into(), lang)
     }
 
     /// Build single module with db connect by the specified code / 通过指定的 code 构造携带数据库连接的单模块实例
@@ -507,11 +490,11 @@ impl TardisFuns {
     ///
     ///  ```ignore
     /// use tardis::TardisFuns;
-    /// let funs = TardisFuns::inst_with_db_conn("product".to_string(), None);
+    /// let funs = TardisFuns::inst_with_db_conn("product", None);
     /// ```
     #[cfg(feature = "reldb-core")]
-    pub fn inst_with_db_conn(code: String, lang: Option<String>) -> TardisFunsInst {
-        TardisFunsInst::new_with_db_conn(code, lang)
+    pub fn inst_with_db_conn(code: impl Into<String>, lang: Option<String>) -> TardisFunsInst {
+        TardisFunsInst::new_with_db_conn(code.into(), lang)
     }
 
     /// Get the custom configuration object / 获取自定义配置对象

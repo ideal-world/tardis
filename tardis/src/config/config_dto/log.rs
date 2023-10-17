@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::filter::Directive;
 use typed_builder::TypedBuilder;
@@ -26,18 +28,24 @@ pub use tracing_appender::*;
 pub struct LogConfig {
     #[builder(default = "info".parse::<Directive>().expect(""), setter(into))]
     #[serde(deserialize_with = "deserialize_directive", serialize_with = "serialize_directive")]
+    /// the defualt log level
     pub level: Directive,
     #[builder(default, setter(into))]
     #[serde(deserialize_with = "deserialize_directives", serialize_with = "serialize_directives")]
+    /// tracing filtering directive, e.g. `tardis=debug,sqlx=off`
     pub directives: Vec<Directive>,
     #[cfg(feature = "tracing")]
     #[builder(default)]
+    /// open telemetry tracing config
     pub tracing: TracingConfig,
     #[cfg(feature = "tracing-appender")]
     #[builder(default)]
     /// tracing appender config
     /// a `None` value means no file output
     pub tracing_appender: Option<TracingAppenderConfig>,
+    /// extension config for custom tracing layers
+    #[builder(default)]
+    pub ext: HashMap<String, crate::serde_json::Value>,
 }
 
 fn serialize_directive<S>(value: &Directive, serializer: S) -> Result<S::Ok, S::Error>

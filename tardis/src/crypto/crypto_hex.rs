@@ -1,4 +1,7 @@
 use crate::basic::{error::TardisError, result::TardisResult};
+
+/// # TardisCryptoHex
+/// Encode and decode with hex.
 pub struct TardisCryptoHex;
 
 impl TardisCryptoHex {

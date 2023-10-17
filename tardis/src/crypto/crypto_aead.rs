@@ -12,7 +12,18 @@ use rand::rngs::ThreadRng;
 /// Aead (Authenticated Encryption with Associated Data）
 ///
 /// This part includes aead encryption and decryption, and cbc/ecb encryption and decryption.
-pub struct TardisCryptoAead {}
+///
+/// # Example
+/// ```ignore
+/// use tardis::crypto::crypto_aead::TardisCryptoAead;
+/// use tardis::crypto::crypto_aead::algorithm::Aes128;
+///
+/// TardisCryptoAead.encrypt_cbc::<Aes128>(message, iv, key);
+/// TardisCryptoAead.decrypt_cbc::<Aes128>(message, iv, key);
+/// ```
+///
+///
+pub struct TardisCryptoAead;
 
 impl TardisCryptoAead {
     /// Encrypy with cbc,
@@ -111,6 +122,7 @@ impl TardisCryptoAead {
     }
 }
 
+/// algorithms of aead
 pub mod algorithm {
     pub use aes::{Aes128, Aes192, Aes256};
     pub use aes_gcm::{Aes128Gcm, Aes256Gcm};

@@ -419,7 +419,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
             format!("{url}/other/context_in_header").as_str(),
-            [(web_server_config.context_conf.context_header_name.as_str(), "sss")],
+            [(web_server_config.context_conf.context_header_name.clone(), "sss".to_owned())],
         )
         .await?
         .body
@@ -430,7 +430,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
             format!("{url}/other/context_in_header").as_str(),
-            [(web_server_config.context_conf.context_header_name.as_str(), "c3Nz")],
+            [(web_server_config.context_conf.context_header_name.clone(), "c3Nz".to_owned())],
         )
         .await?
         .body
@@ -452,8 +452,8 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .get::<TardisResp<String>>(
             format!("{url}/other/context_in_header").as_str(),
             [(
-                web_server_config.context_conf.context_header_name.as_str(),
-                TardisFuns::json.obj_to_string(&context).unwrap().as_str(),
+                web_server_config.context_conf.context_header_name.clone(),
+                TardisFuns::json.obj_to_string(&context).unwrap(),
             )],
         )
         .await?
@@ -466,8 +466,8 @@ async fn test_context(url: &str) -> TardisResult<()> {
         .get::<TardisResp<String>>(
             format!("{url}/other/context_in_header").as_str(),
             [(
-                web_server_config.context_conf.context_header_name.as_str(),
-                TardisFuns::crypto.base64.encode(&TardisFuns::json.obj_to_string(&context).unwrap()).as_str(),
+                web_server_config.context_conf.context_header_name.clone(),
+                TardisFuns::crypto.base64.encode(&TardisFuns::json.obj_to_string(&context).unwrap()),
             )],
         )
         .await?
@@ -480,7 +480,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
             format!("{url}/other/context_in_header").as_str(),
-            [(web_server_config.context_conf.context_header_name.as_str(), format!("{TOKEN_FLAG}token1").as_str())],
+            [(web_server_config.context_conf.context_header_name.clone(), format!("{TOKEN_FLAG}token1"))],
         )
         .await?
         .body
@@ -508,7 +508,7 @@ async fn test_context(url: &str) -> TardisResult<()> {
     let response = TardisFuns::web_client()
         .get::<TardisResp<String>>(
             format!("{url}/other/context_in_header").as_str(),
-            [(web_server_config.context_conf.context_header_name.as_str(), format!("{TOKEN_FLAG}token1").as_str())],
+            [(web_server_config.context_conf.context_header_name.clone(), format!("{TOKEN_FLAG}token1"))],
         )
         .await?
         .body

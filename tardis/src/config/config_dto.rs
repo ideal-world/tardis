@@ -189,14 +189,21 @@ impl Default for AppConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct ConfCenterConfig {
+    /// kind of config center / 配置中心的类型
     pub kind: String,
+    /// url of config center / 配置中心的地址
     pub url: String,
+    /// username of config center / 配置中心的用户名
     pub username: String,
+    /// password of config center / 配置中心的密码
     pub password: String,
+    /// group of config / 配置的分组
     pub group: Option<String>,
+    /// format of config / 配置的格式
     pub format: Option<String>,
+    /// namespace of config / 配置的命名空间
     pub namespace: Option<String>,
-    /// config change polling interval, in milliseconds / 配置变更轮询间隔，单位毫秒
+    /// config change polling interval, in milliseconds / 配置变更轮询间隔，单位毫秒，默认5000ms
     pub config_change_polling_interval: Option<u64>,
 }
 
