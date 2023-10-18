@@ -118,10 +118,14 @@ impl<T> TardisComponentMapInner<T> {
         self.replace_inner(std::iter::empty())
     }
 
+    /// Initialize by an [`ArcMap`] initializer.
+    ///
+    /// this method will clear the current map and replace it with the new one witch is created from the initializer.
     pub async fn init_by<I>(&self, initializer: &I) -> TardisResult<ArcMap<T>>
     where
         ArcMap<T>: InitBy<I>,
     {
+        self.clear();
         let new_inner = HashMap::<ModuleCode, Arc<T>>::init_by(initializer).await?;
         let wg = &mut *self.inner.write().expect(Self::LOCK_EXPECT);
         Ok(std::mem::replace(wg, new_inner))

@@ -498,6 +498,10 @@ impl TardisFuns {
     }
 
     /// Get the custom configuration object / 获取自定义配置对象
+    ///
+    /// # Panic
+    /// If the configuration object does not exist, this will fallback to the default config.
+    /// Though, if the default config cannot be deserialized as `T`, this will panic.
     pub fn cs_config<T: 'static + for<'a> Deserialize<'a> + Any + Send + Sync>(code: &str) -> Arc<T> {
         let code = code.to_lowercase();
         let code = code.as_str();
@@ -1009,15 +1013,16 @@ impl TardisFuns {
         Self::shutdown_internal(true).await
     }
 
-    /// shutdown with inherit mode
+    /// hot reload tardis instance by a new [`TardisConfig`].
     ///
-    /// this shutdown function will retain some user setted configs like webserver moudules for next init
-    pub async fn shutdown_inherit() -> TardisResult<()> {
-        Self::shutdown_internal(false).await
-    }
-
-    /// hot reload tardis instance
+    /// there should have only one hot reload task at the same time. If it's called when other reload task is running,
+    /// it will wait until the other task finished.
     pub async fn hot_reload(conf: TardisConfig) -> TardisResult<()> {
+        use tokio::sync::Semaphore;
+        tardis_static! {
+            tardis_load_semaphore: Semaphore = Semaphore::new(1);
+        }
+        let _sync = tardis_load_semaphore().acquire().await.expect("reload_semaphore is static so it shouldn't be closed.");
         let new_custom_config = conf.cs.iter().map(|(k, v)| (k.clone(), CachedJsonValue::new(v.clone()))).collect::<HashMap<_, _>>();
         let new_framework_config = conf.fw;
         #[allow(unused_variables)]
@@ -1154,6 +1159,7 @@ impl TardisFunsInst {
         &self.module_code
     }
 
+    /// Get current module's config from custom configs.
     pub fn conf<T: 'static + for<'a> Deserialize<'a> + Any + Send + Sync>(&self) -> Arc<T> {
         TardisFuns::cs_config(&self.module_code)
     }

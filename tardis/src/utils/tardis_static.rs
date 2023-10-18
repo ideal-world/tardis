@@ -77,7 +77,6 @@ fn test_tardis_static_macro() {
             retrive_config().await
         };
     }
-
     tardis_static! {
         config_defualt: Config;
     }

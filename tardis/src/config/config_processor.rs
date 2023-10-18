@@ -36,7 +36,6 @@ impl TardisConfig {
     pub(crate) async fn init(relative_path: Option<&str>) -> TardisResult<TardisConfig> {
         let profile = fetch_profile();
         let parent_path = env::current_dir().expect("[Tardis.Config] Current path get error");
-
         info!(
             "[Tardis.Config] Initializing, base path:{:?}, relative path:{:?}, profile:{}",
             parent_path, relative_path, profile
