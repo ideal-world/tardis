@@ -44,6 +44,7 @@ Do NOT use in production environment!**
 * ``reldb-sqlite`` relational database with sqlite driver
 * ``reldb`` relational database with postgres/mysql/sqlite drivers
 * ``web-server`` web service operations(based on [Poem](https://github.com/poem-web/poem))
+* ``web-server-grpc`` grpc web service based on [Poem](https://github.com/poem-web/poem)
 * ``web-client`` web client operations
 * ``ws-client`` webscoket client operations
 * ``cache`` cache operations
@@ -51,7 +52,11 @@ Do NOT use in production environment!**
 * ``mail`` mail send operations
 * ``os`` object Storage operations
 * ``test`` unit test operations
-* ``tracing`` trace operations
+* ``tracing`` open telemetry support
+* ``tokio-console`` console subscriber layer supported by [tokio-console](https://github.com/tokio-rs/console)
+* ``tracing-appender`` write log into file periodically.
+* ``cluster`` work with tardis cluster
+* ``k8s`` k8s support for cluster
 
 ## 🚀 Quick start
 
