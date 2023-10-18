@@ -119,7 +119,7 @@ impl<T> TardisComponentMapInner<T> {
     }
 
     /// Initialize by an [`ArcMap`] initializer.
-    /// 
+    ///
     /// this method will clear the current map and replace it with the new one witch is created from the initializer.
     pub async fn init_by<I>(&self, initializer: &I) -> TardisResult<ArcMap<T>>
     where

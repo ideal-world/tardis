@@ -33,10 +33,10 @@ impl TardisRequestBody for () {
     }
 }
 
-/// Plain text body for [`TardisWebClient`], 
+/// Plain text body for [`TardisWebClient`],
 pub struct PlainText<T>(T);
 
-/// Json body for [`TardisWebClient`], 
+/// Json body for [`TardisWebClient`],
 pub struct Json<'a, T>(&'a T);
 
 impl<T: Into<String>> TardisRequestBody for PlainText<T> {

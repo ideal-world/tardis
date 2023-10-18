@@ -498,9 +498,9 @@ impl TardisFuns {
     }
 
     /// Get the custom configuration object / 获取自定义配置对象
-    /// 
+    ///
     /// # Panic
-    /// If the configuration object does not exist, this will fallback to the default config. 
+    /// If the configuration object does not exist, this will fallback to the default config.
     /// Though, if the default config cannot be deserialized as `T`, this will panic.
     pub fn cs_config<T: 'static + for<'a> Deserialize<'a> + Any + Send + Sync>(code: &str) -> Arc<T> {
         let code = code.to_lowercase();
@@ -1159,7 +1159,7 @@ impl TardisFunsInst {
         &self.module_code
     }
 
-    /// Get current module's config from custom configs. 
+    /// Get current module's config from custom configs.
     pub fn conf<T: 'static + for<'a> Deserialize<'a> + Any + Send + Sync>(&self) -> Arc<T> {
         TardisFuns::cs_config(&self.module_code)
     }
