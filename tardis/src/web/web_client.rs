@@ -32,8 +32,12 @@ impl TardisRequestBody for () {
         builder
     }
 }
-struct PlainText<T>(T);
-struct Json<'a, T>(&'a T);
+
+/// Plain text body for [`TardisWebClient`], 
+pub struct PlainText<T>(T);
+
+/// Json body for [`TardisWebClient`], 
+pub struct Json<'a, T>(&'a T);
 
 impl<T: Into<String>> TardisRequestBody for PlainText<T> {
     fn apply_on(self, builder: RequestBuilder) -> RequestBuilder {
@@ -47,7 +51,7 @@ impl<T: Serialize> TardisRequestBody for Json<'_, T> {
     }
 }
 
-/// convert a str pair into a string pair
+/// convert a str pair into a string pair, it may be helpful when you want to use a string literal as a header for [`TardisWebClient`]
 pub fn str_pair_to_string_pair(p: (&str, &str)) -> (String, String) {
     (p.0.to_owned(), p.1.to_owned())
 }
