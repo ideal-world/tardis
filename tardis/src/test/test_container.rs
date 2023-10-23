@@ -1,13 +1,13 @@
 use std::env;
 use std::future::Future;
 
+use testcontainers::clients;
 use testcontainers::clients::Cli;
 use testcontainers::core::Container;
 use testcontainers::core::WaitFor;
-use testcontainers::images::generic::GenericImage;
-use testcontainers::images::minio::MinIO;
-use testcontainers::images::redis::Redis;
-use testcontainers::{clients, images};
+use testcontainers::GenericImage;
+use testcontainers_modules::minio::MinIO;
+use testcontainers_modules::redis::Redis;
 
 use crate::basic::result::TardisResult;
 
@@ -30,7 +30,7 @@ impl TardisTestContainer {
     }
 
     pub fn redis_custom(docker: &Cli) -> Container<Redis> {
-        docker.run(images::redis::Redis)
+        docker.run(Redis)
     }
 
     pub async fn rabbit<F, T>(fun: F) -> TardisResult<()>
@@ -49,7 +49,7 @@ impl TardisTestContainer {
     }
 
     pub fn rabbit_custom(docker: &Cli) -> Container<GenericImage> {
-        docker.run(images::generic::GenericImage::new("rabbitmq", "management").with_wait_for(WaitFor::message_on_stdout("Server startup complete")))
+        docker.run(GenericImage::new("rabbitmq", "management").with_wait_for(WaitFor::message_on_stdout("Server startup complete")))
     }
 
     pub async fn mysql<F, T>(init_script_path: Option<&str>, fun: F) -> TardisResult<()>
@@ -76,7 +76,7 @@ impl TardisTestContainer {
                 .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{init_script_path}] get error"))
                 .to_string();
             docker.run(
-                images::generic::GenericImage::new("mysql", "8")
+                GenericImage::new("mysql", "8")
                     .with_env_var("MYSQL_ROOT_PASSWORD", "123456")
                     .with_env_var("MYSQL_DATABASE", "test")
                     .with_volume(path, "/docker-entrypoint-initdb.d/")
@@ -84,7 +84,7 @@ impl TardisTestContainer {
             )
         } else {
             docker.run(
-                images::generic::GenericImage::new("mysql", "8")
+                GenericImage::new("mysql", "8")
                     .with_env_var("MYSQL_ROOT_PASSWORD", "123456")
                     .with_env_var("MYSQL_DATABASE", "test")
                     .with_wait_for(WaitFor::message_on_stderr("port: 3306  MySQL Community Server - GPL")),
@@ -116,7 +116,7 @@ impl TardisTestContainer {
                 .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{init_script_path}] get error"))
                 .to_string();
             docker.run(
-                images::generic::GenericImage::new("postgres", "alpine")
+                GenericImage::new("postgres", "alpine")
                     .with_env_var("POSTGRES_PASSWORD", "123456")
                     .with_env_var("POSTGRES_DB", "test")
                     .with_volume(path, "/docker-entrypoint-initdb.d/")
@@ -124,7 +124,7 @@ impl TardisTestContainer {
             )
         } else {
             docker.run(
-                images::generic::GenericImage::new("postgres", "alpine")
+                GenericImage::new("postgres", "alpine")
                     .with_env_var("POSTGRES_PASSWORD", "123456")
                     .with_env_var("POSTGRES_DB", "test")
                     .with_wait_for(WaitFor::message_on_stderr("database system is ready to accept connections")),
@@ -149,7 +149,7 @@ impl TardisTestContainer {
 
     pub fn es_custom(docker: &Cli) -> Container<GenericImage> {
         docker.run(
-            images::generic::GenericImage::new("rapidfort/elasticsearch", "7.17")
+            GenericImage::new("rapidfort/elasticsearch", "7.17")
                 .with_env_var(" ELASTICSEARCH_HEAP_SIZE", "128m")
                 .with_wait_for(WaitFor::message_on_stdout("Cluster health status changed from [YELLOW] to [GREEN]")),
         )
@@ -171,7 +171,7 @@ impl TardisTestContainer {
     }
 
     pub fn minio_custom(docker: &Cli) -> Container<MinIO> {
-        docker.run(images::minio::MinIO::default())
+        docker.run(MinIO::default())
     }
 }
 

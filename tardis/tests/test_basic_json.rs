@@ -188,7 +188,7 @@ where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    Utc.datetime_from_str(&s, "%Y-%m-%d %H:%M:%S").map_err(serde::de::Error::custom)
+    Utc.parse_from_str(&s, "%Y-%m-%d %H:%M:%S").map_err(serde::de::Error::custom)
 }
 
 #[derive(Serialize, Deserialize)]

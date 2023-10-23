@@ -13,9 +13,9 @@ use tardis::serde::{Deserialize, Serialize};
 use tardis::test::test_container::nacos_server::NacosServer;
 use tardis::TardisFuns;
 use testcontainers::clients::Cli;
-use testcontainers::images::generic::GenericImage;
-use testcontainers::images::redis::Redis;
 use testcontainers::Container;
+use testcontainers::GenericImage;
+use testcontainers_modules::redis::Redis;
 use tracing::{info, warn};
 
 use std::sync::Arc;
@@ -103,7 +103,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis::config=debug");
     env::set_var("PROFILE", "remote");
 
-    let docker = testcontainers::clients::Cli::docker();
+    let docker = testcontainers::clients::Cli();
     let docker_env = initialize_docker_env(&docker);
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_locale");
