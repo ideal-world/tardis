@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use serde::Deserializer;
 use std::fs;
 use tardis::basic::dto::TardisContext;
@@ -188,7 +188,7 @@ where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    Utc.parse_from_str(&s, "%Y-%m-%d %H:%M:%S").map_err(serde::de::Error::custom)
+    DateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S").map(|date| date.with_timezone(&Utc)).map_err(serde::de::Error::custom)
 }
 
 #[derive(Serialize, Deserialize)]
