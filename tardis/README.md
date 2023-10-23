@@ -1,6 +1,3 @@
-**Preview version, will not guarantee the stability of the API!
-Do NOT use in production environment!**
-
 ---
 
 **Elegant, Clean Rust development framework🛸**
@@ -73,12 +70,14 @@ TardisFuns::web_server().x           // Some web service operations
 ### Web service example
 
 Dependency Configuration
+
 ```toml
 [dependencies]
 tardis = { version = "^0", features = ["web-server"] }
 ```
 
 Processor Configuration
+
 ```ignore
 use tardis::basic::error::TardisError;
 use tardis::web::poem_openapi;
@@ -100,6 +99,7 @@ impl Api {
 ```
 
 Startup class configuration
+
 ```ignore
 use tardis::basic::result::TardisResult;
 use tardis::tokio;
@@ -168,7 +168,8 @@ brew install protobuf
 
 ### FAQ
 
-* An `` failed to run custom build command for openssl-sys`` error occurs when running under Windows.The solution is as follows( @see https://github.com/sfackler/rust-openssl/issues/1062 ): 
+* An `` failed to run custom build command for openssl-sys`` error occurs when running under Windows.The solution is as follows( @see https://github.com/sfackler/rust-openssl/issues/1062 ):
+
   ```shell
   git clone https://github.com/Microsoft/vcpkg --depth=1
   cd vcpkg
@@ -178,12 +179,13 @@ brew install protobuf
   set OPENSSL_NO_VENDOR=1
   set OPENSSL_DIR=<Current Dir>\packages\openssl_x64-windows-static
   ```
-
 * An `` failed to run custom build command for openssl-sys`` error occurs when running under Ubuntu(similar to other distributions):
+
   ```shell
   apt install build-essential perl pkg-config libssl-dev
   ```
 * FreeBSD deployment for ``openssl-sys``
+
   ```shell
   sudo pkg install cmake ninja zip pkgconf gmake
   git clone https://github.com/Microsoft/vcpkg --depth=1
@@ -193,14 +195,16 @@ brew install protobuf
   ./vcpkg install openssl
   ```
 * An `` failed to run custom build command for opentelemetry-proto`` error occurs when running under Linux:
+
   ```shell
   apt install protobuf-compiler
   ```
 * An `` failed to run custom build command for opentelemetry-proto`` error occurs when running under MacOS:
+
   ```shell
   brew install protobuf
   ```
 
-----
-Thanks to `Jetbrains` for the [Open Source License](https://www.jetbrains.com/community/opensource/)
+---
 
+Thanks to `Jetbrains` for the [Open Source License](https://www.jetbrains.com/community/opensource/)

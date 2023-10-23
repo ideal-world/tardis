@@ -1,6 +1,3 @@
-**Preview version, will not guarantee the stability of the API!
-Do NOT use in production environment!**
-
 ---
 
 **Elegant, Clean Rust development framework🛸**
@@ -32,9 +29,7 @@ Do NOT use in production environment!**
 
 ## 📦 Components
 
-| Crate                         | Description | 
-|-------------------------------|-------------|
-| **tardis** [![Crate](https://img.shields.io/crates/v/tardis.svg)](https://crates.io/crates/tardis) [![Docs](https://docs.rs/tardis/badge.svg)](https://docs.rs/tardis) |  [README](./tardis/README.md) |
-| **tardis-macros** [![Crate](https://img.shields.io/crates/v/tardis-macros.svg)](https://crates.io/crates/tardis) [![Docs](https://docs.rs/tardis-macros/badge.svg)](https://docs.rs/tardis)  |   |
-
-
+| Crate                                                                                                                                                                                   | Description               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| **tardis** [![Crate](https://img.shields.io/crates/v/tardis.svg)](https://crates.io/crates/tardis) [![Docs](https://docs.rs/tardis/badge.svg)](https://docs.rs/tardis)                      | [README](./tardis/README.md) |
+| **tardis-macros** [![Crate](https://img.shields.io/crates/v/tardis-macros.svg)](https://crates.io/crates/tardis) [![Docs](https://docs.rs/tardis-macros/badge.svg)](https://docs.rs/tardis) |                           |
