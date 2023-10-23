@@ -103,7 +103,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis::config=debug");
     env::set_var("PROFILE", "remote");
 
-    let docker = testcontainers::clients::Cli();
+    let docker = testcontainers::clients::Cli::default();
     let docker_env = initialize_docker_env(&docker);
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_locale");
