@@ -132,15 +132,17 @@ where
 }
 
 #[derive(Object, Serialize, Clone, Debug, Default, Copy)]
-/// This `Void` is for represent an empty object `{}`
-/// Any value can be deserialized as `Void`
-pub struct Void {}
-pub const VOID: Void = Void {};
+/// This `Void` is for represent an empty value.
+/// Any value can be deserialized as `Void`.
+/// Void will be serialized as json's `null`.
+pub struct Void;
 impl<'de> Deserialize<'de> for Void {
-    fn deserialize<D>(_: D) -> Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        Ok(Void {})
+        // ignore this value whatever
+        let _ = deserializer.deserialize_any(serde::de::IgnoredAny)?;
+        Ok(Void)
     }
 }
