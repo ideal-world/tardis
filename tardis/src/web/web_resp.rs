@@ -131,5 +131,16 @@ where
     pub records: Vec<T>,
 }
 
-#[derive(Object, Deserialize, Serialize, Clone, Debug, Default, Copy)]
-pub struct Void;
+#[derive(Object, Serialize, Clone, Debug, Default, Copy)]
+/// This `Void` is for represent an empty object `{}`
+/// Any value can be deserialized as `Void`
+pub struct Void {}
+pub const VOID: Void = Void {};
+impl<'de> Deserialize<'de> for Void {
+    fn deserialize<D>(_: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(Void {})
+    }
+}
