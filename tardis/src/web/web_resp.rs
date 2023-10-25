@@ -131,5 +131,18 @@ where
     pub records: Vec<T>,
 }
 
-#[derive(Object, Deserialize, Serialize, Clone, Debug, Default, Copy)]
+#[derive(Object, Serialize, Clone, Debug, Default, Copy)]
+/// This `Void` is for represent an empty value.
+/// Any value can be deserialized as `Void`.
+/// Void will be serialized as json's `null`.
 pub struct Void;
+impl<'de> Deserialize<'de> for Void {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // ignore this value whatever
+        let _ = deserializer.deserialize_any(serde::de::IgnoredAny)?;
+        Ok(Void)
+    }
+}
