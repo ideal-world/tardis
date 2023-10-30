@@ -1,6 +1,7 @@
 // https://github.com/mehcode/config-rs
 
 use regex::{Captures, Regex};
+use tardis::config::config_dto::FrameworkConfig;
 use std::env;
 
 use tardis::basic::result::TardisResult;
@@ -9,6 +10,10 @@ use tardis::TardisFuns;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_config() -> TardisResult<()> {
+    let fw_default_config = FrameworkConfig::default();
+    assert!(fw_default_config.web_client.is_some());
+    assert!(fw_default_config.log.is_some());
+
     env::set_var("PROFILE", "test");
     env::set_var("RUST_LOG", "debug");
     // it's ok to init failed

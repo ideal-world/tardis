@@ -22,7 +22,7 @@ pub struct TardisConfig {
 
 /// Configuration of each function of the Tardis framework / Tardis框架的各功能配置
 /// The `web_client` module and the `log` module is enabled by default / `web_client` 和 `log` 模块应当默认启用
-#[derive(Debug, Serialize, Deserialize, Default, Clone, TypedBuilder)]
+#[derive(Debug, Serialize, Deserialize, Clone, TypedBuilder)]
 // TODO Replace with options / enums
 #[builder(field_defaults(default, setter(strip_option, into)))]
 #[serde(default)]
@@ -58,6 +58,12 @@ pub struct FrameworkConfig {
     pub log: Option<LogConfig>,
     /// Cluster configuration / 集群配置
     pub cluster: Option<ClusterConfig>,
+}
+
+impl Default for FrameworkConfig {
+    fn default() -> Self {
+        FrameworkConfig::builder().build()
+    }
 }
 
 impl FrameworkConfig {
