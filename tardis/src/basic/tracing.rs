@@ -153,9 +153,6 @@ impl TardisTracing<LogConfig> {
         #[cfg(feature = "tracing")]
         let initializer = {
             let initializer = initializer.with_configurable_layer(tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()?), |conf: &LogConfig| {
-                if std::env::var_os("RUST_LOG").is_none() {
-                    std::env::set_var("RUST_LOG", conf.level.to_string());
-                }
                 if std::env::var_os(OTEL_EXPORTER_OTLP_ENDPOINT).is_none() {
                     std::env::set_var(OTEL_EXPORTER_OTLP_ENDPOINT, conf.tracing.endpoint.as_str());
                 }

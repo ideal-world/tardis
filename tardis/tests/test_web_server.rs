@@ -617,39 +617,36 @@ async fn test_security() -> TardisResult<()> {
 async fn test_middleware() -> TardisResult<()> {
     let url = "http://localhost:8082";
     TardisFuns::shutdown().await?;
-    tokio::spawn(async {
-        let fw_config = FrameworkConfig::builder()
-            .web_server(
-                WebServerConfig::builder()
-                    .common(WebServerCommonConfig::builder().port(8082).build())
-                    .modules([
-                        (
-                            "todo".to_string(),
-                            WebServerModuleConfig::builder()
-                                .name("todo_app")
-                                .doc_urls([("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())])
-                                .build(),
-                        ),
-                        ("other".to_string(), WebServerModuleConfig::builder().name("other app").build()),
-                    ])
-                    .default(Default::default())
-                    .build(),
-            )
-            .build();
-        TardisFuns::init_conf(TardisConfig {
-            cs: Default::default(),
-            fw: fw_config.clone(),
-        })
+    let fw_config = FrameworkConfig::builder()
+        .web_server(
+            WebServerConfig::builder()
+                .common(WebServerCommonConfig::builder().port(8082).build())
+                .modules([
+                    (
+                        "todo".to_string(),
+                        WebServerModuleConfig::builder()
+                            .name("todo_app")
+                            .doc_urls([("test env".to_string(), url.to_string()), ("prod env".to_string(), "http://127.0.0.1".to_string())])
+                            .build(),
+                    ),
+                    ("other".to_string(), WebServerModuleConfig::builder().name("other app").build()),
+                ])
+                .default(Default::default())
+                .build(),
+        )
+        .build();
+    TardisFuns::init_conf(TardisConfig {
+        cs: Default::default(),
+        fw: fw_config.clone(),
+    })
+    .await?;
+    TardisFuns::web_server()
+        .add_module("todo", WebServerModule::new(TodosApi).middleware((TodosApiMiddleware1, TodosApiMiddleware2)))
+        .await
+        .add_module("other", OtherApi)
+        .await
+        .start()
         .await?;
-        TardisFuns::web_server()
-            .add_module("todo", WebServerModule::new(TodosApi).middleware((TodosApiMiddleware1, TodosApiMiddleware2)))
-            .await
-            .add_module("other", OtherApi)
-            .await
-            .start()
-            .await
-    });
-    sleep(Duration::from_millis(500)).await;
 
     // Normal
     let response = TardisFuns::web_client()
