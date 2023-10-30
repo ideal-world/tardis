@@ -11,7 +11,6 @@ use tardis::TardisFuns;
 async fn test_os_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
-
     TardisTestContainer::minio(|url| async move {
         let os_module_config = OSModuleConfig::builder().kind("s3").endpoint(url).ak("minioadmin").sk("minioadmin").region("us-east-1").build();
         TardisFuns::init_conf(TardisConfig::builder().fw(FrameworkConfig::builder().os(os_module_config).build()).build()).await?;
