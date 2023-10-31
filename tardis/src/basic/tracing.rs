@@ -1,4 +1,4 @@
-use std::sync::Once;
+use std::sync::{Arc, Once};
 
 use crate::basic::result::TardisResult;
 use crate::config::config_dto::LogConfig;
@@ -7,11 +7,16 @@ use crate::config::config_dto::LogConfig;
 use crate::consts::*;
 use crate::TARDIS_INST;
 pub use tracing_subscriber::filter::Directive;
-use tracing_subscriber::layer::Layered;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 #[allow(unused_imports)]
-use tracing_subscriber::{fmt::Layer as FmtLayer, layer::SubscriberExt, prelude::*, reload::Layer as ReloadLayer, Registry};
+use tracing_subscriber::{
+    fmt::Layer as FmtLayer,
+    layer::{Layered, SubscriberExt},
+    prelude::*,
+    registry::LookupSpan,
+    reload::Layer as ReloadLayer,
+    util::SubscriberInitExt,
+    EnvFilter, Registry,
+};
 
 /// # Tardis Tracing
 /// Tardis tracing is a wrapper of tracing-subscriber. It provides configurable layers as runtime.
@@ -102,7 +107,6 @@ where
         }
     }
 }
-// Box<dyn Layer<S> + Send + Sync + 'static>
 
 type BoxLayer<S> = Box<dyn tracing_subscriber::Layer<S> + Send + Sync + 'static>;
 impl<L0> TardisTracingInitializer<L0, LogConfig>
@@ -111,7 +115,7 @@ where
 {
     pub fn with_fmt_layer<S>(self) -> TardisTracingInitializer<Layered<BoxLayer<S>, L0>, LogConfig>
     where
-        S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span> + Send + Sync,
+        S: tracing::Subscriber + for<'span> LookupSpan<'span> + Send + Sync,
         BoxLayer<S>: tracing_subscriber::Layer<L0>,
     {
         self.with_layer(FmtLayer::default().boxed())
@@ -135,7 +139,7 @@ where
     #[cfg(feature = "tracing")]
     pub fn with_opentelemetry_layer<S>(self) -> TardisTracingInitializer<Layered<ReloadLayer<BoxLayer<S>, S>, L0>, LogConfig>
     where
-        S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span> + Send + Sync,
+        S: tracing::Subscriber + for<'span> LookupSpan<'span> + Send + Sync,
         ReloadLayer<BoxLayer<S>, S>: tracing_subscriber::Layer<L0>,
     {
         self.with_configurable_layer(
@@ -156,18 +160,18 @@ where
     }
 
     #[cfg(feature = "console-subscriber")]
-    pub fn with_console_layer<S>(self) -> TardisResult<TardisTracingInitializer<Layered<BoxLayer<S>, L0>, LogConfig>>
+    pub fn with_console_layer<S>(self) -> TardisTracingInitializer<Layered<BoxLayer<S>, L0>, LogConfig>
     where
-        S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span> + Send + Sync,
+        S: tracing::Subscriber + for<'span> LookupSpan<'span> + Send + Sync,
         BoxLayer<S>: tracing_subscriber::Layer<L0>,
     {
-        Ok(self.with_layer(console_subscriber::ConsoleLayer::builder().with_default_env().spawn().boxed()))
+        self.with_layer(console_subscriber::ConsoleLayer::builder().with_default_env().spawn().boxed())
     }
 
     #[cfg(feature = "tracing-appender")]
     pub fn with_appender_layer<S>(self) -> TardisTracingInitializer<Layered<ReloadLayer<BoxLayer<S>, S>, L0>, LogConfig>
     where
-        S: tracing::Subscriber + for<'span> tracing_subscriber::registry::LookupSpan<'span> + Send + Sync,
+        S: tracing::Subscriber + for<'span> LookupSpan<'span> + Send + Sync,
         ReloadLayer<BoxLayer<S>, S>: tracing_subscriber::Layer<L0>,
     {
         use crate::config::config_dto::log::TracingAppenderConfig;
@@ -187,7 +191,8 @@ impl<L> TardisTracingInitializer<L>
 where
     L: SubscriberInitExt + 'static,
 {
-    pub fn init(self) {
+    /// Initialize tardis tracing, this will set the global tardis tracing instance.
+    pub(crate) fn init(self) -> Arc<TardisTracing> {
         static INITIALIZED: Once = Once::new();
         let configer_list = self.configers;
         if INITIALIZED.is_completed() {
@@ -196,6 +201,7 @@ where
             INITIALIZED.call_once(|| self.layered.init());
             TARDIS_INST.tracing.set(TardisTracing { configer: configer_list });
         }
+        crate::TardisFuns::tracing()
     }
 
     /// Initialize tardis tracing as standalone, this will not set the global tardis tracing instance.
@@ -228,55 +234,14 @@ impl TardisTracing<LogConfig> {
 
     pub(crate) fn init_default() -> TardisResult<()> {
         tracing::info!("[Tardis.Tracing] Initializing by defualt initializer.");
-        let initializer = TardisTracingInitializer::default();
-        let initializer = initializer.with_layer(FmtLayer::default());
-        let initializer = initializer.with_configurable_layer(EnvFilter::from_default_env().boxed(), |config: &LogConfig| {
-            let mut env_filter = EnvFilter::from_default_env();
-            env_filter = env_filter.add_directive(config.level.clone());
-            for directive in &config.directives {
-                env_filter = env_filter.add_directive(directive.clone());
-            }
-            std::env::set_var("RUST_LOG", env_filter.to_string());
-            Ok(env_filter.boxed())
-        });
+        let initializer = TardisTracingInitializer::default().with_fmt_layer().with_env_layer();
         tracing::debug!("[Tardis.Tracing] Added fmt layer and env filter.");
         #[cfg(feature = "tracing")]
-        let initializer = {
-            let initializer = initializer.with_configurable_layer(tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()), |conf: &LogConfig| {
-                if std::env::var_os(OTEL_EXPORTER_OTLP_ENDPOINT).is_none() {
-                    std::env::set_var(OTEL_EXPORTER_OTLP_ENDPOINT, conf.tracing.endpoint.as_str());
-                }
-                if std::env::var_os(OTEL_EXPORTER_OTLP_PROTOCOL).is_none() {
-                    std::env::set_var(OTEL_EXPORTER_OTLP_PROTOCOL, conf.tracing.protocol.to_string());
-                }
-                if std::env::var_os(OTEL_SERVICE_NAME).is_none() {
-                    std::env::set_var(OTEL_SERVICE_NAME, conf.tracing.server_name.as_str());
-                }
-                Ok(tracing_opentelemetry::layer().with_tracer(Self::create_otlp_tracer()))
-            });
-            tracing::debug!("[Tardis.Tracing] Added fmt layer and env filter.");
-            initializer
-        };
+        let initializer = initializer.with_opentelemetry_layer();
         #[cfg(feature = "console-subscriber")]
-        let initializer = {
-            use console_subscriber::ConsoleLayer;
-            tracing::info!("[Tardis.Tracing] Initializing console subscriber. To make it work, you need to enable tokio and runtime tracing targets at **TRACE** level.");
-            let layer = ConsoleLayer::builder().with_default_env().spawn();
-            initializer.with_layer(layer)
-        };
+        let initializer = initializer.with_console_layer();
         #[cfg(feature = "tracing-appender")]
-        let initializer = {
-            use crate::config::config_dto::log::TracingAppenderConfig;
-            let config_file_layer = |cfg: Option<&TracingAppenderConfig>| {
-                if let Some(cfg) = &cfg {
-                    let file_appender = tracing_appender::rolling::RollingFileAppender::new(cfg.rotation.into(), &cfg.dir, &cfg.filename);
-                    FmtLayer::default().with_writer(file_appender).boxed()
-                } else {
-                    FmtLayer::default().with_writer(std::io::sink).boxed()
-                }
-            };
-            initializer.with_configurable_layer(config_file_layer(None), move |cfg| TardisResult::Ok(config_file_layer(cfg.tracing_appender.as_ref())))
-        };
+        let initializer = initializer.with_appender_layer();
         tracing::info!("[Tardis.Tracing] Initialize finished.");
         initializer.init();
         Ok(())
