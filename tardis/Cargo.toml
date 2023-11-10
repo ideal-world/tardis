@@ -216,11 +216,12 @@ testcontainers-modules = { version = "0.1.2", features = [
 
 [dev-dependencies]
 # Common
-tokio = { version = "1", features = ["time", "rt", "macros", "sync"] }
+tokio = { version = "1", features = ["time", "rt", "macros", "sync", "process"] }
 criterion = { version = "0.5" }
 poem-grpc-build = "0.2.22"
 prost = "0.11"
 strip-ansi-escapes = "0.2.0"
+portpicker = "0.1.1"
 
 [[test]]
 name = "test_config"

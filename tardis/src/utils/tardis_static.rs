@@ -30,6 +30,24 @@
 macro_rules! tardis_static {
     () => {
     };
+    ($(#[$attr:meta])* $vis:vis async set $ident:ident :$Type:ty; $($rest: tt)*) => {
+        $crate::paste::paste! {
+            static [<__ $ident:upper _SYNC>]: OnceLock<$Type> = OnceLock::new();
+            $vis fn [<set_ $ident>](init: $Type) {
+                [<__ $ident:upper _SYNC>].get_or_init(|| init);
+            }
+            $(#[$attr])*
+            $vis async fn $ident() -> &'static $Type {
+                loop {
+                    match [<__ $ident:upper _SYNC>].get() {
+                        Some(val) => break val,
+                        None => { $crate::tokio::task::yield_now().await; }
+                    }
+                } 
+            }
+            $crate::tardis_static!($($rest)*);
+        }
+    };
     ($(#[$attr:meta])* $vis:vis async $ident:ident :$Type:ty = $init: expr; $($rest: tt)*) => {
         $(#[$attr])*
         $vis async fn $ident() -> &'static $Type {
@@ -55,6 +73,8 @@ macro_rules! tardis_static {
     ($(#[$attr:meta])* $vis:vis $ident:ident :$Type:ty; $($rest: tt)*) => {
         $crate::tardis_static!($(#[$attr])* $vis $ident: $Type = Default::default(); $($rest)*);
     };
+
+
 }
 
 #[cfg(test)]

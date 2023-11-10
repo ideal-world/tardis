@@ -1,3 +1,8 @@
+use std::{
+    collections::HashSet,
+    net::{IpAddr, SocketAddr},
+};
+
 use k8s_openapi::api::core::v1::{Endpoints, Service};
 use kube::{api::WatchParams, Api, Client};
 use tracing::{error, trace};
@@ -74,8 +79,9 @@ async fn refresh(k8s_svc: &str, web_server_port: u16) -> TardisResult<()> {
                 .flat_map(|subset| subset.addresses.as_ref().map(|addresses| addresses.iter().map(|address| address.ip.to_string()).collect::<Vec<_>>()).unwrap_or_default())
         })
         .map(|ip: String| (ip, port_mapping))
-        .collect::<Vec<_>>();
-    cluster_processor::refresh_nodes(active_nodes).await?;
+        .filter_map(|(ip, port)| ip.parse::<IpAddr>().map(|ip_addr| SocketAddr::new(ip_addr, port)).ok())
+        .collect::<HashSet<_>>();
+    cluster_processor::refresh_nodes(&active_nodes).await?;
     Ok(())
 }
 
