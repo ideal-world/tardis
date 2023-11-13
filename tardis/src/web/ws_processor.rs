@@ -116,6 +116,7 @@ where
     let mut inner_receiver = inner_sender.subscribe();
     websocket
         .on_upgrade(move |socket| async move {
+            // a connection is a instance
             let inst_id = TardisFuns::field.nanoid();
             let current_receive_inst_id = inst_id.clone();
             {

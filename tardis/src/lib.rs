@@ -795,12 +795,12 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "ws-client")]
-    pub async fn ws_client<F, T>(str_url: &str, fun: F) -> TardisResult<web::ws_client::TardisWSClient>
+    pub async fn ws_client<F, T>(str_url: &str, on_message: F) -> TardisResult<web::ws_client::TardisWSClient>
     where
         F: Fn(tokio_tungstenite::tungstenite::Message) -> T + Send + Sync + Copy + 'static,
         T: futures::Future<Output = Option<tokio_tungstenite::tungstenite::Message>> + Send + Sync + 'static,
     {
-        web::ws_client::TardisWSClient::connect(str_url, fun).await
+        web::ws_client::TardisWSClient::connect(str_url, on_message).await
     }
 
     /// Use the distributed cache feature / 使用分布式缓存功能
