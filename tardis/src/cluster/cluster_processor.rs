@@ -22,6 +22,7 @@ use crate::config::config_dto::FrameworkConfig;
 use crate::tardis_static;
 use crate::web::web_server::TardisWebServer;
 use crate::web::ws_client::TardisWSClient;
+use crate::web::ws_processor::cluster_protocol::Avatar;
 use crate::{basic::result::TardisResult, TardisFuns};
 use async_trait::async_trait;
 
@@ -44,6 +45,10 @@ tardis_static! {
 /// clone the cache_nodes_info at current time
 pub async fn load_cache_nodes_info() -> HashMap<ClusterRemoteNodeKey, TardisClusterNodeRemote> {
     cache_nodes().read().await.clone()
+}
+
+pub async fn peer_count() -> usize {
+    cache_nodes().read().await.keys().filter(|k|matches!(k, ClusterRemoteNodeKey::NodeId(_))).count()
 }
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -95,6 +100,7 @@ pub trait TardisClusterSubscriber: Send + Sync + 'static {
     fn event_name(&self) -> Cow<'static, str>;
     async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>>;
 }
+
 
 #[derive(Debug, Clone, Default)]
 pub enum ClusterEventTarget {
@@ -193,6 +199,11 @@ async fn init_node(cluster_server: &TardisWebServer, access_addr: SocketAddr) ->
 
     debug!("[Tardis.Cluster] Register default events");
     subscribe(EventPing).await;
+    #[cfg(feature = "web-server")]
+    {
+        subscribe(Avatar).await;
+    }
+
     info!("[Tardis.Cluster] Initialized node");
     Ok(())
 }
@@ -279,6 +290,11 @@ pub async fn subscribe<S: TardisClusterSubscriber>(subscriber: S) {
     subscribers().write().await.insert(event_name, Box::new(subscriber));
 }
 
+pub async fn unsubscribe(event_name: &str) {
+    info!("[Tardis.Cluster] [Server] unsubscribe event {event_name}");
+    subscribers().write().await.remove(event_name);
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct TardisClusterMessageReq {
     pub(crate) msg_id: String,
@@ -353,9 +369,6 @@ pub enum TardisClusterNode {
 impl TardisClusterNode {}
 
 use std::hash::Hash;
-
-use super::cluster_receive::listen::{self, Listener};
-use super::cluster_receive::listen_reply;
 
 #[derive(Debug, Clone)]
 struct ClusterAPI;

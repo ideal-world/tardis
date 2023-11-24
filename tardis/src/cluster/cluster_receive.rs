@@ -132,7 +132,7 @@ pub mod listen {
 
     #[derive(Debug, Default, Clone, Copy)]
     /// send a message and receive all the responses until the receiver is dropped.
-    pub struct Stream {}
+    pub struct Stream;
 
     #[async_trait]
     impl Listener for Stream {

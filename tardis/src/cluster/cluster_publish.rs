@@ -111,8 +111,14 @@ pub async fn publish_event_one_response(
     })
 }
 
-pub async fn publish_event_with_listener<S: Listener>(event: impl Into<Cow<'static, str>>, message: Value, target: impl Into<ClusterEventTarget>, listener: S) -> TardisResult<S::Reply> {
+pub async fn publish_event_with_listener<S: Listener>(
+    event: impl Into<Cow<'static, str>>,
+    message: Value,
+    target: impl Into<ClusterEventTarget>,
+    listener: S,
+) -> TardisResult<S::Reply> {
     let node_id = local_node_id().await.to_string();
+    dbg!(&node_id);
     let event = event.into();
     let target = target.into();
     let target_debug = format!("{target:?}");
@@ -130,12 +136,6 @@ pub async fn publish_event_with_listener<S: Listener>(event: impl Into<Cow<'stat
         ClusterEventTarget::Client(client) => vec![client],
     };
     if nodes.is_empty() {
-        error!(
-            "[Tardis.Cluster] [Client] publish event {event} , message {message} , to {target} error: can't find any target node",
-            event = event,
-            message = message,
-            target = target_debug
-        );
         return Err(TardisError::wrap(
             &format!(
                 "[Tardis.Cluster] [Client] publish event {event} , message {message} , to {target} error: can't find any target node",
