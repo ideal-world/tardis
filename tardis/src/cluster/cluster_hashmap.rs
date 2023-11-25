@@ -6,10 +6,10 @@ use std::{
 };
 
 use crate::basic::{json::TardisJson, result::TardisResult};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::hash::Hash;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 
 use super::{
     cluster_processor::{peer_count, ClusterEventTarget, TardisClusterMessageReq, TardisClusterSubscriber},

@@ -65,10 +65,6 @@ impl TardisCacheClient {
         self.pool.get().await.map_err(|error| RedisError::from((ErrorKind::IoError, "Get connection error", error.to_string())))
     }
 
-    pub async fn exec() {
-
-    }
-
     pub async fn set(&self, key: &str, value: &str) -> RedisResult<()> {
         trace!("[Tardis.CacheClient] set, key:{}, value:{}", key, value);
         self.get_connection().await?.set(key, value).await

@@ -4,16 +4,15 @@ use std::net::SocketAddr;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
-use futures_util::future::join_all;
 use futures_util::{SinkExt, StreamExt};
 use poem::web::websocket::{BoxWebSocketUpgraded, Message, WebSocket};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::{broadcast, mpsc, oneshot, RwLock};
+use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, error, info, trace, warn};
 
 use crate::basic::error::TardisError;
-use crate::cluster::cluster_publish::{do_publish_event, publish_event_one_response, ClusterEvent};
+use crate::cluster::cluster_publish::ClusterEvent;
 use crate::cluster::cluster_receive::init_response_dispatcher;
 use crate::cluster::cluster_watch_by_cache;
 #[cfg(feature = "k8s")]
@@ -48,7 +47,7 @@ pub async fn load_cache_nodes_info() -> HashMap<ClusterRemoteNodeKey, TardisClus
 }
 
 pub async fn peer_count() -> usize {
-    cache_nodes().read().await.keys().filter(|k|matches!(k, ClusterRemoteNodeKey::NodeId(_))).count()
+    cache_nodes().read().await.keys().filter(|k| matches!(k, ClusterRemoteNodeKey::NodeId(_))).count()
 }
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -100,7 +99,6 @@ pub trait TardisClusterSubscriber: Send + Sync + 'static {
     fn event_name(&self) -> Cow<'static, str>;
     async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>>;
 }
-
 
 #[derive(Debug, Clone, Default)]
 pub enum ClusterEventTarget {

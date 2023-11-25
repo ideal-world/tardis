@@ -2,17 +2,14 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 #[cfg(feature = "future")]
-use futures::stream::SplitSink;
-#[cfg(feature = "future")]
 use futures::{Future, SinkExt, StreamExt};
 use native_tls::TlsConnector;
 use serde::de::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
-use tokio::sync::{mpsc, Notify, OwnedSemaphorePermit, RwLock, Semaphore};
-use tokio::{net::TcpStream, sync::watch};
-use tokio_tungstenite::tungstenite::{self, Error, Message};
-use tokio_tungstenite::{Connector, MaybeTlsStream, WebSocketStream};
+use tokio::sync::{mpsc, OwnedSemaphorePermit, RwLock, Semaphore};
+use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::Connector;
 use tracing::{debug, info};
 use tracing::{trace, warn};
 use url::Url;

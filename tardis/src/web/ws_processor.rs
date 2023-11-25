@@ -1,3 +1,4 @@
+#[cfg(feature = "cluster")]
 pub mod cluster_protocol;
 
 use std::sync::Arc;
@@ -8,12 +9,11 @@ use lru::LruCache;
 use poem::web::websocket::{BoxWebSocketUpgraded, CloseCode, Message, WebSocket};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tokio::sync::{broadcast::Sender, Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock};
 use tracing::trace;
 use tracing::warn;
 
-use crate::cluster::cluster_broadcast::ClusterBroadcastChannel;
-use crate::{TardisFuns, tardis_static};
+use crate::{tardis_static, TardisFuns};
 
 pub const WS_SYSTEM_EVENT_INFO: &str = "__sys_info__";
 pub const WS_SYSTEM_EVENT_AVATAR_ADD: &str = "__sys_avatar_add__";
@@ -74,15 +74,16 @@ where
         .boxed()
 }
 
-fn ws_send_to_channel<TX>(send_msg: TardisWebsocketMgrMessage, inner_sender: &TX) 
-where TX: WsBroadcastSender
+fn ws_send_to_channel<TX>(send_msg: TardisWebsocketMgrMessage, inner_sender: &TX)
+where
+    TX: WsBroadcastSender,
 {
-    inner_sender
-        .send(send_msg.clone());
+    inner_sender.send(send_msg.clone());
 }
 
 pub fn ws_send_error_to_channel<TX>(req_message: &str, error_message: &str, from_avatar: &str, from_inst_id: &str, inner_sender: &TX)
-where TX: WsBroadcastSender
+where
+    TX: WsBroadcastSender,
 {
     let send_msg = TardisWebsocketMgrMessage {
         id: TardisFuns::field.nanoid(),
@@ -118,25 +119,6 @@ impl WsBroadcastSender for tokio::sync::broadcast::Sender<TardisWebsocketMgrMess
                 msg.msg, msg.to_avatars, msg.ignore_avatars
             );
         }
-    }
-}
-
-impl WsBroadcastSender for ClusterBroadcastChannel<TardisWebsocketMgrMessage> {
-    fn subscribe(&self) -> tokio::sync::broadcast::Receiver<TardisWebsocketMgrMessage> {
-        self.local_broadcast_channel.subscribe()
-    }
-
-    fn send(&self, msg: TardisWebsocketMgrMessage) {
-        self.send(msg);
-    }
-}
-impl WsBroadcastSender for Arc<ClusterBroadcastChannel<TardisWebsocketMgrMessage>> {
-    fn subscribe(&self) -> tokio::sync::broadcast::Receiver<TardisWebsocketMgrMessage> {
-        self.local_broadcast_channel.subscribe()
-    }
-
-    fn send(&self, msg: TardisWebsocketMgrMessage) {
-        ClusterBroadcastChannel::send(&self, msg);
     }
 }
 

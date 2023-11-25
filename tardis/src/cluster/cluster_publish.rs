@@ -13,12 +13,7 @@ use crate::{
 use futures::future::join_all;
 use serde::Serialize;
 use serde_json::Value;
-use tokio::sync::broadcast;
 use tracing::{error, trace};
-pub struct EventResponse {
-    message_id: String,
-    rx: broadcast::Receiver<TardisClusterMessageResp>,
-}
 
 #[derive(Debug, Clone)]
 pub struct ClusterEvent<L = Once> {

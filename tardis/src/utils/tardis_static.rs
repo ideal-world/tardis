@@ -43,7 +43,7 @@ macro_rules! tardis_static {
                         Some(val) => break val,
                         None => { $crate::tokio::task::yield_now().await; }
                     }
-                } 
+                }
             }
             $crate::tardis_static!($($rest)*);
         }
