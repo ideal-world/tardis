@@ -169,7 +169,7 @@ impl TardisCacheClient {
     }
 
     pub async fn linsert_before(&self, key: &str, count: isize, value: &str) -> RedisResult<usize> {
-        trace!("[Tardis.CacheClient] linsert_after, key:{}", key);
+        trace!("[Tardis.CacheClient] linsert_before, key:{}", key);
         self.get_connection().await?.linsert_before(key, count, value).await
     }
 
