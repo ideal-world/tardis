@@ -152,15 +152,15 @@ pub use tokio;
 pub use tracing as log;
 // we still need to pub use tracing for some macros
 // in tracing relies on `$crate` witch infers `tracing`.
-pub use tracing;
-pub use url;
-
 use basic::error::TardisErrorWithExt;
 use basic::result::TardisResult;
 use basic::tracing::TardisTracing;
+pub use paste;
 #[cfg(feature = "tardis-macros")]
 #[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
 pub use tardis_macros::{TardisCreateEntity, TardisCreateIndex, TardisCreateTable, TardisEmptyBehavior, TardisEmptyRelation};
+pub use tracing;
+pub use url;
 
 use crate::basic::field::TardisField;
 use crate::basic::json::TardisJson;
@@ -795,12 +795,12 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "ws-client")]
-    pub async fn ws_client<F, T>(str_url: &str, fun: F) -> TardisResult<web::ws_client::TardisWSClient>
+    pub async fn ws_client<F, T>(str_url: &str, on_message: F) -> TardisResult<web::ws_client::TardisWSClient>
     where
         F: Fn(tokio_tungstenite::tungstenite::Message) -> T + Send + Sync + Copy + 'static,
         T: futures::Future<Output = Option<tokio_tungstenite::tungstenite::Message>> + Send + Sync + 'static,
     {
-        web::ws_client::TardisWSClient::connect(str_url, fun).await
+        web::ws_client::TardisWSClient::connect(str_url, on_message).await
     }
 
     /// Use the distributed cache feature / 使用分布式缓存功能
@@ -954,18 +954,32 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "cluster")]
-    pub async fn cluster_subscribe_event(event: &str, sub_fun: Box<dyn cluster::cluster_processor::TardisClusterSubscriber>) {
-        cluster::cluster_processor::subscribe_event(event, sub_fun).await;
+    pub async fn cluster_subscribe_event_boxed(subscriber: Box<dyn cluster::cluster_processor::TardisClusterSubscriber>) {
+        cluster::cluster_processor::subscribe_boxed(subscriber).await;
     }
 
     #[cfg(feature = "cluster")]
-    pub async fn cluster_publish_event(event: &str, message: serde_json::Value, node_ids: Option<Vec<&str>>) -> TardisResult<String> {
-        cluster::cluster_processor::publish_event(event, message, node_ids).await
+    pub async fn cluster_subscribe_event<S: cluster::cluster_processor::TardisClusterSubscriber>(subscriber: S) {
+        cluster::cluster_processor::subscribe(subscriber).await;
     }
 
     #[cfg(feature = "cluster")]
-    pub async fn cluster_publish_event_and_wait_resp(event: &str, message: serde_json::Value, node_id: &str) -> TardisResult<cluster::cluster_processor::TardisClusterMessageResp> {
-        cluster::cluster_processor::publish_event_and_wait_resp(event, message, node_id).await
+    pub async fn cluster_publish_event(
+        event: impl Into<std::borrow::Cow<'static, str>>,
+        message: serde_json::Value,
+        target: impl Into<cluster::cluster_processor::ClusterEventTarget>,
+    ) -> TardisResult<String> {
+        use cluster::cluster_publish::ClusterEvent;
+        ClusterEvent::new(event).json_message(message).target(target).no_response().publish().await
+    }
+
+    #[cfg(feature = "cluster")]
+    pub async fn cluster_publish_event_one_resp(
+        event: impl Into<std::borrow::Cow<'static, str>>,
+        message: serde_json::Value,
+        node_id: &str,
+    ) -> TardisResult<cluster::cluster_processor::TardisClusterMessageResp> {
+        cluster::cluster_publish::publish_event_one_response(event, message, node_id, None).await
     }
 
     /// # Parameters

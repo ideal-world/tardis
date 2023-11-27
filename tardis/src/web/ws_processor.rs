@@ -1,3 +1,6 @@
+#[cfg(feature = "cluster")]
+pub mod cluster_protocol;
+
 use std::sync::Arc;
 use std::{collections::HashMap, num::NonZeroUsize};
 
@@ -6,11 +9,11 @@ use lru::LruCache;
 use poem::web::websocket::{BoxWebSocketUpgraded, CloseCode, Message, WebSocket};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tokio::sync::{broadcast::Sender, Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock};
 use tracing::trace;
 use tracing::warn;
 
-use crate::TardisFuns;
+use crate::{tardis_static, TardisFuns};
 
 pub const WS_SYSTEM_EVENT_INFO: &str = "__sys_info__";
 pub const WS_SYSTEM_EVENT_AVATAR_ADD: &str = "__sys_avatar_add__";
@@ -22,11 +25,13 @@ pub const WS_SYSTEM_EVENT_ERROR: &str = "__sys_error__";
 #[allow(clippy::undocumented_unsafe_blocks)]
 pub const WS_SENDER_CACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(1000000) };
 
+tardis_static! {
+    // Websocket instance Id -> Avatars
+    ws_insts_mapping_avatars: Arc<RwLock<HashMap<String, Vec<String>>>>;
+}
 lazy_static! {
     // Single instance reply guard
     static ref REPLY_ONCE_GUARD: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(WS_SENDER_CACHE_SIZE)));
-    // Websocket instance Id -> Avatars
-    static ref WS_INSTS_MAPPING_AVATARS: Arc<RwLock<HashMap<String, Vec<String>>>> = Arc::new(RwLock::new(HashMap::new()));
 }
 
 pub fn ws_echo<PF, PT, CF, CT>(avatars: String, ext: HashMap<String, String>, websocket: WebSocket, process_fun: PF, close_fun: CF) -> BoxWebSocketUpgraded
@@ -69,19 +74,17 @@ where
         .boxed()
 }
 
-fn ws_send_to_channel(send_msg: TardisWebsocketMgrMessage, inner_sender: &Sender<TardisWebsocketMgrMessage>) -> bool {
-    inner_sender
-        .send(send_msg.clone())
-        .map_err(|error| {
-            warn!(
-                "[Tardis.WebServer] WS message send to channel: {} to {:?} ignore {:?} failed: {error}",
-                send_msg.msg, send_msg.to_avatars, send_msg.ignore_avatars
-            );
-        })
-        .is_ok()
+fn ws_send_to_channel<TX>(send_msg: TardisWebsocketMgrMessage, inner_sender: &TX)
+where
+    TX: WsBroadcastSender,
+{
+    inner_sender.send(send_msg.clone());
 }
 
-pub fn ws_send_error_to_channel(req_message: &str, error_message: &str, from_avatar: &str, from_inst_id: &str, inner_sender: &Sender<TardisWebsocketMgrMessage>) -> bool {
+pub fn ws_send_error_to_channel<TX>(req_message: &str, error_message: &str, from_avatar: &str, from_inst_id: &str, inner_sender: &TX)
+where
+    TX: WsBroadcastSender,
+{
     let send_msg = TardisWebsocketMgrMessage {
         id: TardisFuns::field.nanoid(),
         msg: json!(error_message),
@@ -97,13 +100,35 @@ pub fn ws_send_error_to_channel(req_message: &str, error_message: &str, from_ava
     ws_send_to_channel(send_msg, inner_sender)
 }
 
+pub trait WsBroadcastSender: Send + Sync + 'static {
+    fn subscribe(&self) -> tokio::sync::broadcast::Receiver<TardisWebsocketMgrMessage>;
+    // irresponsable to return error
+    fn send(&self, msg: TardisWebsocketMgrMessage);
+}
+
+impl WsBroadcastSender for tokio::sync::broadcast::Sender<TardisWebsocketMgrMessage> {
+    fn subscribe(&self) -> tokio::sync::broadcast::Receiver<TardisWebsocketMgrMessage> {
+        self.subscribe()
+    }
+
+    fn send(&self, msg: TardisWebsocketMgrMessage) {
+        if let Err(err) = self.send(msg) {
+            let msg = err.0;
+            warn!(
+                "[Tardis.WebServer] WS message send to channel: {} to {:?} ignore {:?} failed",
+                msg.msg, msg.to_avatars, msg.ignore_avatars
+            );
+        }
+    }
+}
+
 pub async fn ws_broadcast<PF, PT, CF, CT>(
     avatars: Vec<String>,
     mgr_node: bool,
     subscribe_mode: bool,
     ext: HashMap<String, String>,
     websocket: WebSocket,
-    inner_sender: Sender<TardisWebsocketMgrMessage>,
+    inner_sender: impl WsBroadcastSender,
     process_fun: PF,
     close_fun: CF,
 ) -> BoxWebSocketUpgraded
@@ -116,15 +141,17 @@ where
     let mut inner_receiver = inner_sender.subscribe();
     websocket
         .on_upgrade(move |socket| async move {
+            // corresponed to the current ws connection
             let inst_id = TardisFuns::field.nanoid();
             let current_receive_inst_id = inst_id.clone();
             {
-                WS_INSTS_MAPPING_AVATARS.write().await.insert(inst_id.clone(), avatars);
+                ws_insts_mapping_avatars().write().await.insert(inst_id.clone(), avatars);
             }
             let (mut ws_sink, mut ws_stream) = socket.split();
 
-            let insts_in_send = WS_INSTS_MAPPING_AVATARS.clone();
+            let insts_in_send = ws_insts_mapping_avatars().clone();
             tokio::spawn(async move {
+                // message inbound
                 while let Some(Ok(message)) = ws_stream.next().await {
                     match message {
                         Message::Text(text) => {
@@ -189,9 +216,7 @@ where
                                             from_inst_id: if let Some(spec_inst_id) = req_msg.spec_inst_id { spec_inst_id } else { inst_id.clone() },
                                             echo: true,
                                         };
-                                        if !ws_send_to_channel(send_msg, &inner_sender) {
-                                            break;
-                                        }
+                                        ws_send_to_channel(send_msg, &inner_sender);
                                         continue;
                                         // For security reasons, adding an avatar needs to be handled by the management node
                                     } else if mgr_node && req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) {
@@ -249,9 +274,7 @@ where
                                             from_inst_id: if let Some(spec_inst_id) = req_msg.spec_inst_id { spec_inst_id } else { inst_id.clone() },
                                             echo: false,
                                         };
-                                        if !ws_send_to_channel(send_msg, &inner_sender) {
-                                            break;
-                                        }
+                                        ws_send_to_channel(send_msg, &inner_sender);
                                     }
                                 }
                             }
@@ -274,7 +297,7 @@ where
             });
 
             let reply_once_guard = REPLY_ONCE_GUARD.clone();
-            let insts_in_receive = WS_INSTS_MAPPING_AVATARS.clone();
+            let insts_in_receive = ws_insts_mapping_avatars().clone();
 
             tokio::spawn(async move {
                 while let Ok(mgr_message) = inner_receiver.recv().await {

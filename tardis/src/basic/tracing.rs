@@ -192,7 +192,7 @@ where
     L: SubscriberInitExt + 'static,
 {
     /// Initialize tardis tracing, this will set the global tardis tracing instance.
-    pub(crate) fn init(self) -> Arc<TardisTracing> {
+    pub fn init(self) -> Arc<TardisTracing> {
         static INITIALIZED: Once = Once::new();
         let configer_list = self.configers;
         if INITIALIZED.is_completed() {

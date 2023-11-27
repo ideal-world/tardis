@@ -133,7 +133,7 @@ impl<T> TardisComponentMapInner<T> {
 }
 
 impl<T: ?Sized> TardisComponentMapInner<T> {
-    const LOCK_EXPECT: &str = "encounter an poisoned lock when trying to lock component";
+    const LOCK_EXPECT: &'static str = "encounter an poisoned lock when trying to lock component";
 
     pub fn new() -> Self {
         Self {

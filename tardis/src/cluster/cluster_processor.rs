@@ -1,53 +1,174 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::borrow::Cow;
+use std::collections::{HashMap, HashSet};
+use std::net::SocketAddr;
+use std::sync::{Arc, OnceLock};
+use std::time::Duration;
 
-use futures_util::future::join_all;
 use futures_util::{SinkExt, StreamExt};
 use poem::web::websocket::{BoxWebSocketUpgraded, Message, WebSocket};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{mpsc, RwLock};
 use tracing::{debug, error, info, trace, warn};
 
 use crate::basic::error::TardisError;
+use crate::cluster::cluster_publish::ClusterEvent;
+use crate::cluster::cluster_receive::init_response_dispatcher;
 use crate::cluster::cluster_watch_by_cache;
 #[cfg(feature = "k8s")]
 use crate::cluster::cluster_watch_by_k8s;
 use crate::config::config_dto::FrameworkConfig;
+use crate::tardis_static;
 use crate::web::web_server::TardisWebServer;
 use crate::web::ws_client::TardisWSClient;
+use crate::web::ws_processor::cluster_protocol::Avatar;
 use crate::{basic::result::TardisResult, TardisFuns};
 use async_trait::async_trait;
 
 pub const CLUSTER_NODE_WHOAMI: &str = "__cluster_node_who_am_i__";
+pub const EVENT_PING: &str = "tardis/ping";
 pub const CLUSTER_MESSAGE_CACHE_SIZE: usize = 10000;
+pub const WHOIAM_TIMEOUT: Duration = Duration::from_secs(30);
 
-lazy_static! {
-    static ref SUBSCRIBES: Arc<RwLock<HashMap<String, Box<dyn TardisClusterSubscriber>>>> = Arc::new(RwLock::new(HashMap::new()));
-    static ref CLIENT_MESSAGE_RESPONDER: Arc<RwLock<Option<broadcast::Sender<TardisClusterMessageResp>>>> = Arc::new(RwLock::new(None));
-    static ref CLUSTER_CACHE_NODES: Arc<RwLock<Vec<TardisClusterNode>>> = Arc::new(RwLock::new(Vec::new()));
-    static ref CLUSTER_CURRENT_NODE_ID: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
+type StaticCowStr = Cow<'static, str>;
+// static LOCAL_NODE_ID_SETTER: OnceLock<String> = OnceLock::new();
+// static LOCAL_SOCKET_ADDR: OnceLock<SocketAddr> = OnceLock::new();
+tardis_static! {
+    pub async set local_socket_addr: SocketAddr;
+    pub async set local_node_id: String;
+    pub async set responsor_dispatcher: mpsc::Sender<TardisClusterMessageResp>;
+    pub(crate) cache_nodes: Arc<RwLock<HashMap<ClusterRemoteNodeKey, TardisClusterNodeRemote>>>;
+    subscribers: Arc<RwLock<HashMap<StaticCowStr, Box<dyn TardisClusterSubscriber>>>>;
 }
+
+/// clone the cache_nodes_info at current time
+pub async fn load_cache_nodes_info() -> HashMap<ClusterRemoteNodeKey, TardisClusterNodeRemote> {
+    cache_nodes().read().await.clone()
+}
+
+pub async fn peer_count() -> usize {
+    cache_nodes().read().await.keys().filter(|k| matches!(k, ClusterRemoteNodeKey::NodeId(_))).count()
+}
+
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+pub enum ClusterRemoteNodeKey {
+    SocketAddr(SocketAddr),
+    NodeId(String),
+}
+
+impl From<SocketAddr> for ClusterRemoteNodeKey {
+    fn from(val: SocketAddr) -> Self {
+        ClusterRemoteNodeKey::SocketAddr(val)
+    }
+}
+
+impl From<String> for ClusterRemoteNodeKey {
+    fn from(val: String) -> Self {
+        ClusterRemoteNodeKey::NodeId(val)
+    }
+}
+
+impl ClusterRemoteNodeKey {
+    pub fn as_socket_addr(&self) -> Option<SocketAddr> {
+        match self {
+            ClusterRemoteNodeKey::SocketAddr(socket_addr) => Some(*socket_addr),
+            _ => None,
+        }
+    }
+    pub fn as_node_id(&self) -> Option<String> {
+        match self {
+            ClusterRemoteNodeKey::NodeId(node_id) => Some(node_id.clone()),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for ClusterRemoteNodeKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ClusterRemoteNodeKey::SocketAddr(socket_addr) => write!(f, "{}", socket_addr),
+            ClusterRemoteNodeKey::NodeId(node_id) => write!(f, "[id]{}", node_id),
+        }
+    }
+}
+
+pub type ClusterMessageId = String;
 
 #[async_trait]
 pub trait TardisClusterSubscriber: Send + Sync + 'static {
+    fn event_name(&self) -> Cow<'static, str>;
     async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>>;
 }
 
-struct ClusterSubscriberWhoAmI;
+#[derive(Debug, Clone, Default)]
+pub enum ClusterEventTarget {
+    #[default]
+    /// broadcast to all known nodes that id is known
+    Broadcast,
+    /// to single remote node
+    Single(ClusterRemoteNodeKey),
+    /// to multi nodes
+    Multi(Vec<ClusterRemoteNodeKey>),
+    /// raw client
+    Client(Arc<TardisWSClient>),
+}
+
+impl ClusterEventTarget {
+    pub fn multi<V: Into<ClusterRemoteNodeKey>, I: IntoIterator<Item = V>>(iter: I) -> Self {
+        ClusterEventTarget::Multi(iter.into_iter().map(|v| v.into()).collect())
+    }
+}
+
+impl From<SocketAddr> for ClusterEventTarget {
+    fn from(val: SocketAddr) -> Self {
+        ClusterEventTarget::Single(ClusterRemoteNodeKey::SocketAddr(val))
+    }
+}
+
+impl From<String> for ClusterEventTarget {
+    fn from(val: String) -> Self {
+        ClusterEventTarget::Single(ClusterRemoteNodeKey::NodeId(val))
+    }
+}
+
+impl<'s> From<&'s str> for ClusterEventTarget {
+    fn from(val: &'s str) -> Self {
+        ClusterEventTarget::Single(ClusterRemoteNodeKey::NodeId(val.to_string()))
+    }
+}
+
+impl<S: Into<String>> From<Vec<S>> for ClusterEventTarget {
+    fn from(val: Vec<S>) -> Self {
+        ClusterEventTarget::Multi(val.into_iter().map(|id| ClusterRemoteNodeKey::NodeId(id.into())).collect::<Vec<_>>())
+    }
+}
+
+impl From<Arc<TardisWSClient>> for ClusterEventTarget {
+    fn from(val: Arc<TardisWSClient>) -> Self {
+        ClusterEventTarget::Client(val)
+    }
+}
+
+struct EventPing;
 
 #[async_trait]
-impl TardisClusterSubscriber for ClusterSubscriberWhoAmI {
+impl TardisClusterSubscriber for EventPing {
+    fn event_name(&self) -> Cow<'static, str> {
+        EVENT_PING.into()
+    }
     async fn subscribe(&self, _message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
-        Ok(Some(Value::String(CLUSTER_CURRENT_NODE_ID.read().await.to_string())))
+        Ok(Some(serde_json::to_value(local_node_id().await).expect("spec always be a valid json value")))
     }
 }
 
 pub async fn init_by_conf(conf: &FrameworkConfig, cluster_server: &TardisWebServer) -> TardisResult<()> {
     if let Some(cluster_config) = &conf.cluster {
         let web_server_config = conf.web_server.as_ref().expect("missing web server config");
+        let access_host = web_server_config.access_host.unwrap_or(web_server_config.host);
+        let access_port = web_server_config.access_port.unwrap_or(web_server_config.port);
+        let access_addr = SocketAddr::new(access_host, access_port);
         info!("[Tardis.Cluster] Initializing cluster");
-        init_node(cluster_server).await?;
+        init_node(cluster_server, access_addr).await?;
         match cluster_config.watch_kind.to_lowercase().as_str() {
             #[cfg(feature = "k8s")]
             "k8s" => {
@@ -65,53 +186,80 @@ pub async fn init_by_conf(conf: &FrameworkConfig, cluster_server: &TardisWebServ
     Ok(())
 }
 
-async fn init_node(cluster_server: &TardisWebServer) -> TardisResult<()> {
+async fn init_node(cluster_server: &TardisWebServer, access_addr: SocketAddr) -> TardisResult<()> {
     info!("[Tardis.Cluster] Initializing node");
-    if CLUSTER_CURRENT_NODE_ID.read().await.is_empty() {
-        *CLUSTER_CURRENT_NODE_ID.write().await = TardisFuns::field.nanoid();
-    }
-    if !CLIENT_MESSAGE_RESPONDER.read().await.is_some() {
-        *CLIENT_MESSAGE_RESPONDER.write().await = Some(broadcast::channel::<TardisClusterMessageResp>(CLUSTER_MESSAGE_CACHE_SIZE).0);
-    }
+    set_local_node_id(TardisFuns::field.nanoid());
+    set_local_socket_addr(access_addr);
+    debug!("[Tardis.Cluster] Initializing response dispathcer");
+    set_responsor_dispatcher(init_response_dispatcher());
     debug!("[Tardis.Cluster] Register exchange route");
     cluster_server.add_route(ClusterAPI).await;
 
     debug!("[Tardis.Cluster] Register default events");
-    subscribe_event(CLUSTER_NODE_WHOAMI, Box::new(ClusterSubscriberWhoAmI {})).await;
+    subscribe(EventPing).await;
+    #[cfg(feature = "web-server")]
+    {
+        subscribe(Avatar).await;
+    }
 
     info!("[Tardis.Cluster] Initialized node");
     Ok(())
 }
 
-pub async fn set_node_id(node_id: &str) {
-    *CLUSTER_CURRENT_NODE_ID.write().await = node_id.to_string();
-}
-
-pub async fn refresh_nodes(active_nodes: Vec<(String, u16)>) -> TardisResult<()> {
+pub async fn refresh_nodes(active_nodes: &HashSet<SocketAddr>) -> TardisResult<()> {
     trace!("[Tardis.Cluster] Refreshing nodes");
     trace!("[Tardis.Cluster] Find all active nodes: {:?}", active_nodes);
-    let mut cache_nodes = CLUSTER_CACHE_NODES.write().await;
+    let mut cache_nodes = cache_nodes().write().await;
+    let socket_set = cache_nodes.keys().filter_map(ClusterRemoteNodeKey::as_socket_addr).collect::<HashSet<_>>();
+    // remove inactive nodes
     trace!("[Tardis.Cluster] Try remove inactive nodes from cache");
-    cache_nodes.retain(|cache_node| active_nodes.iter().any(|(active_node_ip, active_node_port)| cache_node.ip == *active_node_ip && cache_node.port == *active_node_port));
+    for inactive_node in socket_set.difference(active_nodes) {
+        if let Some(remote) = cache_nodes.remove(&ClusterRemoteNodeKey::SocketAddr(*inactive_node)) {
+            // load_cache_nodes_info()
+            info!("[Tardis.Cluster] remove inactive node {remote:?} from cache");
+            cache_nodes.remove(&ClusterRemoteNodeKey::NodeId(remote.node_id));
+            // TODO
+            // be nice to the server, close the connection
+            // remote.client
+        }
+    }
+    // add new nodes
     trace!("[Tardis.Cluster] Try add new active nodes to cache");
-    let added_active_nodes = active_nodes
-        .iter()
-        .filter(|(active_node_ip, active_node_port)| !cache_nodes.iter().any(|cache_node| cache_node.ip == *active_node_ip && cache_node.port == *active_node_port))
-        .collect::<Vec<_>>();
-    for (active_node_ip, active_node_port) in added_active_nodes {
-        cache_nodes.push(add_node(active_node_ip, *active_node_port).await?);
+    for new_nodes_addr in active_nodes.difference(&socket_set) {
+        if local_socket_addr().await == new_nodes_addr {
+            // skip local node
+            continue;
+        }
+        let remote = add_remote_node(*new_nodes_addr).await?;
+        info!("[Tardis.Cluster] New remote nodes: {remote:?}");
+
+        cache_nodes.insert(ClusterRemoteNodeKey::SocketAddr(*new_nodes_addr), remote.clone());
+        cache_nodes.insert(ClusterRemoteNodeKey::NodeId(remote.node_id.clone()), remote);
     }
     trace!("[Tardis.Cluster] Refreshed nodes");
+    let mut table = String::new();
+    for (k, v) in cache_nodes.iter() {
+        use std::fmt::Write;
+        writeln!(&mut table, "{k:20} | {v:40} ").expect("shouldn't fail");
+    }
+    trace!("[Tardis.Cluster] cache nodes table \n{table}");
     Ok(())
 }
 
-async fn add_node(node_ip: &str, node_port: u16) -> TardisResult<TardisClusterNode> {
-    debug!("[Tardis.Cluster] Connect node: {node_ip}:{node_port}");
-    let client = TardisFuns::ws_client(&format!("ws://{node_ip}:{node_port}/tardis/cluster/ws/exchange"), move |message| async move {
+async fn add_remote_node(socket_addr: SocketAddr) -> TardisResult<TardisClusterNodeRemote> {
+    if *local_socket_addr().await == socket_addr {
+        return Err(TardisError::wrap(
+            &format!("[Tardis.Cluster] [Client] add remote node {socket_addr}: can't add local node"),
+            "-1-tardis-cluster-add-remote-node-error",
+        ));
+    }
+    debug!("[Tardis.Cluster] Connect node: {socket_addr}");
+    // is this node
+    let client = TardisFuns::ws_client(&format!("ws://{socket_addr}/tardis/cluster/ws/exchange"), move |message| async move {
         if let tokio_tungstenite::tungstenite::Message::Text(message) = message {
             match TardisFuns::json.str_to_obj::<TardisClusterMessageResp>(&message) {
                 Ok(message_resp) => {
-                    if let Err(error) = CLIENT_MESSAGE_RESPONDER.read().await.as_ref().expect("Global variable [CLIENT_MESSAGE_RESPONDER] doesn't exist").send(message_resp) {
+                    if let Err(error) = responsor_dispatcher().await.send(message_resp).await {
                         error!("[Tardis.Cluster] [Client] response message {message}: {error}");
                     }
                 }
@@ -121,117 +269,33 @@ async fn add_node(node_ip: &str, node_port: u16) -> TardisResult<TardisClusterNo
         None
     })
     .await?;
-    debug!("[Tardis.Cluster] Determine whether it is the current node");
-    let whoami_msg_id = do_publish_event(CLUSTER_NODE_WHOAMI, Value::Null, vec![&client]).await?;
-    let resp_node_id = publish_event_wait_resp(&whoami_msg_id).await?.resp_node_id;
-
-    let is_current_node = resp_node_id == CLUSTER_CURRENT_NODE_ID.read().await.as_str();
-    if !is_current_node {
-        info!("[Tardis.Cluster] Join node: {node_ip}:{node_port}")
-    }
-    Ok(TardisClusterNode {
-        id: resp_node_id,
-        ip: node_ip.to_string(),
-        port: node_port,
-        current: is_current_node,
-        client: if !is_current_node { Some(client) } else { None },
-    })
+    let client = Arc::new(client);
+    let resp = ClusterEvent::new(EVENT_PING).target(client.clone()).one_response(Some(WHOIAM_TIMEOUT)).publish_one_response().await?;
+    let resp_node_id = resp.resp_node_id;
+    let remote = TardisClusterNodeRemote { node_id: resp_node_id, client };
+    Ok(remote)
 }
 
-pub async fn subscribe_event(event: &str, sub_fun: Box<dyn TardisClusterSubscriber>) {
-    info!("[Tardis.Cluster] [Server] subscribe event {event}");
-    SUBSCRIBES.write().await.insert(event.to_string(), sub_fun);
+pub async fn subscribe_boxed(subscriber: Box<dyn TardisClusterSubscriber>) {
+    let event_name = subscriber.event_name();
+    info!("[Tardis.Cluster] [Server] subscribe event {event_name}");
+    subscribers().write().await.insert(event_name, subscriber);
 }
 
-pub async fn publish_event(event: &str, message: Value, node_ids: Option<Vec<&str>>) -> TardisResult<String> {
-    trace!("[Tardis.Cluster] [Client] publish event {event} , message {message} , to {node_ids:?}");
-    let cache_nodes = CLUSTER_CACHE_NODES.read().await;
-    if !cache_nodes.iter().any(|cache_node| !cache_node.current) {
-        return Err(TardisError::not_found(
-            &format!("[Tardis.Cluster] [Client] publish event {event} , message {message} : no active nodes found"),
-            "404-tardis-cluster-publish-message-node-not-exit",
-        ));
-    }
-    trace!(
-        "[Tardis.Cluster] [Client] cache nodes {}",
-        cache_nodes
-            .iter()
-            .map(|cache_node| format!("[node_id={} , {}:{} , current={}]", cache_node.id, cache_node.ip, cache_node.port, cache_node.current))
-            .collect::<Vec<_>>()
-            .join(" ")
-    );
-    let node_clients = cache_nodes
-        .iter()
-        .filter(|cache_node| cache_node.client.is_some() && node_ids.as_ref().map(|node_ids| node_ids.contains(&cache_node.id.as_str())).unwrap_or(true))
-        .map(|cache_node| (cache_node.client.as_ref().expect("ignore"), &cache_node.id))
-        .collect::<Vec<_>>();
-    if let Some(node_ids) = node_ids {
-        if node_clients.len() != node_ids.len() {
-            let not_found_node_ids = node_ids.into_iter().filter(|node_id| !node_clients.iter().any(|node_client| node_client.1 == node_id)).collect::<Vec<_>>().join(",");
-            return Err(TardisError::not_found(
-                &format!("[Tardis.Cluster] [Client] publish event {event} , message {message} to [{not_found_node_ids}] not found"),
-                "404-tardis-cluster-publish-message-node-not-exit",
-            ));
-        }
-    }
-    do_publish_event(event, message, node_clients.iter().map(|n| n.0).collect::<Vec<_>>()).await
+pub async fn subscribe<S: TardisClusterSubscriber>(subscriber: S) {
+    let event_name = subscriber.event_name();
+    info!("[Tardis.Cluster] [Server] subscribe event {event_name}");
+    subscribers().write().await.insert(event_name, Box::new(subscriber));
 }
 
-async fn do_publish_event(event: &str, message: Value, node_clients: Vec<&TardisWSClient>) -> TardisResult<String> {
-    let message_req = TardisClusterMessageReq::new(message.clone(), event.to_string(), CLUSTER_CURRENT_NODE_ID.read().await.to_string());
-    let ws_message = tokio_tungstenite::tungstenite::Message::Text(TardisFuns::json.obj_to_string(&message_req)?);
-    let publish_result = join_all(node_clients.iter().map(|client| client.send_raw_with_retry(ws_message.clone()))).await;
-
-    if publish_result
-        .iter()
-        .filter(|result| {
-            if let Err(error) = result {
-                error!("[Tardis.Cluster] [Client] publish event {event} , message {message}: {error}");
-                true
-            } else {
-                false
-            }
-        })
-        .count()
-        != 0
-    {
-        Err(TardisError::wrap(
-            &format!("[Tardis.Cluster] [Client] publish event {event} , message {message} error"),
-            "-1-tardis-cluster-publish-message-error",
-        ))
-    } else {
-        Ok(message_req.msg_id())
-    }
-}
-
-async fn publish_event_wait_resp(msg_id: &str) -> TardisResult<TardisClusterMessageResp> {
-    loop {
-        match CLIENT_MESSAGE_RESPONDER.read().await.as_ref().expect("Global variable [CLIENT_MESSAGE_RESPONDER] doesn't exist").subscribe().recv().await {
-            Ok(message_response) => {
-                if message_response.msg_id == msg_id {
-                    return Ok(message_response);
-                }
-            }
-            Err(error) => {
-                error!("[Tardis.Cluster] [Client] receive message id {msg_id}: {error}");
-                return Err(TardisError::wrap(
-                    &format!("[Tardis.Cluster] [Client] receive message id {msg_id}: {error}"),
-                    "-1-tardis-cluster-receive-message-error",
-                ));
-            }
-        }
-    }
-}
-
-pub async fn publish_event_and_wait_resp(event: &str, message: Value, node_id: &str) -> TardisResult<TardisClusterMessageResp> {
-    trace!("[Tardis.Cluster] [Client] publish and wait resp, event {event} , message {message} , to {node_id}");
-    let msg_id = publish_event(event, message, Some(vec![node_id])).await?;
-    publish_event_wait_resp(&msg_id).await
+pub async fn unsubscribe(event_name: &str) {
+    info!("[Tardis.Cluster] [Server] unsubscribe event {event_name}");
+    subscribers().write().await.remove(event_name);
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct TardisClusterMessageReq {
-    msg_id: String,
+    pub(crate) msg_id: String,
     pub req_node_id: String,
     pub msg: Value,
     pub event: String,
@@ -254,7 +318,7 @@ impl TardisClusterMessageReq {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct TardisClusterMessageResp {
-    msg_id: String,
+    pub(crate) msg_id: String,
     pub resp_node_id: String,
     pub msg: Value,
 }
@@ -268,14 +332,41 @@ impl TardisClusterMessageResp {
         self.msg_id.to_string()
     }
 }
-
-pub struct TardisClusterNode {
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
+pub struct TardisClusterNodeSpecifier {
     pub id: String,
-    pub ip: String,
-    pub port: u16,
-    pub current: bool,
-    pub client: Option<TardisWSClient>,
+    pub socket_addr: SocketAddr,
 }
+
+pub struct TardisClusterNodeLocal {
+    pub spec: TardisClusterNodeSpecifier,
+}
+
+#[derive(Debug, Clone)]
+pub struct TardisClusterNodeRemote {
+    pub node_id: String,
+    pub client: Arc<TardisWSClient>,
+}
+
+impl std::fmt::Display for TardisClusterNodeRemote {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{is_online} / {node_id} / {url}",
+            is_online = if self.client.is_connected() { "online" } else { "offline" },
+            node_id = self.node_id,
+            url = self.client.url
+        )
+    }
+}
+pub enum TardisClusterNode {
+    Local(TardisClusterNodeLocal),
+    Remote(TardisClusterNodeRemote),
+}
+
+impl TardisClusterNode {}
+
+use std::hash::Hash;
 
 #[derive(Debug, Clone)]
 struct ClusterAPI;
@@ -292,18 +383,14 @@ impl ClusterAPI {
                             trace!("[Tardis.Cluster] [Server] receive message {ws_message}");
                             match TardisFuns::json.str_to_obj::<TardisClusterMessageReq>(&ws_message) {
                                 Ok(message_req) => {
-                                    if let Some(subscriber) = SUBSCRIBES.read().await.get(&message_req.event) {
+                                    if let Some(subscriber) = subscribers().read().await.get(&Cow::Owned(message_req.event.to_string())) {
                                         let msg_id = message_req.msg_id();
                                         match subscriber.subscribe(message_req).await {
                                             Ok(Some(message_resp)) => {
                                                 if let Err(error) = socket
                                                     .send(Message::Text(
                                                         TardisFuns::json
-                                                            .obj_to_string(&TardisClusterMessageResp::new(
-                                                                message_resp.clone(),
-                                                                msg_id,
-                                                                CLUSTER_CURRENT_NODE_ID.read().await.to_string(),
-                                                            ))
+                                                            .obj_to_string(&TardisClusterMessageResp::new(message_resp.clone(), msg_id, local_node_id().await.to_string()))
                                                             .expect("ignore"),
                                                     ))
                                                     .await

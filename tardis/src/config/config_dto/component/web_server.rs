@@ -119,10 +119,10 @@ pub struct WebServerModuleConfig {
     #[builder(default = "Tardis-based application".to_string(), setter(into))]
     /// Module name for ``OpenAPI`` / 模块名称，用于 ``OpenAPI``
     pub name: String,
-    #[builder(default = "1.0.0".to_string(), setter(into))]
+    #[builder(default = crate::consts::TARDIS_VERSION.to_string(), setter(into))]
     /// Module version for ``OpenAPI`` / 模块版本，用于 ``OpenAPI``
     pub version: String,
-    #[builder(default = vec![("test env".to_string(), "http://localhost:8080/".to_string())], setter(into))]
+    #[builder(default = vec![], setter(into))]
     /// API request path for ``OpenAPI`` / API请求路径，用于 ``OpenAPI``
     ///
     /// Formatted as ``[(environment identifier, request path)]`` / 格式为 ``[（环境标识，请求路径）]``
@@ -132,10 +132,10 @@ pub struct WebServerModuleConfig {
     ///
     /// Formatted as ``[(header name, header description)]`` / 格式为 ``[（请求头名称，请求头说明）]``
     pub req_headers: Vec<(String, String)>,
-    #[builder(default = Some(String::from("ui")), setter(strip_option, into))]
+    #[builder(default = None, setter(strip_option, into))]
     /// ``OpenAPI`` UI path / 模``OpenAPI`` UI路径
     pub ui_path: Option<String>,
-    #[builder(default = Some(String::from("spec")), setter(strip_option, into))]
+    #[builder(default = None, setter(strip_option, into))]
     /// ``OpenAPI`` information path / ``OpenAPI`` 信息路径
     pub spec_path: Option<String>,
     #[builder(default = true)]

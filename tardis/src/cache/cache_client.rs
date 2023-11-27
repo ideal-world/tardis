@@ -158,6 +158,26 @@ impl TardisCacheClient {
         self.get_connection().await?.llen(key).await
     }
 
+    pub async fn lrem(&self, key: &str, count: isize, value: &str) -> RedisResult<usize> {
+        trace!("[Tardis.CacheClient] lrem, key:{}", key);
+        self.get_connection().await?.lrem(key, count, value).await
+    }
+
+    pub async fn linsert_after(&self, key: &str, count: isize, value: &str) -> RedisResult<usize> {
+        trace!("[Tardis.CacheClient] linsert_after, key:{}", key);
+        self.get_connection().await?.linsert_after(key, count, value).await
+    }
+
+    pub async fn linsert_before(&self, key: &str, count: isize, value: &str) -> RedisResult<usize> {
+        trace!("[Tardis.CacheClient] linsert_after, key:{}", key);
+        self.get_connection().await?.linsert_before(key, count, value).await
+    }
+
+    pub async fn lset(&self, key: &str, count: isize, value: &str) -> RedisResult<usize> {
+        trace!("[Tardis.CacheClient] lset, key:{}", key);
+        self.get_connection().await?.lset(key, count, value).await
+    }
+
     // hash operations
 
     pub async fn hget(&self, key: &str, field: &str) -> RedisResult<Option<String>> {
