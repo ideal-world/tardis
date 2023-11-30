@@ -113,7 +113,6 @@ pub async fn publish_event_with_listener<S: Listener>(
     listener: S,
 ) -> TardisResult<S::Reply> {
     let node_id = local_node_id().await.to_string();
-    dbg!(&node_id);
     let event = event.into();
     let target = target.into();
     let target_debug = format!("{target:?}");

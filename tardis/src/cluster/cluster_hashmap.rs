@@ -52,7 +52,6 @@ where
         self.map.write().await.insert(key.clone(), value.clone());
         let event = CshmEvent::<K, V>::Insert(vec![(key, value)]);
         let json = TardisJson.obj_to_json(&event)?;
-        dbg!(&json);
         let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
         Ok(())
     }
