@@ -101,19 +101,23 @@ impl TardisWSClient {
         // let reply = ws_tx.clone();
         // let (outbound_tx, mut outbound_rx) = mpsc::unbounded_channel::<Message>();
 
-        let (outbound_quene_tx, mut outbound_quene_rx) = mpsc::unbounded_channel::<Message>();
+        let (outbound_queue_tx, mut outbound_queue_rx) = mpsc::unbounded_channel::<Message>();
 
-        // there should be two quene:
-        // 1. out to client quene
-        // 2. client to remote quene
+        // there should be two queue:
+        // 1. out to client queue
+        // 2. client to remote queue
 
         // outbound side
         let ob_handle = {
             let url = url.clone();
             tokio::spawn(async move {
-                while let Some(message) = outbound_quene_rx.recv().await {
+                while let Some(message) = outbound_queue_rx.recv().await {
                     if let Err(e) = ws_tx.send(message).await {
-                        debug!("[Tardis.WSClient] client: {url} error when send to websocket: {e}")
+                        warn!("[Tardis.WSClient] client: {url} error when send to websocket: {e}");
+                        match e {
+                            tokio_tungstenite::tungstenite::Error::ConnectionClosed | tokio_tungstenite::tungstenite::Error::AlreadyClosed => break,
+                            _ => {}
+                        }
                         // websocket was closed
                     }
                 }
@@ -124,7 +128,7 @@ impl TardisWSClient {
         let ib_handle = {
             let on_message = on_message.clone();
 
-            let outbound_quene_tx = outbound_quene_tx.clone();
+            let outbound_queue_tx = outbound_queue_tx.clone();
             let url = url.clone();
             tokio::spawn(async move {
                 // stream would be owned by one single task and
@@ -135,13 +139,13 @@ impl TardisWSClient {
                         Ok(message) => {
                             trace!("[Tardis.WSClient] WS receive: {}", message);
                             let fut_response = on_message(message);
-                            let outbound_quene_tx = outbound_quene_tx.clone();
+                            let outbound_queue_tx = outbound_queue_tx.clone();
                             let url = url.clone();
                             tokio::spawn(async move {
                                 if let Some(resp) = fut_response.await {
                                     trace!("[Tardis.WSClient] WS send: {}", resp);
-                                    if let Err(e) = outbound_quene_tx.send(resp) {
-                                        debug!("[Tardis.WSClient] client: {url} error when send to outbound message quene: {e}")
+                                    if let Err(e) = outbound_queue_tx.send(resp) {
+                                        debug!("[Tardis.WSClient] client: {url} error when send to outbound message queue: {e}")
                                         // outbound channel was closed
                                     }
                                 }
@@ -163,7 +167,7 @@ impl TardisWSClient {
             drop(permit)
         });
 
-        Ok(outbound_quene_tx)
+        Ok(outbound_queue_tx)
     }
 
     pub async fn send_obj<E: ?Sized + Serialize>(&self, msg: &E) -> TardisResult<()> {
