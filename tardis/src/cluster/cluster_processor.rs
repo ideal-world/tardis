@@ -21,7 +21,8 @@ use crate::config::config_dto::FrameworkConfig;
 use crate::tardis_static;
 use crate::web::web_server::TardisWebServer;
 use crate::web::ws_client::TardisWSClient;
-use crate::web::ws_processor::cluster_protocol::Avatar;
+use crate::web::ws_processor::ws_insts_mapping_avatars;
+// use crate::web::ws_processor::cluster_protocol::Avatar;
 use crate::{basic::result::TardisResult, TardisFuns};
 use async_trait::async_trait;
 
@@ -198,7 +199,7 @@ async fn init_node(cluster_server: &TardisWebServer, access_addr: SocketAddr) ->
     subscribe(EventPing).await;
     #[cfg(feature = "web-server")]
     {
-        subscribe(Avatar).await;
+        subscribe(ws_insts_mapping_avatars().clone()).await;
     }
 
     info!("[Tardis.Cluster] Initialized node");
