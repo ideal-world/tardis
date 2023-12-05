@@ -14,7 +14,7 @@
 /// tardis_static! {
 ///     pub async x: Config = async {
 ///         wait_other_async().await;
-///         retrive_config().await
+///         retrieve_config().await
 ///     };
 /// }
 /// ```
@@ -88,16 +88,16 @@ fn test_tardis_static_macro() {
         config: Config = Config::default();
     }
     async fn wait_other_async() {}
-    async fn retrive_config() -> Config {
+    async fn retrieve_config() -> Config {
         config().clone()
     }
     tardis_static! {
         async async_config: Config = async {
             wait_other_async().await;
-            retrive_config().await
+            retrieve_config().await
         };
     }
     tardis_static! {
-        config_defualt: Config;
+        config_default: Config;
     }
 }

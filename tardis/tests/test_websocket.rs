@@ -10,6 +10,7 @@ use poem::web::websocket::{BoxWebSocketUpgraded, WebSocket};
 use poem_openapi::param::Path;
 use serde_json::json;
 use tardis::basic::result::TardisResult;
+use tardis::cluster::cluster_processor::set_local_node_id;
 use tardis::consts::IP_LOCALHOST;
 use tardis::web::web_server::{TardisWebServer, WebServerModule};
 use tardis::web::ws_client::TardisWebSocketMessageExt;
@@ -31,6 +32,7 @@ lazy_static! {
 async fn test_websocket() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
+    set_local_node_id("test".into());
     let serv = TardisWebServer::init_simple(IP_LOCALHOST, 8080).unwrap();
     serv.add_route(WebServerModule::from(Api).with_ws(100)).await;
     serv.start().await?;
@@ -47,11 +49,11 @@ async fn test_normal() -> TardisResult<()> {
     static SUB_COUNTER: AtomicUsize = AtomicUsize::new(0);
     static NON_SUB_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-    // message not illegal test
+    // message illegal test
     let error_client_a = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/gerror/a", move |msg| async move {
         if let Message::Text(msg) = msg {
             println!("client_not_found recv:{}", msg);
-            assert_eq!(msg, r#"{"msg":"message not illegal","event":"__sys_error__"}"#);
+            assert_eq!(msg, r#"{"msg":"message illegal","event":"__sys_error__"}"#);
             ERROR_COUNTER.fetch_add(1, Ordering::SeqCst);
         }
         None

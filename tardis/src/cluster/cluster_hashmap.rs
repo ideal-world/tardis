@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     collections::HashMap,
+    fmt,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -18,10 +19,18 @@ use super::{
 };
 
 // Cshm = ClusterStaticHashMap
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ClusterStaticHashMap<K, V> {
     pub map: Arc<RwLock<HashMap<K, V>>>,
     pub ident: &'static str,
+    pub cluster_sync: bool,
+    pub modify_handler: Arc<HashMap<String, Box<dyn Fn(&mut V, &Value) + Send + Sync>>>,
+}
+
+impl<K, V> fmt::Debug for ClusterStaticHashMap<K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ClusterStaticHashMap").field("ident", &self.ident).field("cluster_sync", &self.cluster_sync).finish()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +38,41 @@ enum CshmEvent<K, V> {
     Insert(Vec<(K, V)>),
     Remove { keys: Vec<K> },
     Get { key: K },
+    Modify { key: K, mapper: String, modify: Value },
+}
+
+pub struct ClusterStaticHashMapBuilder<K, V> {
+    ident: &'static str,
+    cluster_sync: bool,
+    modify_handler: HashMap<String, Box<dyn Fn(&mut V, &Value) + Send + Sync>>,
+    _phantom: std::marker::PhantomData<(K, V)>,
+}
+
+impl<K, V> ClusterStaticHashMapBuilder<K, V> {
+    pub fn new(ident: &'static str) -> Self {
+        Self {
+            ident,
+            cluster_sync: true,
+            modify_handler: HashMap::new(),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+    pub fn sync(mut self, cluster_sync: bool) -> Self {
+        self.cluster_sync = cluster_sync;
+        self
+    }
+    pub fn modify_handler(mut self, mapper: &'static str, handler: impl Fn(&mut V, &Value) + Send + Sync + 'static) -> Self {
+        self.modify_handler.insert(mapper.to_string(), Box::new(handler));
+        self
+    }
+    pub fn build(self) -> ClusterStaticHashMap<K, V> {
+        ClusterStaticHashMap {
+            map: Arc::new(RwLock::new(HashMap::new())),
+            ident: self.ident,
+            cluster_sync: self.cluster_sync,
+            modify_handler: Arc::new(self.modify_handler),
+        }
+    }
 }
 
 impl<K, V> ClusterStaticHashMap<K, V>
@@ -36,11 +80,28 @@ where
     K: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + Hash + Eq,
     V: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned,
 {
+    pub fn builder(ident: &'static str) -> ClusterStaticHashMapBuilder<K, V> {
+        ClusterStaticHashMapBuilder::new(ident)
+    }
+
     pub fn new(ident: &'static str) -> Self {
         Self {
             map: Arc::new(RwLock::new(HashMap::new())),
             ident,
+            cluster_sync: true,
+            modify_handler: Arc::new(HashMap::new()),
         }
+    }
+    pub fn new_standalone(ident: &'static str) -> Self {
+        Self {
+            map: Arc::new(RwLock::new(HashMap::new())),
+            ident,
+            cluster_sync: false,
+            modify_handler: Arc::new(HashMap::new()),
+        }
+    }
+    pub fn is_cluster(&self) -> bool {
+        self.cluster_sync
     }
     pub fn event_name(&self) -> String {
         format!("tardis/hashmap/{ident}", ident = self.ident)
@@ -50,10 +111,11 @@ where
     }
     pub async fn insert(&self, key: K, value: V) -> TardisResult<()> {
         self.map.write().await.insert(key.clone(), value.clone());
-        let event = CshmEvent::<K, V>::Insert(vec![(key, value)]);
-        let json = TardisJson.obj_to_json(&event)?;
-        dbg!(&json);
-        let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+        if self.is_cluster() {
+            let event = CshmEvent::<K, V>::Insert(vec![(key, value)]);
+            let json = TardisJson.obj_to_json(&event)?;
+            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+        }
         Ok(())
     }
     pub async fn batch_insert(&self, pairs: Vec<(K, V)>) -> TardisResult<()> {
@@ -63,16 +125,20 @@ where
                 wg.insert(key.clone(), value.clone());
             }
         }
-        let event = CshmEvent::<K, V>::Insert(pairs);
-        let json = TardisJson.obj_to_json(&event)?;
-        let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+        if self.is_cluster() {
+            let event = CshmEvent::<K, V>::Insert(pairs);
+            let json = TardisJson.obj_to_json(&event)?;
+            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+        }
         Ok(())
     }
     pub async fn remove(&self, key: K) -> TardisResult<()> {
         self.map.write().await.remove(&key);
-        let event = CshmEvent::<K, V>::Remove { keys: vec![key] };
-        let json = TardisJson.obj_to_json(&event)?;
-        let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+        if self.is_cluster() {
+            let event = CshmEvent::<K, V>::Remove { keys: vec![key] };
+            let json = TardisJson.obj_to_json(&event)?;
+            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+        }
         Ok(())
     }
     pub async fn batch_remove(&self, keys: Vec<K>) -> TardisResult<()> {
@@ -82,9 +148,11 @@ where
                 wg.remove(key);
             }
         }
-        let event = CshmEvent::<K, V>::Remove { keys };
-        let json = TardisJson.obj_to_json(&event)?;
-        let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+        if self.is_cluster() {
+            let event = CshmEvent::<K, V>::Remove { keys };
+            let json = TardisJson.obj_to_json(&event)?;
+            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+        }
         Ok(())
     }
     pub async fn get(&self, key: K) -> TardisResult<Option<V>> {
@@ -95,6 +163,9 @@ where
         }
     }
     async fn get_remote(&self, key: K) -> TardisResult<Option<V>> {
+        if !self.is_cluster() {
+            return Ok(None);
+        }
         let peer_count = peer_count().await;
         if peer_count == 0 {
             return Ok(None);
@@ -126,6 +197,21 @@ where
         }
         Ok(None)
     }
+    pub async fn modify(&self, key: K, mapper: &'static str, modify: Value) -> TardisResult<()> {
+        let mapper = mapper.to_string();
+        let mut wg = self.map.write().await;
+        if let Some(v) = wg.get_mut(&key) {
+            if let Some(handler) = self.modify_handler.get(&mapper) {
+                handler(v, &modify);
+            }
+        }
+        if self.is_cluster() {
+            let event = CshmEvent::<K, V>::Modify { key, mapper, modify };
+            let json = TardisJson.obj_to_json(&event)?;
+            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+        }
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -155,6 +241,15 @@ where
                 let rg = self.map.read().await;
                 let value = rg.get(&key);
                 Ok(Some(TardisJson.obj_to_json(&value)?))
+            }
+            CshmEvent::Modify { key, mapper, modify } => {
+                let mut wg = self.map.write().await;
+                if let Some(v) = wg.get_mut(&key) {
+                    if let Some(handler) = self.modify_handler.get(&mapper) {
+                        handler(v, &modify);
+                    }
+                }
+                Ok(None)
             }
         }
     }

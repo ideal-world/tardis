@@ -2,7 +2,10 @@ use std::{
     borrow::Cow,
     env,
     path::Path,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
     time::Duration,
 };
 
@@ -12,11 +15,14 @@ use serde_json::{json, Value};
 use tardis::{
     basic::{result::TardisResult, tracing::TardisTracing},
     cluster::{
-        cluster_processor::{self, ClusterEventTarget, TardisClusterMessageReq, TardisClusterSubscriber},
+        cluster_broadcast::ClusterBroadcastChannel,
+        cluster_hashmap::ClusterStaticHashMap,
+        cluster_processor::{self, subscribe, ClusterEventTarget, TardisClusterMessageReq, TardisClusterSubscriber},
         cluster_publish::publish_event_one_response,
     },
     config::config_dto::{CacheModuleConfig, ClusterConfig, FrameworkConfig, LogConfig, TardisConfig, WebServerCommonConfig, WebServerConfig, WebServerModuleConfig},
     consts::IP_LOCALHOST,
+    tardis_static,
     test::test_container::TardisTestContainer,
     TardisFuns,
 };
@@ -106,6 +112,9 @@ async fn invoke_node(cluster_url: &str, node_id: &str, program: &Path) -> Tardis
 }
 
 async fn start_node(cluster_url: String, node_id: &str) -> TardisResult<()> {
+    subscribe(map().clone()).await;
+    // subscribe
+    broadcast();
     cluster_processor::set_local_node_id(format!("node_{node_id}"));
     let port = portpicker::pick_unused_port().unwrap();
     TardisTracing::initializer().with_fmt_layer().with_env_layer().init();
@@ -143,9 +152,25 @@ async fn start_node(cluster_url: String, node_id: &str) -> TardisResult<()> {
     }
     TardisFuns::web_server().start().await?;
     sleep(Duration::from_secs(1)).await;
-
+    let task = {
+        let node_id = node_id.to_string();
+        {
+            let node_id = node_id.to_string();
+            tokio::spawn(async move {
+                let mut receiver = broadcast().subscribe();
+                while let Ok(msg) = receiver.recv().await {
+                    println!("node[{node_id}]/broadcast: {msg}");
+                    bc_recv_count().fetch_add(1, Ordering::SeqCst);
+                }
+            });
+        }
+        tokio::spawn(async move {
+            test_broadcast(&node_id).await;
+        })
+    };
     test_ping(node_id).await?;
     test_echo(node_id).await?;
+    test_hash_map(node_id).await?;
 
     if node_id == "1" {
         sleep(Duration::from_secs(1)).await;
@@ -154,6 +179,8 @@ async fn start_node(cluster_url: String, node_id: &str) -> TardisResult<()> {
     } else {
         sleep(Duration::from_secs(10)).await;
     }
+    let result = tokio::join!(task);
+    result.0.unwrap();
     Ok(())
 }
 
@@ -226,4 +253,69 @@ async fn test_echo(node_id: &str) -> TardisResult<()> {
         assert!(resp.is_err());
     }
     Ok(())
+}
+
+tardis_static! {
+    pub map: ClusterStaticHashMap<String, String> = ClusterStaticHashMap::new("test");
+    broadcast: Arc<ClusterBroadcastChannel<String>> = ClusterBroadcastChannel::new("test_channel", 100);
+    bc_recv_count: AtomicUsize = AtomicUsize::new(0);
+}
+async fn test_hash_map(node_id: &str) -> TardisResult<()> {
+    match node_id {
+        "1" => {
+            map().insert("item1".to_string(), "from_node1".to_string()).await?;
+            let value = map().get("item1".to_string()).await?;
+            assert_eq!(value, Some("from_node1".to_string()));
+        }
+        "2" => {
+            map().insert("item2".to_string(), "from_node2".to_string()).await?;
+            loop {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                let value = map().get("item1".to_string()).await?;
+                if value.is_some() {
+                    assert_eq!(value, Some("from_node1".to_string()));
+                    break;
+                }
+            }
+            let value = map().get("item2".to_string()).await?;
+            assert_eq!(value, Some("from_node2".to_string()));
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            map().remove("item2".to_string()).await?;
+            let value = map().get("item2".to_string()).await?;
+            assert_eq!(value, None);
+        }
+        "3" => {}
+        _ => {}
+    }
+    Ok(())
+}
+
+async fn test_broadcast(node_id: &str) {
+    tokio::time::sleep(Duration::from_secs(6)).await;
+    match node_id {
+        "1" => {
+            broadcast().send("message1-1".to_string());
+            broadcast().send("message1-2".to_string());
+        }
+        "2" => {
+            broadcast().send("message2-1".to_string());
+            broadcast().send("message2-2".to_string());
+        }
+        "3" => {
+            broadcast().send("message3-1".to_string());
+            broadcast().send("message3-2".to_string());
+        }
+        _ => {}
+    }
+    let result = tokio::time::timeout(Duration::from_secs(20), async move {
+        loop {
+            if bc_recv_count().load(Ordering::SeqCst) == 6 {
+                break;
+            } else {
+                tokio::task::yield_now().await;
+            }
+        }
+    })
+    .await;
+    assert!(result.is_ok());
 }

@@ -21,22 +21,22 @@ use crate::config::config_dto::FrameworkConfig;
 use crate::tardis_static;
 use crate::web::web_server::TardisWebServer;
 use crate::web::ws_client::TardisWSClient;
-use crate::web::ws_processor::cluster_protocol::Avatar;
+use crate::web::ws_processor::ws_insts_mapping_avatars;
+// use crate::web::ws_processor::cluster_protocol::Avatar;
 use crate::{basic::result::TardisResult, TardisFuns};
 use async_trait::async_trait;
 
 pub const CLUSTER_NODE_WHOAMI: &str = "__cluster_node_who_am_i__";
 pub const EVENT_PING: &str = "tardis/ping";
 pub const CLUSTER_MESSAGE_CACHE_SIZE: usize = 10000;
-pub const WHOIAM_TIMEOUT: Duration = Duration::from_secs(30);
+pub const WHOAMI_TIMEOUT: Duration = Duration::from_secs(30);
 
 type StaticCowStr = Cow<'static, str>;
-// static LOCAL_NODE_ID_SETTER: OnceLock<String> = OnceLock::new();
-// static LOCAL_SOCKET_ADDR: OnceLock<SocketAddr> = OnceLock::new();
+
 tardis_static! {
     pub async set local_socket_addr: SocketAddr;
     pub async set local_node_id: String;
-    pub async set responsor_dispatcher: mpsc::Sender<TardisClusterMessageResp>;
+    pub async set responser_dispatcher: mpsc::Sender<TardisClusterMessageResp>;
     pub(crate) cache_nodes: Arc<RwLock<HashMap<ClusterRemoteNodeKey, TardisClusterNodeRemote>>>;
     subscribers: Arc<RwLock<HashMap<StaticCowStr, Box<dyn TardisClusterSubscriber>>>>;
 }
@@ -190,8 +190,8 @@ async fn init_node(cluster_server: &TardisWebServer, access_addr: SocketAddr) ->
     info!("[Tardis.Cluster] Initializing node");
     set_local_node_id(TardisFuns::field.nanoid());
     set_local_socket_addr(access_addr);
-    debug!("[Tardis.Cluster] Initializing response dispathcer");
-    set_responsor_dispatcher(init_response_dispatcher());
+    debug!("[Tardis.Cluster] Initializing response dispatcher");
+    set_responser_dispatcher(init_response_dispatcher());
     debug!("[Tardis.Cluster] Register exchange route");
     cluster_server.add_route(ClusterAPI).await;
 
@@ -199,7 +199,7 @@ async fn init_node(cluster_server: &TardisWebServer, access_addr: SocketAddr) ->
     subscribe(EventPing).await;
     #[cfg(feature = "web-server")]
     {
-        subscribe(Avatar).await;
+        subscribe(ws_insts_mapping_avatars().clone()).await;
     }
 
     info!("[Tardis.Cluster] Initialized node");
@@ -240,7 +240,9 @@ pub async fn refresh_nodes(active_nodes: &HashSet<SocketAddr>) -> TardisResult<(
     let mut table = String::new();
     for (k, v) in cache_nodes.iter() {
         use std::fmt::Write;
-        writeln!(&mut table, "{k:20} | {v:40} ").expect("shouldn't fail");
+        if matches!(k, ClusterRemoteNodeKey::NodeId(_)) {
+            writeln!(&mut table, "{k:20} | {v:40} ").expect("shouldn't fail");
+        }
     }
     trace!("[Tardis.Cluster] cache nodes table \n{table}");
     Ok(())
@@ -259,7 +261,7 @@ async fn add_remote_node(socket_addr: SocketAddr) -> TardisResult<TardisClusterN
         if let tokio_tungstenite::tungstenite::Message::Text(message) = message {
             match TardisFuns::json.str_to_obj::<TardisClusterMessageResp>(&message) {
                 Ok(message_resp) => {
-                    if let Err(error) = responsor_dispatcher().await.send(message_resp).await {
+                    if let Err(error) = responser_dispatcher().await.send(message_resp).await {
                         error!("[Tardis.Cluster] [Client] response message {message}: {error}");
                     }
                 }
@@ -270,7 +272,7 @@ async fn add_remote_node(socket_addr: SocketAddr) -> TardisResult<TardisClusterN
     })
     .await?;
     let client = Arc::new(client);
-    let resp = ClusterEvent::new(EVENT_PING).target(client.clone()).one_response(Some(WHOIAM_TIMEOUT)).publish_one_response().await?;
+    let resp = ClusterEvent::new(EVENT_PING).target(client.clone()).one_response(Some(WHOAMI_TIMEOUT)).publish_one_response().await?;
     let resp_node_id = resp.resp_node_id;
     let remote = TardisClusterNodeRemote { node_id: resp_node_id, client };
     Ok(remote)

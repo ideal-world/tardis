@@ -13,7 +13,7 @@ enum ResponseFn {
     Multitime(Box<dyn Fn(TardisClusterMessageResp) -> bool + Send + Sync>),
 }
 tardis_static! {
-    responsor_subscribers: RwLock<HashMap::<String, ResponseFn>>;
+    responser_subscribers: RwLock<HashMap::<String, ResponseFn>>;
 }
 
 pub async fn listen_reply<S: Listener>(strategy: S, id: String) -> S::Reply {
@@ -33,11 +33,11 @@ pub(crate) fn init_response_dispatcher() -> mpsc::Sender<TardisClusterMessageRes
                 node_id = resp.resp_node_id,
                 resp = resp
             );
-            if let Some(subscriber) = responsor_subscribers().read().await.get(&id) {
+            if let Some(subscriber) = responser_subscribers().read().await.get(&id) {
                 match subscriber {
                     ResponseFn::Once(_) => {
                         tokio::spawn(async move {
-                            if let Some(ResponseFn::Once(f)) = responsor_subscribers().write().await.remove(&id) {
+                            if let Some(ResponseFn::Once(f)) = responser_subscribers().write().await.remove(&id) {
                                 f(resp)
                             }
                         });
@@ -46,7 +46,7 @@ pub(crate) fn init_response_dispatcher() -> mpsc::Sender<TardisClusterMessageRes
                         let drop_me = f(resp);
                         if drop_me {
                             tokio::spawn(async move {
-                                responsor_subscribers().write().await.remove(&id);
+                                responser_subscribers().write().await.remove(&id);
                             });
                         }
                     }
@@ -99,16 +99,16 @@ pub mod listen {
                     tokio::spawn(async move {
                         tokio::time::sleep(timeout).await;
 
-                        // super::responsor_subscribers().write().await.remove(&id);
+                        // super::responser_subscribers().write().await.remove(&id);
                         // tracing::trace!("[Tardis.Cluster] message {id} timeout");
 
-                        if let Some(_task) = super::responsor_subscribers().write().await.remove(&id) {
+                        if let Some(_task) = super::responser_subscribers().write().await.remove(&id) {
                             tracing::trace!("[Tardis.Cluster] message {id} timeout");
                         }
                     })
                 })
             };
-            super::responsor_subscribers().write().await.insert(
+            super::responser_subscribers().write().await.insert(
                 id,
                 ResponseFn::Once(Box::new(move |resp| {
                     tracing::trace!("[Tardis.Cluster] Once listener receive resp {resp:?}");
@@ -140,10 +140,10 @@ pub mod listen {
                 let id = id.clone();
                 tokio::spawn(async move {
                     tx.closed().await;
-                    super::responsor_subscribers().write().await.remove(&id);
+                    super::responser_subscribers().write().await.remove(&id);
                 });
             }
-            super::responsor_subscribers().write().await.insert(
+            super::responser_subscribers().write().await.insert(
                 id,
                 ResponseFn::Multitime(Box::new(move |resp| {
                     if tx.is_closed() {
@@ -186,13 +186,13 @@ pub mod listen {
                 let id = id.clone();
                 tokio::spawn(async move {
                     if tx.receiver_count() == 0 {
-                        super::responsor_subscribers().write().await.remove(&id);
+                        super::responser_subscribers().write().await.remove(&id);
                     } else {
                         tokio::task::yield_now().await;
                     }
                 });
             }
-            super::responsor_subscribers().write().await.insert(
+            super::responser_subscribers().write().await.insert(
                 id,
                 ResponseFn::Multitime(Box::new(move |resp| {
                     let _ = tx.send(resp);

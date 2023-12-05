@@ -45,7 +45,7 @@ where
             ident: ident.into(),
             local_broadcast_channel: sender,
         });
-
+        tracing::trace!("[Tardis.Cluster] create broadcast channel: {}", cluster_chan.event_name());
         let subscriber = BroadcastChannelSubscriber {
             channel: Arc::downgrade(&cluster_chan),
             event_name: cluster_chan.event_name(),
@@ -97,7 +97,7 @@ where
     async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
         if let Ok(message) = serde_json::from_value(message_req.msg) {
             if let Some(chan) = self.channel.upgrade() {
-                let _ = chan.send(message);
+                let _ = chan.local_broadcast_channel.send(message);
             } else {
                 unsubscribe(&self.event_name()).await;
             }
