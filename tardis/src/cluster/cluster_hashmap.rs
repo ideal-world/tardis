@@ -6,7 +6,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::basic::{json::TardisJson, result::TardisResult};
+use crate::{
+    basic::{json::TardisJson, result::TardisResult},
+    TardisFuns,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::hash::Hash;
@@ -101,7 +104,7 @@ where
         }
     }
     pub fn is_cluster(&self) -> bool {
-        self.cluster_sync
+        self.cluster_sync && TardisFuns::fw_config().cluster.is_some()
     }
     pub fn event_name(&self) -> String {
         format!("tardis/hashmap/{ident}", ident = self.ident)

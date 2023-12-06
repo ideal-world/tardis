@@ -215,7 +215,7 @@ impl TardisWSClient {
         }
     }
 
-    async fn reconnect(&self) -> TardisResult<()> {
+    pub async fn reconnect(&self) -> TardisResult<()> {
         if let Ok(permit) = self.connection_semaphore.clone().try_acquire_owned() {
             info!("[Tardis.WSClient] trying to reconnect {url}", url = self.url);
             let sender = Self::do_connect(&self.url, self.on_message.clone(), true, permit).await?;
