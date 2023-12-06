@@ -186,17 +186,17 @@ where
                             match TardisFuns::json.str_to_obj::<TardisWebsocketReq>(&text) {
                                 Err(_) => {
                                     ws_send_error_to_channel(&text, "message illegal", &avatar_self, &inst_id, &inner_sender);
-                                    break;
+                                    continue;
                                 }
                                 Ok(req_msg) => {
                                     // Security check
                                     if !mgr_node && req_msg.spec_inst_id.is_some() {
                                         ws_send_error_to_channel(&text, "spec_inst_id can only be specified on the management node", &avatar_self, &inst_id, &inner_sender);
-                                        break;
+                                        continue;
                                     }
                                     if !mgr_node && !current_avatars.contains(&req_msg.from_avatar) {
-                                        ws_send_error_to_channel(&text, "from_avatar is not illegal", &avatar_self, &inst_id, &inner_sender);
-                                        break;
+                                        ws_send_error_to_channel(&text, "from_avatar is illegal", &avatar_self, &inst_id, &inner_sender);
+                                        continue;
                                     }
                                     // System process
                                     if req_msg.event == Some(WS_SYSTEM_EVENT_INFO.to_string()) {
@@ -215,7 +215,7 @@ where
                                                 ws_send_error_to_channel(&text, "message illegal", &avatar_self, &inst_id, &inner_sender);
                                             })
                                         else {
-                                            break;
+                                            continue;
                                         };
                                         let send_msg = TardisWebsocketMgrMessage {
                                             id: TardisFuns::field.nanoid(),
