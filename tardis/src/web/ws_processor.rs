@@ -1,5 +1,5 @@
-#[cfg(feature = "cluster")]
 pub mod cluster_protocol;
+use crate::cluster::cluster_hashmap::ClusterStaticHashMap;
 
 use std::sync::Arc;
 use std::{collections::HashMap, num::NonZeroUsize};
@@ -13,7 +13,6 @@ use tokio::sync::Mutex;
 use tracing::warn;
 use tracing::{debug, trace};
 
-use crate::cluster::cluster_hashmap::ClusterStaticHashMap;
 use crate::{tardis_static, TardisFuns};
 
 pub const WS_SYSTEM_EVENT_INFO: &str = "__sys_info__";
