@@ -31,6 +31,6 @@ pub mod web_validation;
 #[cfg(feature = "ws-client")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ws-client")))]
 pub mod ws_client;
-#[cfg(all(feature = "web-server", feature = "cluster"))]
+#[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub mod ws_processor;

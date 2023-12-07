@@ -1,4 +1,6 @@
+#[cfg(feature = "cluster")]
 pub mod cluster_protocol;
+#[cfg(feature = "cluster")]
 use crate::cluster::cluster_hashmap::ClusterStaticHashMap;
 
 use std::sync::Arc;
@@ -27,7 +29,9 @@ pub const WS_SENDER_CACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchec
 
 tardis_static! {
     // Websocket instance Id -> Avatars
-    // ws_insts_mapping_avatars: Arc<RwLock<HashMap<String, Vec<String>>>>;
+    #[cfg(not(feature = "cluster"))]
+    pub ws_insts_mapping_avatars: Arc<tokio::sync::RwLock<HashMap<String, Vec<String>>>>;
+    #[cfg(feature = "cluster")]
     pub ws_insts_mapping_avatars: ClusterStaticHashMap<String, Vec<String>> = ClusterStaticHashMap::<String, Vec<String>>::builder("tardis/avatar")
         .modify_handler("del_avatar", |v, modify| {
             if let Some(del) = modify.as_str() {
@@ -156,10 +160,16 @@ where
             // corresponded to the current ws connection
             let inst_id = TardisFuns::field.nanoid();
             let current_receive_inst_id = inst_id.clone();
+            #[cfg(feature = "cluster")]
             let _ = ws_insts_mapping_avatars().insert(inst_id.clone(), avatars).await;
+            #[cfg(feature = "cluster")]
+            let insts_in_send = ws_insts_mapping_avatars().clone();
+            #[cfg(not(feature = "cluster"))]
+            let _ = ws_insts_mapping_avatars().write().await.insert(inst_id.clone(), avatars);
+            #[cfg(not(feature = "cluster"))]
+            let insts_in_send = ws_insts_mapping_avatars().clone();
             let (mut ws_sink, mut ws_stream) = socket.split();
 
-            let insts_in_send = ws_insts_mapping_avatars().clone();
             debug!("[Tardis.WebServer] WS message receive: new connection {inst_id}");
             tokio::spawn(async move {
                 // message inbound
@@ -167,7 +177,16 @@ where
                     match message {
                         Message::Text(text) => {
                             let msg_id = TardisFuns::field.nanoid();
-                            let Ok(Some(current_avatars)) = insts_in_send.get(inst_id.clone()).await else {
+
+                            #[cfg(feature = "cluster")]
+                            let Ok(Some(current_avatars)) = insts_in_send.get(inst_id.clone()).await
+                            else {
+                                warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
+                                continue;
+                            };
+                            #[cfg(not(feature = "cluster"))]
+                            let Some(current_avatars) = insts_in_send.read().await.get(&inst_id).cloned()
+                            else {
                                 warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
                                 continue;
                             };
@@ -235,28 +254,60 @@ where
                                             ws_send_error_to_channel(&text, "msg is not a string", &avatar_self, &inst_id, &inner_sender);
                                             continue;
                                         };
-                                        let Some(spec_inst_id) = req_msg.spec_inst_id else {
+                                        let Some(ref spec_inst_id) = req_msg.spec_inst_id else {
                                             ws_send_error_to_channel(&text, "spec_inst_id is not specified", &avatar_self, &inst_id, &inner_sender);
                                             continue;
                                         };
-                                        let Ok(Some(_)) = insts_in_send.get(spec_inst_id.clone()).await else {
-                                            ws_send_error_to_channel(&text, "spec_inst_id not found", &avatar_self, &inst_id, &inner_sender);
+                                        #[cfg(feature = "cluster")]
+                                        {
+                                            let Ok(Some(_)) = insts_in_send.get(spec_inst_id.clone()).await else {
+                                                ws_send_error_to_channel(&text, "spec_inst_id not found", &avatar_self, &inst_id, &inner_sender);
+                                                continue;
+                                            };
+                                            trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", msg_id, &new_avatar, &spec_inst_id);
+                                            let _ = insts_in_send.modify(spec_inst_id.clone(), "add_avatar", json!(new_avatar)).await;
                                             continue;
-                                        };
-                                        trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", msg_id, &new_avatar, &spec_inst_id);
-                                        let _ = insts_in_send.modify(spec_inst_id, "add_avatar", json!(new_avatar)).await;
-                                        continue;
+                                        }
+                                        #[cfg(not(feature = "cluster"))]
+                                        {
+                                            let mut write_locked = insts_in_send.write().await;
+                                            let Some(inst) = write_locked.get_mut(spec_inst_id) else {
+                                                ws_send_error_to_channel(&text, "spec_inst_id not found", &avatar_self, &inst_id, &inner_sender);
+                                                continue;
+                                            };
+                                            inst.push(new_avatar.to_string());
+                                            drop(write_locked);
+                                            trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", msg_id, new_avatar, spec_inst_id);
+                                        }
                                     } else if req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) {
-                                        let Ok(Some(_)) = insts_in_send.get(inst_id.clone()).await else {
-                                            ws_send_error_to_channel(&text, "spec_inst_id not found", &avatar_self, &inst_id, &inner_sender);
-                                            continue;
-                                        };
-                                        let Some(del_avatar) = req_msg.msg.as_str() else {
-                                            ws_send_error_to_channel(&text, "msg is not a string", &avatar_self, &inst_id, &inner_sender);
-                                            continue;
-                                        };
-                                        let _ = insts_in_send.modify(inst_id.clone(), "del_avatar", json!(del_avatar)).await;
-                                        trace!("[Tardis.WebServer] WS message delete avatar {},{} to {}", msg_id, del_avatar, &inst_id);
+                                        #[cfg(feature = "cluster")]
+                                        {
+                                            let Ok(Some(_)) = insts_in_send.get(inst_id.clone()).await else {
+                                                ws_send_error_to_channel(&text, "spec_inst_id not found", &avatar_self, &inst_id, &inner_sender);
+                                                continue;
+                                            };
+                                            let Some(del_avatar) = req_msg.msg.as_str() else {
+                                                ws_send_error_to_channel(&text, "msg is not a string", &avatar_self, &inst_id, &inner_sender);
+                                                continue;
+                                            };
+                                            let _ = insts_in_send.modify(inst_id.clone(), "del_avatar", json!(del_avatar)).await;
+                                            trace!("[Tardis.WebServer] WS message delete avatar {},{} to {}", msg_id, del_avatar, &inst_id);
+                                        }
+                                        #[cfg(not(feature = "cluster"))]
+                                        {
+                                            let Some(del_avatar) = req_msg.msg.as_str() else {
+                                                ws_send_error_to_channel(&text, "msg is not a string", &avatar_self, &inst_id, &inner_sender);
+                                                continue;
+                                            };
+                                            let mut write_locked = insts_in_send.write().await;
+                                            let Some(inst) = write_locked.get_mut(&inst_id) else {
+                                                ws_send_error_to_channel(&text, "spec_inst_id not found", &avatar_self, &inst_id, &inner_sender);
+                                                continue;
+                                            };
+                                            inst.retain(|value| *value != del_avatar);
+                                            drop(write_locked);
+                                            trace!("[Tardis.WebServer] WS message delete avatar {},{} to {}", msg_id, del_avatar, &inst_id);
+                                        }
                                         continue;
                                     }
                                     if let Some(resp_msg) = process_fun(req_msg.clone(), ext.clone()).await {
@@ -304,7 +355,13 @@ where
 
             tokio::spawn(async move {
                 while let Ok(mgr_message) = inner_receiver.recv().await {
+                    #[cfg(feature = "cluster")]
                     let Ok(Some(current_avatars)) = ({ ws_insts_mapping_avatars().get(current_receive_inst_id.clone()).await }) else {
+                        warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} not found");
+                        continue;
+                    };
+                    #[cfg(not(feature = "cluster"))]
+                    let Some(current_avatars) = ({ ws_insts_mapping_avatars().read().await.get(&current_receive_inst_id).cloned() }) else {
                         warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} not found");
                         continue;
                     };
