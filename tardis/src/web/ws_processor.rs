@@ -185,8 +185,7 @@ where
                                 continue;
                             };
                             #[cfg(not(feature = "cluster"))]
-                            let Some(current_avatars) = insts_in_send.read().await.get(&inst_id).cloned()
-                            else {
+                            let Some(current_avatars) = insts_in_send.read().await.get(&inst_id).cloned() else {
                                 warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
                                 continue;
                             };
