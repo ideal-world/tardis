@@ -10,18 +10,13 @@
 //!
 //! Tardis-Macros supports the following features, which enable the usage of specific macros:
 //!
-//! | Feature                        | Macro                   |
-//! |--------------------------------|-------------------------|
-//! | `reldb-postgres`               | `TardisCreateTable`     |
-//! | `reldb-postgres`               | `TardisCreateIndex`     |
-//! | `reldb-postgres`               | `TardisCreateEntity`    |
-//! | `reldb-postgres`               | `TardisEmptyBehavior`   |
-//! | `reldb-postgres`               | `TardisEmptyRelation`   |
-//! | `reldb-mysql`                  | `TardisCreateTable`     |
-//! | `reldb-mysql`                  | `TardisCreateIndex`     |
-//! | `reldb-mysql`                  | `TardisCreateEntity`    |
-//! | `reldb-mysql`                  | `TardisEmptyBehavior`   |
-//! | `reldb-mysql`                  | `TardisEmptyRelation`   |
+//! | Feature                                         | Macro                   |
+//! |-------------------------------------------------|-------------------------|
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisCreateTable`     |
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisCreateIndex`     |
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisCreateEntity`    |
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisEmptyBehavior`   |
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisEmptyRelation`   |
 //!
 //!
 //! Please note that the availability of each macro depends on the enabled features. Make sure to enable the corresponding feature to use the desired macro.
@@ -59,10 +54,11 @@ use syn::{parse_macro_input, DeriveInput};
 
 /// # TardisCreateTable
 /// Generate table creation statement, compatible with `tardis_entity`.
-/// see [TardisActiveModel::create_table_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_table_statement). \
-/// According to tardis_entity automatically generates `tardis_create_table_statement(db: DbBackend)` method,
-/// you can be directly called in the `TardisActiveModel::create_table_statement` method.  \
-/// example see [macros_examples::example_for_derive_create_tabled]. \
+/// see [TardisActiveModel::create_table_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_table_statement).
+///
+/// According to tardis_entity automatically generates `tardis_create_table_statement(db: DbBackend)`
+/// method, you can be directly called in the `TardisActiveModel::create_table_statement` method. \
+/// example see [macros_examples::example_for_derive_create_tabled].
 ///
 /// ## tardis_entity attribute
 ///
@@ -81,7 +77,8 @@ pub fn tardis_create_table(input: TokenStream) -> TokenStream {
 
 /// # TardisCreateIndex
 /// Generate index creation statement, compatible with `tardis_entity`.
-/// see [create_index_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_index_statement). \
+/// see [create_index_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_index_statement).
+///
 /// According to tardis_entity automatically generates `tardis_create_index_statement()` method,
 /// you can be directly called in the `TardisActiveModel::create_index_statement` method.  \
 /// example see [macros_examples::example_for_derive_create_index].
