@@ -172,7 +172,6 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
 }
 /// Map index type method
 fn index_type_map(index_type: &str, span: Span, create_statement: &mut Punctuated<TokenStream, Dot>) -> Result<()> {
-    #[cfg(feature = "reldb-postgres")]
     match index_type {
         "BTree" | "b_tree" => {
             create_statement.push(quote!(index_type(::tardis::db::sea_orm::sea_query::IndexType::BTree)));
