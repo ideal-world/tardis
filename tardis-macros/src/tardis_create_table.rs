@@ -150,7 +150,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
     if let Some(ident) = field_clone.ident {
         if let Type::Path(field_type) = field_clone.ty {
             if let Some(path) = field_type.path.segments.last() {
-                // judge nullable/判断是否为nullable
+                // Judge nullable/判断是否为nullable
                 if path.ident == "Option" && field.nullable.is_none() {
                     if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
                         if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
@@ -166,9 +166,9 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
                 if let Some(custom_column_type) = field.custom_type {
                     col_type = map_custom_type_to_sea_type(&custom_column_type, field.custom_len, ident.span())?;
                 } else {
-                    //Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
+                    // Automatically convert to corresponding type according to type/根据type自动转换到对应数据库类型
 
-                    //judge packaging types such as `Vec<inner_type>` `DateTime<inner_type>`
+                    // Judge packaging types such as `Vec<inner_type>` `DateTime<inner_type>`
                     if path.ident == "Vec" {
                         if let PathArguments::AngleBracketed(path_arg) = &path.arguments {
                             if let Some(GenericArgument::Type(Type::Path(path))) = path_arg.args.first() {
@@ -224,6 +224,11 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
     }
 }
 
+/// # Map rust to intermediate type
+///
+/// Convert to an intermediate type based on the rust data type.
+/// This intermediate type is finally converted to the sea_type type through the [map_custom_type_to_sea_type] method.
+///
 /// Conversion type reference https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/
 fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<String> {
     let ident_string = ident.to_string();
@@ -234,26 +239,35 @@ fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<S
         "u8" => {
             if let Some("Vec") = segments_type {
                 "binary"
-            } else if cfg!(feature = "reldb-mysql") {
-                "tiny_unsigned"
+            } else if cfg!(feature = "reldb-postgres") {
+                return Err(Error::new(
+                    span,
+                    "Not supported! u8 is not supported when the 'reldb-postgres' feature is enabled. ".to_string(),
+                ));
             } else {
-                return Err(Error::new(span, "not supported! u8 only supported when the 'reldb-mysql' feature is enabled. ".to_string()));
+                "tiny_unsigned"
             }
         }
         "i16" => "small_integer",
         "u16" => {
-            if cfg!(feature = "reldb-mysql") {
-                "small_unsigned"
+            if cfg!(feature = "reldb-postgres") {
+                return Err(Error::new(
+                    span,
+                    "Not supported! u16 is not supported when the 'reldb-postgres' feature is enabled. ".to_string(),
+                ));
             } else {
-                return Err(Error::new(span, "not supported!u16 only supported when the 'reldb-mysql' feature is enabled. ".to_string()));
+                "small_unsigned"
             }
         }
         "i32" => "integer",
         "u32" => {
-            if cfg!(feature = "reldb-mysql") {
-                "unsigned"
+            if cfg!(feature = "reldb-postgres") {
+                return Err(Error::new(
+                    span,
+                    "Not supported! u32 is not supported when the 'reldb-postgres' feature is enabled. ".to_string(),
+                ));
             } else {
-                return Err(Error::new(span, "not supported!u16 only supported when the 'reldb-mysql' feature is enabled. ".to_string()));
+                "unsigned"
             }
         }
         "i64" => "big_integer",
@@ -261,7 +275,10 @@ fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<S
             if cfg!(feature = "reldb-mysql") {
                 "big_unsigned"
             } else {
-                return Err(Error::new(span, "not supported!u16 only supported when the 'reldb-mysql' feature is enabled. ".to_string()));
+                return Err(Error::new(
+                    span,
+                    "Not supported! u64 only supported when the 'reldb-mysql' feature is enabled. ".to_string(),
+                ));
             }
         }
         "f32" => "float",
@@ -281,8 +298,7 @@ fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<S
             }
         }
         "FixedOffset" | "OffsetDateTime" => "TimestampWithTimeZone",
-        "Value" | "Json" => "Json",
-        _ => "Json",
+        "Value" | "Json" | _ => "Json",
     };
     let result = if let Some("Vec") = segments_type {
         if custom_ty != "binary" {
