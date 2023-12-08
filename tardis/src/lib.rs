@@ -157,7 +157,7 @@ use basic::result::TardisResult;
 use basic::tracing::TardisTracing;
 pub use paste;
 #[cfg(feature = "tardis-macros")]
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 pub use tardis_macros::{TardisCreateEntity, TardisCreateIndex, TardisCreateTable, TardisEmptyBehavior, TardisEmptyRelation};
 pub use tracing;
 pub use url;
