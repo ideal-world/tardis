@@ -29,8 +29,8 @@ pub struct Model {
     pub be_50_char: String,
     #[tardis_entity(custom_type = "varbit(50)")]
     pub be_var_bit: Vec<u8>,
-    // #[tardis_entity(custom_type = "array.string(50))")]
-    // pub test_array: Vec<String>,
+    #[tardis_entity(custom_type = "array.string(50))")]
+    pub test_array: Vec<String>,
     #[tardis_entity(custom_type = "bit", custom_len = "1")]
     pub be_bit: bool,
     pub create_time: chrono::DateTime<Utc>,
