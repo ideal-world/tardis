@@ -1,7 +1,6 @@
 use std::fmt::Write;
 use tardis::chrono::Utc;
 use tardis::db::sea_orm;
-use tardis::db::sea_orm::entity::prelude::*;
 use tardis::db::sea_orm::*;
 use tardis::serde_json;
 use tardis::{chrono, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation};

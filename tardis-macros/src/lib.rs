@@ -10,18 +10,13 @@
 //!
 //! Tardis-Macros supports the following features, which enable the usage of specific macros:
 //!
-//! | Feature                        | Macro                   |
-//! |--------------------------------|-------------------------|
-//! | `reldb-postgres`               | `TardisCreateTable`     |
-//! | `reldb-postgres`               | `TardisCreateIndex`     |
-//! | `reldb-postgres`               | `TardisCreateEntity`    |
-//! | `reldb-postgres`               | `TardisEmptyBehavior`   |
-//! | `reldb-postgres`               | `TardisEmptyRelation`   |
-//! | `reldb-mysql`                  | `TardisCreateTable`     |
-//! | `reldb-mysql`                  | `TardisCreateIndex`     |
-//! | `reldb-mysql`                  | `TardisCreateEntity`    |
-//! | `reldb-mysql`                  | `TardisEmptyBehavior`   |
-//! | `reldb-mysql`                  | `TardisEmptyRelation`   |
+//! | Feature                                         | Macro                   |
+//! |-------------------------------------------------|-------------------------|
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisCreateTable`     |
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisCreateIndex`     |
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisCreateEntity`    |
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisEmptyBehavior`   |
+//! | `reldb-postgres`or`reldb-mysql`or`reldb-sqlite` | `TardisEmptyRelation`   |
 //!
 //!
 //! Please note that the availability of each macro depends on the enabled features. Make sure to enable the corresponding feature to use the desired macro.
@@ -52,24 +47,25 @@
 //!
 //! [TardisCreateEntity]
 
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 use proc_macro::TokenStream;
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 use syn::{parse_macro_input, DeriveInput};
 
 /// # TardisCreateTable
 /// Generate table creation statement, compatible with `tardis_entity`.
-/// see [TardisActiveModel::create_table_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_table_statement). \
-/// According to tardis_entity automatically generates `tardis_create_table_statement(db: DbBackend)` method,
-/// you can be directly called in the `TardisActiveModel::create_table_statement` method.  \
-/// example see [macros_examples::example_for_derive_create_tabled]. \
+/// see [TardisActiveModel::create_table_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_table_statement).
+///
+/// According to tardis_entity automatically generates `tardis_create_table_statement(db: DbBackend)`
+/// method, you can be directly called in the `TardisActiveModel::create_table_statement` method. \
+/// example see [macros_examples::example_for_derive_create_tabled].
 ///
 /// ## tardis_entity attribute
 ///
 /// - `custom_len`: Custom length for the table columns. (optional)
 ///
 /// [`sea-query::tabled::column::ColumnDef`]: https://docs.rs/sea-query/latest/sea_query/table/struct.ColumnDef.html
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 #[proc_macro_derive(TardisCreateTable, attributes(tardis_entity))]
 pub fn tardis_create_table(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, attrs, .. } = parse_macro_input!(input as DeriveInput);
@@ -81,7 +77,8 @@ pub fn tardis_create_table(input: TokenStream) -> TokenStream {
 
 /// # TardisCreateIndex
 /// Generate index creation statement, compatible with `tardis_entity`.
-/// see [create_index_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_index_statement). \
+/// see [create_index_statement](https://docs.rs/tardis/latest/tardis/db/reldb_client/trait.TardisActiveModel.html#method.create_index_statement).
+///
 /// According to tardis_entity automatically generates `tardis_create_index_statement()` method,
 /// you can be directly called in the `TardisActiveModel::create_index_statement` method.  \
 /// example see [macros_examples::example_for_derive_create_index].
@@ -139,7 +136,7 @@ pub fn tardis_create_table(input: TokenStream) -> TokenStream {
 /// ```
 ///
 ///
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 #[proc_macro_derive(TardisCreateIndex, attributes(index))]
 pub fn tardis_create_index(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, attrs, .. } = parse_macro_input!(input as DeriveInput);
@@ -153,7 +150,7 @@ pub fn tardis_create_index(input: TokenStream) -> TokenStream {
 /// The functionality of `TardisCreateEntity` is equivalent to `TardisCreateIndex` combined with `TardisCreateTable`.
 /// Additionally, it introduces a new attribute called fill_ctx, and automatically implements `ActiveModelBehavior`. \
 /// see [TardisCreateIndex] and [TardisCreateTable]
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 #[proc_macro_derive(TardisCreateEntity, attributes(tardis_entity, index, fill_ctx))]
 pub fn tardis_create_entity(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input as DeriveInput);
@@ -165,7 +162,7 @@ pub fn tardis_create_entity(input: TokenStream) -> TokenStream {
 }
 /// # TardisEmptyBehavior
 /// Generates an empty implementation of `ActiveModelBehavior` for `ActiveModel`.
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 #[proc_macro_derive(TardisEmptyBehavior)]
 pub fn tardis_empty_behavior(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input as DeriveInput);
@@ -177,7 +174,7 @@ pub fn tardis_empty_behavior(input: TokenStream) -> TokenStream {
 }
 /// #TardisEmptyRelation
 /// Generates an empty `Relation`.
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 #[proc_macro_derive(TardisEmptyRelation)]
 pub fn tardis_empty_relation(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input as DeriveInput);
@@ -190,11 +187,11 @@ pub fn tardis_empty_relation(input: TokenStream) -> TokenStream {
 
 #[allow(dead_code)]
 pub(crate) mod macro_helpers;
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 mod tardis_create_entity;
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 mod tardis_create_index;
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 mod tardis_create_table;
-#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql"))]
+#[cfg(any(feature = "reldb-postgres", feature = "reldb-mysql", feature = "reldb-sqlite"))]
 mod tardis_empty_impl;

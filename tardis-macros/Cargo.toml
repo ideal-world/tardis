@@ -23,6 +23,7 @@ proc_macro = true
 [features]
 reldb-postgres = []
 reldb-mysql = []
+reldb-sqlite = []
 
 [dependencies]
 syn = { version = "2.0.15", features = ["full", "extra-traits"] }

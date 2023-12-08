@@ -35,7 +35,11 @@ reldb-postgres = [
     "tardis-macros/reldb-postgres",
 ]
 reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql", "tardis-macros/reldb-mysql"]
-reldb-sqlite = ["reldb-core", "sea-orm/sqlx-sqlite"]
+reldb-sqlite = [
+  "reldb-core",
+  "sea-orm/sqlx-sqlite",
+  "tardis-macros/reldb-sqlite",
+]
 reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
 openapi-redoc = ["poem-openapi/redoc"]
