@@ -114,7 +114,7 @@ $$ LANGUAGE PLPGSQL STRICT;"###,
     )
     .await?;
 
-    db.insert_raw_many(
+    db.execute_many(
         r###"INSERT INTO graph(node1, node2, kind, reverse) VALUES ($1, $2, $3, $4)"###,
         vec![
             vec!["req1".into(), "task1".into(), "req-task".into(), false.into()],

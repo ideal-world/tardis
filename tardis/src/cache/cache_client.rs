@@ -70,7 +70,7 @@ impl TardisCacheClient {
         self.get_connection().await?.set(key, value).await
     }
 
-    pub async fn set_ex(&self, key: &str, value: &str, ex_sec: usize) -> RedisResult<()> {
+    pub async fn set_ex(&self, key: &str, value: &str, ex_sec: u64) -> RedisResult<()> {
         trace!("[Tardis.CacheClient] set_ex, key:{}, value:{}, ex_sec:{}", key, value, ex_sec);
         self.get_connection().await?.set_ex(key, value, ex_sec).await
     }
@@ -121,12 +121,12 @@ impl TardisCacheClient {
         self.get_connection().await?.exists(key).await
     }
 
-    pub async fn expire(&self, key: &str, ex_sec: usize) -> RedisResult<()> {
+    pub async fn expire(&self, key: &str, ex_sec: i64) -> RedisResult<()> {
         trace!("[Tardis.CacheClient] expire, key:{}, ex_sec:{}", key, ex_sec);
         self.get_connection().await?.expire(key, ex_sec).await
     }
 
-    pub async fn expire_at(&self, key: &str, timestamp_sec: usize) -> RedisResult<()> {
+    pub async fn expire_at(&self, key: &str, timestamp_sec: i64) -> RedisResult<()> {
         trace!("[Tardis.CacheClient] expire_at, key:{}, timestamp_sec:{}", key, timestamp_sec);
         self.get_connection().await?.expire_at(key, timestamp_sec).await
     }
