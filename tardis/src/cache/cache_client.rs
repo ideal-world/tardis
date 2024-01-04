@@ -173,7 +173,7 @@ impl TardisCacheClient {
         self.get_connection().await?.linsert_before(key, count, value).await
     }
 
-    pub async fn lset(&self, key: &str, count: isize, value: &str) -> RedisResult<usize> {
+    pub async fn lset(&self, key: &str, count: isize, value: &str) -> RedisResult<bool> {
         trace!("[Tardis.CacheClient] lset, key:{}", key);
         self.get_connection().await?.lset(key, count, value).await
     }

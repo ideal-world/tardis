@@ -116,6 +116,16 @@ async fn test_cache_client() -> TardisResult<()> {
         assert_eq!(list_result.len(), 2);
         assert_eq!(list_result.get(0).unwrap(), "v2");
         assert_eq!(list_result.get(1).unwrap(), "v1");
+        let lset_result = client.lset("l", 0, "v0").await?;
+        assert!(lset_result);
+        let list_result = client.lrangeall("l").await?;
+        assert_eq!(list_result.len(), 2);
+        assert_eq!(list_result.get(0).unwrap(), "v0");
+        let lrem_result = client.lrem("l", 1, "v0").await?;
+        assert_eq!(lrem_result, 1);
+        let list_result = client.lrangeall("l").await?;
+        assert_eq!(list_result.len(), 1);
+        assert_eq!(list_result.get(0).unwrap(), "v1");
 
         // bitmap operations
         assert!(!client.setbit("bit", 1024, true).await?);
