@@ -26,10 +26,10 @@ pub use tracing_appender::*;
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
 #[serde(default)]
 pub struct LogConfig {
-    #[builder(default = "info".parse::<Directive>().expect(""), setter(into))]
+    #[builder(default, setter(into))]
     #[serde(deserialize_with = "deserialize_directive", serialize_with = "serialize_directive")]
     /// the defualt log level
-    pub level: Directive,
+    pub level: Option<Directive>,
     #[builder(default, setter(into))]
     #[serde(deserialize_with = "deserialize_directives", serialize_with = "serialize_directives")]
     /// tracing filtering directive, e.g. `tardis=debug,sqlx=off`
@@ -48,18 +48,18 @@ pub struct LogConfig {
     pub ext: HashMap<String, crate::serde_json::Value>,
 }
 
-fn serialize_directive<S>(value: &Directive, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_directive<S>(value: &Option<Directive>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    value.to_string().serialize(serializer)
+    value.as_ref().map(|d| d.to_string()).serialize(serializer)
 }
 
-fn deserialize_directive<'de, D>(deserializer: D) -> Result<Directive, D::Error>
+fn deserialize_directive<'de, D>(deserializer: D) -> Result<Option<Directive>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    String::deserialize(deserializer)?.parse::<Directive>().map_err(serde::de::Error::custom)
+    <Option<String>>::deserialize(deserializer)?.map(|s| s.parse::<Directive>().map_err(serde::de::Error::custom)).transpose()
 }
 fn serialize_directives<S>(value: &[Directive], serializer: S) -> Result<S::Ok, S::Error>
 where
