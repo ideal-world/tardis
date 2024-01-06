@@ -127,7 +127,9 @@ where
     {
         self.with_configurable_layer(EnvFilter::from_default_env().boxed(), |config: &LogConfig| {
             let mut env_filter = EnvFilter::from_default_env();
-            env_filter = env_filter.add_directive(config.level.clone());
+            if let Some(level) = config.level.clone() {
+                env_filter = env_filter.add_directive(level);
+            }
             for directive in &config.directives {
                 env_filter = env_filter.add_directive(directive.clone());
             }
