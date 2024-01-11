@@ -34,7 +34,7 @@ async fn test_websocket() -> TardisResult<()> {
     TardisFuns::init_log()?;
     set_local_node_id("test".into());
     let serv = TardisWebServer::init_simple(IP_LOCALHOST, 8080).unwrap();
-    serv.add_route(WebServerModule::from(Api).with_ws(100)).await;
+    serv.add_route(WebServerModule::from(Api).with_ws::<String>(100)).await;
     serv.start().await?;
     sleep(Duration::from_millis(500)).await;
 

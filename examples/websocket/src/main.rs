@@ -4,14 +4,15 @@ use tardis::basic::result::TardisResult;
 use tardis::tokio;
 use tardis::web::web_server::WebServerModule;
 use tardis::TardisFuns;
+use tardis::web::ws_processor::TardisWebsocketMgrMessage;
 
 use crate::processor::Page;
 
 mod processor;
 
 ///
-/// Visit: http://127.0.0.1:8089/echo
-/// Visit: http://127.0.0.1:8089/broadcast
+/// Visit: https://127.0.0.1:8089/echo
+/// Visit: https://127.0.0.1:8089/broadcast
 ///
 #[tokio::main]
 async fn main() -> TardisResult<()> {
@@ -20,7 +21,7 @@ async fn main() -> TardisResult<()> {
     // Initial configuration
     TardisFuns::init(Some("config")).await?;
 
-    TardisFuns::web_server().add_route(WebServerModule::from(Page).with_ws(100)).await.start().await?;
+    TardisFuns::web_server().add_route(WebServerModule::from(Page).with_ws::<TardisWebsocketMgrMessage>(100)).await.start().await?;
     TardisFuns::web_server().await;
     Ok(())
 }

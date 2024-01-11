@@ -100,7 +100,7 @@ impl<T, _MW, _D> WebServerModule<T, _MW, _D> {
     /// ```ignore
     /// WebServerModule::from(MyApi).with_ws(100);
     /// ```
-    pub fn with_ws(self, capacity: usize) -> WebServerModule<T, _MW, broadcast::Sender<String>> {
+    pub fn with_ws<WS: Clone>(self, capacity: usize) -> WebServerModule<T, _MW, broadcast::Sender<WS>> {
         WebServerModule {
             apis: self.apis,
             data: Some(broadcast::channel(capacity).0),
