@@ -10,6 +10,7 @@ use poem::web::websocket::{BoxWebSocketUpgraded, WebSocket};
 use poem_openapi::param::Path;
 use serde_json::json;
 use tardis::basic::result::TardisResult;
+#[cfg(feature = "cluster")]
 use tardis::cluster::cluster_processor::set_local_node_id;
 use tardis::consts::IP_LOCALHOST;
 use tardis::web::web_server::{TardisWebServer, WebServerModule};
@@ -32,6 +33,7 @@ lazy_static! {
 async fn test_websocket() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log()?;
+    #[cfg(feature = "cluster")]
     set_local_node_id("test".into());
     let serv = TardisWebServer::init_simple(IP_LOCALHOST, 8080).unwrap();
     serv.add_route(WebServerModule::from(Api).with_ws::<String>(100)).await;
@@ -238,7 +240,7 @@ async fn test_dyn_avatar() -> TardisResult<()> {
             ADD_COUNTER.fetch_add(1, Ordering::SeqCst);
             let from_avatar = receive_msg.from_avatar.clone();
             return Some(Message::Text(
-                TardisFuns::json.obj_to_string(&receive_msg.into_req(json! {"c"}, from_avatar.clone(), Some(vec![from_avatar]))).unwrap(),
+                TardisFuns::json.obj_to_string(&receive_msg.into_req("".to_string(), json! {"c"}, from_avatar.clone(), Some(vec![from_avatar]))).unwrap(),
             ));
         }
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
