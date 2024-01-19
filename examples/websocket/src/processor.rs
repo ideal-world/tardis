@@ -131,7 +131,7 @@ impl Page {
         ws_broadcast(
             vec![name.0],
             false,
-            false,
+            true,
             HashMap::from([("some_key".to_string(), "ext_value".to_string())]),
             websocket,
             sender.clone(),
