@@ -7,4 +7,4 @@ publish = false
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-tardis = { path = "../../tardis", features = ["web-server"] }
+tardis = { path = "../../tardis", features = ["web-server", "tracing-appender"] }

@@ -94,3 +94,8 @@ dCIt7ke/LD5PS3uzBkeMdEfPCN2EiU4Vc6/BIh3lj8GbmX9zU+/x34DvPhUsUUVi
 kBAtL3ogKBt46B88cy8+bfBkZkMcURvotE+rOw4/eZQX07SbQQHksK3tlCyeHrQ=
 -----END CERTIFICATE-----
 """
+
+[log]
+level = "debug"
+directives = ["tungstenite=debug"]
+tracing_appender = { rotation = "minutely", dir = "./", filename = "app.log" }

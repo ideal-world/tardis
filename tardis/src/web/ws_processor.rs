@@ -21,6 +21,12 @@ pub const WS_SYSTEM_EVENT_INFO: &str = "__sys_info__";
 pub const WS_SYSTEM_EVENT_AVATAR_ADD: &str = "__sys_avatar_add__";
 pub const WS_SYSTEM_EVENT_AVATAR_DEL: &str = "__sys_avatar_del__";
 pub const WS_SYSTEM_EVENT_ERROR: &str = "__sys_error__";
+#[derive(Debug, Clone, Copy)]
+enum MessageSendState {
+    Success,
+    Sending,
+    Fail,
+}
 
 /// # Safety:
 /// It's safe for we set the cache size manually
@@ -47,7 +53,7 @@ tardis_static! {
 }
 lazy_static! {
     // Single instance reply guard
-    static ref REPLY_ONCE_GUARD: Arc<Mutex<LruCache<String, bool>>> = Arc::new(Mutex::new(LruCache::new(WS_SENDER_CACHE_SIZE)));
+    static ref REPLY_ONCE_GUARD: Arc<Mutex<LruCache<String, MessageSendState>>> = Arc::new(Mutex::new(LruCache::new(WS_SENDER_CACHE_SIZE)));
 }
 
 pub fn ws_echo<PF, PT, CF, CT>(avatars: String, ext: HashMap<String, String>, websocket: WebSocket, process_fun: PF, close_fun: CF) -> BoxWebSocketUpgraded
@@ -168,7 +174,8 @@ where
             #[cfg(not(feature = "cluster"))]
             let insts_in_send = ws_insts_mapping_avatars().clone();
             let (mut ws_sink, mut ws_stream) = socket.split();
-
+            let ws_closed = tokio_util::sync::CancellationToken::new();
+            let ws_closed_notifier = ws_closed.clone();
             debug!("[Tardis.WebServer] WS message receive: new connection {inst_id}");
             tokio::spawn(async move {
                 // message inbound
@@ -192,7 +199,7 @@ where
                                 current_avatars,
                                 if mgr_node { "[MGR]" } else { "" }
                             );
-                            let Some(avatar_self) = current_avatars.get(0).cloned() else {
+                            let Some(avatar_self) = current_avatars.first().cloned() else {
                                 warn!("[Tardis.WebServer] current_avatars is empty");
                                 continue;
                             };
@@ -352,12 +359,29 @@ where
                         }
                     }
                 }
+                ws_closed_notifier.cancel();
             });
 
             let reply_once_guard = REPLY_ONCE_GUARD.clone();
 
             tokio::spawn(async move {
-                while let Ok(mgr_message) = inner_receiver.recv().await {
+                'poll_next_message: loop {
+                    let mgr_message = tokio::select! {
+                        _ = ws_closed.cancelled() => {
+                            trace!("[Tardis.WebServer] WS message receive: connection closed");
+                            return
+                        }
+                        next = inner_receiver.recv() => {
+                            match next {
+                                Ok(message) => message,
+                                Err(e) => {
+                                    warn!("[Tardis.WebServer] WS message receive from channel failed: {e}");
+                                    return
+                                }
+                            }
+                        }
+                    };
+
                     #[cfg(feature = "cluster")]
                     let Ok(Some(current_avatars)) = ({ ws_insts_mapping_avatars().get(current_receive_inst_id.clone()).await }) else {
                         warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} not found");
@@ -384,13 +408,6 @@ where
                         // send to targets that NOT match the current avatars
                         || !mgr_message.ignore_avatars.is_empty() && mgr_message.ignore_avatars.iter().all(|avatar| current_avatars.contains(avatar))
                     {
-                        if !subscribe_mode {
-                            let id = format!("{}{:?}", mgr_message.msg_id, &current_avatars);
-                            let mut lock = reply_once_guard.lock().await;
-                            if lock.put(id.clone(), true).is_some() {
-                                continue;
-                            }
-                        }
                         let Ok(resp_msg) = (if mgr_node {
                             TardisFuns::json.obj_to_string(&mgr_message)
                         } else {
@@ -403,7 +420,28 @@ where
                             warn!("[Tardis.WebServer] Cannot serialize {:?} into json", mgr_message);
                             continue;
                         };
+                        let cache_id = if !subscribe_mode {
+                            let id = format!("{}{:?}", mgr_message.msg_id, &current_avatars);
+                            'poll_sending_state: loop {
+                                let mut lock = reply_once_guard.lock().await;
+                                match lock.get(&id) {
+                                    Some(MessageSendState::Success) => continue 'poll_next_message,
+                                    Some(MessageSendState::Sending) => tokio::task::yield_now().await,
+                                    _ => {
+                                        lock.put(id.clone(), MessageSendState::Sending);
+                                        break 'poll_sending_state;
+                                    }
+                                }
+                            }
+                            Some(id)
+                        } else {
+                            None
+                        };
                         if let Err(error) = ws_sink.send(Message::Text(resp_msg)).await {
+                            if let Some(cache_id) = cache_id {
+                                let mut lock = reply_once_guard.lock().await;
+                                lock.put(cache_id, MessageSendState::Fail);
+                            }
                             if error.to_string() != "Connection closed normally" {
                                 warn!(
                                     "[Tardis.WebServer] WS message send: {}:{} to {:?} ignore {:?} failed: {error}",
@@ -411,6 +449,9 @@ where
                                 );
                             }
                             break;
+                        } else if let Some(cache_id) = cache_id {
+                            let mut lock = reply_once_guard.lock().await;
+                            lock.put(cache_id, MessageSendState::Success);
                         }
                     }
                 }

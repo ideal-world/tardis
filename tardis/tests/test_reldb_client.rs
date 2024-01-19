@@ -131,7 +131,7 @@ async fn test_raw_query(client: &TardisRelDBClient) -> TardisResult<()> {
         )
         .await?;
     assert_eq!(tenant_resp.0.len(), 2);
-    assert!(tenant_resp.0.get(0).unwrap().name.contains("tenant"));
+    assert!(tenant_resp.0.first().unwrap().name.contains("tenant"));
     assert_eq!(tenant_resp.1, 3);
 
     Ok(())

@@ -240,7 +240,7 @@ impl TardisTracing<LogConfig> {
         tracing::debug!("[Tardis.Tracing] Added fmt layer and env filter.");
         #[cfg(feature = "tracing")]
         let initializer = initializer.with_opentelemetry_layer();
-        #[cfg(feature = "console-subscriber")]
+        #[cfg(all(feature = "console-subscriber", any(tokio_unstable, console_without_tokio_unstable)))]
         let initializer = initializer.with_console_layer();
         #[cfg(feature = "tracing-appender")]
         let initializer = initializer.with_appender_layer();
