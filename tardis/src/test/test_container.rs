@@ -58,12 +58,12 @@ impl TardisTestContainer {
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
         if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
-            fun("mysql://root:123456@localhost:3306/test".to_string()).await
+            fun("mysql://root:123456@127.0.0.1:3306/test".to_string()).await
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::mysql_custom(init_script_path, &docker);
             let port = node.get_host_port_ipv4(3306);
-            fun(format!("mysql://root:123456@localhost:{port}/test")).await
+            fun(format!("mysql://root:123456@127.0.0.1:{port}/test")).await
         }
     }
 
@@ -98,12 +98,12 @@ impl TardisTestContainer {
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
         if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
-            fun("postgres://postgres:123456@localhost:5432/test".to_string()).await
+            fun("postgres://postgres:123456@127.0.0.1:5432/test".to_string()).await
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::postgres_custom(init_script_path, &docker);
             let port = node.get_host_port_ipv4(5432);
-            fun(format!("postgres://postgres:123456@localhost:{port}/test")).await
+            fun(format!("postgres://postgres:123456@127.0.0.1:{port}/test")).await
         }
     }
 
@@ -161,12 +161,12 @@ impl TardisTestContainer {
         T: Future<Output = TardisResult<()>> + Send + 'static,
     {
         if std::env::var_os("TARDIS_TEST_DISABLED_DOCKER").is_some() {
-            fun("http://localhost:9000".to_string()).await
+            fun("http://127.0.0.1:9000".to_string()).await
         } else {
             let docker = clients::Cli::default();
             let node = TardisTestContainer::minio_custom(&docker);
             let port = node.get_host_port_ipv4(9000);
-            fun(format!("http://localhost:{port}")).await
+            fun(format!("http://127.0.0.1:{port}")).await
         }
     }
 
