@@ -323,7 +323,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
-        trace!("[Tardis.RelDBClient] Executing one sql {}, params:{:?}", sql, params);
+        trace!("[Tardis.RelDBClient] Executing one sql: {}, params:{:?}", sql, params);
         let execute_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
         Self::execute_inner(execute_stmt, db).await
     }
@@ -332,7 +332,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
-        trace!("[Tardis.RelDBClient] Executing many sql {}, some params:{:?}", sql, params[0]);
+        trace!("[Tardis.RelDBClient] Executing many sql: {}, some params:{:?}", sql, params[0]);
         // TODO Performance Optimization
         for param in params {
             let execute_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, param);
@@ -356,7 +356,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
-        trace!("[Tardis.RelDBClient] Querying one sql {}, params:{:?}", sql, params);
+        trace!("[Tardis.RelDBClient] Querying one sql: {}, params:{:?}", sql, params);
         let query_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
         let result = db.query_one(query_stmt).await;
         match result {
@@ -369,7 +369,7 @@ impl TardisRelDBClient {
     where
         C: ConnectionTrait,
     {
-        trace!("[Tardis.RelDBClient] Querying all sql {}, params:{:?}", sql, params);
+        trace!("[Tardis.RelDBClient] Querying all sql: {}, params:{:?}", sql, params);
         let query_stmt = Statement::from_sql_and_values(db.get_database_backend(), sql, params);
         let result = db.query_all(query_stmt).await;
         match result {
