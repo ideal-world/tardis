@@ -236,6 +236,8 @@ pub struct ClusterConfig {
     pub watch_kind: String,
     #[cfg(feature = "k8s")]
     pub k8s_svc: Option<String>,
+    #[cfg(feature = "k8s")]
+    pub k8s_ns: Option<String>,
     pub cache_check_interval_sec: Option<i32>,
 }
 
@@ -246,6 +248,7 @@ impl Default for ClusterConfig {
             ClusterConfig {
                 watch_kind: "k8s".to_string(),
                 k8s_svc: None,
+                k8s_ns: None,
                 cache_check_interval_sec: None,
             }
         }

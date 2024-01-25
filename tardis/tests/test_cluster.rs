@@ -127,6 +127,7 @@ async fn start_node(cluster_url: String, node_id: &str) -> TardisResult<()> {
             .cache(CacheModuleConfig::builder().url(cluster_url.parse().unwrap()).build())
             .cluster(ClusterConfig {
                 watch_kind: "cache".to_string(),
+                k8s_ns: None,
                 k8s_svc: None,
                 cache_check_interval_sec: Some(1),
             })

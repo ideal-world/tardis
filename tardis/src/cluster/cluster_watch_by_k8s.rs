@@ -17,30 +17,31 @@ use super::cluster_processor;
 
 pub async fn init(cluster_config: &ClusterConfig, webserver_config: &WebServerConfig) -> TardisResult<()> {
     let k8s_svc = cluster_config.k8s_svc.as_ref().expect("[Tardis.Cluster] [Client] need k8s_svc config in k8s mode").to_string();
+    let k8s_ns = cluster_config.k8s_ns.as_ref().expect("[Tardis.Cluster] [Client] need k8s_ns config in k8s mode").to_string();
     let web_server_port = webserver_config.port;
 
-    refresh(&k8s_svc, web_server_port).await?;
+    refresh(&k8s_svc, &k8s_ns, web_server_port).await?;
 
     tokio::spawn(async move {
-        if let Err(error) = watch(&k8s_svc, web_server_port).await {
+        if let Err(error) = watch(&k8s_svc, &k8s_ns, web_server_port).await {
             error!("[Tardis.Cluster] [Client] watch error: {}", error);
         }
     });
     Ok(())
 }
 
-async fn watch(k8s_svc: &str, web_server_port: u16) -> TardisResult<()> {
-    let endpoint_api: Api<Endpoints> = Api::all(get_client().await?);
+async fn watch(k8s_svc: &str, k8s_ns: &str, web_server_port: u16) -> TardisResult<()> {
+    let endpoint_api: Api<Endpoints> = Api::namespaced(get_client().await?, k8s_ns);
     let mut endpoint_watcher = endpoint_api.watch(&WatchParams::default().fields(&format!("metadata.name={k8s_svc}")), "0").await?.boxed();
     while endpoint_watcher.try_next().await.unwrap_or_default().is_some() {
-        refresh(k8s_svc, web_server_port).await?;
+        refresh(k8s_svc, k8s_ns, web_server_port).await?;
     }
     Ok(())
 }
 
-async fn refresh(k8s_svc: &str, web_server_port: u16) -> TardisResult<()> {
+async fn refresh(k8s_svc: &str, k8s_ns: &str, web_server_port: u16) -> TardisResult<()> {
     trace!("[Tardis.Cluster] [Client] watching");
-    let service_api: Api<Service> = Api::all(get_client().await?);
+    let service_api: Api<Service> = Api::namespaced(get_client().await?, k8s_ns);
     let service = service_api.get(k8s_svc).await?;
     let port_mapping = service
         .spec
