@@ -6,13 +6,13 @@ use std::{
 
 use k8s_openapi::api::core::v1::{Endpoints, Service};
 use kube::{api::WatchParams, Api, Client};
-use tracing::{error, info, trace};
+use tracing::{error, trace};
 
 use crate::{
     basic::{error::TardisError, result::TardisResult},
     config::config_dto::{ClusterConfig, WebServerConfig},
 };
-use futures::{StreamExt, TryStreamExt};
+use futures::StreamExt;
 
 use super::cluster_processor;
 
