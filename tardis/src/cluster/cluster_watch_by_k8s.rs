@@ -20,7 +20,7 @@ pub async fn init(cluster_config: &ClusterConfig, webserver_config: &WebServerCo
     let k8s_ns = cluster_config.k8s_ns.as_ref().expect("[Tardis.Cluster] [Client] need k8s_ns config in k8s mode").to_string();
     let web_server_port = webserver_config.port;
 
-    refresh(&k8s_svc, &k8s_ns, web_server_port).await?;
+    // refresh(&k8s_svc, &k8s_ns, web_server_port).await?;
 
     tokio::spawn(async move {
         if let Err(error) = watch(&k8s_svc, &k8s_ns, web_server_port).await {
