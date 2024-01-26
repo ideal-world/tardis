@@ -9,7 +9,7 @@ use poem::web::websocket::{BoxWebSocketUpgraded, Message, WebSocket};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::{mpsc, RwLock};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, instrument, trace, warn};
 
 use crate::basic::error::TardisError;
 use crate::cluster::cluster_publish::ClusterEvent;
@@ -206,6 +206,7 @@ async fn init_node(cluster_server: &TardisWebServer, access_addr: SocketAddr) ->
     Ok(())
 }
 
+#[instrument]
 pub async fn refresh_nodes(active_nodes: &HashSet<SocketAddr>) -> TardisResult<()> {
     trace!("[Tardis.Cluster] Refreshing nodes");
     trace!("[Tardis.Cluster] Find all active nodes: {:?}", active_nodes);

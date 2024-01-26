@@ -26,14 +26,14 @@ pub async fn init(cluster_config: &ClusterConfig, webserver_config: &WebServerCo
 }
 
 async fn watch(k8s_svc: &str, k8s_ns: &str, web_server_port: u16) -> TardisResult<()> {
-    const RETRY_PERIOD: Duration = Duration::from_secs(5);
+    const RETRY_PERIOD: Duration = Duration::from_secs(10);
     let mut force_refresh_interval = tokio::time::interval(RETRY_PERIOD);
     let endpoint_api: Api<Endpoints> = Api::namespaced(get_client().await?, k8s_ns);
     let mut endpoint_watcher = endpoint_api.watch(&WatchParams::default().fields(&format!("metadata.name={k8s_svc}")), "0").await?.boxed();
     loop {
         tokio::select! {
             _ = force_refresh_interval.tick() => {}
-            _ = endpoint_watcher.next() => {}
+            Some(_) = endpoint_watcher.next() => {}
         }
         if let Err(e) = refresh(k8s_svc, k8s_ns, web_server_port).await {
             error!("[Tardis.Cluster] [Client] watch error: {}", e);
