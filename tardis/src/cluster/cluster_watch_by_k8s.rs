@@ -1,11 +1,12 @@
 use std::{
     collections::HashSet,
     net::{IpAddr, SocketAddr},
+    time::Duration,
 };
 
 use k8s_openapi::api::core::v1::{Endpoints, Service};
 use kube::{api::WatchParams, Api, Client};
-use tracing::{error, trace};
+use tracing::{error, info, trace};
 
 use crate::{
     basic::{error::TardisError, result::TardisResult},
@@ -20,8 +21,6 @@ pub async fn init(cluster_config: &ClusterConfig, webserver_config: &WebServerCo
     let k8s_ns = cluster_config.k8s_ns.as_ref().expect("[Tardis.Cluster] [Client] need k8s_ns config in k8s mode").to_string();
     let web_server_port = webserver_config.port;
 
-    // refresh(&k8s_svc, &k8s_ns, web_server_port).await?;
-
     tokio::spawn(async move {
         if let Err(error) = watch(&k8s_svc, &k8s_ns, web_server_port).await {
             error!("[Tardis.Cluster] [Client] watch error: {}", error);
@@ -31,6 +30,11 @@ pub async fn init(cluster_config: &ClusterConfig, webserver_config: &WebServerCo
 }
 
 async fn watch(k8s_svc: &str, k8s_ns: &str, web_server_port: u16) -> TardisResult<()> {
+    const RETRY_PERIOD: Duration = Duration::from_secs(5);
+    while let Err(e) = refresh(k8s_svc, k8s_ns, web_server_port).await {
+        info!("[Tardis.Cluster] [Client] init peer node error {e}, try after {RETRY_PERIOD:?}");
+        tokio::time::sleep(RETRY_PERIOD).await;
+    }
     let endpoint_api: Api<Endpoints> = Api::namespaced(get_client().await?, k8s_ns);
     let mut endpoint_watcher = endpoint_api.watch(&WatchParams::default().fields(&format!("metadata.name={k8s_svc}")), "0").await?.boxed();
     while endpoint_watcher.try_next().await.unwrap_or_default().is_some() {
