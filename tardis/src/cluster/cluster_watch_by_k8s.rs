@@ -31,16 +31,16 @@ pub async fn init(cluster_config: &ClusterConfig, webserver_config: &WebServerCo
 
 async fn watch(k8s_svc: &str, k8s_ns: &str, web_server_port: u16) -> TardisResult<()> {
     const RETRY_PERIOD: Duration = Duration::from_secs(5);
-    while let Err(e) = refresh(k8s_svc, k8s_ns, web_server_port).await {
-        info!("[Tardis.Cluster] [Client] init peer node error {e}, try after {RETRY_PERIOD:?}");
-        tokio::time::sleep(RETRY_PERIOD).await;
-    }
+    let mut force_refresh_interval = tokio::time::interval(RETRY_PERIOD);
     let endpoint_api: Api<Endpoints> = Api::namespaced(get_client().await?, k8s_ns);
     let mut endpoint_watcher = endpoint_api.watch(&WatchParams::default().fields(&format!("metadata.name={k8s_svc}")), "0").await?.boxed();
-    while endpoint_watcher.try_next().await.unwrap_or_default().is_some() {
+    loop {
+        tokio::select! {
+            _ = force_refresh_interval.tick() => {}
+            _ = endpoint_watcher.next() => {}
+        }
         refresh(k8s_svc, k8s_ns, web_server_port).await?;
     }
-    Ok(())
 }
 
 async fn refresh(k8s_svc: &str, k8s_ns: &str, web_server_port: u16) -> TardisResult<()> {
