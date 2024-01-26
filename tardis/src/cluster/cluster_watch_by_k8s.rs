@@ -21,11 +21,7 @@ pub async fn init(cluster_config: &ClusterConfig, webserver_config: &WebServerCo
     let k8s_ns = cluster_config.k8s_ns.as_ref().expect("[Tardis.Cluster] [Client] need k8s_ns config in k8s mode").to_string();
     let web_server_port = webserver_config.port;
 
-    tokio::spawn(async move {
-        if let Err(error) = watch(&k8s_svc, &k8s_ns, web_server_port).await {
-            error!("[Tardis.Cluster] [Client] watch error: {}", error);
-        }
-    });
+    tokio::spawn(async move { watch(&k8s_svc, &k8s_ns, web_server_port).await });
     Ok(())
 }
 
@@ -39,7 +35,9 @@ async fn watch(k8s_svc: &str, k8s_ns: &str, web_server_port: u16) -> TardisResul
             _ = force_refresh_interval.tick() => {}
             _ = endpoint_watcher.next() => {}
         }
-        refresh(k8s_svc, k8s_ns, web_server_port).await?;
+        if let Err(e) = refresh(k8s_svc, k8s_ns, web_server_port).await {
+            error!("[Tardis.Cluster] [Client] watch error: {}", e);
+        }
     }
 }
 
