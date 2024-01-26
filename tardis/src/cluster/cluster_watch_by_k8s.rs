@@ -68,7 +68,7 @@ async fn refresh(k8s_svc: &str, k8s_ns: &str, web_server_port: u16) -> TardisRes
             )
         })? as u16;
 
-    let endpoint_api: Api<Endpoints> = Api::all(get_client().await?);
+    let endpoint_api: Api<Endpoints> = Api::namespaced(get_client().await?, k8s_ns);
     let endpoint = endpoint_api.get(k8s_svc).await?;
     // fetch all addresses from all subsets
     let active_nodes = endpoint
