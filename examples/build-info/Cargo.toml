@@ -1,0 +1,9 @@
+[package]
+name = "tardis-example-build-info"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+tardis = { path = "../../tardis", features = ["build-info"] }

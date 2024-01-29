@@ -53,6 +53,7 @@
 * ``tracing-appender`` write log into file periodically.
 * ``cluster`` work with tardis cluster
 * ``k8s`` k8s support for cluster
+* ``build-info`` get build info like package version or git version
 
 ## 🚀 Quick start
 
