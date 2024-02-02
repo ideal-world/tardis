@@ -497,6 +497,15 @@ impl TardisFuns {
         TardisFunsInst::new_with_db_conn(code.into(), lang)
     }
 
+
+    /// Clone the current config into [`TardisConfig`](TardisConfig), this may be used to reload config.
+    /// 
+    pub fn clone_config() -> TardisConfig {
+        let cs = TARDIS_INST.custom_config.read().iter().map(|(k, v)| (k.clone(), v.raw().clone())).collect::<HashMap<String, serde_json::Value>>();
+        let fw = TARDIS_INST.framework_config.get().as_ref().clone();
+        TardisConfig { cs, fw }
+    }
+
     /// Get the custom configuration object / 获取自定义配置对象
     ///
     /// # Panic
