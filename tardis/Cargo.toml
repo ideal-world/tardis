@@ -60,6 +60,7 @@ tokio-console = ["console-subscriber"]
 tracing-appender = ["dep:tracing-appender"]
 web-server-grpc = ["web-server", "dep:poem-grpc"]
 cluster = ["web-server", "ws-client", "cache"]
+build-info = ["git-version"]
 
 [dependencies]
 # Basic
@@ -220,6 +221,9 @@ testcontainers-modules = { version = "0.2", features = [
     "redis",
 ], optional = true }
 
+# Debug
+git-version = {version = "0.3.9", optional = true}
+
 [dev-dependencies]
 # Common
 tokio = { version = "1", features = [
@@ -234,6 +238,8 @@ poem-grpc-build = "0.2.22"
 prost = "0.12"
 strip-ansi-escapes = "0.2.0"
 portpicker = "0.1.1"
+
+
 
 [[test]]
 name = "test_config"
