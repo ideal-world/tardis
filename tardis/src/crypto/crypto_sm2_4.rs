@@ -168,7 +168,7 @@ impl TardisCryptoSm4 {
         let cipher = Cipher::new(hex_key.as_ref(), Mode::Cbc)
             .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] SM4 new cipher error:{error}"), "406-tardis-crypto-sm4-cipher-error"))?;
         let encrypted_data = cipher
-            .encrypt(data.as_ref(), hex_iv.as_ref())
+            .encrypt("".as_bytes(), data.as_ref(), hex_iv.as_ref())
             .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] SM4 encrypt error:{error}"), "406-tardis-crypto-sm4-encrypt-error"))?;
         Ok(hex::encode(encrypted_data))
     }
@@ -178,7 +178,7 @@ impl TardisCryptoSm4 {
             .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] SM4 new cipher error:{error}"), "406-tardis-crypto-sm4-cipher-error"))?;
         let encrypted_data = hex::decode(encrypted_data.as_ref())?;
         let data = cipher
-            .decrypt(encrypted_data.as_slice(), hex_iv.as_ref())
+            .decrypt("".as_bytes(), encrypted_data.as_slice(), hex_iv.as_ref())
             .map_err(|error| TardisError::format_error(&format!("[Tardis.Crypto] SM4 decrypt error:{error}"), "406-tardis-crypto-sm4-decrypt-error"))?;
         Ok(String::from_utf8(data)?)
     }
