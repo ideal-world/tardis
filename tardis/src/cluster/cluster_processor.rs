@@ -19,6 +19,7 @@ use crate::cluster::cluster_watch_by_cache;
 use crate::cluster::cluster_watch_by_k8s;
 use crate::config::config_dto::FrameworkConfig;
 use crate::tardis_static;
+use crate::web::web_server::status_api::TardisStatus;
 use crate::web::web_server::TardisWebServer;
 use crate::web::ws_client::TardisWSClient;
 use crate::web::ws_processor::ws_insts_mapping_avatars;
@@ -28,6 +29,7 @@ use async_trait::async_trait;
 
 pub const CLUSTER_NODE_WHOAMI: &str = "__cluster_node_who_am_i__";
 pub const EVENT_PING: &str = "tardis/ping";
+pub const EVENT_STATUS: &str = "tardis/status";
 pub const CLUSTER_MESSAGE_CACHE_SIZE: usize = 10000;
 pub const WHOAMI_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -38,7 +40,7 @@ tardis_static! {
     pub async set local_node_id: String;
     pub async set responser_dispatcher: mpsc::Sender<TardisClusterMessageResp>;
     pub(crate) cache_nodes: Arc<RwLock<HashMap<ClusterRemoteNodeKey, TardisClusterNodeRemote>>>;
-    subscribers: Arc<RwLock<HashMap<StaticCowStr, Box<dyn TardisClusterSubscriber>>>>;
+    pub(crate) subscribers: Arc<RwLock<HashMap<StaticCowStr, Box<dyn TardisClusterSubscriber>>>>;
 }
 
 /// clone the cache_nodes_info at current time
@@ -161,6 +163,38 @@ impl TardisClusterSubscriber for EventPing {
     }
 }
 
+pub(crate) struct EventStatus;
+#[async_trait]
+
+impl TardisClusterSubscriber for EventStatus {
+    fn event_name(&self) -> Cow<'static, str> {
+        EVENT_STATUS.into()
+    }
+    async fn subscribe(&self, _message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
+        Ok(Some(serde_json::to_value(TardisStatus::fetch().await).expect("spec always be a valid json value")))
+    }
+}
+
+impl EventStatus {
+    pub async fn get_by_id(cluster_id: &str) -> TardisResult<TardisStatus> {
+        if cluster_id == *local_node_id().await {
+            Ok(TardisStatus::fetch().await)
+        } else {
+            let resp = publish_event_one_response(
+                EventStatus.event_name(),
+                Default::default(),
+                ClusterEventTarget::Single(ClusterRemoteNodeKey::NodeId(cluster_id.to_string())),
+                None,
+            )
+            .await?;
+            serde_json::from_value(resp.msg).map_err(|e| {
+                let error_info = format!("[Tardis.Cluster] [Client] receive message error: {e}");
+                TardisError::wrap(&error_info, "-1-tardis-cluster-receive-message-error")
+            })
+        }
+    }
+}
+
 pub async fn init_by_conf(conf: &FrameworkConfig, cluster_server: &TardisWebServer) -> TardisResult<()> {
     if let Some(cluster_config) = &conf.cluster {
         let web_server_config = conf.web_server.as_ref().expect("missing web server config");
@@ -199,6 +233,7 @@ async fn init_node(cluster_server: &TardisWebServer, access_addr: SocketAddr) ->
     subscribe(EventPing).await;
     #[cfg(feature = "web-server")]
     {
+        subscribe(EventStatus).await;
         subscribe(ws_insts_mapping_avatars().clone()).await;
     }
 
@@ -286,9 +321,7 @@ pub async fn subscribe_boxed(subscriber: Box<dyn TardisClusterSubscriber>) {
 }
 
 pub async fn subscribe<S: TardisClusterSubscriber>(subscriber: S) {
-    let event_name = subscriber.event_name();
-    info!("[Tardis.Cluster] [Server] subscribe event {event_name}");
-    subscribers().write().await.insert(event_name, Box::new(subscriber));
+    subscribe_boxed(Box::new(subscriber)).await;
 }
 
 pub async fn unsubscribe(event_name: &str) {
@@ -370,6 +403,8 @@ pub enum TardisClusterNode {
 impl TardisClusterNode {}
 
 use std::hash::Hash;
+
+use super::cluster_publish::publish_event_one_response;
 
 #[derive(Debug, Clone)]
 struct ClusterAPI;

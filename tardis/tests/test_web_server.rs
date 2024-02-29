@@ -11,6 +11,7 @@ use poem::endpoint::BoxEndpoint;
 use poem::http::Method;
 use poem::{IntoResponse, Middleware, Response};
 use serde_json::json;
+use tardis::web::web_server::status_api::{TardisStatus, TardisStatusApi};
 use tardis::web::web_server::WebServerModule;
 use testcontainers::clients;
 use tokio::time::sleep;
@@ -98,7 +99,7 @@ async fn test_web_server() -> TardisResult<()> {
     let redis_container = TardisTestContainer::redis_custom(&docker);
     let redis_port = redis_container.get_host_port_ipv4(6379);
     let redis_url = format!("redis://127.0.0.1:{redis_port}/0");
-
+    tardis::cluster::cluster_processor::set_local_node_id("test".into());
     start_serv(web_url, &redis_url).await?;
     sleep(Duration::from_millis(500)).await;
 
@@ -132,9 +133,12 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
                 .build(),
         )
         .cache(CacheModuleConfig::builder().url(redis_url.parse().expect("invalid redis url")).build())
-        .log(LogConfig::builder().directives([
-            Directive::from_str("poem=debug").expect("invalid directives")
-        ]).level(Directive::from_str("info").expect("invalid directives")).build())
+        .log(
+            LogConfig::builder()
+                .directives([Directive::from_str("poem=debug").expect("invalid directives")])
+                .level(Directive::from_str("info").expect("invalid directives"))
+                .build(),
+        )
         .build();
     TardisFuns::init_conf(TardisConfig {
         cs: Default::default(),
@@ -142,6 +146,8 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
     })
     .await?;
     TardisFuns::web_server()
+        .add_module("_tardis", TardisStatusApi)
+        .await
         .add_module("todo", TodosApi)
         .await
         .add_module("other", OtherApi)
@@ -155,6 +161,12 @@ async fn start_serv(web_url: &str, redis_url: &str) -> TardisResult<()> {
 }
 
 async fn test_basic(url: &str) -> TardisResult<()> {
+    // Status
+    let response = TardisFuns::web_client().get::<TardisResp<TardisStatus>>(format!("{url}/_tardis/status").as_str(), None).await?;
+    assert_eq!(response.code, 200);
+    assert_eq!(response.body.as_ref().unwrap().code, TARDIS_RESULT_SUCCESS_CODE);
+    tracing::info!("status: {:?}", response.body);
+
     // Normal
     let response = TardisFuns::web_client().get::<TardisResp<TodoResp>>(format!("{url}/todo/todos/1").as_str(), None).await?;
     assert_eq!(response.code, 200);

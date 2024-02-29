@@ -28,7 +28,7 @@ mod initializer;
 use initializer::*;
 mod module;
 pub use module::*;
-
+pub mod status_api;
 pub type BoxMiddleware<'a, T = BoxEndpoint<'a>> = Box<dyn Middleware<T, Output = T> + Send>;
 type ServerTaskInner = JoinHandle<TardisResult<()>>;
 struct ServerTask {
