@@ -11,5 +11,6 @@ default_lang = "zh-CN"
 [fw.log]
 level = "debug"
 # directives = ["tokio=trace", "runtime=trace"]
+directives = ["poem=debug"]
 tracing_appender = { rotation = "minutely", dir = "./tests/log", filename = "app.log" }
 tracing = { endpoint = "http://localhost:4317", protocol = "grpc", server_name = "tardis-test" }
