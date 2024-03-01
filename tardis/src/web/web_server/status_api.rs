@@ -54,6 +54,7 @@ impl TardisClusterStatus {
 
 #[poem_openapi::OpenApi]
 impl TardisStatusApi {
+    #[allow(unused_variables)]
     #[oai(path = "/status", method = "get")]
     pub async fn status(&self, cluster_id: Query<Option<String>>) -> TardisApiResult<TardisStatus> {
         let cluster_id = cluster_id.0;
@@ -68,7 +69,7 @@ impl TardisStatusApi {
             }
             #[cfg(not(feature = "cluster"))]
             {
-                return TardisResp::err(TardisError::internal_error("cluster features not enabled", ""));
+                return TardisResp::err(crate::basic::error::TardisError::internal_error("cluster features not enabled", ""));
             }
         }
         TardisResp::ok(TardisStatus::fetch().await)

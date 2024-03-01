@@ -248,7 +248,6 @@ pub async fn refresh_nodes(active_nodes: &HashSet<SocketAddr>) -> TardisResult<(
     let mut cache_nodes = cache_nodes().write().await;
     let socket_set = cache_nodes.keys().filter_map(ClusterRemoteNodeKey::as_socket_addr).collect::<HashSet<_>>();
     // remove inactive nodes
-    trace!("[Tardis.Cluster] Try remove inactive nodes from cache");
     for inactive_node in socket_set.difference(active_nodes) {
         if let Some(remote) = cache_nodes.remove(&ClusterRemoteNodeKey::SocketAddr(*inactive_node)) {
             // load_cache_nodes_info()
@@ -260,7 +259,6 @@ pub async fn refresh_nodes(active_nodes: &HashSet<SocketAddr>) -> TardisResult<(
         }
     }
     // add new nodes
-    trace!("[Tardis.Cluster] Try add new active nodes to cache");
     for new_nodes_addr in active_nodes.difference(&socket_set) {
         if local_socket_addr().await == new_nodes_addr {
             // skip local node
@@ -272,7 +270,6 @@ pub async fn refresh_nodes(active_nodes: &HashSet<SocketAddr>) -> TardisResult<(
         cache_nodes.insert(ClusterRemoteNodeKey::SocketAddr(*new_nodes_addr), remote.clone());
         cache_nodes.insert(ClusterRemoteNodeKey::NodeId(remote.node_id.clone()), remote);
     }
-    trace!("[Tardis.Cluster] Refreshed nodes");
     let mut table = String::new();
     for (k, v) in cache_nodes.iter() {
         use std::fmt::Write;
@@ -280,7 +277,6 @@ pub async fn refresh_nodes(active_nodes: &HashSet<SocketAddr>) -> TardisResult<(
             writeln!(&mut table, "{k:20} | {v:40} ").expect("shouldn't fail");
         }
     }
-    trace!("[Tardis.Cluster] cache nodes table \n{table}");
     Ok(())
 }
 

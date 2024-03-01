@@ -23,6 +23,7 @@ use crate::config::config_dto::{
     FrameworkConfig,
 };
 use crate::utils::initializer::InitBy;
+use crate::web::cluster_id_mw::AddClusterIdHeader;
 use crate::web::uniform_error_mw::UniformError;
 mod initializer;
 use initializer::*;
@@ -317,9 +318,9 @@ impl TardisWebServer {
         let route = route.boxed();
         let route = route.with(middleware);
         if module_options.uniform_error || module_config.uniform_error {
-            self.state.lock().await.add_route(code, route.with(UniformError).with(cors), data);
+            self.state.lock().await.add_route(code, route.with(UniformError).with(AddClusterIdHeader).with(cors), data);
         } else {
-            self.state.lock().await.add_route(code, route.with(cors), data);
+            self.state.lock().await.add_route(code, route.with(cors).with(AddClusterIdHeader), data);
         };
         self
     }
