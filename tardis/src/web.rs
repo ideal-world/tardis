@@ -12,6 +12,9 @@ pub use reqwest;
 pub use tokio_tungstenite;
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
+pub mod cluster_id_mw;
+#[cfg(feature = "web-server")]
+#[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub mod context_extractor;
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
