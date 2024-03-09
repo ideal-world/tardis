@@ -10,13 +10,13 @@ use tokio::sync::broadcast;
 use crate::basic::result::TardisResult;
 
 use super::{
-    cluster_processor::{subscribe, unsubscribe, ClusterEventTarget, TardisClusterMessageReq, TardisClusterSubscriber},
+    cluster_processor::{subscribe_if_not_exist, unsubscribe, ClusterEventTarget, TardisClusterMessageReq, TardisClusterSubscriber},
     cluster_publish::publish_event_no_response,
 };
 
 pub struct ClusterBroadcastChannel<T>
 where
-    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
 {
     pub ident: String,
     pub local_broadcast_channel: broadcast::Sender<T>,
@@ -24,13 +24,13 @@ where
 
 impl<T> ClusterBroadcastChannel<T>
 where
-    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
 {
     pub fn event_name(&self) -> String {
         format!("tardis/broadcast/{}", self.ident)
     }
     pub fn send(&self, message: T) {
-        let _ = self.local_broadcast_channel.send(message.clone());
+        // dbg!(self.local_broadcast_channel.send(message.clone()));
         let event = format!("tardis/broadcast/{}", self.ident);
         tokio::spawn(async move {
             if let Ok(json_value) = serde_json::to_value(message) {
@@ -50,14 +50,16 @@ where
             channel: Arc::downgrade(&cluster_chan),
             event_name: cluster_chan.event_name(),
         };
-        tokio::spawn(subscribe(subscriber));
+        tokio::spawn(async {
+            subscribe_if_not_exist(subscriber).await;
+        });
         cluster_chan
     }
 }
 
 impl<T> Drop for ClusterBroadcastChannel<T>
 where
-    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
 {
     fn drop(&mut self) {
         let event_name = self.event_name();
@@ -69,7 +71,7 @@ where
 
 impl<T> std::ops::Deref for ClusterBroadcastChannel<T>
 where
-    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
 {
     type Target = broadcast::Sender<T>;
 
@@ -80,7 +82,7 @@ where
 
 pub struct BroadcastChannelSubscriber<T>
 where
-    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
 {
     event_name: String,
     channel: Weak<ClusterBroadcastChannel<T>>,
@@ -89,7 +91,7 @@ where
 #[async_trait]
 impl<T> TardisClusterSubscriber for BroadcastChannelSubscriber<T>
 where
-    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned,
+    T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
 {
     fn event_name(&self) -> Cow<'static, str> {
         self.event_name.to_string().into()
