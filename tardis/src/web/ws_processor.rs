@@ -100,7 +100,7 @@ fn ws_send_to_channel<TX>(send_msg: TardisWebsocketMgrMessage, inner_sender: &TX
 where
     TX: WsBroadcastSender,
 {
-    inner_sender.send(send_msg.clone());
+    inner_sender.send(send_msg);
 }
 
 pub fn ws_send_error_to_channel<TX>(req_message: &str, error_message: &str, msg_id: &str, from_avatar: &str, from_inst_id: &str, inner_sender: &TX)
@@ -143,6 +143,7 @@ impl WsBroadcastSender for tokio::sync::broadcast::Sender<TardisWebsocketMgrMess
     }
 }
 
+#[tracing::instrument(skip(websocket, inner_sender, process_fun, close_fun))]
 pub async fn ws_broadcast<PF, PT, CF, CT>(
     avatars: Vec<String>,
     mgr_node: bool,
@@ -159,9 +160,9 @@ where
     CF: Fn(Option<(CloseCode, String)>, HashMap<String, String>) -> CT + Send + Sync + 'static,
     CT: Future<Output = ()> + Send + 'static,
 {
-    let mut inner_receiver = inner_sender.subscribe();
     websocket
         .on_upgrade(move |socket| async move {
+            let mut inner_receiver = inner_sender.subscribe();
             // corresponded to the current ws connection
             let inst_id = TardisFuns::field.nanoid();
             let current_receive_inst_id = inst_id.clone();
@@ -176,7 +177,7 @@ where
             let (mut ws_sink, mut ws_stream) = socket.split();
             let ws_closed = tokio_util::sync::CancellationToken::new();
             let ws_closed_notifier = ws_closed.clone();
-            debug!("[Tardis.WebServer] WS message receive: new connection {inst_id}");
+            debug!("[Tardis.WebServer] WS new connection {inst_id}");
             tokio::spawn(async move {
                 // message inbound
                 while let Some(Ok(message)) = ws_stream.next().await {
@@ -365,6 +366,7 @@ where
             let reply_once_guard = REPLY_ONCE_GUARD.clone();
 
             tokio::spawn(async move {
+                debug!("[Tardis.WebServer] WS tx side: new connection {current_receive_inst_id}");
                 'poll_next_message: loop {
                     let mgr_message = tokio::select! {
                         _ = ws_closed.cancelled() => {
@@ -381,6 +383,8 @@ where
                             }
                         }
                     };
+
+                    tracing::trace!(inst_id = current_receive_inst_id, "[Tardis.WebServer] inner receiver receive message {mgr_message:?}");
 
                     #[cfg(feature = "cluster")]
                     let Ok(Some(current_avatars)) = ({ ws_insts_mapping_avatars().get(current_receive_inst_id.clone()).await }) else {
@@ -400,6 +404,9 @@ where
                     if mgr_message.ignore_self && current_receive_inst_id == mgr_message.from_inst_id {
                         continue;
                     }
+
+                    tracing::trace!("[Tardis.WebServer] inner receiver receive message {mgr_message:?}");
+
                     if
                     // send to all
                     mgr_message.to_avatars.is_empty() && mgr_message.ignore_avatars.is_empty()

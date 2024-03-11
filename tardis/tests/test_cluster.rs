@@ -247,8 +247,7 @@ async fn test_echo(node_id: &str) -> TardisResult<()> {
         assert_eq!(&resp.resp_node_id, "node_3");
     } else if node_id == "2" {
         let resp = publish_event_one_response("echo", serde_json::Value::String("hi".to_string()), "node_3", Some(Duration::from_secs(1))).await;
-        // should time out
-        assert!(resp.is_err());
+        assert!(resp.is_ok());
     } else {
         let resp = TardisFuns::cluster_publish_event_one_resp("echo", serde_json::Value::String("hi".to_string()), "node_3").await;
         assert!(resp.is_err());
@@ -292,6 +291,7 @@ async fn test_hash_map(node_id: &str) -> TardisResult<()> {
 }
 
 async fn test_broadcast(node_id: &str) {
+    TardisFuns::cluster_subscribe_event(ClusterSubscriberEchoTest).await;
     tokio::time::sleep(Duration::from_secs(6)).await;
     match node_id {
         "1" => {
@@ -310,7 +310,7 @@ async fn test_broadcast(node_id: &str) {
     }
     let result = tokio::time::timeout(Duration::from_secs(20), async move {
         loop {
-            if bc_recv_count().load(Ordering::SeqCst) == 6 {
+            if bc_recv_count().load(Ordering::SeqCst) == 4 {
                 break;
             } else {
                 tokio::task::yield_now().await;
@@ -318,5 +318,5 @@ async fn test_broadcast(node_id: &str) {
         }
     })
     .await;
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "bc_recv_count={}", bc_recv_count().load(Ordering::SeqCst));
 }

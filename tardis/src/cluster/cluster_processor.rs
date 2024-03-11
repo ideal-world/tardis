@@ -320,6 +320,16 @@ pub async fn subscribe<S: TardisClusterSubscriber>(subscriber: S) {
     subscribe_boxed(Box::new(subscriber)).await;
 }
 
+pub async fn subscribe_if_not_exist<S: TardisClusterSubscriber>(subscriber: S) {
+    let mut wg = subscribers().write().await;
+    let event_name = subscriber.event_name();
+    #[allow(clippy::map_entry)]
+    if !wg.contains_key(&event_name) {
+        info!("[Tardis.Cluster] [Server] subscribe event {event_name}");
+        wg.insert(event_name, Box::new(subscriber));
+    }
+}
+
 pub async fn unsubscribe(event_name: &str) {
     info!("[Tardis.Cluster] [Server] unsubscribe event {event_name}");
     subscribers().write().await.remove(event_name);

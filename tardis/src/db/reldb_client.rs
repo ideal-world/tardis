@@ -178,7 +178,7 @@ impl TardisRelDBClient {
                     } else {
                         raw_opt = raw_opt.log_statements(opt.get_sqlx_logging_level());
                     }
-                    match opt
+                    let result = opt
                         .pool_options::<sqlx::MySql>()
                         .after_connect(move |conn, _| {
                             let timezone = timezone.clone();
@@ -188,8 +188,8 @@ impl TardisRelDBClient {
                             })
                         })
                         .connect_with(raw_opt)
-                        .await
-                    {
+                        .await;
+                    match result {
                         Ok(pool) => Ok(SqlxMySqlConnector::from_sqlx_mysql_pool(pool)),
                         Err(error) => Err(TardisError::format_error(
                             &format!("[Tardis.RelDBClient] {str_url} Initialization error: {error}"),
@@ -206,7 +206,7 @@ impl TardisRelDBClient {
                     } else {
                         raw_opt = raw_opt.log_statements(opt.get_sqlx_logging_level());
                     }
-                    match opt
+                    let result = opt
                         .pool_options::<sqlx::Postgres>()
                         .after_connect(move |conn, _| {
                             let timezone = timezone.clone();
@@ -216,8 +216,8 @@ impl TardisRelDBClient {
                             })
                         })
                         .connect_with(raw_opt)
-                        .await
-                    {
+                        .await;
+                    match result {
                         Ok(pool) => Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool)),
                         Err(error) => Err(TardisError::format_error(
                             &format!("[Tardis.RelDBClient] {str_url} Initialization error: {error}"),

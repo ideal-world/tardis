@@ -6,6 +6,7 @@ use super::{TardisWebsocketMgrMessage, WsBroadcastSender};
 
 impl WsBroadcastSender for ClusterBroadcastChannel<TardisWebsocketMgrMessage> {
     fn subscribe(&self) -> tokio::sync::broadcast::Receiver<TardisWebsocketMgrMessage> {
+        // dbg!(self.local_broadcast_channel.receiver_count());
         self.local_broadcast_channel.subscribe()
     }
 
@@ -16,7 +17,7 @@ impl WsBroadcastSender for ClusterBroadcastChannel<TardisWebsocketMgrMessage> {
 
 impl WsBroadcastSender for Arc<ClusterBroadcastChannel<TardisWebsocketMgrMessage>> {
     fn subscribe(&self) -> tokio::sync::broadcast::Receiver<TardisWebsocketMgrMessage> {
-        self.local_broadcast_channel.subscribe()
+        self.as_ref().subscribe()
     }
 
     fn send(&self, msg: TardisWebsocketMgrMessage) {
