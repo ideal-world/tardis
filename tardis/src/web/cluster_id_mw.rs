@@ -21,7 +21,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
 
     async fn call(&self, req: Request) -> poem::Result<Self::Output> {
         let mut resp = self.0.call(req).await?.into_response();
-        if TardisFuns::fw_config_opt().is_some_and(|cfg|cfg.cluster.is_some()) {
+        if TardisFuns::fw_config_opt().is_some_and(|cfg| cfg.cluster.is_some()) {
             #[cfg(feature = "cluster")]
             {
                 let cluster_id = crate::cluster::cluster_processor::local_node_id().await;
