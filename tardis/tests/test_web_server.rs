@@ -39,7 +39,7 @@ use poem_grpc::{Request as GrpcRequest, Response as GrpcResponse, Status as Grpc
 use tracing_subscriber::filter::Directive;
 
 const TLS_KEY: &str = r#"
------BEGIN RSA PRIVATE KEY-----
+-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCq4QyODxghypMz
 u3wSNYAH7qsekRasbkFWlzRlfCkVfxMynGh8uRfNod4UrHAWTXDJAneHoFgqXemI
 Vf1z87r0T2NFf3+oochAKvE6z9hNSeBbLIeZXPQQcabtO9T5cS4anK3k0mbgRpdM
@@ -66,7 +66,7 @@ j1laOnlu9j17KOjS127pQzCkVQELWDjXzhoQ1AmRAoGACFk2lgato0S/PTdHhsOa
 0G4zCbIpjndRYuW5IMURpiGeQEZ5unIuX72lx180ncj+PTw6DxxiEsESDhIp1VfW
 RWf7YsEUgQICLka42SY+UsSfEe7Wya3ZM4bhc+wVi2rgjVBriuBC5UzMAWpCyMri
 7A2laBCqWVkgks5BQPLtlXg=
------END RSA PRIVATE KEY-----
+-----END PRIVATE KEY-----
 "#;
 
 const TLS_CERT: &str = r#"

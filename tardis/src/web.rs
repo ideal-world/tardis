@@ -1,6 +1,9 @@
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub use poem;
+#[cfg(feature = "web-server-grpc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "web-server-grpc")))]
+pub use poem_grpc;
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub use poem_openapi;
