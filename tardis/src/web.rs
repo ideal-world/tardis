@@ -10,6 +10,9 @@ pub use reqwest;
 #[cfg(feature = "ws-client")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ws-client")))]
 pub use tokio_tungstenite;
+#[cfg(feature = "web-server-grpc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "web-server-grpc")))]
+pub use poem_grpc;
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub mod cluster_id_mw;
@@ -38,6 +41,4 @@ pub mod ws_client;
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub mod ws_processor;
 
-#[cfg(feature = "web-server-grpc")]
-#[cfg_attr(docsrs, doc(cfg(feature = "web-server-grpc")))]
-pub use poem_grpc;
+
