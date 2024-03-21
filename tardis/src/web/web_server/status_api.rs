@@ -9,8 +9,8 @@ pub struct TardisStatusApi;
 #[derive(Debug, Serialize, Deserialize, Object)]
 pub struct TardisStatus {
     pub version: String,
-    #[cfg(feature = "build-info")]
-    pub git_version: String,
+    // #[cfg(feature = "build-info")]
+    // pub git_version: String,
     #[cfg(feature = "cluster")]
     pub cluster: TardisClusterStatus,
     pub fw_config: serde_json::Value,
@@ -22,8 +22,8 @@ impl TardisStatus {
     pub async fn fetch() -> TardisStatus {
         TardisStatus {
             version: env!("CARGO_PKG_VERSION").to_string(),
-            #[cfg(feature = "build-info")]
-            git_version: crate::utils::build_info::git_version!().to_string(),
+            // #[cfg(feature = "build-info")]
+            // git_version: crate::utils::build_info::git_version!().to_string(),
             #[cfg(feature = "cluster")]
             cluster: TardisClusterStatus::fetch().await,
             fw_config: serde_json::to_value(crate::TardisFuns::fw_config().as_ref().clone()).unwrap_or_default(),
