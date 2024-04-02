@@ -8,6 +8,8 @@
     "vadimcn.vscode-lldb",
     "swellaby.vscode-rust-test-adapter",
     "itsyaasir.rust-feature-toggler",
-    "zhangyue.rust-mod-generator"
+    "zhangyue.rust-mod-generator",
+    "streetsidesoftware.code-spell-checker",
+    "usernamehw.errorlens"
   ]
 }
