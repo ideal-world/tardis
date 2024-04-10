@@ -1,20 +1,29 @@
 use crate::macro_helpers::helpers::{default_doc, ConvertVariableHelpers, TypeToTokenHelpers};
-use darling::FromField;
+use darling::{FromField, FromMeta};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use std::collections::HashMap;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::token::{Comma, Dot};
 use syn::{Attribute, Data, Error, Fields, Result};
 
-#[derive(FromField, Debug, Clone)]
+#[derive(FromField, Debug, Clone, PartialEq, Eq)]
 #[darling(attributes(index))]
-struct CreateIndexMeta {
+struct CreateIndexField {
     ident: Option<Ident>,
-    #[darling(default = "default_index_id")]
-    index_id: String,
     #[darling(default)]
     name: Option<String>,
+    #[darling(flatten)]
+    meta: CreateIndexMeta,
+    #[darling(multiple, rename = "param")]
+    metas: Vec<CreateIndexMeta>,
+}
+
+#[derive(FromMeta, Debug, Clone, PartialEq, Eq)]
+struct CreateIndexMeta {
+    #[darling(default = "default_index_id")]
+    index_id: String,
     #[darling(default)]
     primary: bool,
     #[darling(default)]
@@ -47,6 +56,24 @@ struct CreateIndexMeta {
     #[darling(default)]
     index_type: Option<String>,
 }
+
+impl CreateIndexField {
+    fn get_all_meta(&self) -> Vec<&CreateIndexMeta> {
+        let mut result = vec![&self.meta];
+        result.append(&mut self.metas.iter().collect::<Vec<_>>());
+        result
+    }
+
+    fn copy_with_one_meta(&self, meta: CreateIndexMeta) -> CreateIndexField {
+        CreateIndexField {
+            ident: self.ident.clone(),
+            name: self.name.clone(),
+            meta,
+            metas: Vec::new(),
+        }
+    }
+}
+
 fn default_index_id() -> String {
     format!("{}_id", nanoid::nanoid!(4))
 }
@@ -72,24 +99,31 @@ pub(crate) fn create_index(ident: Ident, data: Data, _atr: impl IntoIterator<Ite
 
 fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
     let mut statement: Punctuated<TokenStream, Comma> = Punctuated::new();
-    let mut map: HashMap<String, Box<Vec<CreateIndexMeta>>> = HashMap::new();
+    let mut map: HashMap<String, Box<Vec<CreateIndexField>>> = HashMap::new();
     for field in fields {
-        for attr in field.attrs.clone() {
+        'attr: for attr in field.attrs.clone() {
             if let Some(ident) = attr.path().get_ident() {
                 if ident == "index" {
-                    let field_create_index_meta: CreateIndexMeta = match CreateIndexMeta::from_field(&field) {
+                    let field_create_index_field: CreateIndexField = match CreateIndexField::from_field(&field) {
                         Ok(field) => field,
                         Err(err) => {
                             return Ok(err.write_errors());
                         }
                     };
-                    if let Some(vec) = map.get_mut(&field_create_index_meta.index_id) {
-                        vec.push(field_create_index_meta)
-                    } else {
-                        map.insert(field_create_index_meta.index_id.clone(), Box::new(vec![field_create_index_meta]));
+                    for meta in field_create_index_field.get_all_meta() {
+                        if let Some(vec) = map.get_mut(&meta.index_id) {
+                            if let Some(last_meta) = vec.last() {
+                                if last_meta.eq(&field_create_index_field) {
+                                    return Err(Error::new(field.span(), "same field can't have same index_id."));
+                                }
+                            }
+                            vec.push(field_create_index_field.copy_with_one_meta(meta.clone()))
+                        } else {
+                            map.insert(meta.index_id.clone(), Box::new(vec![field_create_index_field.copy_with_one_meta(meta.clone())]));
+                        }
                     }
                     // out of attr for loop, into next field
-                    break;
+                    break 'attr;
                 }
             }
         }
@@ -99,17 +133,17 @@ fn create_col_token_statement(fields: Fields) -> Result<TokenStream> {
     }
     Ok(quote! {#statement})
 }
-fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<TokenStream> {
+fn single_create_index_statement(index_fields: &Vec<CreateIndexField>) -> Result<TokenStream> {
     let mut create_statement: Punctuated<TokenStream, Dot> = Punctuated::new();
     let mut column: Punctuated<TokenStream, Dot> = Punctuated::new();
-    let mut name = None;
+    let mut name: Option<String> = None;
     let mut primary = false;
     let mut unique = false;
     let mut full_text = false;
     let mut if_not_exists = false;
-    let mut index_type = (None, Span::call_site());
+    let mut index_type: (Option<String>, Span) = (None, Span::call_site());
 
-    for index_meta in index_metas {
+    for index_meta in index_fields {
         if let Some(ident) = index_meta.ident.clone() {
             let ident = Ident::new(ConvertVariableHelpers::underscore_to_camel(ident.to_string()).as_ref(), ident.span());
             //add Column
@@ -118,19 +152,23 @@ fn single_create_index_statement(index_metas: &Vec<CreateIndexMeta>) -> Result<T
             if name.is_none() && index_meta.name.is_some() {
                 name = index_meta.name.clone();
             }
-            if index_type.0.is_none() && index_meta.index_type.is_some() {
-                index_type = (index_meta.index_type.clone(), ident.span());
+            if index_meta.meta.index_type.is_some() {
+                if index_type.0.is_none() {
+                    index_type = (index_meta.meta.index_type.clone(), ident.span());
+                } else if !index_type.0.eq(&index_meta.meta.index_type) {
+                    return Err(Error::new(ident.span(), "same index_id only can have one index_type"));
+                }
             }
-            if index_meta.primary {
+            if index_meta.meta.primary {
                 primary = true;
             }
-            if index_meta.unique {
+            if index_meta.meta.unique {
                 unique = true;
             }
-            if index_meta.full_text {
+            if index_meta.meta.full_text {
                 full_text = true;
             }
-            if index_meta.if_not_exists {
+            if index_meta.meta.if_not_exists {
                 if_not_exists = true;
             }
         }

@@ -29,16 +29,16 @@ future = ["futures", "async-stream", "futures-util", "async-trait"]
 tls = ["native-tls"]
 reldb-core = ["future", "sqlparser", "sea-orm", "sqlx"]
 reldb-postgres = [
-    "reldb-core",
-    "sea-orm/json-array",
-    "sea-orm/sqlx-postgres",
-    "tardis-macros/reldb-postgres",
+  "reldb-core",
+  "sea-orm/json-array",
+  "sea-orm/sqlx-postgres",
+  "tardis-macros/reldb-postgres",
 ]
 reldb-mysql = ["reldb-core", "sea-orm/sqlx-mysql", "tardis-macros/reldb-mysql"]
 reldb-sqlite = [
-    "reldb-core",
-    "sea-orm/sqlx-sqlite",
-    "tardis-macros/reldb-sqlite",
+  "reldb-core",
+  "sea-orm/sqlx-sqlite",
+  "tardis-macros/reldb-sqlite",
 ]
 reldb = ["reldb-core", "reldb-postgres", "reldb-mysql", "reldb-sqlite"]
 web-server = ["future", "poem", "poem-openapi", "poem-openapi-derive"]
@@ -82,11 +82,11 @@ typed-builder = { version = "0.18" }
 paste = { version = "1.0" }
 # Tokio
 tokio = { version = "1", features = [
-    "macros",
-    "rt-multi-thread",
-    "signal",
-    "time",
-    "sync",
+  "macros",
+  "rt-multi-thread",
+  "signal",
+  "time",
+  "sync",
 ] }
 tokio-util = { version = "0.7.10" }
 # Tardis Macros
@@ -99,22 +99,22 @@ console-subscriber = { version = "0.2", optional = true }
 # Tracing
 tracing-opentelemetry = { version = "0.21", optional = true }
 opentelemetry = { version = "0.20", default-features = false, features = [
-    "trace",
-    "rt-tokio",
+  "trace",
+  "rt-tokio",
 ], optional = true }
 opentelemetry-otlp = { version = "0.13", features = [
-    "reqwest-client",
-    "reqwest-rustls",
-    "http-proto",
-    "tls",
+  "reqwest-client",
+  "reqwest-rustls",
+  "http-proto",
+  "tls",
 ], optional = true }
 # TLS
 native-tls = { version = "0.2", optional = true }
 
 # Crypto
 cipher = { version = "0.4", optional = true, features = [
-    "block-padding",
-    "alloc",
+  "block-padding",
+  "alloc",
 ] }
 ## Digest
 ## see https://github.com/RustCrypto/hashes
@@ -150,48 +150,48 @@ async-trait = { version = "0.1", optional = true }
 
 # RelDB
 sea-orm = { version = "0.12", features = [
-    "macros",
-    "runtime-tokio-native-tls",
-    "with-chrono",
-    "with-json",
-    "debug-print",
+  "macros",
+  "runtime-tokio-native-tls",
+  "with-chrono",
+  "with-json",
+  "debug-print",
 ], optional = true }
 sqlx = { version = "0.7", features = ["any"], optional = true }
 sqlparser = { version = "0", optional = true }
 
 # Web Server
 poem-openapi = { version = "4", features = [
-    "chrono",
-    "websocket",
+  "chrono",
+  "websocket",
 ], optional = true }
 poem-openapi-derive = { version = "4", optional = true }
 poem = { version = "2", features = [
-    "csrf",
-    "opentelemetry",
-    "rustls",
-    "prometheus",
-    "websocket",
-    "multipart",
-    "tempfile",
-    "session",
+  "csrf",
+  "opentelemetry",
+  "rustls",
+  "prometheus",
+  "websocket",
+  "multipart",
+  "tempfile",
+  "session",
 ], optional = true }
 poem-grpc = { version = "0.3", optional = true }
 
 # Web Client
 reqwest = { version = "0.11", features = [
-    "json",
-    "multipart",
+  "json",
+  "multipart",
 ], optional = true }
 
 # Websocket Client
 tokio-tungstenite = { version = "0.21", features = [
-    "native-tls",
+  "native-tls",
 ], optional = true }
 
 # Redis
 redis = { version = "0.24", features = [
-    "tokio-comp",
-    "tokio-native-tls-comp",
+  "tokio-comp",
+  "tokio-native-tls-comp",
 ], optional = true }
 deadpool-redis = { version = "0.14", optional = true }
 
@@ -202,10 +202,10 @@ async-global-executor = { version = "2", features = ["tokio"], optional = true }
 
 # Mail
 lettre = { version = "0.11", features = [
-    "smtp-transport",
-    "tokio1",
-    "tokio1-native-tls",
-    "builder",
+  "smtp-transport",
+  "tokio1",
+  "tokio1-native-tls",
+  "builder",
 ], optional = true }
 
 # Object Storage
@@ -219,28 +219,31 @@ k8s-openapi = { version = "^0.20", features = ["earliest"], optional = true }
 # Test
 testcontainers = { version = "0.15", optional = true }
 testcontainers-modules = { version = "0.3", features = [
-    "minio",
-    "redis",
+  "minio",
+  "redis",
 ], optional = true }
 
 # Debug
-git-version = {version = "0.3.9", optional = true}
+git-version = { version = "0.3.9", optional = true }
 
 [dev-dependencies]
 # Common
 tokio = { version = "1", features = [
-    "time",
-    "rt",
-    "macros",
-    "sync",
-    "process",
+  "time",
+  "rt",
+  "macros",
+  "sync",
+  "process",
 ] }
 criterion = { version = "0.5" }
 poem-grpc-build = "0.3"
 prost = "0.12"
 strip-ansi-escapes = "0.2.0"
 portpicker = "0.1.1"
-
+# macros
+serde = { version = "1", features = ["derive"] }
+trybuild = "1.0"
+rust_decimal = { version = "1" }
 
 
 [[test]]
@@ -250,13 +253,13 @@ required-features = ["crypto"]
 [[test]]
 name = "test_config_with_remote"
 required-features = [
-    "test",
-    "crypto",
-    "web-server",
-    "cache",
-    "web-client",
-    "conf-remote",
-    "mq",
+  "test",
+  "crypto",
+  "web-server",
+  "cache",
+  "web-client",
+  "conf-remote",
+  "mq",
 ]
 
 [[test]]
@@ -270,12 +273,12 @@ required-features = ["test", "reldb"]
 [[test]]
 name = "test_web_server"
 required-features = [
-    "test",
-    "web-server",
-    "cache",
-    "web-client",
-    "crypto",
-    "web-server-grpc",
+  "test",
+  "web-server",
+  "cache",
+  "web-client",
+  "crypto",
+  "web-server-grpc",
 ]
 
 [[test]]
