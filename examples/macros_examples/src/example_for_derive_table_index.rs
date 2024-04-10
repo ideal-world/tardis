@@ -13,15 +13,15 @@ use tardis::TardisCreateIndex;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
-    #[index(repeat(index_id = "index_id_3"), repeat(index_id = "index_id_4"))]
+    #[index(index_id = "index_id_2", repeat(index_id = "index_id_3"), repeat(index_id = "index_id_4"))]
     pub number32: i32,
     #[index(unique)]
     pub number64: i64,
-    #[index(full_text, index_id = "index_id_3")]
+    #[index(full_text, index_id = "index_id_2")]
     pub can_be_null: Option<String>,
     #[index(name = "rename_example")]
     pub be_text: String,
-    #[index(index_id = "index_id_2", index_type = "Custom(GiST)", full_text)]
+    #[index(index_id = "index_id_3", index_type = "Custom(GiST)", full_text)]
     pub own_paths: String,
 }
 
