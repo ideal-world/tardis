@@ -13,7 +13,7 @@ use tardis::TardisCreateIndex;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
-    #[index(param(index_id = "index_id_3"), param(index_id = "index_id_4"))]
+    #[index(repeat(index_id = "index_id_3"), repeat(index_id = "index_id_4"))]
     pub number32: i32,
     #[index(unique)]
     pub number64: i64,

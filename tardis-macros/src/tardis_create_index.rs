@@ -16,7 +16,7 @@ struct CreateIndexField {
     name: Option<String>,
     #[darling(flatten)]
     meta: CreateIndexMeta,
-    #[darling(multiple, rename = "param")]
+    #[darling(multiple, rename = "repeat")]
     metas: Vec<CreateIndexMeta>,
 }
 
