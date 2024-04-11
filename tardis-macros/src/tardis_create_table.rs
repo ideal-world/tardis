@@ -5,7 +5,7 @@ use quote::{quote, ToTokens};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Dot;
-use syn::{Attribute, Data, Error, Field, Fields, GenericArgument, PathArguments, Result, Type};
+use syn::{Attribute, Data, Error, Expr, Field, Fields, GenericArgument, PathArguments, Result, Type};
 
 #[derive(FromField, Debug, Clone)]
 #[darling(attributes(tardis_entity))]
@@ -23,6 +23,8 @@ struct TardisEntityMeta {
     #[darling(default)]
     #[darling(multiple)]
     custom_len: Vec<u32>,
+    #[darling(default)]
+    default_value: Option<Expr>,
 }
 
 #[derive(FromField, Debug, Clone)]
@@ -74,20 +76,22 @@ struct CreateTableMeta {
     primary_key: bool,
     nullable: Option<bool>,
     extra: Option<String>,
+    default_value: Option<Expr>,
     ignore: bool,
 }
 
 impl CreateTableMeta {
-    pub fn from(field1: TardisEntityMeta, field2: SeaOrmMeta) -> Self {
+    pub fn from(meta1: TardisEntityMeta, meta2: SeaOrmMeta) -> Self {
         Self {
-            ident: field1.ident,
-            ty: field1.ty,
-            custom_type: field1.custom_type,
-            custom_len: field1.custom_len,
-            primary_key: field2.primary_key,
-            nullable: field2.nullable,
-            extra: field2.extra,
-            ignore: field2.ignore,
+            ident: meta1.ident,
+            ty: meta1.ty,
+            custom_type: meta1.custom_type,
+            custom_len: meta1.custom_len,
+            primary_key: meta2.primary_key,
+            nullable: meta2.nullable,
+            extra: meta2.extra,
+            ignore: meta2.ignore,
+            default_value: meta1.default_value,
         }
     }
     pub fn from_field(field: &Field) -> darling::Result<Self> {
@@ -205,6 +209,9 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
         }
         if let Some(ext) = field.extra {
             attribute.push(quote!(extra(#ext.to_string())))
+        }
+        if let Some(default_value) = field.default_value {
+            attribute.push(quote!(default(#default_value)))
         }
 
         let ident = Ident::new(ConvertVariableHelpers::underscore_to_camel(ident.to_string()).as_ref(), ident.span());
