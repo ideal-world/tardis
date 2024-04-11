@@ -228,7 +228,7 @@ async fn test_cache(cache_client: &TardisCacheClient) -> TardisResult<()> {
     assert_eq!(str_value, "测试");
     Ok(())
 }
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 struct TestConfig {
     project_name: String,
@@ -236,15 +236,7 @@ struct TestConfig {
     db_proj: DatabaseConfig,
 }
 
-impl Default for TestConfig {
-    fn default() -> Self {
-        TestConfig {
-            project_name: String::new(),
-            level_num: 0,
-            db_proj: DatabaseConfig::default(),
-        }
-    }
-}
+
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
@@ -253,14 +245,8 @@ struct TestModuleConfig {
     db_proj: DatabaseConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 struct DatabaseConfig {
     url: String,
-}
-
-impl Default for DatabaseConfig {
-    fn default() -> Self {
-        DatabaseConfig { url: String::new() }
-    }
 }

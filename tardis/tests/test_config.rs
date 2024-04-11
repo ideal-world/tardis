@@ -61,22 +61,12 @@ async fn test_crypto_config() -> TardisResult<()> {
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 struct TestConfig {
     project_name: String,
     level_num: u8,
     db_proj: DatabaseConfig,
-}
-
-impl Default for TestConfig {
-    fn default() -> Self {
-        TestConfig {
-            project_name: String::new(),
-            level_num: 0,
-            db_proj: DatabaseConfig::default(),
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -86,14 +76,8 @@ struct TestModuleConfig {
     db_proj: DatabaseConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 struct DatabaseConfig {
     url: String,
-}
-
-impl Default for DatabaseConfig {
-    fn default() -> Self {
-        DatabaseConfig { url: String::new() }
-    }
 }
