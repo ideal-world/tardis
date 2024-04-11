@@ -225,6 +225,11 @@ testcontainers-modules = { version = "0.3", features = [
 
 # Debug
 git-version = { version = "0.3.9", optional = true }
+# see https://github.com/launchbadge/sqlx/issues/3189
+time = { version = "=0.3.34", default-features = false, features = [
+  "macros",
+  "formatting",
+] }
 
 [dev-dependencies]
 # Common
@@ -244,7 +249,6 @@ portpicker = "0.1.1"
 serde = { version = "1", features = ["derive"] }
 trybuild = "1.0"
 rust_decimal = { version = "1" }
-
 
 [[test]]
 name = "test_config"
