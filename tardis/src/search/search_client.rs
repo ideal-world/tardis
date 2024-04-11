@@ -114,7 +114,7 @@ impl TardisSearchClient {
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
-                &format!("[Tardis.SearchClient] Create index error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                &format!("[Tardis.SearchClient] Create index error: {}", resp.body.as_ref().unwrap_or(&String::new())),
                 "-1-tardis-search-error",
             ))
         }
@@ -142,7 +142,7 @@ impl TardisSearchClient {
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
-                &format!("[Tardis.SearchClient] Create record error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                &format!("[Tardis.SearchClient] Create record error: {}", resp.body.as_ref().unwrap_or(&String::new())),
                 "-1-tardis-search-error",
             ))
         }
@@ -170,7 +170,7 @@ impl TardisSearchClient {
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
-                &format!("[Tardis.SearchClient] Get record error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                &format!("[Tardis.SearchClient] Get record error: {}", resp.body.as_ref().unwrap_or(&String::new())),
                 "-1-tardis-search-error",
             ))
         }
@@ -198,7 +198,7 @@ impl TardisSearchClient {
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
-                &format!("[Tardis.SearchClient] Simple search error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                &format!("[Tardis.SearchClient] Simple search error: {}", resp.body.as_ref().unwrap_or(&String::new())),
                 "-1-tardis-search-error",
             ))
         }
@@ -266,7 +266,7 @@ impl TardisSearchClient {
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
-                &format!("[Tardis.SearchClient] Raw search error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                &format!("[Tardis.SearchClient] Raw search error: {}", resp.body.as_ref().unwrap_or(&String::new())),
                 "-1-tardis-search-error",
             ))
         }
@@ -332,7 +332,7 @@ impl TardisSearchClient {
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
-                &format!("[Tardis.SearchClient] Update error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                &format!("[Tardis.SearchClient] Update error: {}", resp.body.as_ref().unwrap_or(&String::new())),
                 "-1-tardis-search-error",
             ))
         }
@@ -359,7 +359,7 @@ impl TardisSearchClient {
         } else {
             Err(TardisError::custom(
                 &resp.code.to_string(),
-                &format!("[Tardis.SearchClient] Delete by query error: {}", resp.body.as_ref().unwrap_or(&"".to_string())),
+                &format!("[Tardis.SearchClient] Delete by query error: {}", resp.body.as_ref().unwrap_or(&String::new())),
                 "-1-tardis-search-error",
             ))
         }

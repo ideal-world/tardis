@@ -9,7 +9,7 @@ use crate::app::req::test_req;
 async fn test_basic_logger() -> TardisResult<()> {
     // env::set_var("RUST_LOG", "OFF");
     env::set_var("RUST_LOG", "info");
-    TardisFuns::init_log()?;
+    TardisFuns::init_log();
     info!("main info...");
     error!("main error");
     test_req();

@@ -17,7 +17,7 @@ pub struct Model {
 fn main() {
     let create_table_statement = ActiveModel::create_table_statement(DbBackend::Postgres);
     let mut tests_model = ActiveModel {
-        id: Set("".to_string()),
+        id: Set(String::new()),
         ..Default::default()
     };
     tests_model.fill_ctx(

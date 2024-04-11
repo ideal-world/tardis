@@ -27,7 +27,7 @@ use tracing_subscriber::{
 ///
 #[derive(Default)]
 pub struct TardisTracing<C = LogConfig> {
-    configer: Vec<Box<dyn Fn(&C) -> TardisResult<()> + Send + Sync>>,
+    configure: Vec<Box<dyn Fn(&C) -> TardisResult<()> + Send + Sync>>,
 }
 
 // create a configurable layer, recieve a layer and a configer, return a reload layer and a config function
@@ -201,7 +201,7 @@ where
             tracing::error!("[Tardis.Tracing] Trying to initialize tardis tracing more than once, this initialization will be ignored. If you want to use new config for tracing, use update_config() instead.");
         } else {
             INITIALIZED.call_once(|| self.layered.init());
-            TARDIS_INST.tracing.set(TardisTracing { configer: configer_list });
+            TARDIS_INST.tracing.set(TardisTracing { configure: configer_list });
         }
         crate::TardisFuns::tracing()
     }
@@ -213,7 +213,7 @@ where
     pub fn init_standalone(self) -> TardisTracing {
         let configer_list = self.configers;
         self.layered.init();
-        TardisTracing { configer: configer_list }
+        TardisTracing { configure: configer_list }
     }
 }
 
@@ -226,7 +226,7 @@ impl TardisTracing<LogConfig> {
     /// Update tardis tracing config, and this will reload all configurable layers
     /// LogConfig
     pub fn update_config(&self, config: &LogConfig) -> TardisResult<()> {
-        for configer in &self.configer {
+        for configer in &self.configure {
             (configer)(config)?
         }
         tracing::debug!("[Tardis.Tracing] Config updated.");
@@ -234,7 +234,7 @@ impl TardisTracing<LogConfig> {
         Ok(())
     }
 
-    pub(crate) fn init_default() -> TardisResult<()> {
+    pub(crate) fn init_default() {
         tracing::info!("[Tardis.Tracing] Initializing by defualt initializer.");
         let initializer = TardisTracingInitializer::default().with_fmt_layer().with_env_layer();
         tracing::debug!("[Tardis.Tracing] Added fmt layer and env filter.");
@@ -246,7 +246,6 @@ impl TardisTracing<LogConfig> {
         let initializer = initializer.with_appender_layer();
         tracing::info!("[Tardis.Tracing] Initialize finished.");
         initializer.init();
-        Ok(())
     }
 
     #[cfg(feature = "tracing")]
@@ -266,12 +265,12 @@ impl TardisTracing<LogConfig> {
                         exporter = exporter.with_tls_config(Default::default());
                     }
                 }
-                tracer = tracer.with_exporter(exporter)
+                tracer = tracer.with_exporter(exporter);
             }
             OtlpProtocol::HttpProtobuf => {
                 let headers = Self::parse_otlp_headers_from_env();
                 let exporter = opentelemetry_otlp::new_exporter().http().with_headers(headers.into_iter().collect()).with_env();
-                tracer = tracer.with_exporter(exporter)
+                tracer = tracer.with_exporter(exporter);
             }
         };
         tracing::debug!("[Tardis.Tracing] Batch installing tracer. If you are blocked here, try running tokio in multithread.");

@@ -9,8 +9,7 @@ use tardis::TardisFuns;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_search_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
-    TardisFuns::init_log()?;
-    TardisTestContainer::es(|url| async move {
+    TardisFuns::init_log();    TardisTestContainer::es(|url| async move {
         let search_config = SearchModuleConfig::builder().url(url.parse().expect("invalid url")).build();
         let fw_config = FrameworkConfig::builder()
             .web_client(WebClientConfig::default())

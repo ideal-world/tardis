@@ -22,6 +22,7 @@ impl InitBy<MailModuleConfig> for TardisMailClient {
 }
 
 impl TardisMailClient {
+    /// init mail client
     pub fn init(
         MailModuleConfig {
             smtp_host,
@@ -67,16 +68,16 @@ impl TardisMailClient {
             email.from(self.default_from.as_str().parse()?)
         };
         for to in &req.to {
-            email = email.to(to.parse()?)
+            email = email.to(to.parse()?);
         }
         for t in &req.reply_to {
-            email = email.reply_to(t.parse()?)
+            email = email.reply_to(t.parse()?);
         }
         for t in &req.cc {
-            email = email.cc(t.parse()?)
+            email = email.cc(t.parse()?);
         }
         for t in &req.bcc {
-            email = email.bcc(t.parse()?)
+            email = email.bcc(t.parse()?);
         }
         email = email.subject(&req.subject);
         let email = if let Some(html_body) = &req.html_body {

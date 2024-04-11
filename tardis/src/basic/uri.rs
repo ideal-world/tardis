@@ -71,7 +71,7 @@ impl TardisUri {
         };
         let port = match uri.port() {
             Some(port) => format!(":{}", port),
-            None => "".to_string(),
+            None => String::new(),
         };
         let path = if uri.path().is_empty() {
             ""
@@ -82,7 +82,7 @@ impl TardisUri {
         };
         let query = match uri.query() {
             Some(query) => format!("?{}", query),
-            None => "".to_string(),
+            None => String::new(),
         };
         let formatted_uri = format!("{}://{}{}{}{}{}", uri.scheme(), authority, host, port, path, query);
         Ok(formatted_uri)
@@ -104,7 +104,7 @@ impl TardisUri {
             uri.path()
         };
         let query = match uri.query() {
-            None => "".to_string(),
+            None => String::new(),
             Some(q) => format!("?{q}"),
         };
         Ok(format!("{path}{query}"))

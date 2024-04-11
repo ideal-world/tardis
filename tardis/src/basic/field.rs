@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use regex::Regex;
 
 use crate::{
@@ -40,6 +38,7 @@ static BASE36: &str = "0123456789abcdefghijklmnopqrstuvwxyz";
 /// assert_eq!(TardisFuns::field.nanoid().len(), 21);
 /// assert_eq!(TardisFuns::field.nanoid_len(4).len(), 4);
 /// ```
+#[allow(clippy::module_name_repetitions)]
 pub struct TardisField;
 
 impl TardisField {
@@ -47,7 +46,6 @@ impl TardisField {
     pub fn is_phone(&self, phone: &str) -> bool {
         r_phone().is_match(phone)
     }
-
     /// Determine if it is a email / 判断是否是邮箱
     pub fn is_mail(&self, mail: &str) -> bool {
         r_mail().is_match(mail)
@@ -145,6 +143,9 @@ impl TardisField {
     /// * `chars` - custom encoded string / 自定义的编码字符串
     ///
     pub fn incr_by(&self, str: &str, chars: &str) -> Option<String> {
+        if chars.len() <= 1 {
+            return None;
+        }
         let mut result = Vec::new();
         let mut up = true;
         for x in str.chars().rev() {
@@ -162,10 +163,10 @@ impl TardisField {
             }
         }
         if !up {
+            None
+        } else {
             result.reverse();
             Some(result.join(""))
-        } else {
-            None
         }
     }
 }
@@ -226,13 +227,7 @@ impl From<&str> for TrimString {
 
 impl AsRef<str> for TrimString {
     fn as_ref(&self) -> &str {
-        self.deref()
-    }
-}
-
-impl TrimString {
-    pub fn as_str(&self) -> &str {
-        self.deref()
+        self
     }
 }
 

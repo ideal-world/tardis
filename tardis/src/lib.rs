@@ -118,6 +118,7 @@
 #![doc(html_logo_url = "https://raw.githubusercontent.com/ideal-world/tardis/main/logo.png")]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(clippy::unwrap_used, clippy::undocumented_unsafe_blocks, clippy::dbg_macro)]
+// #![warn(clippy::indexing_slicing)]
 
 extern crate core;
 #[macro_use]
@@ -203,8 +204,8 @@ use crate::web::web_server::TardisWebServer;
 /// impl Default for ExampleConfig {
 ///     fn default() -> Self {
 ///         ExampleConfig {
-///             conf1: "".to_string(),
-///             conf2: "".to_string(),
+///             conf1: String::new(),
+///             conf2: String::new(),
 ///         }
 ///     }
 /// }
@@ -343,8 +344,11 @@ impl TardisFuns {
     /// env::set_var("PROFILE", "test");
     /// TardisFuns::init("proj/config").await;
     /// ```
+    ///
+    /// # Errors
+    /// Config file not found or invalid config file format
     pub async fn init(relative_path: Option<&str>) -> TardisResult<()> {
-        TardisTracing::init_default()?;
+        TardisTracing::init_default();
         let config = TardisConfig::init(relative_path).await?;
         TardisFuns::init_conf(config).await
     }
@@ -354,9 +358,8 @@ impl TardisFuns {
     /// The [init](Self::init) function will automatically call this function
     ///
     /// [init](Self::init) 函数时会自动调用此函数
-    pub fn init_log() -> TardisResult<()> {
-        TardisTracing::init_default()?;
-        Ok(())
+    pub fn init_log() {
+        TardisTracing::init_default();
     }
 
     /// Initialized by the configuration object / 通过配置对象初始化
@@ -1177,6 +1180,7 @@ impl TardisFunsInst {
         }
     }
 
+    /// Get current module's code.
     pub fn module_code(&self) -> &str {
         &self.module_code
     }
@@ -1186,60 +1190,72 @@ impl TardisFunsInst {
         TardisFuns::cs_config(&self.module_code)
     }
 
+    /// Get current module's config from custom configs.
     pub fn err(&self) -> &TardisErrorWithExt {
         &self.err
     }
 
+    /// Get current module's rel db client from custom configs.
     #[cfg(feature = "reldb-core")]
     pub fn reldb(&self) -> Arc<TardisRelDBClient> {
         TardisFuns::reldb_by_module_or_default(&self.module_code)
     }
 
+    /// Get current module's db connection client from custom configs.
     #[cfg(feature = "reldb-core")]
     pub fn db(&self) -> &db::reldb_client::TardisRelDBlConnection {
         self.db.as_ref().expect("db is not initialized")
     }
 
+    /// begin a transaction
     #[cfg(feature = "reldb-core")]
     pub async fn begin(&mut self) -> TardisResult<()> {
         self.db.as_mut().expect("db is not initialized").begin().await
     }
 
+    /// commit transaction
     #[cfg(feature = "reldb-core")]
     pub async fn commit(self) -> TardisResult<()> {
         self.db.expect("db is not initialized").commit().await
     }
 
+    /// rollback transaction
     #[cfg(feature = "reldb-core")]
     pub async fn rollback(self) -> TardisResult<()> {
         self.db.expect("db is not initialized").rollback().await
     }
 
+    /// Get current module's cache client.
     #[cfg(feature = "cache")]
     pub fn cache(&self) -> Arc<TardisCacheClient> {
         TardisFuns::cache_by_module_or_default(&self.module_code)
     }
 
+    /// Get current module's mq client.
     #[cfg(feature = "mq")]
     pub fn mq(&self) -> Arc<TardisMQClient> {
         TardisFuns::mq_by_module_or_default(&self.module_code)
     }
 
+    /// Get current module's web client.
     #[cfg(feature = "web-client")]
     pub fn web_client(&self) -> Arc<TardisWebClient> {
         TardisFuns::web_client_by_module_or_default(&self.module_code)
     }
 
+    /// Get current module's search client.
     #[cfg(feature = "web-client")]
     pub fn search(&self) -> Arc<TardisSearchClient> {
         TardisFuns::search_by_module_or_default(&self.module_code)
     }
 
+    /// Get current module's mail client.
     #[cfg(feature = "mail")]
     pub fn mail(&self) -> Arc<TardisMailClient> {
         TardisFuns::mail_by_module_or_default(&self.module_code)
     }
 
+    /// Get current module's os client.
     #[cfg(feature = "os")]
     pub fn os(&self) -> Arc<TardisOSClient> {
         TardisFuns::os_by_module_or_default(&self.module_code)

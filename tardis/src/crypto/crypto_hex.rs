@@ -5,6 +5,7 @@ use crate::basic::{error::TardisError, result::TardisResult};
 pub struct TardisCryptoHex;
 
 impl TardisCryptoHex {
+    /// decode from hex to raw binary data
     pub fn decode<T: AsRef<[u8]>>(&self, data: T) -> TardisResult<Vec<u8>> {
         match hex::decode(data) {
             Ok(result) => Ok(result),
@@ -15,6 +16,7 @@ impl TardisCryptoHex {
         }
     }
 
+    /// encode to hex
     pub fn encode<T: AsRef<[u8]>>(&self, data: T) -> String {
         hex::encode(data)
     }

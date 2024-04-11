@@ -56,7 +56,7 @@ impl From<TardisError> for poem::Error {
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
         poem::Error::from_string(
-            format!("{}{}", TARDIS_ERROR_FLAG, TardisFuns::json.obj_to_string(&error).unwrap_or_else(|_| "".to_string())),
+            format!("{}{}", TARDIS_ERROR_FLAG, TardisFuns::json.obj_to_string(&error).unwrap_or_else(|_| String::new())),
             status_code,
         )
     }
@@ -102,7 +102,7 @@ where
     pub fn ok(data: T) -> TardisApiResult<T> {
         TardisApiResult::Ok(Json(TardisResp {
             code: TARDIS_RESULT_SUCCESS_CODE.to_string(),
-            msg: "".to_string(),
+            msg: String::new(),
             data: Some(data),
         }))
     }
@@ -110,7 +110,7 @@ where
     pub fn accepted(data: T) -> TardisApiResult<T> {
         TardisApiResult::Ok(Json(TardisResp {
             code: TARDIS_RESULT_ACCEPTED_CODE.to_string(),
-            msg: "".to_string(),
+            msg: String::new(),
             data: Some(data),
         }))
     }

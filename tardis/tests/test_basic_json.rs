@@ -115,24 +115,19 @@ struct TestConfig<T> {
 impl<T: Default> Default for TestConfig<T> {
     fn default() -> Self {
         TestConfig {
-            project_name: "".to_string(),
+            project_name: String::new(),
             level_num: 0,
             db_proj: Default::default(),
         }
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 #[serde(default)]
 struct DatabaseConfig {
     url: String,
 }
 
-impl Default for DatabaseConfig {
-    fn default() -> Self {
-        DatabaseConfig { url: "".to_string() }
-    }
-}
 
 #[derive(Serialize, Deserialize)]
 struct UserAddReq {

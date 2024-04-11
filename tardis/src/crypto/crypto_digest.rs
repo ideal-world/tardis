@@ -67,34 +67,42 @@ pub mod output {
 /// TardisFuns::crypto.digest.sm3("测试").unwrap();
 /// ```
 impl TardisCryptoDigest {
+    /// digest the data with sha1, output as hexcode
     pub fn sha1(&self, data: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest::<sha1::Sha1>(data)
     }
 
+    /// digest the data with sha256, output as hexcode
     pub fn sha256(&self, data: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest::<sha2::Sha256>(data)
     }
 
+    /// digest the data with sha512, output as hexcode
     pub fn sha512(&self, data: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest::<sha2::Sha512>(data)
     }
 
+    /// digest the data with md5, output as hexcode
     pub fn md5(&self, data: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest::<md5::Md5>(data)
     }
 
+    /// digest the data with sm3, output as hexcode
     pub fn sm3(&self, data: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest::<sm3::Sm3>(data)
     }
 
+    /// digest the data with hmac-sha1, output as hexcode
     pub fn hmac_sha1(&self, data: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest_hmac::<HmacSha1>(data, key)
     }
 
+    /// digest the data with hmac-sha256, output as hexcode
     pub fn hmac_sha256(&self, data: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest_hmac::<HmacSha256>(data, key)
     }
 
+    /// digest the data with hmac-sha512, output as hexcode
     pub fn hmac_sha512(&self, data: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> TardisResult<String> {
         self.digest_hmac::<HmacSha512>(data, key)
     }

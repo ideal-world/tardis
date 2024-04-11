@@ -92,8 +92,7 @@ bY588beOczzrXB0ldJAHZkoQFccSM1sP7pmUqgBOR0ZedmMzR37GuKjEpc/TvXHR
 #[tokio::test(flavor = "multi_thread")]
 async fn test_web_server() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace,poem_grpc=trace,poem=trace");
-    tardis::TardisFuns::init_log()?;
-    let web_url = "https://localhost:8080";
+    tardis::TardisFuns::init_log();    let web_url = "https://localhost:8080";
 
     let docker = clients::Cli::default();
     let redis_container = TardisTestContainer::redis_custom(&docker);
@@ -209,12 +208,12 @@ async fn test_validate(url: &str) -> TardisResult<()> {
         .post::<ValidateReq, TardisResp<String>>(
             format!("{}/other/validate", url).as_str(),
             &ValidateReq {
-                len: "".to_string(),
-                eq: "".to_string(),
+                len: String::new(),
+                eq: String::new(),
                 range: 0,
-                mail: "".to_string(),
-                contain: "".to_string(),
-                phone: "".to_string(),
+                mail: String::new(),
+                contain: String::new(),
+                phone: String::new(),
                 item_len: vec![],
                 item_unique: vec![],
             },
@@ -234,11 +233,11 @@ async fn test_validate(url: &str) -> TardisResult<()> {
             format!("{url}/other/validate").as_str(),
             &ValidateReq {
                 len: "1".to_string(),
-                eq: "".to_string(),
+                eq: String::new(),
                 range: 0,
-                mail: "".to_string(),
-                contain: "".to_string(),
-                phone: "".to_string(),
+                mail: String::new(),
+                contain: String::new(),
+                phone: String::new(),
                 item_len: vec![],
                 item_unique: vec![],
             },
@@ -260,9 +259,9 @@ async fn test_validate(url: &str) -> TardisResult<()> {
                 len: "1".to_string(),
                 eq: "11111".to_string(),
                 range: 0,
-                mail: "".to_string(),
-                contain: "".to_string(),
-                phone: "".to_string(),
+                mail: String::new(),
+                contain: String::new(),
+                phone: String::new(),
                 item_len: vec![],
                 item_unique: vec![],
             },
@@ -285,8 +284,8 @@ async fn test_validate(url: &str) -> TardisResult<()> {
                 eq: "11111".to_string(),
                 range: 444,
                 mail: "ss.ss".to_string(),
-                contain: "".to_string(),
-                phone: "".to_string(),
+                contain: String::new(),
+                phone: String::new(),
                 item_len: vec![],
                 item_unique: vec![],
             },
@@ -309,8 +308,8 @@ async fn test_validate(url: &str) -> TardisResult<()> {
                 eq: "11111".to_string(),
                 range: 444,
                 mail: "ss@ss.ss".to_string(),
-                contain: "".to_string(),
-                phone: "".to_string(),
+                contain: String::new(),
+                phone: String::new(),
                 item_len: vec![],
                 item_unique: vec![],
             },
@@ -334,7 +333,7 @@ async fn test_validate(url: &str) -> TardisResult<()> {
                 range: 444,
                 mail: "ss@ss.ss".to_string(),
                 contain: "gmail".to_string(),
-                phone: "".to_string(),
+                phone: String::new(),
                 item_len: vec![],
                 item_unique: vec![],
             },

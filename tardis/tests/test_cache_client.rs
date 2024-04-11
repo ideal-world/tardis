@@ -17,8 +17,7 @@ use url::Url;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_cache_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
-    TardisFuns::init_log()?;
-    // let url = "redis://:123456@127.0.0.1:6379/1".to_lowercase();
+    TardisFuns::init_log();    // let url = "redis://:123456@127.0.0.1:6379/1".to_lowercase();
     TardisTestContainer::redis(|url| async move {
         let url = url.parse::<Url>().expect("invalid url");
         let cache_module_config = CacheModuleConfig::builder().url(url).build();

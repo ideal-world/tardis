@@ -10,5 +10,5 @@ pub mod tracing;
 pub mod uri;
 
 pub fn fetch_profile() -> String {
-    env::var("PROFILE").unwrap_or_else(|_| "".to_string())
+    env::var("PROFILE").unwrap_or_else(|_| String::new())
 }
