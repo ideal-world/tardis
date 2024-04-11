@@ -79,7 +79,7 @@ impl TardisJson {
     /// let file = fs::File::open("text.json")?
     /// TardisFuns::json.reader_to_obj::<Value>(file);
     /// ```
-    /// 
+    ///
     /// # Errors
     /// see [`serde_json::from_reader`]
     pub fn reader_to_obj<R: std::io::Read, T: for<'de> Deserialize<'de>>(&self, rdr: R) -> TardisResult<T> {
@@ -102,7 +102,7 @@ impl TardisJson {
     ///
     /// TardisFuns::json.file_to_obj::<Value, &str>("text.json")?;
     /// ```
-    /// 
+    ///
     /// # Errors
     /// 1. open file error, see [`std::fs::File::open`]
     /// 2. see [`serde_json::from_reader`]
@@ -209,7 +209,7 @@ impl TardisJson {
     /// ```
     /// # Errors
     /// see [`serde_json::to_string`]
-    /// 
+    ///
     pub fn json_to_string(&self, value: Value) -> TardisResult<String> {
         let result = serde_json::to_string(&value);
         match result {
@@ -219,7 +219,7 @@ impl TardisJson {
     }
 
     /// serialize into json value and deserialize into target type / 序列化为json值并反序列化为目标类型
-    /// 
+    ///
     /// # Errors
     /// 1. serialize error, see [`serde_json::to_value`]
     /// 2. deserialize error, see [`serde_json::from_value`]

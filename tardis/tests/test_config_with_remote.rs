@@ -236,8 +236,6 @@ struct TestConfig {
     db_proj: DatabaseConfig,
 }
 
-
-
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 #[derive(Default)]

@@ -23,7 +23,8 @@ use crate::entities::RbumExampleResp;
 #[tokio::test(flavor = "multi_thread")]
 async fn test_reldb_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "debug,tardis=trace,sqlx=off,sqlparser::parser=off");
-    TardisFuns::init_log();    TardisTestContainer::mysql(None, |url| async move {
+    TardisFuns::init_log();
+    TardisTestContainer::mysql(None, |url| async move {
         let db_config = DBModuleConfig::builder().url(&url).max_connections(10).min_connections(5).build();
         let client = TardisRelDBClient::init(&db_config).await?;
         client.init_basic_tables().await?;

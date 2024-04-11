@@ -32,7 +32,8 @@ lazy_static! {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_websocket() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
-    TardisFuns::init_log();    #[cfg(feature = "cluster")]
+    TardisFuns::init_log();
+    #[cfg(feature = "cluster")]
     set_local_node_id("test".into());
     let serv = TardisWebServer::init_simple(IP_LOCALHOST, 8080).unwrap();
     serv.add_route(WebServerModule::from(Api).with_ws::<String>(100)).await;

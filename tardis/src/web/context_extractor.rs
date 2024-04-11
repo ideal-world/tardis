@@ -60,7 +60,7 @@ async fn extract_context(req: &Request) -> TardisResult<TardisContext> {
                 "400-tardis-webserver-context-header-not-exist",
             ))
         }
-    } else {        
+    } else {
         let context = general_purpose::STANDARD
             .decode(context)
             .map_err(|_| TardisError::bad_request("[Tardis.WebServer] Context header is not base64", "400-tardis-webserver-context-not-base64"))?;

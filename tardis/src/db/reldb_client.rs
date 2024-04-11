@@ -1274,15 +1274,14 @@ where
             let json = TardisFuns::json.obj_to_string(&row)?;
             if id.is_string() {
                 ids.push(
-                    (*id.as_str()
-                        .as_ref()
-                        .ok_or_else(|| {
-                            TardisError::internal_error(
-                                &format!("[Tardis.RelDBClient] The primary key [{id}] in a soft delete operation is not a character type"),
-                                "500-tardis-reldb-id-not-char",
-                            )
-                        })?).to_string()
-                        .into(),
+                    (*id.as_str().as_ref().ok_or_else(|| {
+                        TardisError::internal_error(
+                            &format!("[Tardis.RelDBClient] The primary key [{id}] in a soft delete operation is not a character type"),
+                            "500-tardis-reldb-id-not-char",
+                        )
+                    })?)
+                    .to_string()
+                    .into(),
                 );
             } else {
                 ids.push(

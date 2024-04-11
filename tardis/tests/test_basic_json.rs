@@ -128,7 +128,6 @@ struct DatabaseConfig {
     url: String,
 }
 
-
 #[derive(Serialize, Deserialize)]
 struct UserAddReq {
     pub name: TrimString,

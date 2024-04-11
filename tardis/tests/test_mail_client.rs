@@ -9,7 +9,8 @@ use tardis::TardisFuns;
 #[ignore]
 async fn test_mail_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
-    TardisFuns::init_log();    let framework_config = FrameworkConfig::builder()
+    TardisFuns::init_log();
+    let framework_config = FrameworkConfig::builder()
         .web_server(WebServerConfig::default())
         .mail(
             MailModuleConfig::builder()
