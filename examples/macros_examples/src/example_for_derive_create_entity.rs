@@ -37,8 +37,10 @@ pub struct Model {
     pub key_value: Option<KeyValue>,
     // pub key_values: Vec<KeyValue>,
     #[index(index_id = "index_id_2", index_type = "Custom(GiST)", full_text)]
-    #[fill_ctx(own_paths)]
-    pub aaa: String,
+    #[fill_ctx(fill = "own_paths")]
+    pub own_paths: String,
+    #[fill_ctx(insert_only = false)]
+    pub update_by: String,
 }
 
 struct GiST;
