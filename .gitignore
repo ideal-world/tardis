@@ -19,8 +19,9 @@ util/gh-pages/lints.json
 
 # IDE
 *.iml
-.vscode
 .idea
+.vscode/*
+!/.vscode/extensions.json
 
 
 #macos

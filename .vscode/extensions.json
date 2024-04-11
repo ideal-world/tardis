@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "jscearcy.rust-doc-viewer",
+    "serayuzgur.crates",
+    "belfz.search-crates-io",
+    "vadimcn.vscode-lldb",
+    "swellaby.vscode-rust-test-adapter",
+    "itsyaasir.rust-feature-toggler",
+    "zhangyue.rust-mod-generator",
+    "streetsidesoftware.code-spell-checker",
+    "usernamehw.errorlens"
+  ]
+}

@@ -231,7 +231,7 @@ fn decryption(text: &str, salt: &str) -> TardisResult<String> {
     if salt.len() != 16 {
         return Err(TardisError::format_error("[Tardis.Config] [salt] Length must be 16", ""));
     }
-    let enc_r = regex::Regex::new(r"(?P<ENC>ENC\([A-Za-z0-9+/]*\))")?;
+    let enc_r = regex::Regex::new(r"(?P<ENC>ENC\([A-Za-z0-9+=/]*\))")?;
     let text = enc_r
         .replace_all(text, |captures: &regex::Captures| {
             let data = captures.get(1).map_or("", |m| m.as_str()).to_string();

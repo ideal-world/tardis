@@ -7,7 +7,6 @@ use sea_orm::sea_query::TableCreateStatement;
 use sea_orm::sea_query::{IndexCreateStatement, SelectStatement, UpdateStatement};
 use sea_orm::ActiveValue::Set;
 use sea_orm::*;
-use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbBackend, DbErr, EntityTrait, ExecResult, QueryTrait, Schema, Select, Statement};
 use sqlparser::ast;
 use sqlparser::ast::{SetExpr, TableFactor};
 use sqlparser::dialect::{MySqlDialect, PostgreSqlDialect, SQLiteDialect};
