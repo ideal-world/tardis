@@ -9,6 +9,13 @@ use crate::config::config_dto::component::mail::MailModuleConfig;
 use crate::utils::initializer::InitBy;
 use crate::{TardisFuns, TardisResult};
 
+/// # Mail Client
+/// ## Create a mail client
+/// - from config [`crate::TardisFuns::mail`]
+/// - from module config [`crate::TardisFuns::mail_by_module_or_default`]
+/// - custom init [`TardisMailClient::init`]
+/// ## Send a mail
+/// - [`TardisMailClient::send`]
 pub struct TardisMailClient {
     client: AsyncSmtpTransport<Tokio1Executor>,
     default_from: String,
@@ -118,6 +125,14 @@ impl TardisMailClient {
 
 /// # TardisMailSendReq
 /// The mail send request.
+/// ## use builder to build request
+/// ```no_run, ignore
+/// TardisMailSendReq::builder()
+///     .subject("Hello World!")
+///     .txt_body("你好")
+///     .to(vec!["somebody@mail.com".to_string()])
+///     .build();
+/// ```
 #[derive(Debug, Clone, TypedBuilder)]
 pub struct TardisMailSendReq {
     /// Email subject.

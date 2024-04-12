@@ -1,3 +1,6 @@
+//! # Cryptography and Codec module
+//! ## Usages
+//! see [`crypto_main::TardisCrypto`]
 #[cfg(feature = "aead")]
 pub mod crypto_aead;
 #[cfg(any(feature = "crypto", feature = "base64"))]
