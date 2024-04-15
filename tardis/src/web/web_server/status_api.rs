@@ -1,3 +1,4 @@
+#[cfg(feature = "cluster")]
 use std::collections::HashMap;
 
 use poem_openapi::{param::Query, Object};
