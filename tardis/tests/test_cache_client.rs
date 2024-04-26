@@ -191,8 +191,18 @@ async fn test_cache_client() -> TardisResult<()> {
         client.flushdb().await?;
         assert!(!client.exists("flush_test").await?);
 
+        // script
+        let k1_in = "key1";
+        let k2_in = "key2";
+        let a1_in = 1;
+        let a2_in = 2;
+        let (k1_out, k2_out, a1_out, a2_out): (String, String, u32, u32) =
+            client.script(r#"return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}"#).arg(&[a1_in, a2_in]).key(k1_in).key(k2_in).invoke().await?;
+        assert_eq!(k1_in, k1_out);
+        assert_eq!(k2_in, k2_out);
+        assert_eq!(a1_in, a1_out);
+        assert_eq!(a2_in, a2_out);
         // _test_concurrent().await?;
-
         Ok(())
     })
     .await
