@@ -7,7 +7,6 @@ use crate::db::domain::tardis_db_config;
 use crate::db::reldb_client::{TardisActiveModel, TardisRelDBlConnection};
 use crate::db::sea_orm::sea_query::{ColumnDef, Table, TableCreateStatement};
 use crate::db::sea_orm::ActiveValue::Set;
-use crate::db::sea_orm::{ActiveModelBehavior, DbBackend};
 use crate::TardisResult;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]

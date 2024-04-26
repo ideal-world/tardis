@@ -1,6 +1,9 @@
 //！ # Status Api
 //！ For debug usage, get the current status of the tardis server.
 //！
+#[cfg(feature = "cluster")]
+use std::collections::HashMap;
+
 use poem_openapi::{param::Query, Object};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

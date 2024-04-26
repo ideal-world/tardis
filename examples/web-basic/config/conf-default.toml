@@ -7,3 +7,4 @@ version = "1.0.0"
 [fw.web_server]
 port = 8089
 doc_urls = [["test env", "http://localhost:8089/"]]
+ui_path = "ui"

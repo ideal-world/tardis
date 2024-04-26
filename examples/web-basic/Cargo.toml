@@ -6,4 +6,4 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-tardis = { path = "../../tardis", features = ["web-server"] }
+tardis = { path = "../../tardis", features = ["web-server", "openapi-redoc"] }

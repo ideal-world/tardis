@@ -1,7 +1,8 @@
-use async_trait::async_trait;
-use poem::{http::HeaderValue, Endpoint, IntoResponse, Middleware, Request, Response};
-
 use crate::TardisFuns;
+use async_trait::async_trait;
+#[cfg(feature = "cluster")]
+use poem::http::HeaderValue;
+use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
 
 pub struct AddClusterIdHeader;
 
@@ -20,6 +21,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
     type Output = Response;
 
     async fn call(&self, req: Request) -> poem::Result<Self::Output> {
+        #[allow(unused_mut)]
         let mut resp = self.0.call(req).await?.into_response();
         if TardisFuns::fw_config_opt().is_some_and(|cfg| cfg.cluster.is_some()) {
             #[cfg(feature = "cluster")]
