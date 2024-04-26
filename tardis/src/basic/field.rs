@@ -162,7 +162,7 @@ impl TardisField {
                 result.push(chars[idx + 1..idx + 2].to_string());
             }
         }
-        if !up {
+        if up {
             None
         } else {
             result.reverse();
