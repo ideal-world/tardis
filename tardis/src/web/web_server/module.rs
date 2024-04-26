@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 /// Options for web server module
-/// - uniform_error: whether to use uniform error response
+/// - `uniform_error`: whether to use uniform error response
 #[derive(Clone)]
 pub struct WebServerModuleOption {
     /// whether to use uniform error response

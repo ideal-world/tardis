@@ -57,6 +57,8 @@ pub fn str_pair_to_string_pair(p: (&str, &str)) -> (String, String) {
 }
 
 impl TardisWebClient {
+    /// # Errors
+    /// Return error if the client cannot be created.
     pub fn init(WebClientModuleConfig { connect_timeout_sec, .. }: &WebClientModuleConfig) -> TardisResult<TardisWebClient> {
         info!("[Tardis.WebClient] Initializing");
         let client = reqwest::Client::builder().danger_accept_invalid_certs(true).connect_timeout(Duration::from_secs(*connect_timeout_sec)).https_only(false).build()?;
@@ -77,36 +79,43 @@ impl TardisWebClient {
         self.default_headers.retain(|(k, _)| k != key);
     }
 
+    /// Get and parse response body as text
     pub async fn get_to_str(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (String, String)>) -> TardisResult<TardisHttpResponse<String>> {
         let (code, headers, response) = self.request(Method::GET, url, headers, ()).await?;
         self.to_text(code, headers, response).await
     }
 
+    /// Get and parse response body as json
     pub async fn get<T: for<'de> Deserialize<'de>>(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (String, String)>) -> TardisResult<TardisHttpResponse<T>> {
         let (code, headers, response) = self.request(Method::GET, url, headers, ()).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
+    /// Head and ignore response body
     pub async fn head_to_void(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (String, String)>) -> TardisResult<TardisHttpResponse<()>> {
         let (code, headers, _) = self.request(Method::HEAD, url, headers, ()).await?;
         Ok(TardisHttpResponse { code, headers, body: None })
     }
 
+    /// Head and parse response body as json
     pub async fn head<T: for<'de> Deserialize<'de>>(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (String, String)>) -> TardisResult<TardisHttpResponse<T>> {
         let (code, headers, response) = self.request(Method::HEAD, url, headers, ()).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
+    /// Delete and ignore response body
     pub async fn delete_to_void(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (String, String)>) -> TardisResult<TardisHttpResponse<()>> {
         let (code, headers, _) = self.request(Method::DELETE, url, headers, ()).await?;
         Ok(TardisHttpResponse { code, headers, body: None })
     }
 
+    /// Delete and parse response body as json
     pub async fn delete<T: for<'de> Deserialize<'de>>(&self, url: impl IntoUrl, headers: impl IntoIterator<Item = (String, String)>) -> TardisResult<TardisHttpResponse<T>> {
         let (code, headers, response) = self.request(Method::DELETE, url, headers, ()).await?;
         self.to_json::<T>(code, headers, response).await
     }
 
+    /// Post and ignore response body
     pub async fn post_str_to_str(
         &self,
         url: impl IntoUrl,
@@ -117,6 +126,7 @@ impl TardisWebClient {
         self.to_text(code, headers, response).await
     }
 
+    /// Post and parse response body as json
     pub async fn post_obj_to_str<B: Serialize>(
         &self,
         url: impl IntoUrl,
@@ -127,6 +137,7 @@ impl TardisWebClient {
         self.to_text(code, headers, response).await
     }
 
+    /// Post and parse response body as json
     pub async fn post_to_obj<T: for<'de> Deserialize<'de>>(
         &self,
         url: impl IntoUrl,
@@ -137,6 +148,7 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
+    /// Post and parse response body as json
     pub async fn post<B: Serialize, T: for<'de> Deserialize<'de>>(
         &self,
         url: impl IntoUrl,
@@ -147,6 +159,7 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
+    /// Put and ignore response body
     pub async fn put_str_to_str(
         &self,
         url: impl IntoUrl,
@@ -157,11 +170,13 @@ impl TardisWebClient {
         self.to_text(code, headers, response).await
     }
 
+    /// Put and parse response body as json
     pub async fn put_obj_to_str<B: Serialize>(&self, url: impl IntoUrl, body: &B, headers: impl IntoIterator<Item = (String, String)>) -> TardisResult<TardisHttpResponse<String>> {
         let (code, headers, response) = self.request(Method::PUT, url, headers, Json(body)).await?;
         self.to_text(code, headers, response).await
     }
 
+    /// Put and parse response body as json
     pub async fn put_to_obj<T: for<'de> Deserialize<'de>>(
         &self,
         url: impl IntoUrl,
@@ -172,6 +187,7 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
+    /// Put and parse response body as json
     pub async fn put<B: Serialize, T: for<'de> Deserialize<'de>>(
         &self,
         url: impl IntoUrl,
@@ -182,6 +198,7 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
+    /// Patch and ignore response body
     pub async fn patch_str_to_str(
         &self,
         url: impl IntoUrl,
@@ -192,6 +209,7 @@ impl TardisWebClient {
         self.to_text(code, headers, response).await
     }
 
+    /// Patch and parse response body as json
     pub async fn patch_obj_to_str<B: Serialize>(
         &self,
         url: impl IntoUrl,
@@ -202,6 +220,7 @@ impl TardisWebClient {
         self.to_text(code, headers, response).await
     }
 
+    /// Patch and parse response body as json
     pub async fn patch_to_obj<T: for<'de> Deserialize<'de>>(
         &self,
         url: impl IntoUrl,
@@ -212,6 +231,7 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
+    /// Patch and parse response body as json
     pub async fn patch<B: Serialize, T: for<'de> Deserialize<'de>>(
         &self,
         url: impl IntoUrl,

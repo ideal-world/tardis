@@ -43,9 +43,9 @@ impl TodoApi {
     #[oai(path = "/todo", method = "post")]
     async fn add(&self, todo_add_req: Json<TodoAddReq>) -> TardisApiResult<i32> {
         let ctx = TardisContext {
-            own_paths: "".to_string(),
-            ak: "".to_string(),
-            owner: "".to_string(),
+            own_paths: String::new(),
+            ak: String::new(),
+            owner: String::new(),
             roles: vec![],
             groups: vec![],
             ext: Default::default(),
@@ -104,9 +104,9 @@ impl TodoApi {
     #[oai(path = "/todo/:id", method = "put")]
     async fn update(&self, id: Path<i32>, todo_modify_req: Json<TodoModifyReq>) -> TardisApiResult<u64> {
         let ctx = TardisContext {
-            own_paths: "".to_string(),
-            ak: "".to_string(),
-            owner: "".to_string(),
+            own_paths: String::new(),
+            ak: String::new(),
+            owner: String::new(),
             roles: vec![],
             groups: vec![],
             ext: Default::default(),

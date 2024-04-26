@@ -31,9 +31,9 @@ async fn main() -> TardisResult<()> {
     // --------------------------------------------------
 
     let ctx = TardisContext {
-        own_paths: "".to_string(),
-        ak: "".to_string(),
-        owner: "".to_string(),
+        own_paths: String::new(),
+        ak: String::new(),
+        owner: String::new(),
         roles: vec![],
         groups: vec![],
         ext: Default::default(),

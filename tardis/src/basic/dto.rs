@@ -23,7 +23,7 @@ type AsyncFn = dyn FnOnce() -> Pin<Box<dyn std::future::Future<Output = TardisRe
 ///
 /// 该信息需要与 IAM 服务对应.
 ///
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Default)]
 #[serde(default)]
 pub struct TardisContext {
     /// The requested own paths / 请求的所属路径
@@ -79,71 +79,71 @@ impl fmt::Debug for TardisContext {
             .field("roles", &self.roles)
             .field("groups", &self.groups)
             .field("ext", &self.ext)
-            .finish()
-    }
-}
-
-impl Default for TardisContext {
-    fn default() -> Self {
-        TardisContext {
-            own_paths: "".to_string(),
-            ak: "".to_string(),
-            owner: "".to_string(),
-            roles: vec![],
-            groups: vec![],
-            ext: Default::default(),
-            sync_task_fns: Default::default(),
-            async_task_fns: Default::default(),
-        }
+            .finish_non_exhaustive()
     }
 }
 
 impl TardisContext {
+    /// Convert the context info into a json string
+    /// # Errors
+    /// this method should't return an error now
     pub fn to_json(&self) -> TardisResult<String> {
         TardisFuns::json.obj_to_string(self)
     }
 
+    /// Add extension information
+    /// # Errors
+    /// this method should't return an error now
     pub async fn add_ext(&self, key: &str, value: &str) -> TardisResult<()> {
         self.ext.write().await.insert(key.to_string(), value.to_string());
         Ok(())
     }
 
+    /// Remove extension information
+    /// # Errors
+    /// this method should't return an error now
     pub async fn remove_ext(&self, key: &str) -> TardisResult<()> {
         self.ext.write().await.remove(key);
         Ok(())
     }
 
+    /// Get extension information
+    /// # Errors
+    /// this method should't return an error now
     pub async fn get_ext(&self, key: &str) -> TardisResult<Option<String>> {
         Ok(self.ext.read().await.get(key).cloned())
     }
 
+    /// # Errors
+    /// this method should't return an error now
     pub async fn add_sync_task(&self, task: Box<SyncFn>) -> TardisResult<()> {
         self.sync_task_fns.lock().await.push(task);
         Ok(())
     }
 
+    /// # Errors
+    /// this method should't return an error now
     pub async fn add_async_task(&self, task: Box<AsyncFn>) -> TardisResult<()> {
         self.async_task_fns.lock().await.push(task);
         Ok(())
     }
 
+    /// Execute the task
+    /// # Errors
+    /// this method should't return an error now
     pub async fn execute_task(&self) -> TardisResult<()> {
         let mut sync_task_fns = self.sync_task_fns.lock().await;
         while let Some(sync_task_fn) = sync_task_fns.pop() {
-            let result = sync_task_fn().await;
-            match result {
-                Ok(_) => {}
-                Err(e) => {
-                    error!("Sync task process error:{:?}", e);
-                }
-            }
+            let _ = sync_task_fn().await.inspect_err(|e| {
+                error!("Sync task process error:{:?}", e);
+            });
         }
         let mut async_task_fns = self.async_task_fns.lock().await;
         while let Some(async_task_fn) = async_task_fns.pop() {
             tokio::spawn(async move {
                 let result = async_task_fn().await;
                 match result {
-                    Ok(_) => {}
+                    Ok(()) => {}
                     Err(e) => {
                         error!("Async task process error:{:?}", e);
                     }

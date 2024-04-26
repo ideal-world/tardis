@@ -139,8 +139,8 @@ pub struct TardisWebServer {
 impl Default for TardisWebServer {
     fn default() -> Self {
         TardisWebServer {
-            app_name: "".to_string(),
-            version: "".to_string(),
+            app_name: String::new(),
+            version: String::new(),
             config: WebServerConfig::default(),
             state: Mutex::new(ServerState::default()),
             initializers: Mutex::new(Vec::new()),
@@ -162,6 +162,7 @@ impl InitBy<FrameworkConfig> for TardisWebServer {
     }
 }
 impl TardisWebServer {
+    /// init a tardis webserver instance by framework config
     pub fn init_by_conf(conf: &FrameworkConfig) -> TardisResult<TardisWebServer> {
         let route = poem::Route::new();
         TardisResult::Ok(TardisWebServer {
@@ -173,17 +174,19 @@ impl TardisWebServer {
         })
     }
 
+    /// init a simple server with host and port
     pub fn init_simple(host: IpAddr, port: u16) -> TardisResult<TardisWebServer> {
         let route = poem::Route::new();
         TardisResult::Ok(TardisWebServer {
-            app_name: "".to_string(),
-            version: "".to_string(),
+            app_name: String::new(),
+            version: String::new(),
             config: WebServerConfig::builder().common(WebServerCommonConfig::builder().host(host).port(port).build()).default(WebServerModuleConfig::builder().build()).build(),
             state: Mutex::new(ServerState::Halted(route)),
             initializers: Mutex::new(Vec::new()),
         })
     }
 
+    /// get using default config
     pub fn get_default_config(&self) -> WebServerModuleConfig {
         WebServerModuleConfig {
             name: self.app_name.clone(),

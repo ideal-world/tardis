@@ -123,7 +123,7 @@ impl TardisConfig {
         let mut workspace_config: HashMap<String, Value> = Default::default();
         match conf.get::<Value>("cs") {
             Ok(c) => {
-                workspace_config.insert("".to_string(), c);
+                workspace_config.insert(String::new(), c);
             }
             Err(error) => match error {
                 ConfigError::NotFound(_) => {

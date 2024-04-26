@@ -59,6 +59,8 @@ impl TardisLocale {
         Ok(())
     }
 
+    /// Get a localized message by code
+    /// # Errors
     pub fn get_message(code: &str, default_message: &str, lang: &str) -> TardisResult<String> {
         let lang = lang.to_lowercase();
         let conf = LOCALE_CONFIG.lock().map_err(|error| TardisError::conflict(&format!("[Tardis.Locale] locale config lock error: {error:?}"), ""))?;
@@ -86,6 +88,7 @@ impl TardisLocale {
         Ok(default_message.to_string())
     }
 
+    /// Get a localized message by code
     pub fn env_message(code: &str, default_message: &str) -> String {
         if let Some(lang) = &TardisFuns::default_lang() {
             TardisLocale::get_message(code, default_message, lang).unwrap_or_else(|_| default_message.to_string())

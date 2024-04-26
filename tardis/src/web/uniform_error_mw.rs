@@ -65,7 +65,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                 let (bus_code, msg) = if let Some(error) = mapping_http_code_to_error(http_code, &msg) {
                     (error.code, error.message)
                 } else {
-                    (TARDIS_RESULT_SUCCESS_CODE.to_string(), "".to_string())
+                    (TARDIS_RESULT_SUCCESS_CODE.to_string(), String::new())
                 };
                 resp.set_body(
                     json!({

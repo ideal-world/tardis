@@ -21,17 +21,13 @@ struct FillCtxMeta {
     insert_only: bool,
 }
 
-#[derive(Clone, Debug, FromMeta)]
+#[derive(Clone, Debug, FromMeta, Default)]
 #[darling(rename_all = "snake_case")]
 enum Fill {
     Ak,
+    #[default]
     Owner,
     OwnPaths,
-}
-impl Default for Fill {
-    fn default() -> Self {
-        Fill::Owner
-    }
 }
 
 fn true_default() -> bool {

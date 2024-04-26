@@ -16,7 +16,7 @@ async fn test_mq_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     // enable when debug tokio
     // console_subscriber::init();
-    TardisFuns::init_log()?;
+    TardisFuns::init_log();
     TardisTestContainer::rabbit(|url| async move {
         let mq_module_config = MQModuleConfig {
             url: url.parse().expect("invalid url"),

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use deadpool_redis::{Config, Connection, Pool, Runtime};
-use redis::{AsyncCommands, ErrorKind, RedisError, RedisResult};
+use redis::{AsyncCommands, ErrorKind, FromRedisValue, RedisError, RedisResult, ToRedisArgs};
 use tracing::{error, info, trace};
 
 use crate::basic::error::TardisError;
@@ -29,6 +29,7 @@ use crate::utils::initializer::InitBy;
 /// assert!(TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
 /// assert!(!TardisFuns::cache().set_nx("test_key2", "测试2").await.unwrap());
 /// ```
+#[derive(Clone)]
 pub struct TardisCacheClient {
     pool: Pool,
 }
@@ -295,9 +296,72 @@ impl TardisCacheClient {
         }
     }
 
+    /// prepare to execute a script, the redis_script object
+    pub fn script(&self, code: &str) -> RedisScript {
+        trace!("[Tardis.CacheClient] script");
+        RedisScript {
+            client: self.clone(),
+            script: redis::Script::new(code),
+        }
+    }
     // custom
     pub async fn cmd(&self) -> RedisResult<Connection> {
         self.get_connection().await
+    }
+}
+
+pub struct RedisScript {
+    client: TardisCacheClient,
+    script: redis::Script,
+}
+
+impl RedisScript {
+    pub fn arg<T: ToRedisArgs>(&self, arg: T) -> RedisScriptInvocation {
+        RedisScriptInvocation {
+            client: &self.client,
+            invocation: self.script.arg(arg),
+        }
+    }
+    pub fn key<T: ToRedisArgs>(&self, key: T) -> RedisScriptInvocation {
+        RedisScriptInvocation {
+            client: &self.client,
+            invocation: self.script.key(key),
+        }
+    }
+    /// Get an object that can accept args and keys, then it can be invoked later
+    pub fn prepare_invoke(&mut self) -> RedisScriptInvocation {
+        let invocation = self.script.prepare_invoke();
+        RedisScriptInvocation {
+            client: &mut self.client,
+            invocation,
+        }
+    }
+    /// Do invoke the script.
+    pub async fn invoke<T: FromRedisValue>(mut self) -> RedisResult<T> {
+        self.prepare_invoke().invoke().await
+    }
+}
+
+pub struct RedisScriptInvocation<'a> {
+    client: &'a TardisCacheClient,
+    invocation: redis::ScriptInvocation<'a>,
+}
+
+impl RedisScript {}
+
+impl<'a> RedisScriptInvocation<'a> {
+    pub fn arg<T: ToRedisArgs>(mut self, arg: T) -> RedisScriptInvocation<'a> {
+        self.invocation.arg(arg);
+        self
+    }
+    pub fn key<T: ToRedisArgs>(mut self, key: T) -> RedisScriptInvocation<'a> {
+        self.invocation.key(key);
+        self
+    }
+    /// Do invoke the script.
+    pub async fn invoke<T: FromRedisValue>(self) -> RedisResult<T> {
+        let mut conn = self.client.get_connection().await?;
+        self.invocation.invoke_async(&mut conn).await
     }
 }
 

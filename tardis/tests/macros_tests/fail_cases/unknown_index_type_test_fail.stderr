@@ -1,5 +1,0 @@
-error: column_type:unknown_type is a not support custom type!
-  --> tests/macros_tests/fail_cases/unknown_index_type_test_fail.rs:10:9
-   |
-10 |     pub aaa: String,
-   |         ^^^

@@ -200,10 +200,10 @@ impl TardisRelDBClient {
                 "postgres" => {
                     let mut raw_opt = opt.get_url().parse::<sqlx::postgres::PgConnectOptions>().map_err(|error| DbErr::Conn(RuntimeErr::Internal(error.to_string())))?;
                     use sqlx::ConnectOptions;
-                    if !opt.get_sqlx_logging() {
-                        raw_opt = raw_opt.disable_statement_logging();
-                    } else {
+                    if opt.get_sqlx_logging() {
                         raw_opt = raw_opt.log_statements(opt.get_sqlx_logging_level());
+                    } else {
+                        raw_opt = raw_opt.disable_statement_logging();
                     }
                     let result = opt
                         .pool_options::<sqlx::Postgres>()
@@ -1274,16 +1274,14 @@ where
             let json = TardisFuns::json.obj_to_string(&row)?;
             if id.is_string() {
                 ids.push(
-                    id.as_str()
-                        .as_ref()
-                        .ok_or_else(|| {
-                            TardisError::internal_error(
-                                &format!("[Tardis.RelDBClient] The primary key [{id}] in a soft delete operation is not a character type"),
-                                "500-tardis-reldb-id-not-char",
-                            )
-                        })?
-                        .to_string()
-                        .into(),
+                    (*id.as_str().as_ref().ok_or_else(|| {
+                        TardisError::internal_error(
+                            &format!("[Tardis.RelDBClient] The primary key [{id}] in a soft delete operation is not a character type"),
+                            "500-tardis-reldb-id-not-char",
+                        )
+                    })?)
+                    .to_string()
+                    .into(),
                 );
             } else {
                 ids.push(

@@ -237,6 +237,7 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
 /// This intermediate type is finally converted to the sea_type type through the [map_custom_type_to_sea_type] method.
 ///
 /// Conversion type reference https://www.sea-ql.org/SeaORM/docs/generate-entity/entity-structure/
+#[allow(clippy::wildcard_in_or_patterns)]
 fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<String> {
     let ident_string = ident.to_string();
     let span = ident.span();

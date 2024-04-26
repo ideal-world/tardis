@@ -73,24 +73,28 @@ pub enum Relation {}
 pub struct TardisDataDict;
 
 impl TardisDataDict {
+    /// Get the dict value of the key
     pub async fn get(&self, key: &str, db: &TardisRelDBlConnection) -> TardisResult<Option<TardisDictResp>> {
         let model = tardis_db_config::Entity::find_by_id(key.to_string()).into_model::<TardisDictResp>();
         let result = if db.has_tx() { model.one(db.raw_tx()?).await? } else { model.one(db.raw_conn()).await? };
         Ok(result)
     }
 
+    /// Find the dict value of the key by like
     pub async fn find_like(&self, key: &str, db: &TardisRelDBlConnection) -> TardisResult<Vec<TardisDictResp>> {
         let model = tardis_db_config::Entity::find().filter(tardis_db_config::Column::K.like(format!("{key}%").as_str())).into_model::<TardisDictResp>();
         let result = if db.has_tx() { model.all(db.raw_tx()?).await? } else { model.all(db.raw_conn()).await? };
         Ok(result)
     }
 
+    /// Find all dict values
     pub async fn find_all(&self, db: &TardisRelDBlConnection) -> TardisResult<Vec<TardisDictResp>> {
         let model = tardis_db_config::Entity::find().into_model::<TardisDictResp>();
         let result = if db.has_tx() { model.all(db.raw_tx()?).await? } else { model.all(db.raw_conn()).await? };
         Ok(result)
     }
 
+    /// Add a new dict value
     pub async fn add(&self, key: &str, value: &str, creator: &str, db: &TardisRelDBlConnection) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] [db_config] add key: {}, value: {}", key, value);
         let model = tardis_db_config::ActiveModel {
@@ -109,6 +113,7 @@ impl TardisDataDict {
         Ok(())
     }
 
+    /// Update the dict value of the key
     pub async fn update(&self, key: &str, value: &str, updater: &str, db: &TardisRelDBlConnection) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] [db_config] update key: {}, value: {}", key, value);
         let model = tardis_db_config::ActiveModel {
@@ -125,6 +130,7 @@ impl TardisDataDict {
         Ok(())
     }
 
+    /// Delete the dict value of the key
     pub async fn delete(&self, key: &str, db: &TardisRelDBlConnection) -> TardisResult<()> {
         trace!("[Tardis.RelDBClient] [db_config] delete key: {}", key);
         let model = tardis_db_config::Entity::delete_many().filter(tardis_db_config::Column::K.eq(key.to_string()));

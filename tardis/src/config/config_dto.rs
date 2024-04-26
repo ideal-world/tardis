@@ -219,9 +219,9 @@ impl Default for ConfCenterConfig {
     fn default() -> Self {
         ConfCenterConfig {
             kind: "nacos".to_string(),
-            url: "".to_string(),
-            username: "".to_string(),
-            password: "".to_string(),
+            url: String::new(),
+            username: String::new(),
+            password: String::new(),
             format: Some("toml".to_string()),
             group: Some("default".to_string()),
             namespace: None,

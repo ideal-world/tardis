@@ -54,6 +54,9 @@ impl TardisJson {
     /// use tardis::TardisFuns;
     /// TardisFuns::json.str_to_obj::<TestConfig<DatabaseConfig>>(&json_str);
     /// ```
+    ///
+    /// # Errors
+    /// input is not a valid json string
     pub fn str_to_obj<T: for<'de> Deserialize<'de>>(&self, str: &str) -> TardisResult<T> {
         let result = serde_json::from_str(str);
         match result {
@@ -62,11 +65,11 @@ impl TardisJson {
         }
     }
 
-    /// Convert std::io::Read trait to Rust object / 将Read trait转换为Rust对象 \
-    /// see [serde_json::from_reader]
+    /// Convert [`std::io::Read`] trait to Rust object / 将Read trait转换为Rust对象 \
+    /// see [`serde_json::from_reader`]
     /// # Arguments
     ///
-    /// * `rdr` - impl std::io::Read trait/ impl Read trait 对象
+    /// * `rdr` - impl [`std::io::Read`]trait/ impl Read trait 对象
     ///
     /// # Examples
     /// ```ignore
@@ -76,6 +79,9 @@ impl TardisJson {
     /// let file = fs::File::open("text.json")?
     /// TardisFuns::json.reader_to_obj::<Value>(file);
     /// ```
+    ///
+    /// # Errors
+    /// see [`serde_json::from_reader`]
     pub fn reader_to_obj<R: std::io::Read, T: for<'de> Deserialize<'de>>(&self, rdr: R) -> TardisResult<T> {
         let result = serde_json::from_reader::<R, T>(rdr);
         match result {
@@ -96,6 +102,10 @@ impl TardisJson {
     ///
     /// TardisFuns::json.file_to_obj::<Value, &str>("text.json")?;
     /// ```
+    ///
+    /// # Errors
+    /// 1. open file error, see [`std::fs::File::open`]
+    /// 2. see [`serde_json::from_reader`]
     pub fn file_to_obj<T: for<'de> Deserialize<'de>, P: AsRef<Path>>(&self, path: P) -> TardisResult<T> {
         let file = File::open(path);
         match file {
@@ -115,6 +125,8 @@ impl TardisJson {
     /// use tardis::TardisFuns;
     /// TardisFuns::json.str_to_json(&json_str);
     /// ```
+    /// # Errors
+    /// input is not a valid json string
     pub fn str_to_json(&self, str: &str) -> TardisResult<Value> {
         let result = serde_json::from_str(str);
         match result {
@@ -153,6 +165,8 @@ impl TardisJson {
     /// use tardis::TardisFuns;
     /// TardisFuns::json.obj_to_string(&rust_obj);
     /// ```
+    /// # Errors
+    /// see [`serde_json::to_string`]
     pub fn obj_to_string<T: ?Sized + Serialize>(&self, obj: &T) -> TardisResult<String> {
         let result = serde_json::to_string(obj);
         match result {
@@ -172,6 +186,8 @@ impl TardisJson {
     /// use tardis::TardisFuns;
     /// TardisFuns::json.obj_to_json(&rust_obj);
     /// ```
+    /// # Errors
+    /// see [`serde_json::to_value`]
     pub fn obj_to_json<T: Serialize>(&self, obj: &T) -> TardisResult<Value> {
         let result = serde_json::to_value(obj);
         match result {
@@ -191,6 +207,9 @@ impl TardisJson {
     /// use tardis::TardisFuns;
     /// TardisFuns::json.json_to_string(json_value);
     /// ```
+    /// # Errors
+    /// see [`serde_json::to_string`]
+    ///
     pub fn json_to_string(&self, value: Value) -> TardisResult<String> {
         let result = serde_json::to_string(&value);
         match result {
@@ -199,6 +218,11 @@ impl TardisJson {
         }
     }
 
+    /// serialize into json value and deserialize into target type / 序列化为json值并反序列化为目标类型
+    ///
+    /// # Errors
+    /// 1. serialize error, see [`serde_json::to_value`]
+    /// 2. deserialize error, see [`serde_json::from_value`]
     pub fn copy<F: Serialize, T: for<'de> Deserialize<'de>>(&self, source: &F) -> TardisResult<T> {
         let result = serde_json::to_value(source);
         match result {

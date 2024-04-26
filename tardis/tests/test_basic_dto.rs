@@ -12,9 +12,9 @@ use tokio::{
 async fn test_basic_dto() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     let ctx = TardisContext {
-        own_paths: "".to_string(),
-        ak: "".to_string(),
-        owner: "".to_string(),
+        own_paths: String::new(),
+        ak: String::new(),
+        owner: String::new(),
         roles: vec![],
         groups: vec![],
         ext: Arc::new(RwLock::new(HashMap::new())),
