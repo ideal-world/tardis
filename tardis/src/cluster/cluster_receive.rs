@@ -16,7 +16,7 @@ tardis_static! {
     responser_subscribers: RwLock<HashMap::<String, ResponseFn>>;
 }
 
-pub async fn listen_reply<S: Listener>(strategy: S, id: String) -> S::Reply {
+pub(crate) async fn listen_reply<S: Listener>(strategy: S, id: String) -> S::Reply {
     strategy.subscribe(id).await
 }
 
