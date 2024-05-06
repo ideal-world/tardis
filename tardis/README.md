@@ -78,7 +78,7 @@ tardis = { version = "^0", features = ["web-server"] }
 
 Processor Configuration
 
-```ignore
+```rust
 use tardis::basic::error::TardisError;
 use tardis::web::poem_openapi;
 use tardis::web::poem_openapi::param::Query;
@@ -100,7 +100,7 @@ impl Api {
 
 Startup class configuration
 
-```ignore
+```rust
 use tardis::basic::result::TardisResult;
 use tardis::tokio;
 use tardis::TardisFuns;
@@ -116,6 +116,14 @@ async fn main() -> TardisResult<()> {
     TardisFuns::web_server().web_server.await;
     Ok(())
 }
+```
+### Run with cluster mode
+You can enable cluster mode when it has multi nodes, especially when it comes to k8s.
+```toml
+[fw.cluster]
+watch_kind = "k8s"
+k8s_svc = "my-service"
+k8s_ns =  "my-namespace"
 ```
 
 ### Dependencies

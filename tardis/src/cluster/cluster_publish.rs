@@ -15,6 +15,15 @@ use serde::Serialize;
 use serde_json::Value;
 use tracing::{error, trace};
 
+/// Cluster-wide event
+///
+/// `<L>` is the listener type, default is [`Once`], which implies that the response message will be received only once.
+///
+/// # Example
+/// ```
+/// # use tardis::cluster::cluster_publish::ClusterEvent;
+/// let event = ClusterEvent::new("hello").no_response().message(&("hello", "world"));
+/// ```
 #[derive(Debug, Clone)]
 pub struct ClusterEvent<L = Once> {
     event: Cow<'static, str>,
@@ -43,6 +52,7 @@ impl<L> ClusterEvent<L> {
             listener,
         }
     }
+    /// Set the listener to receive only one response.
     pub fn one_response(self, timeout: Option<Duration>) -> ClusterEvent<Once> {
         ClusterEvent {
             event: self.event,
@@ -51,6 +61,7 @@ impl<L> ClusterEvent<L> {
             listener: Once { timeout },
         }
     }
+    /// Don't expect any response.
     pub fn no_response(self) -> ClusterEvent<Never> {
         ClusterEvent {
             event: self.event,
@@ -59,6 +70,7 @@ impl<L> ClusterEvent<L> {
             listener: Never,
         }
     }
+    /// Set the message of the event.
     pub fn message<T: Serialize>(self, message: &T) -> TardisResult<Self> {
         Ok(Self {
             message: crate::TardisFuns::json.obj_to_json(message)?,
@@ -68,12 +80,16 @@ impl<L> ClusterEvent<L> {
     pub fn json_message(self, message: Value) -> Self {
         Self { message, ..self }
     }
+    /// Set the target of the event.
+    ///
+    /// see [`ClusterEventTarget`]
     pub fn target(self, target: impl Into<ClusterEventTarget>) -> Self {
         Self { target: target.into(), ..self }
     }
 }
 
 impl ClusterEvent<Once> {
+    /// Publish the event and receive only one response.
     pub async fn publish_one_response(self) -> TardisResult<TardisClusterMessageResp> {
         publish_event_with_listener(self.event, self.message, self.target, self.listener).await?.await.map_err(|e| {
             let error_info = format!("[Tardis.Cluster] [Client] Oneshot receive error: {e}, this may caused by timeout");
@@ -84,15 +100,18 @@ impl ClusterEvent<Once> {
 }
 
 impl<L: Listener> ClusterEvent<L> {
+    /// Publish the event.
     pub async fn publish(self) -> TardisResult<L::Reply> {
         publish_event_with_listener(self.event, self.message, self.target, self.listener).await
     }
 }
 
+/// Publish an event with no response.
 pub async fn publish_event_no_response(event: impl Into<Cow<'static, str>>, message: Value, target: impl Into<ClusterEventTarget>) -> TardisResult<String> {
     publish_event_with_listener(event, message, target, Never).await
 }
 
+/// Publish an event and receive only one response.
 pub async fn publish_event_one_response(
     event: impl Into<Cow<'static, str>>,
     message: Value,
@@ -106,6 +125,7 @@ pub async fn publish_event_one_response(
     })
 }
 
+/// Publish an event
 pub async fn publish_event_with_listener<S: Listener>(
     event: impl Into<Cow<'static, str>>,
     message: Value,
@@ -147,7 +167,7 @@ pub async fn publish_event_with_listener<S: Listener>(
     Ok(reply)
 }
 
-pub async fn do_publish_event(message_req: TardisClusterMessageReq, clients: impl IntoIterator<Item = Arc<TardisWSClient>>) -> TardisResult<()> {
+pub(crate) async fn do_publish_event(message_req: TardisClusterMessageReq, clients: impl IntoIterator<Item = Arc<TardisWSClient>>) -> TardisResult<()> {
     let ws_message = tokio_tungstenite::tungstenite::Message::Text(TardisFuns::json.obj_to_string(&message_req)?);
     let publish_result = join_all(clients.into_iter().map(|client| {
         let ws_message = ws_message.clone();

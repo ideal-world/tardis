@@ -28,7 +28,9 @@ use crate::{basic::result::TardisResult, TardisFuns};
 use async_trait::async_trait;
 
 pub const CLUSTER_NODE_WHOAMI: &str = "__cluster_node_who_am_i__";
+/// cluster ping event
 pub const EVENT_PING: &str = "tardis/ping";
+/// cluster status check event
 pub const EVENT_STATUS: &str = "tardis/status";
 pub const CLUSTER_MESSAGE_CACHE_SIZE: usize = 10000;
 pub const WHOAMI_TIMEOUT: Duration = Duration::from_secs(30);
@@ -97,6 +99,10 @@ impl std::fmt::Display for ClusterRemoteNodeKey {
 pub type ClusterMessageId = String;
 
 #[async_trait]
+/// Cluster event subscriber trait, a subscriber object can be registered to the cluster event system and respond to the event
+///
+/// # Register
+/// see [`subscribe`], [`subscribe_boxed`] and [`subscribe_if_not_exist`]
 pub trait TardisClusterSubscriber: Send + Sync + 'static {
     fn event_name(&self) -> Cow<'static, str>;
     async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>>;
@@ -310,16 +316,19 @@ async fn add_remote_node(socket_addr: SocketAddr) -> TardisResult<TardisClusterN
     Ok(remote)
 }
 
+/// subscribe a boxed cluster event
 pub async fn subscribe_boxed(subscriber: Box<dyn TardisClusterSubscriber>) {
     let event_name = subscriber.event_name();
     info!("[Tardis.Cluster] [Server] subscribe event {event_name}");
     subscribers().write().await.insert(event_name, subscriber);
 }
 
+/// subscribe a cluster event
 pub async fn subscribe<S: TardisClusterSubscriber>(subscriber: S) {
     subscribe_boxed(Box::new(subscriber)).await;
 }
 
+/// subscribe a cluster event if not exist
 pub async fn subscribe_if_not_exist<S: TardisClusterSubscriber>(subscriber: S) {
     let mut wg = subscribers().write().await;
     let event_name = subscriber.event_name();
@@ -330,11 +339,13 @@ pub async fn subscribe_if_not_exist<S: TardisClusterSubscriber>(subscriber: S) {
     }
 }
 
+/// unsubscribe a cluster event
 pub async fn unsubscribe(event_name: &str) {
     info!("[Tardis.Cluster] [Server] unsubscribe event {event_name}");
     subscribers().write().await.remove(event_name);
 }
 
+/// a request message for cluster
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct TardisClusterMessageReq {
     pub(crate) msg_id: String,
@@ -357,6 +368,8 @@ impl TardisClusterMessageReq {
         self.msg_id.to_string()
     }
 }
+
+/// a response message for cluster
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct TardisClusterMessageResp {
