@@ -60,7 +60,7 @@
 The core operations of the framework all use ``TardisFuns`` as an entry point.
 E.g.
 
-```
+```rust ignore
 TardisFuns::init(relative_path)      // Initialize the configuration
 TardisFuns::field.x                  // Some field operations
 TardisFuns::reldb().x                // Some relational database operations
