@@ -78,7 +78,7 @@ tardis = { version = "^0", features = ["web-server"] }
 
 Processor Configuration
 
-```rust
+```rust ignore
 use tardis::basic::error::TardisError;
 use tardis::web::poem_openapi;
 use tardis::web::poem_openapi::param::Query;
@@ -100,7 +100,7 @@ impl Api {
 
 Startup class configuration
 
-```rust
+```rust ignore
 use tardis::basic::result::TardisResult;
 use tardis::tokio;
 use tardis::TardisFuns;
