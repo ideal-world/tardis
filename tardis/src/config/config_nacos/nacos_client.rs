@@ -26,7 +26,7 @@ impl From<reqwest::Error> for NacosClientError {
 }
 impl std::error::Error for NacosClientError {}
 
-/// for request nacos openapi, see https://nacos.io/zh-cn/docs/open-api.html
+/// for request nacos openapi, see <https://nacos.io/zh-cn/docs/open-api.html>
 #[derive(Debug, Clone)]
 pub struct NacosClient {
     pub base_url: String,
@@ -266,7 +266,7 @@ impl<'a> NacosConfigDescriptor<'a> {
     ///
     /// md5 value could be empty string
     ///
-    /// refer: https://nacos.io/zh-cn/docs/open-api.html
+    /// refer: <https://nacos.io/zh-cn/docs/open-api.html>
     pub async fn as_listening_configs(&self) -> String {
         let spliter = 0x02 as char;
         let terminator = 0x01 as char;

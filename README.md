@@ -6,7 +6,7 @@
 [![Test Coverage](https://codecov.io/gh/ideal-world/tardis/branch/main/graph/badge.svg?token=L1LQ8DLUS2)](https://codecov.io/gh/ideal-world/tardis)
 [![License](https://img.shields.io/github/license/ideal-world/tardis)](https://github.com/ideal-world/tardis/blob/main/LICENSE)
 
-> TARDIS([tɑːrdɪs] "Time And Relative Dimension In Space") From "Doctor Who".
+> TARDIS(\[tɑːrdɪs\] "Time And Relative Dimension In Space") From "Doctor Who".
 
 ## 💖 Core functions
 

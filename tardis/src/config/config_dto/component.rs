@@ -114,7 +114,7 @@ pub struct AdvConfig {
     /// Using the aes-ecb algorithm, salt consists of 16-bit English or numeric characters.
     ///
     /// Usage:
-    /// . Open https://www.javainuse.com/aesgenerator and output the following:
+    /// . Open <https://www.javainuse.com/aesgenerator> and output the following:
     /// `Enter Plain Text to Encrypt ` = `Value to be encrypted` , `Select Mode` = `ECB` , `Key Size in Bits` = `128` , `Enter Secret Key` = `Value of this field` , `Output Text Format` = `Hex`
     /// . Click `Encrypt` to wrap the generated value in `ENC(xx)` to replace the original value
     #[builder(default)]
