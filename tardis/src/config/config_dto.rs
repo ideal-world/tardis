@@ -183,7 +183,7 @@ pub struct AppConfig {
     pub inst: String,
     #[builder(default, setter(strip_option))]
     /// Application default language / 应用默认语言
-    /// https://www.andiamo.co.uk/resources/iso-language-codes/
+    /// refer: <https://www.andiamo.co.uk/resources/iso-language-codes/>
     pub default_lang: Option<String>,
 }
 

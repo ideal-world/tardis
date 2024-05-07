@@ -384,7 +384,7 @@ impl TardisFuns {
         TardisFunsInst::new_with_db_conn(code.into(), lang)
     }
 
-    /// Clone the current config into [`TardisConfig`](TardisConfig), this may be used to reload config.
+    /// Clone the current config into [`TardisConfig`], this may be used to reload config.
     ///
     pub fn clone_config() -> TardisConfig {
         let cs = TARDIS_INST.custom_config.read().iter().map(|(k, v)| (k.clone(), v.raw().clone())).collect::<HashMap<String, serde_json::Value>>();

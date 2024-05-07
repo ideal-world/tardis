@@ -9,7 +9,7 @@
 [![Test Coverage](https://codecov.io/gh/ideal-world/tardis/branch/main/graph/badge.svg?token=L1LQ8DLUS2)](https://codecov.io/gh/ideal-world/tardis)
 [![License](https://img.shields.io/github/license/ideal-world/tardis)](https://github.com/ideal-world/tardis/blob/main/LICENSE)
 
-> TARDIS([tɑːrdɪs] "Time And Relative Dimension In Space") From "Doctor Who".
+> TARDIS(\[tɑːrdɪs\] "Time And Relative Dimension In Space") From "Doctor Who".
 
 ## 💖 Core functions
 
@@ -176,7 +176,7 @@ brew install protobuf
 
 ### FAQ
 
-* An `` failed to run custom build command for openssl-sys`` error occurs when running under Windows.The solution is as follows( @see https://github.com/sfackler/rust-openssl/issues/1062 ):
+* An `` failed to run custom build command for openssl-sys`` error occurs when running under Windows.The solution is as follows( @see <https://github.com/sfackler/rust-openssl/issues/1062> ):
 
   ```shell
   git clone https://github.com/Microsoft/vcpkg --depth=1

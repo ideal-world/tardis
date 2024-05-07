@@ -95,7 +95,7 @@ impl std::error::Error for TardisError {}
 
 pub struct TardisErrorWithExt {
     pub ext: String,
-    /// https://www.andiamo.co.uk/resources/iso-language-codes/
+    /// <https://www.andiamo.co.uk/resources/iso-language-codes/>
     pub lang: Option<String>,
 }
 

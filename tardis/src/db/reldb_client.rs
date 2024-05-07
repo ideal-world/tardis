@@ -99,7 +99,7 @@ use crate::TardisFuns;
 /// pub enum Relation {}
 /// ```
 ///
-/// 3. Create TardisContext / 创建TardisContext [TardisContext](crate::basic::dto::TardisContext)
+/// 3. Create TardisContext / 创建TardisContext [TardisContext]
 ///
 /// 4. Use `TardisRelDBClient` to operate database / 使用 `TardisRelDBClient` 操作数据库, E.g:
 /// ```ignore
@@ -781,7 +781,6 @@ impl TardisRelDBlConnection {
     ///  * `sql` - sql of the query / 查询SQL
     ///  * `params` - params of the query / 查询参数
     ///
-    /// ```
     pub async fn get_dto_by_sql<D>(&self, sql: &str, params: Vec<Value>) -> TardisResult<Option<D>>
     where
         D: FromQueryResult,
@@ -883,7 +882,6 @@ impl TardisRelDBlConnection {
     ///  * `page_number` -  Current page number, starting from 1 / 当前页码，从1开始
     ///  * `page_size` -  Number of records per page / 每页记录数
     ///
-    /// ```
     pub async fn paginate_dtos_by_sql<D>(&self, sql: &str, params: Vec<Value>, page_number: u64, page_size: u64) -> TardisResult<(Vec<D>, u64)>
     where
         D: FromQueryResult,
@@ -1358,7 +1356,6 @@ pub trait TardisActiveModel: ActiveModelBehavior {
     ///
     ///  * `db` -  database instance type / 数据库实例类型
     ///  * `update_time_field` -  update time field / 更新字段
-    /// ```
     fn init(db: DbBackend, update_time_field: Option<&str>, compatible_type: CompatibleType) -> (TableCreateStatement, Vec<IndexCreateStatement>, Vec<String>) {
         let create_table_statement = Self::create_table_statement(db);
         let create_index_statement = Self::create_index_statement();

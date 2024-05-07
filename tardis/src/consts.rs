@@ -18,7 +18,3 @@ pub const OTEL_SERVICE_NAME: &str = "OTEL_SERVICE_NAME";
 
 // shortcuts for build info
 pub const TARDIS_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[cfg(feature = "build-info")]
-/// The git version of the tardis crate.
-pub const TARDIS_GIT_VERSION: &str = git_version::git_version!();
