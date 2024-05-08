@@ -9,7 +9,7 @@ codegen-units = 1
 opt-level = "z"
 
 [workspace.package]
-version = "0.1.0-rc.12"
+version = "0.1.0-rc.13"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
@@ -20,3 +20,7 @@ repository = "https://github.com/ideal-world/tardis"
 edition = "2021"
 license = "MIT/Apache-2.0"
 rust-version = "1.72"
+
+
+[workspace.dependencies]
+tardis-macros = { path = "./tardis-macros" }

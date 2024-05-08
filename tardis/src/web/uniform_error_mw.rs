@@ -2,7 +2,6 @@ use crate::basic::error::TardisError;
 use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
 use crate::serde_json::json;
 use crate::TardisFuns;
-use async_trait::async_trait;
 use poem::http::StatusCode;
 use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
 use tracing::{trace, warn};
@@ -21,7 +20,6 @@ impl<E: Endpoint> Middleware<E> for UniformError {
 
 pub struct UniformErrorImpl<E>(E);
 
-#[async_trait]
 impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
     type Output = Response;
 

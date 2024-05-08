@@ -1,5 +1,4 @@
 use crate::TardisFuns;
-use async_trait::async_trait;
 #[cfg(feature = "cluster")]
 use poem::http::HeaderValue;
 use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
@@ -16,7 +15,6 @@ impl<E: Endpoint> Middleware<E> for AddClusterIdHeader {
 
 pub struct UniformErrorImpl<E>(E);
 pub const TARDIS_CLUSTER_ID_HEADER: &str = "Tardis-Cluster-Id";
-#[async_trait]
 impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
     type Output = Response;
 

@@ -55,7 +55,7 @@ k8s = ["future", "kube", "k8s-openapi"]
 fs = ["tokio/fs", "tokio/io-util"]
 process = ["tokio/process"]
 test = ["testcontainers", "testcontainers-modules"]
-tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp"]
+tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk"]
 tokio-console = ["console-subscriber"]
 tracing-appender = ["dep:tracing-appender"]
 web-server-grpc = ["web-server", "dep:poem-grpc"]
@@ -90,19 +90,22 @@ tokio = { version = "1", features = [
 ] }
 tokio-util = { version = "0.7.10" }
 # Tardis Macros
-tardis-macros = { version = "0.1.0-rc.1", path = "../tardis-macros", optional = true }
+tardis-macros = { workspace = true, optional = true }
 # Log
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = { version = "0.2", optional = true }
 console-subscriber = { version = "0.2", optional = true }
 # Tracing
-tracing-opentelemetry = { version = "0.21", optional = true }
-opentelemetry = { version = "0.20", default-features = false, features = [
+tracing-opentelemetry = { version = "0.23", optional = true }
+opentelemetry = { version = "0.22", default-features = false, features = [
   "trace",
-  "rt-tokio",
 ], optional = true }
-opentelemetry-otlp = { version = "0.13", features = [
+opentelemetry_sdk = { version = "0.22", default-features = false, features = [
+  "rt-tokio",
+  "trace",
+], optional = true }
+opentelemetry-otlp = { version = "0.15", features = [
   "reqwest-client",
   "reqwest-rustls",
   "http-proto",
@@ -160,12 +163,12 @@ sqlx = { version = "0.7", features = ["any"], optional = true }
 sqlparser = { version = "0", optional = true }
 
 # Web Server
-poem-openapi = { version = "4", features = [
+poem-openapi = { version = "5", features = [
   "chrono",
   "websocket",
 ], optional = true }
-poem-openapi-derive = { version = "4", optional = true }
-poem = { version = "2", features = [
+poem-openapi-derive = { version = "5", optional = true }
+poem = { version = "3", features = [
   "csrf",
   "opentelemetry",
   "rustls",
@@ -175,10 +178,10 @@ poem = { version = "2", features = [
   "tempfile",
   "session",
 ], optional = true }
-poem-grpc = { version = "0.3", optional = true }
+poem-grpc = { version = "0.4", optional = true }
 
 # Web Client
-reqwest = { version = "0.11", features = [
+reqwest = { version = "0.12", features = [
   "json",
   "multipart",
 ], optional = true }
@@ -219,6 +222,7 @@ json-patch = "=1.2.0"
 k8s-openapi = { version = "^0.20", features = ["earliest"], optional = true }
 
 # Test
+# update this may cause break changes
 testcontainers = { version = "0.15", optional = true }
 testcontainers-modules = { version = "0.3", features = [
   "minio",
@@ -238,7 +242,7 @@ tokio = { version = "1", features = [
   "process",
 ] }
 criterion = { version = "0.5" }
-poem-grpc-build = "0.3"
+poem-grpc-build = "0.4"
 prost = "0.12"
 strip-ansi-escapes = "0.2.0"
 portpicker = "0.1.1"
