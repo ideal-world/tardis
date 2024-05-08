@@ -20,3 +20,7 @@ repository = "https://github.com/ideal-world/tardis"
 edition = "2021"
 license = "MIT/Apache-2.0"
 rust-version = "1.72"
+
+
+[workspace.dependencies]
+tardis-macros = { path = "./tardis-macros" }

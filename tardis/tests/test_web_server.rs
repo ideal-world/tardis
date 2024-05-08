@@ -6,8 +6,7 @@ use std::env;
 use std::str::FromStr;
 use std::time::Duration;
 
-use async_trait::async_trait;
-use poem::endpoint::BoxEndpoint;
+use poem::endpoint::{BoxEndpoint, ToDynEndpoint};
 use poem::http::Method;
 use poem::{IntoResponse, Middleware, Response};
 use serde_json::json;
@@ -795,7 +794,6 @@ impl Middleware<BoxEndpoint<'static>> for TodosApiMiddleware1 {
     fn transform(&self, ep: BoxEndpoint<'static>) -> Self::Output {
         pub struct TodosApiMWImpl1<E>(E);
 
-        #[async_trait]
         impl<E: Endpoint> Endpoint for TodosApiMWImpl1<E> {
             type Output = Response;
 
@@ -855,7 +853,7 @@ impl Middleware<BoxEndpoint<'static>> for TodosApiMiddleware1 {
             }
         }
 
-        Box::new(TodosApiMWImpl1(ep))
+        Box::new(ToDynEndpoint(TodosApiMWImpl1(ep)))
     }
 }
 
@@ -868,7 +866,6 @@ impl Middleware<BoxEndpoint<'static>> for TodosApiMiddleware2 {
     fn transform(&self, ep: BoxEndpoint<'static>) -> Self::Output {
         pub struct TodosApiMWImpl2<E>(E);
 
-        #[async_trait]
         impl<E: Endpoint> Endpoint for TodosApiMWImpl2<E> {
             type Output = Response;
 
@@ -928,13 +925,12 @@ impl Middleware<BoxEndpoint<'static>> for TodosApiMiddleware2 {
             }
         }
 
-        Box::new(TodosApiMWImpl2(ep))
+        Box::new(ToDynEndpoint(TodosApiMWImpl2(ep)))
     }
 }
 
 #[derive(Clone, Default)]
 pub struct GreeterGrpcService;
-#[poem::async_trait]
 impl Greeter for GreeterGrpcService {
     async fn say_hello(&self, request: GrpcRequest<HelloRequest>) -> Result<GrpcResponse<HelloReply>, GrpcStatus> {
         info!("GreeterGrpcService say_hello {:?}", request);
