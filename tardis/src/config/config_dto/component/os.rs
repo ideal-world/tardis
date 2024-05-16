@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use typed_builder::TypedBuilder;
 
-#[derive(Debug, Serialize, Deserialize, Clone, TypedBuilder)]
+use crate::redact::Redact;
+
+#[derive(Serialize, Deserialize, Clone, TypedBuilder)]
 #[serde(default)]
 pub struct OSModuleConfig {
     /// s3/oss/obs, Support amazon s3 / aliyun oss / huaweicloud obs
@@ -18,6 +20,19 @@ pub struct OSModuleConfig {
     pub region: String,
     #[builder(default, setter(into))]
     pub default_bucket: String,
+}
+
+impl std::fmt::Debug for OSModuleConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OSModuleConfig")
+            .field("kind", &self.kind)
+            .field("endpoint", &self.endpoint)
+            .field("ak", &self.ak)
+            .field("sk", &self.sk.redact())
+            .field("region", &self.region)
+            .field("default_bucket", &self.default_bucket)
+            .finish()
+    }
 }
 
 impl Default for OSModuleConfig {

@@ -12,6 +12,7 @@ pub struct TardisCryptoDigest;
 /// algorithms for digest
 pub mod algorithm {
     pub use digest::Digest;
+    pub use hex;
     pub use hmac::{Hmac, Mac};
     pub use md5::Md5;
     pub use sha1::Sha1;
@@ -50,7 +51,6 @@ pub mod output {
         }
     }
 }
-
 /// Digest handle / 摘要处理
 ///
 /// # Examples
