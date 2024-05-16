@@ -18,7 +18,6 @@ pub mod algorithm {
     pub use sha1::Sha1;
     pub use sha2::{OidSha224, OidSha256, OidSha384, OidSha512, Sha224, Sha256, Sha384, Sha512};
     pub use sm3::Sm3;
-    pub use hex;
     pub type HmacSha1 = Hmac<Sha1>;
     pub type HmacSha256 = Hmac<Sha256>;
     pub type HmacSha512 = Hmac<Sha512>;
