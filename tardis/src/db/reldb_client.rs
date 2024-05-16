@@ -151,6 +151,7 @@ impl TardisRelDBClient {
             compatible_type,
         }: &DBModuleConfig,
     ) -> TardisResult<TardisRelDBClient> {
+        use crate::utils::redact::Redact;
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.RelDBClient] Invalid url {str_url}"), "406-tardis-reldb-url-error"))?;
         info!(
             "[Tardis.RelDBClient] Initializing, host:{}, port:{}, max_connections:{}",
@@ -191,7 +192,7 @@ impl TardisRelDBClient {
                     match result {
                         Ok(pool) => Ok(SqlxMySqlConnector::from_sqlx_mysql_pool(pool)),
                         Err(error) => Err(TardisError::format_error(
-                            &format!("[Tardis.RelDBClient] {str_url} Initialization error: {error}"),
+                            &format!("[Tardis.RelDBClient] {} Initialization error: {error}", url.redact()),
                             "406-tardis-reldb-conn-init-error",
                         )),
                     }
@@ -219,20 +220,23 @@ impl TardisRelDBClient {
                     match result {
                         Ok(pool) => Ok(SqlxPostgresConnector::from_sqlx_postgres_pool(pool)),
                         Err(error) => Err(TardisError::format_error(
-                            &format!("[Tardis.RelDBClient] {str_url} Initialization error: {error}"),
+                            &format!("[Tardis.RelDBClient] {} Initialization error: {error}", url.redact()),
                             "406-tardis-reldb-conn-init-error",
                         )),
                     }
                 }
                 _ => Err(TardisError::format_error(
-                    &format!("[Tardis.RelDBClient] {str_url} , current database does not support setting timezone"),
+                    &format!("[Tardis.RelDBClient] {} , current database does not support setting timezone", url.redact()),
                     "406-tardis-reldb-conn-init-error",
                 )),
             }
         } else {
-            Database::connect(opt)
-                .await
-                .map_err(|error| TardisError::format_error(&format!("[Tardis.RelDBClient] {str_url} Initialization error: {error}"), "406-tardis-reldb-conn-init-error"))
+            Database::connect(opt).await.map_err(|error| {
+                TardisError::format_error(
+                    &format!("[Tardis.RelDBClient] {} Initialization error: {error}", url.redact()),
+                    "406-tardis-reldb-conn-init-error",
+                )
+            })
         }?;
         info!(
             "[Tardis.RelDBClient] Initialized, host:{}, port:{}, max_connections:{}",

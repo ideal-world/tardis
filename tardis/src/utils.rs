@@ -6,4 +6,5 @@ pub(crate) use tardis_component::*;
 pub mod build_info;
 pub mod initializer;
 pub mod mapper;
+pub mod redact;
 pub mod tardis_static;

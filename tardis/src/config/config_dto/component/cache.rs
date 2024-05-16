@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 use url::Url;
+
+use crate::redact::Redact;
 /// Distributed cache configuration / 分布式缓存配置
 ///
 /// Distributed cache operations need to be enabled ```#[cfg(feature = "cache")]``` .
@@ -15,8 +17,14 @@ use url::Url;
 ///    ..Default::default()
 ///};
 /// ```
-#[derive(Debug, Serialize, Deserialize, Clone, TypedBuilder)]
+#[derive(Serialize, Deserialize, Clone, TypedBuilder)]
 pub struct CacheModuleConfig {
     /// Cache access Url, Url with permission information / 缓存访问Url，Url带权限信息
     pub url: Url,
+}
+
+impl std::fmt::Debug for CacheModuleConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CacheModuleConfig").field("url", &self.url.redact()).finish()
+    }
 }
