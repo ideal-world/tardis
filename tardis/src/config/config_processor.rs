@@ -33,7 +33,7 @@ use super::config_dto::{ConfCenterConfig, TardisConfig};
 /// 1. Environment variables starting with TARDIS
 ///
 impl TardisConfig {
-    pub(crate) async fn init(relative_path: Option<&str>) -> TardisResult<TardisConfig> {
+    pub async fn init(relative_path: Option<&str>) -> TardisResult<TardisConfig> {
         let profile = fetch_profile();
         let parent_path = env::current_dir().expect("[Tardis.Config] Current path get error");
         info!(
