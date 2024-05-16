@@ -226,7 +226,7 @@ impl ConfCenterConfig {
 }
 
 #[cfg(feature = "crypto")]
-fn decryption(text: &str, salt: &str) -> TardisResult<String> {
+pub fn decryption(text: &str, salt: &str) -> TardisResult<String> {
     use crate::crypto::crypto_aead::algorithm::Aes128;
     if salt.len() != 16 {
         return Err(TardisError::format_error("[Tardis.Config] [salt] Length must be 16", ""));
