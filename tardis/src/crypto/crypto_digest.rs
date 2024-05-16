@@ -49,7 +49,6 @@ pub mod output {
         }
     }
 }
-
 /// Digest handle / 摘要处理
 ///
 /// # Examples
