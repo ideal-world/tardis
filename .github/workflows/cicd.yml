@@ -122,7 +122,7 @@ jobs:
 
   publish-tardis:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [check, publish-macros]
+    needs: [check]
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo

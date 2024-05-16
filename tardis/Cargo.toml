@@ -55,7 +55,12 @@ k8s = ["future", "kube", "k8s-openapi"]
 fs = ["tokio/fs", "tokio/io-util"]
 process = ["tokio/process"]
 test = ["testcontainers", "testcontainers-modules"]
-tracing = ["tracing-opentelemetry", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk"]
+tracing = [
+  "tracing-opentelemetry",
+  "opentelemetry",
+  "opentelemetry-otlp",
+  "opentelemetry_sdk",
+]
 tokio-console = ["console-subscriber"]
 tracing-appender = ["dep:tracing-appender"]
 web-server-grpc = ["web-server", "dep:poem-grpc"]
@@ -90,7 +95,7 @@ tokio = { version = "1", features = [
 ] }
 tokio-util = { version = "0.7.10" }
 # Tardis Macros
-tardis-macros = { version = "0.1.0-rc.14", workspace = true, optional = true }
+tardis-macros = { version = "0.1.0-rc.14", optional = true }
 # Log
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
