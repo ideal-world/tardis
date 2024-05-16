@@ -2,9 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use typed_builder::TypedBuilder;
 
+use crate::redact::Redact;
+
 /// Mail module configuration / 邮件模块配置
 ///
-#[derive(Debug, Serialize, Deserialize, Clone, TypedBuilder)]
+#[derive(Serialize, Deserialize, Clone, TypedBuilder)]
 #[serde(default)]
 pub struct MailModuleConfig {
     /// SMTP host
@@ -25,6 +27,19 @@ pub struct MailModuleConfig {
     /// weather to use STARTTLS, default by false
     #[builder(default = false)]
     pub starttls: bool,
+}
+
+impl std::fmt::Debug for MailModuleConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MailModuleConfig")
+            .field("smtp_host", &self.smtp_host)
+            .field("smtp_port", &self.smtp_port)
+            .field("smtp_username", &self.smtp_username)
+            .field("smtp_password", &self.smtp_password.redact())
+            .field("default_from", &self.default_from)
+            .field("starttls", &self.starttls)
+            .finish()
+    }
 }
 
 impl Default for MailModuleConfig {

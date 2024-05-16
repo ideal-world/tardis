@@ -30,7 +30,9 @@ where
         format!("tardis/broadcast/{}", self.ident)
     }
     pub fn send(&self, message: T) {
-        // dbg!(self.local_broadcast_channel.send(message.clone()));
+        if let Err(result) = self.local_broadcast_channel.send(message.clone()) {
+            tracing::error!("[Tardis.Cluster] broadcast channel send error: {:?}", result);
+        }
         let event = format!("tardis/broadcast/{}", self.ident);
         tokio::spawn(async move {
             if let Ok(json_value) = serde_json::to_value(message) {

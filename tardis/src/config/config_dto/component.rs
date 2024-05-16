@@ -20,6 +20,8 @@ pub use mail::*;
 pub(crate) mod os;
 pub use os::*;
 
+use crate::redact::Redact;
+
 /// # Tardis Component Configuration
 ///
 /// common structure for components with one defualt module and many submodules
@@ -121,7 +123,7 @@ pub struct AdvConfig {
     pub salt: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, TypedBuilder)]
+#[derive(Serialize, Deserialize, Clone, TypedBuilder)]
 pub struct ConfCenterConfig {
     #[builder(default = "nacos".to_string())]
     pub kind: String,
@@ -139,4 +141,19 @@ pub struct ConfCenterConfig {
     #[builder(default = Some(30000), setter(strip_option))]
     /// config change polling interval, in milliseconds, default is 30000ms / 配置变更轮询间隔，单位毫秒, 默认30000ms
     pub config_change_polling_interval: Option<u64>,
+}
+
+impl std::fmt::Debug for ConfCenterConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConfCenterConfig")
+            .field("kind", &self.kind)
+            .field("url", &self.url)
+            .field("username", &self.username)
+            .field("password", &self.password.redact())
+            .field("group", &self.group)
+            .field("format", &self.format)
+            .field("namespace", &self.namespace)
+            .field("config_change_polling_interval", &self.config_change_polling_interval)
+            .finish()
+    }
 }

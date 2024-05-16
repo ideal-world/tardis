@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use typed_builder::TypedBuilder;
 
+use crate::redact::Redact;
+
 /// Database module configuration / 数据库模块配置
 ///
 /// Database operations need to be enabled ```#[cfg(feature = "reldb")]``` .
@@ -16,7 +18,7 @@ use typed_builder::TypedBuilder;
 ///    ..Default::default()
 /// };
 /// ```
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, TypedBuilder)]
 #[serde(default)]
 pub struct DBModuleConfig {
     #[builder(setter(into))]
@@ -45,6 +47,24 @@ impl Default for DBModuleConfig {
     }
 }
 
+impl std::fmt::Debug for DBModuleConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let url_debug = if let Ok(url) = url::Url::parse(&self.url) {
+            url.redact().to_string()
+        } else {
+            self.url.to_string()
+        };
+
+        f.debug_struct("DBModuleConfig")
+            .field("url", &url_debug)
+            .field("max_connections", &self.max_connections)
+            .field("min_connections", &self.min_connections)
+            .field("connect_timeout_sec", &self.connect_timeout_sec)
+            .field("idle_timeout_sec", &self.idle_timeout_sec)
+            .field("compatible_type", &self.compatible_type)
+            .finish()
+    }
+}
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CompatibleType {
     #[default]
