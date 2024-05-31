@@ -1112,7 +1112,7 @@ impl TardisRelDBlConnection {
     ///     ])
     ///     .and_where(Expr::col(tardis_db_config::Column::id).eq("111"))).await.unwrap();
     /// ```
-    pub async fn update_many<T>(&self, update_statement: &UpdateStatement) -> TardisResult<()> {
+    pub async fn update_many(&self, update_statement: &UpdateStatement) -> TardisResult<()> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::update_many_inner(update_statement, tx).await
         } else {

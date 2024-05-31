@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use tokio::sync::broadcast;
 
-use crate::basic::result::TardisResult;
+use crate::basic::{error::TardisError, result::TardisResult};
 
 use super::{
     cluster_processor::{subscribe_if_not_exist, unsubscribe, ClusterEventTarget, TardisClusterMessageReq, TardisClusterSubscriber},
@@ -29,17 +29,14 @@ where
     pub fn event_name(&self) -> String {
         format!("tardis/broadcast/{}", self.ident)
     }
-    pub fn send(&self, message: T) {
+    pub async fn send(&self, message: T) -> TardisResult<()> {
         if let Err(result) = self.local_broadcast_channel.send(message.clone()) {
             tracing::error!("[Tardis.Cluster] broadcast channel send error: {:?}", result);
         }
         let event = format!("tardis/broadcast/{}", self.ident);
-        tokio::spawn(async move {
-            if let Ok(json_value) = serde_json::to_value(message) {
-                let json = json_value;
-                let _ = publish_event_no_response(event, json, ClusterEventTarget::Broadcast).await;
-            }
-        });
+        let json = serde_json::to_value(message).map_err(|e|TardisError::internal_error(&e.to_string(), ""))?;
+        let _ = publish_event_no_response(event, json, ClusterEventTarget::Broadcast).await?;
+        Ok(())
     }
     pub fn new(ident: impl Into<String>, capacity: usize) -> Arc<Self> {
         let sender = broadcast::Sender::new(capacity);

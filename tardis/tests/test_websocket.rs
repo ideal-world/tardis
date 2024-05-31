@@ -16,8 +16,7 @@ use tardis::consts::IP_LOCALHOST;
 use tardis::web::web_server::{TardisWebServer, WebServerModule};
 use tardis::web::ws_client::TardisWebSocketMessageExt;
 use tardis::web::ws_processor::{
-    ws_broadcast, ws_echo, TardisWebsocketInstInfo, TardisWebsocketMessage, TardisWebsocketMgrMessage, TardisWebsocketReq, TardisWebsocketResp, WS_SYSTEM_EVENT_AVATAR_ADD,
-    WS_SYSTEM_EVENT_AVATAR_DEL, WS_SYSTEM_EVENT_INFO,
+    ws_broadcast, ws_echo, TardisWebsocketInstInfo, TardisWebsocketMessage, TardisWebsocketMgrMessage, TardisWebsocketReq, TardisWebsocketResp, WsHooks, WS_SYSTEM_EVENT_AVATAR_ADD, WS_SYSTEM_EVENT_AVATAR_DEL, WS_SYSTEM_EVENT_INFO
 };
 use tardis::TardisFuns;
 use tokio::sync::broadcast::Sender;
@@ -341,6 +340,42 @@ async fn test_dyn_avatar() -> TardisResult<()> {
 #[derive(Debug, Clone)]
 struct Api;
 
+
+pub struct FilterHook {
+    service_name: &'static str,
+    expect: serde_json::Value
+}
+impl WsHooks for FilterHook {
+    async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq) -> Option<TardisWebsocketResp> {
+        println!("service {} recv:{}:{}", self.service_name, req.from_avatar, req.msg);
+        if req.msg == self.expect {
+            return None;
+        }
+        Some(TardisWebsocketResp {
+            msg: json! { format!("service send:{}", TardisFuns::json.json_to_string(req.msg).unwrap())},
+            to_avatars: vec![],
+            ignore_avatars: vec![],
+        })
+    }
+}
+pub struct ErrorHook;
+impl WsHooks for ErrorHook {
+    async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq) -> Option<TardisWebsocketResp> {
+        println!("service gerror recv:{}:{}", req.from_avatar, req.msg);
+        None
+    }
+}
+
+pub struct PassThroughHook;
+impl WsHooks for PassThroughHook {
+    async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq) -> Option<TardisWebsocketResp> {
+        Some(TardisWebsocketResp {
+            msg: req.msg,
+            to_avatars: req.to_avatars.unwrap_or_default(),
+            ignore_avatars: vec![],
+        })
+    }
+}
 #[poem_openapi::OpenApi]
 impl Api {
     #[oai(path = "/ws/broadcast/:group/:name", method = "get")]
@@ -354,21 +389,12 @@ impl Api {
                 vec![name.0],
                 false,
                 true,
-                HashMap::new(),
                 websocket,
                 sender,
-                |req_msg, _ext| async move {
-                    println!("service g1 recv:{}:{}", req_msg.from_avatar, req_msg.msg);
-                    if req_msg.msg == json! {"client_b send:hi again"} {
-                        return None;
-                    }
-                    Some(TardisWebsocketResp {
-                        msg: json! { format!("service send:{}", TardisFuns::json.json_to_string(req_msg.msg).unwrap())},
-                        to_avatars: vec![],
-                        ignore_avatars: vec![],
-                    })
-                },
-                |_, _| async move {},
+                FilterHook {
+                    service_name: "g1",
+                    expect: json! {"client_b send:hi again"}
+                }
             )
             .await
         } else if group.0 == "g2" {
@@ -376,21 +402,12 @@ impl Api {
                 vec![name.0],
                 false,
                 false,
-                HashMap::new(),
                 websocket,
                 sender,
-                |req_msg, _ext| async move {
-                    println!("service g2 recv:{}:{}", req_msg.from_avatar, req_msg.msg);
-                    if req_msg.msg == json! {"client_b send:hi again"} {
-                        return None;
-                    }
-                    Some(TardisWebsocketResp {
-                        msg: json! { format!("service send:{}", TardisFuns::json.json_to_string(req_msg.msg).unwrap())},
-                        to_avatars: vec![],
-                        ignore_avatars: vec![],
-                    })
-                },
-                |_, _| async move {},
+                FilterHook {
+                    service_name: "g2",
+                    expect: json! {"client_b send:hi again"}
+                }
             )
             .await
         } else if group.0 == "gerror" {
@@ -398,14 +415,9 @@ impl Api {
                 vec![name.0],
                 false,
                 false,
-                HashMap::new(),
                 websocket,
                 sender,
-                |req_msg, _ext| async move {
-                    println!("service gerror recv:{}:{}", req_msg.from_avatar, req_msg.msg);
-                    None
-                },
-                |_, _| async move {},
+                ErrorHook
             )
             .await
         } else {
@@ -429,17 +441,9 @@ impl Api {
             vec![name.0],
             mgr.0,
             true,
-            HashMap::new(),
             websocket,
             sender,
-            |req_msg, _ext| async move {
-                Some(TardisWebsocketResp {
-                    msg: req_msg.msg,
-                    to_avatars: req_msg.to_avatars.unwrap_or_default(),
-                    ignore_avatars: vec![],
-                })
-            },
-            |_, _| async move {},
+            PassThroughHook
         )
         .await
     }
