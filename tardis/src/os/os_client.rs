@@ -281,12 +281,16 @@ impl TardisOSOperations for TardisOSS3Client {
 
         let mut upload_parts = Vec::new();
         for chunk_index in 0..chunk_count {
-            let this_chunk = if chunk_count - 1 == chunk_index {
-                size_of_last_chunk
-            } else {
-                CHUNK_SIZE
-            };
-            let upload_part_res = bucket.put_multipart_chunk(content[(CHUNK_SIZE * chunk_index) as usize .. (CHUNK_SIZE * chunk_index + this_chunk) as usize].to_vec(), path, (chunk_index as u32) + 1, &upload_id, content_type.unwrap_or_default()).await?;
+            let this_chunk = if chunk_count - 1 == chunk_index { size_of_last_chunk } else { CHUNK_SIZE };
+            let upload_part_res = bucket
+                .put_multipart_chunk(
+                    content[(CHUNK_SIZE * chunk_index) as usize..(CHUNK_SIZE * chunk_index + this_chunk) as usize].to_vec(),
+                    path,
+                    (chunk_index as u32) + 1,
+                    &upload_id,
+                    content_type.unwrap_or_default(),
+                )
+                .await?;
 
             upload_parts.push(upload_part_res);
         }
