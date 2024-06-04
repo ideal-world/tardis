@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::HashMap,
     fmt,
     sync::Arc,
@@ -16,7 +15,7 @@ use std::hash::Hash;
 use tokio::sync::RwLock;
 
 use super::{
-    cluster_processor::{peer_count, ClusterEventTarget, TardisClusterMessageReq, TardisClusterSubscriber},
+    cluster_processor::{peer_count, ClusterEventTarget, ClusterHandler, TardisClusterMessageReq},
     cluster_publish::{publish_event_no_response, ClusterEvent},
     cluster_receive::listen::Stream,
 };
@@ -217,13 +216,12 @@ where
     }
 }
 
-#[async_trait::async_trait]
-impl<K, V> TardisClusterSubscriber for ClusterStaticHashMap<K, V>
+impl<K, V> ClusterHandler for ClusterStaticHashMap<K, V>
 where
     K: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + Hash + Eq,
     V: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned,
 {
-    async fn subscribe(&self, message: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
+    async fn handle(self: Arc<Self>, message: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
         let event: CshmEvent<K, V> = TardisJson.json_to_obj(message.msg)?;
         match event {
             CshmEvent::Insert(pairs) => {
@@ -256,7 +254,7 @@ where
             }
         }
     }
-    fn event_name(&self) -> Cow<'static, str> {
-        ClusterStaticHashMap::event_name(self).into()
+    fn event_name(&self) -> String {
+        ClusterStaticHashMap::event_name(self)
     }
 }

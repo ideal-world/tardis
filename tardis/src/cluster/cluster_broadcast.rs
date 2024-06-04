@@ -1,16 +1,12 @@
-use std::{
-    borrow::Cow,
-    sync::{Arc, Weak},
-};
+use std::sync::{Arc, Weak};
 
-use async_trait::async_trait;
 use serde_json::Value;
 use tokio::sync::broadcast;
 
 use crate::basic::{error::TardisError, result::TardisResult};
 
 use super::{
-    cluster_processor::{subscribe_if_not_exist, unsubscribe, ClusterEventTarget, TardisClusterMessageReq, TardisClusterSubscriber},
+    cluster_processor::{subscribe_if_not_exist, unsubscribe, ClusterEventTarget, ClusterHandler, TardisClusterMessageReq},
     cluster_publish::publish_event_no_response,
 };
 
@@ -34,7 +30,7 @@ where
             tracing::error!("[Tardis.Cluster] broadcast channel send error: {:?}", result);
         }
         let event = format!("tardis/broadcast/{}", self.ident);
-        let json = serde_json::to_value(message).map_err(|e|TardisError::internal_error(&e.to_string(), ""))?;
+        let json = serde_json::to_value(message).map_err(|e| TardisError::internal_error(&e.to_string(), ""))?;
         let _ = publish_event_no_response(event, json, ClusterEventTarget::Broadcast).await?;
         Ok(())
     }
@@ -87,15 +83,14 @@ where
     channel: Weak<ClusterBroadcastChannel<T>>,
 }
 
-#[async_trait]
-impl<T> TardisClusterSubscriber for BroadcastChannelSubscriber<T>
+impl<T> ClusterHandler for BroadcastChannelSubscriber<T>
 where
     T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
 {
-    fn event_name(&self) -> Cow<'static, str> {
-        self.event_name.to_string().into()
+    fn event_name(&self) -> String {
+        self.event_name.to_string()
     }
-    async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
+    async fn handle(self: Arc<Self>, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
         if let Ok(message) = serde_json::from_value(message_req.msg) {
             if let Some(chan) = self.channel.upgrade() {
                 let _ = chan.local_broadcast_channel.send(message);

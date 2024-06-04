@@ -283,8 +283,8 @@ impl TardisWebServer {
             api_serv = api_serv.extra_request_header::<String, _>(ExtraHeader::new(name).description(desc));
         }
         let mut route = Route::new();
+        #[allow(unused_assignments)]
         if let Some(ui_path) = &module_config.ui_path {
-            #[allow(unused_assignments)]
             let mut has_doc = false;
             #[cfg(feature = "openapi-redoc")]
             {

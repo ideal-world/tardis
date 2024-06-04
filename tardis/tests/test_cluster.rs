@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     env,
     path::Path,
     sync::{
@@ -9,7 +8,6 @@ use std::{
     time::Duration,
 };
 
-use async_trait::async_trait;
 use futures_util::future::join_all;
 use serde_json::{json, Value};
 use tardis::{
@@ -17,7 +15,7 @@ use tardis::{
     cluster::{
         cluster_broadcast::ClusterBroadcastChannel,
         cluster_hashmap::ClusterStaticHashMap,
-        cluster_processor::{self, subscribe, ClusterEventTarget, TardisClusterMessageReq, TardisClusterSubscriber},
+        cluster_processor::{self, subscribe, ClusterEventTarget, ClusterHandler, TardisClusterMessageReq},
         cluster_publish::publish_event_one_response,
     },
     config::config_dto::{CacheModuleConfig, ClusterConfig, FrameworkConfig, LogConfig, TardisConfig, WebServerCommonConfig, WebServerConfig, WebServerModuleConfig},
@@ -214,12 +212,11 @@ async fn test_ping(node_id: &str) -> TardisResult<()> {
 
 struct ClusterSubscriberPingTest;
 
-#[async_trait]
-impl TardisClusterSubscriber for ClusterSubscriberPingTest {
-    fn event_name(&self) -> Cow<'static, str> {
+impl ClusterHandler for ClusterSubscriberPingTest {
+    fn event_name(&self) -> String {
         "ping".into()
     }
-    async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
+    async fn handle(self: Arc<Self>, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
         info!("message_req:{message_req:?}");
         PING_COUNTER.fetch_add(message_req.msg.as_i64().unwrap() as usize, Ordering::SeqCst);
         Ok(None)
@@ -228,12 +225,11 @@ impl TardisClusterSubscriber for ClusterSubscriberPingTest {
 
 struct ClusterSubscriberEchoTest;
 
-#[async_trait]
-impl TardisClusterSubscriber for ClusterSubscriberEchoTest {
-    fn event_name(&self) -> Cow<'static, str> {
+impl ClusterHandler for ClusterSubscriberEchoTest {
+    fn event_name(&self) -> String {
         "echo".into()
     }
-    async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
+    async fn handle(self: Arc<Self>, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
         info!("message_req:{message_req:?}");
         Ok(Some(serde_json::Value::String(format!("echo {}", message_req.req_node_id))))
     }
@@ -295,22 +291,22 @@ async fn test_broadcast(node_id: &str) {
     tokio::time::sleep(Duration::from_secs(6)).await;
     match node_id {
         "1" => {
-            broadcast().send("message1-1".to_string());
-            broadcast().send("message1-2".to_string());
+            broadcast().send("message1-1".to_string()).await.expect("send failed");
+            broadcast().send("message1-2".to_string()).await.expect("send failed");
         }
         "2" => {
-            broadcast().send("message2-1".to_string());
-            broadcast().send("message2-2".to_string());
+            broadcast().send("message2-1".to_string()).await.expect("send failed");
+            broadcast().send("message2-2".to_string()).await.expect("send failed");
         }
         "3" => {
-            broadcast().send("message3-1".to_string());
-            broadcast().send("message3-2".to_string());
+            broadcast().send("message3-1".to_string()).await.expect("send failed");
+            broadcast().send("message3-2".to_string()).await.expect("send failed");
         }
         _ => {}
     }
     let result = tokio::time::timeout(Duration::from_secs(20), async move {
         loop {
-            if bc_recv_count().load(Ordering::SeqCst) == 4 {
+            if bc_recv_count().load(Ordering::SeqCst) == 6 {
                 break;
             } else {
                 tokio::task::yield_now().await;

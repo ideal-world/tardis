@@ -7,7 +7,7 @@ use tardis::web::poem::web::websocket::BoxWebSocketUpgraded;
 use tardis::web::poem::web::{websocket::WebSocket, Data, Path};
 use tardis::web::poem_openapi::payload::Html;
 use tardis::web::poem_openapi::{self};
-use tardis::web::ws_processor::{ws_broadcast, ws_echo, TardisWebsocketMgrMessage, TardisWebsocketResp, WsHooks};
+use tardis::web::ws_processor::{ws_echo, TardisWebsocketMgrMessage, TardisWebsocketResp, WsBroadcast, WsBroadcastContext, WsHooks};
 use tardis::TardisFuns;
 #[derive(Debug, Clone)]
 pub struct Page;
@@ -132,7 +132,7 @@ impl Page {
             ext: HashMap<String, String>,
         }
         impl WsHooks for Hooks {
-            async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq) -> Option<TardisWebsocketResp> {
+            async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq, _context: &WsBroadcastContext) -> Option<TardisWebsocketResp> {
                 let example_msg = TardisFuns::json.json_to_obj::<WebsocketExample>(req.msg).unwrap();
                 Some(TardisWebsocketResp {
                     msg: TardisFuns::json.obj_to_json(&TardisResult::Ok(format!("echo:{}, ext info:{}", example_msg.msg, self.ext.get("some_key").unwrap()))).unwrap(),
@@ -144,7 +144,7 @@ impl Page {
         let hooks = Hooks {
             ext: HashMap::from([("some_key".to_string(), "ext_value".to_string())]),
         };
-        ws_broadcast(vec![name.0], false, true, websocket, sender.clone(), hooks).await
+        WsBroadcast::new(sender.clone(), hooks, WsBroadcastContext::new(false, true)).run(vec![name.0], websocket).await
     }
 }
 

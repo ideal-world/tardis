@@ -16,7 +16,8 @@ use tardis::consts::IP_LOCALHOST;
 use tardis::web::web_server::{TardisWebServer, WebServerModule};
 use tardis::web::ws_client::TardisWebSocketMessageExt;
 use tardis::web::ws_processor::{
-    ws_broadcast, ws_echo, TardisWebsocketInstInfo, TardisWebsocketMessage, TardisWebsocketMgrMessage, TardisWebsocketReq, TardisWebsocketResp, WsHooks, WS_SYSTEM_EVENT_AVATAR_ADD, WS_SYSTEM_EVENT_AVATAR_DEL, WS_SYSTEM_EVENT_INFO
+    ws_echo, TardisWebsocketInstInfo, TardisWebsocketMessage, TardisWebsocketMgrMessage, TardisWebsocketReq, TardisWebsocketResp, WsBroadcast, WsBroadcastContext, WsHooks,
+    WS_SYSTEM_EVENT_AVATAR_ADD, WS_SYSTEM_EVENT_AVATAR_DEL, WS_SYSTEM_EVENT_INFO,
 };
 use tardis::TardisFuns;
 use tokio::sync::broadcast::Sender;
@@ -340,13 +341,12 @@ async fn test_dyn_avatar() -> TardisResult<()> {
 #[derive(Debug, Clone)]
 struct Api;
 
-
 pub struct FilterHook {
     service_name: &'static str,
-    expect: serde_json::Value
+    expect: serde_json::Value,
 }
 impl WsHooks for FilterHook {
-    async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq) -> Option<TardisWebsocketResp> {
+    async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq, _context: &WsBroadcastContext) -> Option<TardisWebsocketResp> {
         println!("service {} recv:{}:{}", self.service_name, req.from_avatar, req.msg);
         if req.msg == self.expect {
             return None;
@@ -360,7 +360,7 @@ impl WsHooks for FilterHook {
 }
 pub struct ErrorHook;
 impl WsHooks for ErrorHook {
-    async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq) -> Option<TardisWebsocketResp> {
+    async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq, _context: &WsBroadcastContext) -> Option<TardisWebsocketResp> {
         println!("service gerror recv:{}:{}", req.from_avatar, req.msg);
         None
     }
@@ -368,7 +368,7 @@ impl WsHooks for ErrorHook {
 
 pub struct PassThroughHook;
 impl WsHooks for PassThroughHook {
-    async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq) -> Option<TardisWebsocketResp> {
+    async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq, _context: &WsBroadcastContext) -> Option<TardisWebsocketResp> {
         Some(TardisWebsocketResp {
             msg: req.msg,
             to_avatars: req.to_avatars.unwrap_or_default(),
@@ -385,41 +385,29 @@ impl Api {
         }
         let sender = SENDERS.read().await.get(&group.0).unwrap().clone();
         if group.0 == "g1" {
-            ws_broadcast(
-                vec![name.0],
-                false,
-                true,
-                websocket,
+            WsBroadcast::new(
                 sender,
                 FilterHook {
                     service_name: "g1",
-                    expect: json! {"client_b send:hi again"}
-                }
+                    expect: json! {"client_b send:hi again"},
+                },
+                WsBroadcastContext::new(false, true),
             )
+            .run(vec![name.0], websocket)
             .await
         } else if group.0 == "g2" {
-            ws_broadcast(
-                vec![name.0],
-                false,
-                false,
-                websocket,
+            WsBroadcast::new(
                 sender,
                 FilterHook {
                     service_name: "g2",
-                    expect: json! {"client_b send:hi again"}
-                }
+                    expect: json! {"client_b send:hi again"},
+                },
+                WsBroadcastContext::new(false, false),
             )
+            .run(vec![name.0], websocket)
             .await
         } else if group.0 == "gerror" {
-            ws_broadcast(
-                vec![name.0],
-                false,
-                false,
-                websocket,
-                sender,
-                ErrorHook
-            )
-            .await
+            WsBroadcast::new(sender, ErrorHook, WsBroadcastContext::new(false, false)).run(vec![name.0], websocket).await
         } else {
             ws_echo(
                 name.0,
@@ -437,14 +425,6 @@ impl Api {
             SENDERS.write().await.insert("dyn".to_string(), tokio::sync::broadcast::channel::<TardisWebsocketMgrMessage>(100).0);
         }
         let sender = SENDERS.read().await.get("dyn").unwrap().clone();
-        ws_broadcast(
-            vec![name.0],
-            mgr.0,
-            true,
-            websocket,
-            sender,
-            PassThroughHook
-        )
-        .await
+        WsBroadcast::new(sender, PassThroughHook, WsBroadcastContext::new(mgr.0, true)).run(vec![name.0], websocket).await
     }
 }

@@ -1,9 +1,10 @@
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
+use std::pin::Pin;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
+use futures::Future;
 use futures_util::{SinkExt, StreamExt};
 use poem::web::websocket::{BoxWebSocketUpgraded, Message, WebSocket};
 use serde::{Deserialize, Serialize};
@@ -25,7 +26,6 @@ use crate::web::ws_client::TardisWSClient;
 use crate::web::ws_processor::ws_insts_mapping_avatars;
 // use crate::web::ws_processor::cluster_protocol::Avatar;
 use crate::{basic::result::TardisResult, TardisFuns};
-use async_trait::async_trait;
 
 pub const CLUSTER_NODE_WHOAMI: &str = "__cluster_node_who_am_i__";
 /// cluster ping event
@@ -35,14 +35,12 @@ pub const EVENT_STATUS: &str = "tardis/status";
 pub const CLUSTER_MESSAGE_CACHE_SIZE: usize = 10000;
 pub const WHOAMI_TIMEOUT: Duration = Duration::from_secs(30);
 
-type StaticCowStr = Cow<'static, str>;
-
 tardis_static! {
     pub async set local_socket_addr: SocketAddr;
     pub async set local_node_id: String;
     pub async set responser_dispatcher: mpsc::Sender<TardisClusterMessageResp>;
     pub(crate) cache_nodes: Arc<RwLock<HashMap<ClusterRemoteNodeKey, TardisClusterNodeRemote>>>;
-    pub(crate) subscribers: Arc<RwLock<HashMap<StaticCowStr, Box<dyn TardisClusterSubscriber>>>>;
+    pub(crate) subscribers: Arc<RwLock<HashMap<String, ClusterHandlerObj>>>;
 }
 
 /// clone the cache_nodes_info at current time
@@ -98,14 +96,31 @@ impl std::fmt::Display for ClusterRemoteNodeKey {
 
 pub type ClusterMessageId = String;
 
-#[async_trait]
 /// Cluster event subscriber trait, a subscriber object can be registered to the cluster event system and respond to the event
 ///
 /// # Register
 /// see [`subscribe`], [`subscribe_boxed`] and [`subscribe_if_not_exist`]
-pub trait TardisClusterSubscriber: Send + Sync + 'static {
-    fn event_name(&self) -> Cow<'static, str>;
-    async fn subscribe(&self, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>>;
+pub trait ClusterHandler: Send + Sync + 'static {
+    fn event_name(&self) -> String;
+    fn handle(self: Arc<Self>, message_req: TardisClusterMessageReq) -> impl Future<Output = TardisResult<Option<Value>>> + Send;
+}
+
+pub struct ClusterHandlerObj {
+    pub event_name: String,
+    pub handle: Box<dyn Fn(TardisClusterMessageReq) -> Pin<Box<dyn Future<Output = TardisResult<Option<Value>>> + Send>> + Send + Sync>,
+}
+impl ClusterHandlerObj {
+    pub fn new<H: ClusterHandler>(handler: H) -> Self {
+        let acred = Arc::new(handler);
+        Self {
+            event_name: acred.event_name(),
+            handle: Box::new(move |message_req| {
+                let cloned = acred.clone();
+                let fut = cloned.handle(message_req);
+                Box::pin(fut)
+            }),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -159,25 +174,24 @@ impl From<Arc<TardisWSClient>> for ClusterEventTarget {
 
 struct EventPing;
 
-#[async_trait]
-impl TardisClusterSubscriber for EventPing {
-    fn event_name(&self) -> Cow<'static, str> {
-        EVENT_PING.into()
+impl ClusterHandler for EventPing {
+    fn event_name(&self) -> String {
+        EVENT_PING.to_string()
     }
-    async fn subscribe(&self, _message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
+    async fn handle(self: Arc<Self>, _message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
         Ok(Some(serde_json::to_value(local_node_id().await).expect("spec always be a valid json value")))
     }
 }
 
 pub(crate) struct EventStatus;
-#[async_trait]
 
-impl TardisClusterSubscriber for EventStatus {
-    fn event_name(&self) -> Cow<'static, str> {
-        EVENT_STATUS.into()
+impl ClusterHandler for EventStatus {
+    fn event_name(&self) -> String {
+        EVENT_STATUS.to_string()
     }
-    async fn subscribe(&self, _message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
-        Ok(Some(serde_json::to_value(TardisStatus::fetch().await).expect("spec always be a valid json value")))
+
+    async fn handle(self: Arc<Self>, _message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
+        Ok(Some(serde_json::to_value(TardisStatus::fetch().await).expect("status always be a valid json value")))
     }
 }
 
@@ -317,25 +331,25 @@ async fn add_remote_node(socket_addr: SocketAddr) -> TardisResult<TardisClusterN
 }
 
 /// subscribe a boxed cluster event
-pub async fn subscribe_boxed(subscriber: Box<dyn TardisClusterSubscriber>) {
-    let event_name = subscriber.event_name();
+pub async fn subscribe_boxed(handler: ClusterHandlerObj) {
+    let event_name = handler.event_name.clone();
     info!("[Tardis.Cluster] [Server] subscribe event {event_name}");
-    subscribers().write().await.insert(event_name, subscriber);
+    subscribers().write().await.insert(event_name, handler);
 }
 
 /// subscribe a cluster event
-pub async fn subscribe<S: TardisClusterSubscriber>(subscriber: S) {
-    subscribe_boxed(Box::new(subscriber)).await;
+pub async fn subscribe<H: ClusterHandler>(handler: H) {
+    subscribe_boxed(ClusterHandlerObj::new(handler)).await;
 }
 
 /// subscribe a cluster event if not exist
-pub async fn subscribe_if_not_exist<S: TardisClusterSubscriber>(subscriber: S) {
+pub async fn subscribe_if_not_exist<H: ClusterHandler>(handler: H) {
     let mut wg = subscribers().write().await;
-    let event_name = subscriber.event_name();
+    let event_name = handler.event_name();
     #[allow(clippy::map_entry)]
     if !wg.contains_key(&event_name) {
         info!("[Tardis.Cluster] [Server] subscribe event {event_name}");
-        wg.insert(event_name, Box::new(subscriber));
+        wg.insert(event_name, ClusterHandlerObj::new(handler));
     }
 }
 
@@ -440,9 +454,9 @@ impl ClusterAPI {
                             trace!("[Tardis.Cluster] [Server] receive message {ws_message}");
                             match TardisFuns::json.str_to_obj::<TardisClusterMessageReq>(&ws_message) {
                                 Ok(message_req) => {
-                                    if let Some(subscriber) = subscribers().read().await.get(&Cow::Owned(message_req.event.to_string())) {
+                                    if let Some(subscriber) = subscribers().read().await.get(message_req.event.as_str()) {
                                         let msg_id = message_req.msg_id();
-                                        match subscriber.subscribe(message_req).await {
+                                        match (subscriber.handle)(message_req).await {
                                             Ok(Some(message_resp)) => {
                                                 if let Err(error) = socket
                                                     .send(Message::Text(
