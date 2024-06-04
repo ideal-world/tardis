@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::io::Read;
 
 use async_trait::async_trait;
 use s3::creds::Credentials;
