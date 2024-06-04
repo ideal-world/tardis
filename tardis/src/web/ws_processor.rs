@@ -1,5 +1,8 @@
 #[cfg(feature = "cluster")]
 pub mod cluster_protocol;
+// pub mod connection_avatar_router;
+use crate::basic::error::TardisError;
+use crate::basic::result::TardisResult;
 #[cfg(feature = "cluster")]
 use crate::cluster::cluster_hashmap::ClusterStaticHashMap;
 
@@ -96,35 +99,9 @@ where
         .boxed()
 }
 
-fn ws_send_to_channel<TX>(send_msg: TardisWebsocketMgrMessage, inner_sender: &TX)
-where
-    TX: WsBroadcastSender,
-{
-    inner_sender.send(send_msg);
-}
-
-pub fn ws_send_error_to_channel<TX>(req_message: &str, error_message: &str, msg_id: &str, from_avatar: &str, from_inst_id: &str, inner_sender: &TX)
-where
-    TX: WsBroadcastSender,
-{
-    let send_msg = TardisWebsocketMgrMessage {
-        msg_id: msg_id.to_string(),
-        msg: json!(error_message),
-        from_avatar: from_avatar.to_string(),
-        to_avatars: vec![from_avatar.to_string()],
-        event: Some(WS_SYSTEM_EVENT_ERROR.to_string()),
-        ignore_self: false,
-        ignore_avatars: vec![],
-        from_inst_id: from_inst_id.to_string(),
-        echo: true,
-    };
-    warn!("[Tardis.WebServer] WS message receive: {} by {:?} failed: {error_message}", req_message, from_avatar);
-    ws_send_to_channel(send_msg, inner_sender)
-}
-
 pub trait WsBroadcastSender: Send + Sync + 'static {
     fn subscribe(&self) -> tokio::sync::broadcast::Receiver<TardisWebsocketMgrMessage>;
-    fn send(&self, msg: TardisWebsocketMgrMessage);
+    fn send(&self, msg: TardisWebsocketMgrMessage) -> impl Future<Output = TardisResult<()>> + Send;
 }
 
 impl WsBroadcastSender for tokio::sync::broadcast::Sender<TardisWebsocketMgrMessage> {
@@ -132,339 +109,415 @@ impl WsBroadcastSender for tokio::sync::broadcast::Sender<TardisWebsocketMgrMess
         self.subscribe()
     }
 
-    fn send(&self, msg: TardisWebsocketMgrMessage) {
-        if let Err(err) = self.send(msg) {
-            let msg = err.0;
-            warn!(
-                "[Tardis.WebServer] WS message send to channel: {} to {:?} ignore {:?} failed",
-                msg.msg, msg.to_avatars, msg.ignore_avatars
-            );
+    async fn send(&self, msg: TardisWebsocketMgrMessage) -> TardisResult<()> {
+        let _ = self.send(msg).map_err(|_| TardisError::internal_error("tokio channel send error", ""))?;
+        Ok(())
+    }
+}
+
+pub trait WsHooks: Sync + Send + 'static {
+    fn on_process(&self, req: TardisWebsocketReq, context: &WsBroadcastContext) -> impl Future<Output = Option<TardisWebsocketResp>> + Send;
+    fn on_close(&self, message: Option<(CloseCode, String)>, _context: &WsBroadcastContext) -> impl Future<Output = ()> + Send {
+        if let Some((code, reason)) = message {
+            tracing::debug!("[Tardis.Ws] connection closed {code:?} for reason: {reason}");
+        }
+        async {}
+    }
+    fn on_fail(&self, id: String, error: TardisError, _context: &WsBroadcastContext) -> impl Future<Output = ()> + Send {
+        tracing::warn!("[Tardis.Ws] fail to send out message [{id}], reason: {error}");
+        async {}
+    }
+    fn on_success(&self, id: String, _context: &WsBroadcastContext) -> impl Future<Output = ()> + Send {
+        tracing::debug!("[Tardis.Ws] success to send out message [{id}]");
+        async {}
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct WsBroadcastContext {
+    pub inst_id: String,
+    pub mgr_node: bool,
+    pub subscribe_mode: bool,
+}
+
+impl WsBroadcastContext {
+    pub fn new(mgr_node: bool, subscribe_mode: bool) -> Self {
+        Self {
+            inst_id: TardisFuns::field.nanoid(),
+            mgr_node,
+            subscribe_mode,
         }
     }
 }
 
-#[tracing::instrument(skip(websocket, inner_sender, process_fun, close_fun))]
-pub async fn ws_broadcast<PF, PT, CF, CT>(
-    avatars: Vec<String>,
-    mgr_node: bool,
-    subscribe_mode: bool,
-    ext: HashMap<String, String>,
-    websocket: WebSocket,
-    inner_sender: impl WsBroadcastSender,
-    process_fun: PF,
-    close_fun: CF,
-) -> BoxWebSocketUpgraded
+pub struct WsBroadcast<S, H> {
+    inner_sender: Arc<S>,
+    hooks: Arc<H>,
+    context: Arc<WsBroadcastContext>,
+}
+
+impl<S, H> std::fmt::Debug for WsBroadcast<S, H> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WsBroadcast").field("context", &self.context).finish_non_exhaustive()
+    }
+}
+
+impl<S, H> WsBroadcast<S, H>
 where
-    PF: Fn(TardisWebsocketReq, HashMap<String, String>) -> PT + Send + Sync + 'static,
-    PT: Future<Output = Option<TardisWebsocketResp>> + Send + 'static,
-    CF: Fn(Option<(CloseCode, String)>, HashMap<String, String>) -> CT + Send + Sync + 'static,
-    CT: Future<Output = ()> + Send + 'static,
+    S: WsBroadcastSender,
+    H: WsHooks,
 {
-    websocket
-        .on_upgrade(move |socket| async move {
-            let mut inner_receiver = inner_sender.subscribe();
-            // corresponded to the current ws connection
-            let inst_id = TardisFuns::field.nanoid();
-            let current_receive_inst_id = inst_id.clone();
+    pub fn new(sender: S, hooks: H, context: WsBroadcastContext) -> Self {
+        Self {
+            inner_sender: Arc::new(sender),
+            hooks: Arc::new(hooks),
+            context: Arc::new(context),
+        }
+    }
+    pub fn send_to_channel(&self, send_msg: TardisWebsocketMgrMessage) {
+        let inner_sender = self.inner_sender.clone();
+        let hook = self.hooks.clone();
+        let context = self.context.clone();
+        let task = async move {
+            let id = send_msg.msg_id.clone();
+            if let Err(e) = inner_sender.send(send_msg).await {
+                warn!("[Tardis.Ws] send message encounter an error");
+                hook.on_fail(id, e, &context).await;
+            }
+        };
+        tokio::spawn(task);
+    }
+    pub fn send_error_to_channel(&self, error_message: &str, from_avatar: &str, msg_id: Option<String>) {
+        let send_msg = TardisWebsocketMgrMessage {
+            msg_id: msg_id.unwrap_or_default(),
+            msg: json!(error_message),
+            from_avatar: from_avatar.to_string(),
+            to_avatars: vec![from_avatar.to_string()],
+            event: Some(WS_SYSTEM_EVENT_ERROR.to_string()),
+            ignore_self: false,
+            ignore_avatars: vec![],
+            from_inst_id: self.context.inst_id.clone(),
+            echo: true,
+        };
+        warn!("[Tardis.WebServer] WS message receive by {:?} failed: {error_message}", from_avatar);
+        self.send_to_channel(send_msg);
+    }
+    pub async fn handle_req(&self, req_msg: TardisWebsocketReq) -> Result<(), String> {
+        let insts_in_send = ws_insts_mapping_avatars().clone();
+        let inst_id = self.context.inst_id.clone();
+        #[cfg(feature = "cluster")]
+        let Ok(Some(current_avatars)) = insts_in_send.get(inst_id.clone()).await
+        else {
+            warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
+            return Ok(());
+        };
+        #[cfg(not(feature = "cluster"))]
+        let Some(current_avatars) = insts_in_send.read().await.get(&inst_id).cloned() else {
+            warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
+            return Ok(());
+        };
+        let msg_id = req_msg.msg_id.as_ref().unwrap_or(&TardisFuns::field.nanoid()).to_string();
+        // Security check
+        if !self.context.mgr_node && req_msg.spec_inst_id.is_some() {
+            return Err("spec_inst_id can only be specified on the management node".to_string());
+        }
+        if !self.context.mgr_node && !current_avatars.contains(&req_msg.from_avatar) {
+            return Err("from_avatar is illegal".to_string());
+        }
+        // System process
+        if req_msg.event == Some(WS_SYSTEM_EVENT_INFO.to_string()) {
+            let msg = TardisFuns::json
+                .obj_to_json(&TardisWebsocketInstInfo {
+                    inst_id: self.context.inst_id.clone(),
+                    avatars: current_avatars.clone(),
+                    mgr_node: self.context.mgr_node,
+                    subscribe_mode: self.context.subscribe_mode,
+                })
+                .map_err(|error| {
+                    crate::log::error!(
+                        "[Tardis.WebServer] can't serialize {struct_name}, error: {error}",
+                        struct_name = stringify!(TardisWebsocketInstInfo)
+                    );
+                    "message illegal"
+                })?;
+            let send_msg = TardisWebsocketMgrMessage {
+                msg_id,
+                msg,
+                from_avatar: req_msg.from_avatar.clone(),
+                to_avatars: vec![req_msg.from_avatar],
+                event: req_msg.event,
+                ignore_self: false,
+                ignore_avatars: vec![],
+                from_inst_id: if let Some(spec_inst_id) = req_msg.spec_inst_id {
+                    spec_inst_id
+                } else {
+                    self.context.inst_id.clone()
+                },
+                echo: true,
+            };
+            self.send_to_channel(send_msg);
+            return Ok(());
+            // For security reasons, adding an avatar needs to be handled by the management node
+        } else if self.context.mgr_node && req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) {
+            let Some(new_avatar) = req_msg.msg.as_str() else {
+                return Err("msg is not a string".to_string());
+            };
+            let Some(ref spec_inst_id) = req_msg.spec_inst_id else {
+                return Err("spec_inst_id is not specified".to_string());
+            };
             #[cfg(feature = "cluster")]
-            let _ = ws_insts_mapping_avatars().insert(inst_id.clone(), avatars).await;
+            {
+                let Ok(Some(_)) = insts_in_send.get(spec_inst_id.clone()).await else {
+                    return Err("spec_inst_id not found".to_string());
+                };
+                trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", &msg_id, &new_avatar, &spec_inst_id);
+                let _ = insts_in_send.modify(spec_inst_id.clone(), "add_avatar", json!(new_avatar)).await;
+                return Ok(());
+            }
+            #[cfg(not(feature = "cluster"))]
+            {
+                let mut write_locked = insts_in_send.write().await;
+                let Some(inst) = write_locked.get_mut(spec_inst_id) else {
+                    return Err("spec_inst_id not found".to_string());
+                };
+                inst.push(new_avatar.to_string());
+                drop(write_locked);
+                trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", msg_id, new_avatar, spec_inst_id);
+            }
+        } else if req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) {
             #[cfg(feature = "cluster")]
-            let insts_in_send = ws_insts_mapping_avatars().clone();
+            {
+                let Ok(Some(_)) = insts_in_send.get(self.context.inst_id.clone()).await else {
+                    return Err("spec_inst_id not found".to_string());
+                };
+                let Some(del_avatar) = req_msg.msg.as_str() else {
+                    return Err("msg is not a string".to_string());
+                };
+                let _ = insts_in_send.modify(self.context.inst_id.clone(), "del_avatar", json!(del_avatar)).await;
+                trace!("[Tardis.WebServer] WS message delete avatar {},{} to {}", msg_id, del_avatar, &self.context.inst_id);
+            }
             #[cfg(not(feature = "cluster"))]
-            let _ = ws_insts_mapping_avatars().write().await.insert(inst_id.clone(), avatars);
-            #[cfg(not(feature = "cluster"))]
-            let insts_in_send = ws_insts_mapping_avatars().clone();
-            let (mut ws_sink, mut ws_stream) = socket.split();
-            let ws_closed = tokio_util::sync::CancellationToken::new();
-            let ws_closed_notifier = ws_closed.clone();
-            debug!("[Tardis.WebServer] WS new connection {inst_id}");
-            tokio::spawn(async move {
-                // message inbound
-                while let Some(Ok(message)) = ws_stream.next().await {
-                    match message {
-                        Message::Text(text) => {
-                            #[cfg(feature = "cluster")]
-                            let Ok(Some(current_avatars)) = insts_in_send.get(inst_id.clone()).await
-                            else {
-                                warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
-                                continue;
-                            };
-                            #[cfg(not(feature = "cluster"))]
-                            let Some(current_avatars) = insts_in_send.read().await.get(&inst_id).cloned() else {
-                                warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
-                                continue;
-                            };
-                            trace!(
-                                "[Tardis.WebServer] WS message receive text: {} by {:?} {}",
-                                text,
-                                current_avatars,
-                                if mgr_node { "[MGR]" } else { "" }
-                            );
-                            let Some(avatar_self) = current_avatars.first().cloned() else {
-                                warn!("[Tardis.WebServer] current_avatars is empty");
-                                continue;
-                            };
-                            match TardisFuns::json.str_to_obj::<TardisWebsocketReq>(&text) {
-                                Err(_) => {
-                                    ws_send_error_to_channel(&text, "message illegal", "", &avatar_self, &inst_id, &inner_sender);
+            {
+                let Some(del_avatar) = req_msg.msg.as_str() else {
+                    return Err("msg is not a string".to_string());
+                };
+                let mut write_locked = insts_in_send.write().await;
+                let Some(inst) = write_locked.get_mut(&inst_id) else {
+                    return Err("spec_inst_id not found".to_string());
+                };
+                inst.retain(|value| *value != del_avatar);
+                drop(write_locked);
+                trace!("[Tardis.WebServer] WS message delete avatar {},{} to {}", msg_id, del_avatar, &inst_id);
+            }
+            return Ok(());
+        }
+        if let Some(resp_msg) = self.hooks.on_process(req_msg.clone(), &self.context).await {
+            trace!(
+                "[Tardis.WebServer] WS message send to channel: {},{} to {:?} ignore {:?}",
+                msg_id,
+                resp_msg.msg,
+                resp_msg.to_avatars,
+                resp_msg.ignore_avatars
+            );
+            let send_msg = TardisWebsocketMgrMessage {
+                msg_id,
+                msg: resp_msg.msg,
+                from_avatar: req_msg.from_avatar,
+                to_avatars: resp_msg.to_avatars,
+                event: req_msg.event,
+                ignore_self: req_msg.ignore_self.unwrap_or(true),
+                ignore_avatars: resp_msg.ignore_avatars,
+                from_inst_id: if let Some(spec_inst_id) = req_msg.spec_inst_id {
+                    spec_inst_id
+                } else {
+                    self.context.inst_id.clone()
+                },
+                echo: false,
+            };
+            self.send_to_channel(send_msg);
+        };
+        Ok(())
+    }
+    #[tracing::instrument(skip(websocket, self))]
+    pub async fn run(self, avatars: Vec<String>, websocket: WebSocket) -> BoxWebSocketUpgraded {
+        websocket
+            .on_upgrade(move |socket| async move {
+                let mut inner_receiver = self.inner_sender.subscribe();
+                // corresponded to the current ws connection
+                let inst_id = self.context.inst_id.clone();
+                let current_receive_inst_id = inst_id.clone();
+                #[cfg(feature = "cluster")]
+                let _ = ws_insts_mapping_avatars().insert(inst_id.clone(), avatars).await;
+                #[cfg(feature = "cluster")]
+                let insts_in_send = ws_insts_mapping_avatars().clone();
+                #[cfg(not(feature = "cluster"))]
+                let _ = ws_insts_mapping_avatars().write().await.insert(inst_id.clone(), avatars);
+                #[cfg(not(feature = "cluster"))]
+                let insts_in_send = ws_insts_mapping_avatars().clone();
+                let (mut ws_sink, mut ws_stream) = socket.split();
+                let ws_closed = tokio_util::sync::CancellationToken::new();
+                let ws_closed_notifier = ws_closed.clone();
+                let context = self.context.clone();
+                debug!("[Tardis.WebServer] WS new connection {inst_id}");
+                tokio::spawn(async move {
+                    // message inbound
+                    while let Some(Ok(message)) = ws_stream.next().await {
+                        match message {
+                            Message::Text(text) => {
+                                #[cfg(feature = "cluster")]
+                                let Ok(Some(current_avatars)) = insts_in_send.get(inst_id.clone()).await
+                                else {
+                                    warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
                                     continue;
-                                }
-                                Ok(req_msg) => {
-                                    let msg_id = req_msg.msg_id.as_ref().unwrap_or(&TardisFuns::field.nanoid()).to_string();
-                                    // Security check
-                                    if !mgr_node && req_msg.spec_inst_id.is_some() {
-                                        ws_send_error_to_channel(
-                                            &text,
-                                            "spec_inst_id can only be specified on the management node",
-                                            &msg_id,
-                                            &avatar_self,
-                                            &inst_id,
-                                            &inner_sender,
-                                        );
+                                };
+                                #[cfg(not(feature = "cluster"))]
+                                let Some(current_avatars) = insts_in_send.read().await.get(&inst_id).cloned() else {
+                                    warn!("[Tardis.WebServer] insts_in_send of inst_id {inst_id} not found");
+                                    continue;
+                                };
+                                trace!(
+                                    "[Tardis.WebServer] WS message receive text: {} by {:?} {}",
+                                    text,
+                                    current_avatars,
+                                    if self.context.mgr_node { "[MGR]" } else { "" }
+                                );
+                                let Some(avatar_self) = current_avatars.first().cloned() else {
+                                    warn!("[Tardis.WebServer] current_avatars is empty");
+                                    continue;
+                                };
+                                match TardisFuns::json.str_to_obj::<TardisWebsocketReq>(&text) {
+                                    Err(_) => {
+                                        self.send_error_to_channel("message illegal", &avatar_self, None);
                                         continue;
                                     }
-                                    if !mgr_node && !current_avatars.contains(&req_msg.from_avatar) {
-                                        ws_send_error_to_channel(&text, "from_avatar is illegal", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                        continue;
+                                    Ok(req_msg) => {
+                                        let msg_id = req_msg.msg_id.clone();
+                                        if let Err(e) = self.handle_req(req_msg).await {
+                                            self.send_error_to_channel(&e, &avatar_self, msg_id);
+                                        }
                                     }
-                                    // System process
-                                    if req_msg.event == Some(WS_SYSTEM_EVENT_INFO.to_string()) {
-                                        let Ok(msg) = TardisFuns::json
-                                            .obj_to_json(&TardisWebsocketInstInfo {
-                                                inst_id: inst_id.clone(),
-                                                avatars: current_avatars,
-                                                mgr_node,
-                                                subscribe_mode,
-                                            })
-                                            .map_err(|error| {
-                                                crate::log::error!(
-                                                    "[Tardis.WebServer] can't serialize {struct_name}, error: {error}",
-                                                    struct_name = stringify!(TardisWebsocketInstInfo)
-                                                );
-                                                ws_send_error_to_channel(&text, "message illegal", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                            })
-                                        else {
-                                            continue;
-                                        };
-                                        let send_msg = TardisWebsocketMgrMessage {
-                                            msg_id,
-                                            msg,
-                                            from_avatar: req_msg.from_avatar.clone(),
-                                            to_avatars: vec![req_msg.from_avatar],
-                                            event: req_msg.event,
-                                            ignore_self: false,
-                                            ignore_avatars: vec![],
-                                            from_inst_id: if let Some(spec_inst_id) = req_msg.spec_inst_id { spec_inst_id } else { inst_id.clone() },
-                                            echo: true,
-                                        };
-                                        ws_send_to_channel(send_msg, &inner_sender);
-                                        continue;
-                                        // For security reasons, adding an avatar needs to be handled by the management node
-                                    } else if mgr_node && req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) {
-                                        let Some(new_avatar) = req_msg.msg.as_str() else {
-                                            ws_send_error_to_channel(&text, "msg is not a string", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                            continue;
-                                        };
-                                        let Some(ref spec_inst_id) = req_msg.spec_inst_id else {
-                                            ws_send_error_to_channel(&text, "spec_inst_id is not specified", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                            continue;
-                                        };
-                                        #[cfg(feature = "cluster")]
-                                        {
-                                            let Ok(Some(_)) = insts_in_send.get(spec_inst_id.clone()).await else {
-                                                ws_send_error_to_channel(&text, "spec_inst_id not found", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                                continue;
-                                            };
-                                            trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", &msg_id, &new_avatar, &spec_inst_id);
-                                            let _ = insts_in_send.modify(spec_inst_id.clone(), "add_avatar", json!(new_avatar)).await;
-                                            continue;
-                                        }
-                                        #[cfg(not(feature = "cluster"))]
-                                        {
-                                            let mut write_locked = insts_in_send.write().await;
-                                            let Some(inst) = write_locked.get_mut(spec_inst_id) else {
-                                                ws_send_error_to_channel(&text, "spec_inst_id not found", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                                continue;
-                                            };
-                                            inst.push(new_avatar.to_string());
-                                            drop(write_locked);
-                                            trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", msg_id, new_avatar, spec_inst_id);
-                                        }
-                                    } else if req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) {
-                                        #[cfg(feature = "cluster")]
-                                        {
-                                            let Ok(Some(_)) = insts_in_send.get(inst_id.clone()).await else {
-                                                ws_send_error_to_channel(&text, "spec_inst_id not found", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                                continue;
-                                            };
-                                            let Some(del_avatar) = req_msg.msg.as_str() else {
-                                                ws_send_error_to_channel(&text, "msg is not a string", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                                continue;
-                                            };
-                                            let _ = insts_in_send.modify(inst_id.clone(), "del_avatar", json!(del_avatar)).await;
-                                            trace!("[Tardis.WebServer] WS message delete avatar {},{} to {}", msg_id, del_avatar, &inst_id);
-                                        }
-                                        #[cfg(not(feature = "cluster"))]
-                                        {
-                                            let Some(del_avatar) = req_msg.msg.as_str() else {
-                                                ws_send_error_to_channel(&text, "msg is not a string", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                                continue;
-                                            };
-                                            let mut write_locked = insts_in_send.write().await;
-                                            let Some(inst) = write_locked.get_mut(&inst_id) else {
-                                                ws_send_error_to_channel(&text, "spec_inst_id not found", &msg_id, &avatar_self, &inst_id, &inner_sender);
-                                                continue;
-                                            };
-                                            inst.retain(|value| *value != del_avatar);
-                                            drop(write_locked);
-                                            trace!("[Tardis.WebServer] WS message delete avatar {},{} to {}", msg_id, del_avatar, &inst_id);
-                                        }
-                                        continue;
-                                    }
-                                    if let Some(resp_msg) = process_fun(req_msg.clone(), ext.clone()).await {
-                                        trace!(
-                                            "[Tardis.WebServer] WS message send to channel: {},{} to {:?} ignore {:?}",
-                                            msg_id,
-                                            resp_msg.msg,
-                                            resp_msg.to_avatars,
-                                            resp_msg.ignore_avatars
-                                        );
-                                        let send_msg = TardisWebsocketMgrMessage {
-                                            msg_id,
-                                            msg: resp_msg.msg,
-                                            from_avatar: req_msg.from_avatar,
-                                            to_avatars: resp_msg.to_avatars,
-                                            event: req_msg.event,
-                                            ignore_self: req_msg.ignore_self.unwrap_or(true),
-                                            ignore_avatars: resp_msg.ignore_avatars,
-                                            from_inst_id: if let Some(spec_inst_id) = req_msg.spec_inst_id { spec_inst_id } else { inst_id.clone() },
-                                            echo: false,
-                                        };
-                                        ws_send_to_channel(send_msg, &inner_sender);
-                                    };
                                 }
                             }
-                        }
-                        Message::Close(msg) => {
-                            trace!("[Tardis.WebServer] WS message receive: close {:?}", msg);
-                            close_fun(msg, ext.clone()).await
-                        }
-                        Message::Binary(_) => {
-                            warn!("[Tardis.WebServer] WS message receive: the binary type is not implemented");
-                        }
-                        Message::Ping(_) => {
-                            warn!("[Tardis.WebServer] WS message receive: the ping type is not implemented");
-                        }
-                        Message::Pong(_) => {
-                            warn!("[Tardis.WebServer] WS message receive: the pong type is not implemented");
-                        }
-                    }
-                }
-                ws_closed_notifier.cancel();
-            });
-
-            let reply_once_guard = REPLY_ONCE_GUARD.clone();
-
-            tokio::spawn(async move {
-                debug!("[Tardis.WebServer] WS tx side: new connection {current_receive_inst_id}");
-                'poll_next_message: loop {
-                    let mgr_message = tokio::select! {
-                        _ = ws_closed.cancelled() => {
-                            trace!("[Tardis.WebServer] WS message receive: connection closed");
-                            return
-                        }
-                        next = inner_receiver.recv() => {
-                            match next {
-                                Ok(message) => message,
-                                Err(e) => {
-                                    warn!("[Tardis.WebServer] WS message receive from channel failed: {e}");
-                                    return
-                                }
+                            Message::Close(msg) => {
+                                trace!("[Tardis.WebServer] WS message receive: close {:?}", msg);
+                                self.hooks.on_close(msg, &self.context).await
+                            }
+                            Message::Binary(_) => {
+                                warn!("[Tardis.WebServer] WS message receive: the binary type is not implemented");
+                            }
+                            Message::Ping(_) => {
+                                warn!("[Tardis.WebServer] WS message receive: the ping type is not implemented");
+                            }
+                            Message::Pong(_) => {
+                                warn!("[Tardis.WebServer] WS message receive: the pong type is not implemented");
                             }
                         }
-                    };
-
-                    tracing::trace!(inst_id = current_receive_inst_id, "[Tardis.WebServer] inner receiver receive message {mgr_message:?}");
-
-                    #[cfg(feature = "cluster")]
-                    let Ok(Some(current_avatars)) = ({ ws_insts_mapping_avatars().get(current_receive_inst_id.clone()).await }) else {
-                        warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} not found");
-                        continue;
-                    };
-                    #[cfg(not(feature = "cluster"))]
-                    let Some(current_avatars) = ({ ws_insts_mapping_avatars().read().await.get(&current_receive_inst_id).cloned() }) else {
-                        warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} not found");
-                        continue;
-                    };
-                    // only self
-                    if mgr_message.echo && current_receive_inst_id != mgr_message.from_inst_id {
-                        continue;
                     }
-                    // except self
-                    if mgr_message.ignore_self && current_receive_inst_id == mgr_message.from_inst_id {
-                        continue;
-                    }
+                    ws_closed_notifier.cancel();
+                });
 
-                    tracing::trace!("[Tardis.WebServer] inner receiver receive message {mgr_message:?}");
+                let reply_once_guard = REPLY_ONCE_GUARD.clone();
 
-                    if
-                    // send to all
-                    mgr_message.to_avatars.is_empty() && mgr_message.ignore_avatars.is_empty()
+                tokio::spawn(async move {
+                    debug!("[Tardis.WebServer] WS tx side: new connection {current_receive_inst_id}");
+                    'poll_next_message: loop {
+                        let mgr_message = tokio::select! {
+                            _ = ws_closed.cancelled() => {
+                                trace!("[Tardis.WebServer] WS message receive: connection closed");
+                                return
+                            }
+                            next = inner_receiver.recv() => {
+                                match next {
+                                    Ok(message) => message,
+                                    Err(e) => {
+                                        warn!("[Tardis.WebServer] WS message receive from channel failed: {e}");
+                                        return
+                                    }
+                                }
+                            }
+                        };
+
+                        tracing::trace!(inst_id = current_receive_inst_id, "[Tardis.WebServer] inner receiver receive message {mgr_message:?}");
+
+                        #[cfg(feature = "cluster")]
+                        let Ok(Some(current_avatars)) = ({ ws_insts_mapping_avatars().get(current_receive_inst_id.clone()).await }) else {
+                            warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} not found");
+                            continue;
+                        };
+                        #[cfg(not(feature = "cluster"))]
+                        let Some(current_avatars) = ({ ws_insts_mapping_avatars().read().await.get(&current_receive_inst_id).cloned() }) else {
+                            warn!("[Tardis.WebServer] Instance id {current_receive_inst_id} not found");
+                            continue;
+                        };
+                        // only self
+                        if mgr_message.echo && current_receive_inst_id != mgr_message.from_inst_id {
+                            continue;
+                        }
+                        // except self
+                        if mgr_message.ignore_self && current_receive_inst_id == mgr_message.from_inst_id {
+                            continue;
+                        }
+
+                        tracing::trace!("[Tardis.WebServer] inner receiver receive message {mgr_message:?}");
+                        if
+                        // send to all
+                        mgr_message.to_avatars.is_empty() && mgr_message.ignore_avatars.is_empty()
                              // send to targets that match the current avatars
                            || !mgr_message.to_avatars.is_empty() && mgr_message.to_avatars.iter().any(|avatar| current_avatars.contains(avatar))
                         // send to targets that NOT match the current avatars
                         || !mgr_message.ignore_avatars.is_empty() && mgr_message.ignore_avatars.iter().all(|avatar| current_avatars.contains(avatar))
-                    {
-                        let Ok(resp_msg) = (if mgr_node {
-                            TardisFuns::json.obj_to_string(&mgr_message)
-                        } else {
-                            TardisFuns::json.obj_to_string(&TardisWebsocketMessage {
-                                msg_id: mgr_message.msg_id.clone(),
-                                msg: mgr_message.msg.clone(),
-                                event: mgr_message.event.clone(),
-                            })
-                        }) else {
-                            warn!("[Tardis.WebServer] Cannot serialize {:?} into json", mgr_message);
-                            continue;
-                        };
-                        let cache_id = if !subscribe_mode {
-                            let id = format!("{}{:?}", mgr_message.msg_id, &current_avatars);
-                            'poll_sending_state: loop {
-                                let mut lock = reply_once_guard.lock().await;
-                                match lock.get(&id) {
-                                    Some(MessageSendState::Success) => continue 'poll_next_message,
-                                    Some(MessageSendState::Sending) => tokio::task::yield_now().await,
-                                    _ => {
-                                        lock.put(id.clone(), MessageSendState::Sending);
-                                        break 'poll_sending_state;
+                        {
+                            let Ok(resp_msg) = (if context.mgr_node {
+                                TardisFuns::json.obj_to_string(&mgr_message)
+                            } else {
+                                TardisFuns::json.obj_to_string(&TardisWebsocketMessage {
+                                    msg_id: mgr_message.msg_id.clone(),
+                                    msg: mgr_message.msg.clone(),
+                                    event: mgr_message.event.clone(),
+                                })
+                            }) else {
+                                warn!("[Tardis.WebServer] Cannot serialize {:?} into json", mgr_message);
+                                continue;
+                            };
+                            let cache_id = if !context.subscribe_mode {
+                                let id = format!("{}{:?}", mgr_message.msg_id, &current_avatars);
+                                'poll_sending_state: loop {
+                                    let mut lock = reply_once_guard.lock().await;
+                                    match lock.get(&id) {
+                                        Some(MessageSendState::Success) => continue 'poll_next_message,
+                                        Some(MessageSendState::Sending) => tokio::task::yield_now().await,
+                                        _ => {
+                                            lock.put(id.clone(), MessageSendState::Sending);
+                                            break 'poll_sending_state;
+                                        }
                                     }
                                 }
-                            }
-                            Some(id)
-                        } else {
-                            None
-                        };
-                        if let Err(error) = ws_sink.send(Message::Text(resp_msg)).await {
-                            if let Some(cache_id) = cache_id {
+                                Some(id)
+                            } else {
+                                None
+                            };
+                            if let Err(error) = ws_sink.send(Message::Text(resp_msg)).await {
+                                if let Some(cache_id) = cache_id {
+                                    let mut lock = reply_once_guard.lock().await;
+                                    lock.put(cache_id, MessageSendState::Fail);
+                                }
+                                if error.to_string() != "Connection closed normally" {
+                                    warn!(
+                                        "[Tardis.WebServer] WS message send: {}:{} to {:?} ignore {:?} failed: {error}",
+                                        mgr_message.msg_id, mgr_message.msg, mgr_message.to_avatars, mgr_message.ignore_avatars
+                                    );
+                                }
+                                break;
+                            } else if let Some(cache_id) = cache_id {
                                 let mut lock = reply_once_guard.lock().await;
-                                lock.put(cache_id, MessageSendState::Fail);
+                                lock.put(cache_id, MessageSendState::Success);
                             }
-                            if error.to_string() != "Connection closed normally" {
-                                warn!(
-                                    "[Tardis.WebServer] WS message send: {}:{} to {:?} ignore {:?} failed: {error}",
-                                    mgr_message.msg_id, mgr_message.msg, mgr_message.to_avatars, mgr_message.ignore_avatars
-                                );
-                            }
-                            break;
-                        } else if let Some(cache_id) = cache_id {
-                            let mut lock = reply_once_guard.lock().await;
-                            lock.put(cache_id, MessageSendState::Success);
                         }
                     }
-                }
-            });
-        })
-        .boxed()
+                });
+            })
+            .boxed()
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]

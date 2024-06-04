@@ -7,7 +7,7 @@ use tardis::web::poem::web::websocket::BoxWebSocketUpgraded;
 use tardis::web::poem::web::{websocket::WebSocket, Data, Path};
 use tardis::web::poem_openapi::payload::Html;
 use tardis::web::poem_openapi::{self};
-use tardis::web::ws_processor::{ws_broadcast, ws_echo, TardisWebsocketMgrMessage, TardisWebsocketResp};
+use tardis::web::ws_processor::{ws_echo, TardisWebsocketMgrMessage, TardisWebsocketResp, WsBroadcast, WsBroadcastContext, WsHooks};
 use tardis::TardisFuns;
 #[derive(Debug, Clone)]
 pub struct Page;
@@ -128,24 +128,23 @@ impl Page {
 
     #[oai(path = "/ws/broadcast/:name", method = "get")]
     async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<TardisWebsocketMgrMessage>>) -> BoxWebSocketUpgraded {
-        ws_broadcast(
-            vec![name.0],
-            false,
-            true,
-            HashMap::from([("some_key".to_string(), "ext_value".to_string())]),
-            websocket,
-            sender.clone(),
-            |req_msg, ext| async move {
-                let example_msg = TardisFuns::json.json_to_obj::<WebsocketExample>(req_msg.msg).unwrap();
+        pub struct Hooks {
+            ext: HashMap<String, String>,
+        }
+        impl WsHooks for Hooks {
+            async fn on_process(&self, req: tardis::web::ws_processor::TardisWebsocketReq, _context: &WsBroadcastContext) -> Option<TardisWebsocketResp> {
+                let example_msg = TardisFuns::json.json_to_obj::<WebsocketExample>(req.msg).unwrap();
                 Some(TardisWebsocketResp {
-                    msg: TardisFuns::json.obj_to_json(&TardisResult::Ok(format!("echo:{}, ext info:{}", example_msg.msg, ext.get("some_key").unwrap()))).unwrap(),
+                    msg: TardisFuns::json.obj_to_json(&TardisResult::Ok(format!("echo:{}, ext info:{}", example_msg.msg, self.ext.get("some_key").unwrap()))).unwrap(),
                     to_avatars: if example_msg.to.is_empty() { vec![] } else { vec![example_msg.to] },
                     ignore_avatars: vec![],
                 })
-            },
-            |_, _| async move {},
-        )
-        .await
+            }
+        }
+        let hooks = Hooks {
+            ext: HashMap::from([("some_key".to_string(), "ext_value".to_string())]),
+        };
+        WsBroadcast::new(sender.clone(), hooks, WsBroadcastContext::new(false, true)).run(vec![name.0], websocket).await
     }
 }
 

@@ -200,9 +200,9 @@ impl<_MW, _D> WebServerGrpcModule<_MW, _D> {
 #[cfg(feature = "web-server-grpc")]
 impl<MW, D> WebServerGrpcModule<MW, D> {
     /// with new grpc service T, T must be a [`poem_grpc::Service`]
-    pub fn with_grpc_service<T: Clone>(mut self, service: T) -> Self
+    pub fn with_grpc_service<T>(mut self, service: T) -> Self
     where
-        T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + Send + Sync + 'static,
+        T: poem::IntoEndpoint<Endpoint = BoxEndpoint<'static, poem::Response>> + poem_grpc::Service + Send + Sync + 'static + Clone,
     {
         let previous_mapper = self.grpc_router_mapper;
         self.grpc_router_mapper = Arc::new(move |route| previous_mapper(route).add_service(service.clone()));
