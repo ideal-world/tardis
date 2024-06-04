@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Deref;
+use std::io::Read;
 
 use async_trait::async_trait;
 use s3::creds::Credentials;
@@ -103,6 +104,11 @@ impl TardisOSClient {
         self.get_client().object_delete(path, bucket_name).await
     }
 
+    pub async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()> {
+        trace!("[Tardis.OSClient] Copy object from {} to {}", from, to);
+        self.get_client().object_copy(from, to, bucket_name).await
+    }
+
     pub async fn object_multipart_uploads(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.OSClient] Multipart uploads object {}", path);
         self.get_client().object_multipart_uploads(path, content, content_type, bucket_name).await
@@ -150,6 +156,8 @@ trait TardisOSOperations {
     async fn object_get(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<Vec<u8>>;
 
     async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()>;
+
+    async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()>;
 
     async fn object_multipart_uploads(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()>;
 
@@ -263,6 +271,12 @@ impl TardisOSOperations for TardisOSS3Client {
                 "-1-tardis-os-delete-object-error",
             ))
         }
+    }
+
+    async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()> {
+        let bucket = self.get_bucket(bucket_name)?;
+        bucket.copy_object_internal(from, to).await?;
+        Ok(())
     }
 
     async fn object_multipart_uploads(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
