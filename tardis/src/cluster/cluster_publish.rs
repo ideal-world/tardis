@@ -139,9 +139,17 @@ pub async fn publish_event_with_listener<S: Listener>(
     trace!("[Tardis.Cluster] [Client] publish event {event} , message {message} , to {target_debug}");
 
     let nodes: Vec<_> = match target {
-        ClusterEventTarget::Broadcast => {
-            cache_nodes().read().await.iter().filter(|(key, _)| matches!(key, ClusterRemoteNodeKey::NodeId(_))).map(|(_, val)| val.client.clone()).collect()
-        }
+        ClusterEventTarget::Broadcast => cache_nodes()
+            .read()
+            .await
+            .iter()
+            .filter(|(key, _)| match key {
+                // just filter out my self
+                ClusterRemoteNodeKey::NodeId(peer_node_id) => peer_node_id != &node_id,
+                _ => false,
+            })
+            .map(|(_, val)| val.client.clone())
+            .collect(),
         ClusterEventTarget::Single(ref addr) => cache_nodes().read().await.get(addr).map(|node| node.client.clone()).into_iter().collect(),
         ClusterEventTarget::Multi(ref multi) => {
             let cache_nodes = cache_nodes().read().await;

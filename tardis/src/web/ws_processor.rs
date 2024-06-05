@@ -458,7 +458,7 @@ where
                             continue;
                         }
 
-                        tracing::trace!("[Tardis.WebServer] inner receiver receive message {mgr_message:?}");
+                        tracing::trace!("[Tardis.WebServer] inner receiver receive message {mgr_message:?}, current_avatars: {current_avatars:?}");
                         if
                         // send to all
                         mgr_message.to_avatars.is_empty() && mgr_message.ignore_avatars.is_empty()

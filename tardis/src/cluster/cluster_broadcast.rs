@@ -26,8 +26,13 @@ where
         format!("tardis/broadcast/{}", self.ident)
     }
     pub async fn send(&self, message: T) -> TardisResult<()> {
-        if let Err(result) = self.local_broadcast_channel.send(message.clone()) {
-            tracing::error!("[Tardis.Cluster] broadcast channel send error: {:?}", result);
+        match self.local_broadcast_channel.send(message.clone()) {
+            Ok(size) => {
+                tracing::trace!("[Tardis.Cluster] broadcast channel send to {size} local subscribers");
+            }
+            Err(result) => {
+                tracing::error!("[Tardis.Cluster] broadcast channel send error: {:?}", result);
+            }
         }
         let event = format!("tardis/broadcast/{}", self.ident);
         let json = serde_json::to_value(message).map_err(|e| TardisError::internal_error(&e.to_string(), ""))?;

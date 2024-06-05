@@ -207,6 +207,7 @@ where
                 handler(v, &modify);
             }
         }
+        drop(wg);
         if self.is_cluster() {
             let event = CshmEvent::<K, V>::Modify { key, mapper, modify };
             let json = TardisJson.obj_to_json(&event)?;
