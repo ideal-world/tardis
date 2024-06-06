@@ -18,7 +18,7 @@ async fn test_os_client() -> TardisResult<()> {
 
         TardisFuns::os().bucket_create_simple(bucket_name, true).await?;
         let resp = TardisFuns::os().bucket_create_simple(bucket_name, true).await;
-        assert_eq!(resp.err().unwrap().code, "-1");
+        assert_eq!(resp.err().unwrap().code, "409");
 
         TardisFuns::os().object_create("test/test.txt", "I want to go to S3 测试".as_bytes(), None, Some(bucket_name)).await?;
 
@@ -30,6 +30,8 @@ async fn test_os_client() -> TardisResult<()> {
         assert_eq!(String::from_utf8(data).unwrap(), "I want to go to S3 测试");
 
         info!("object_get_url = {}", TardisFuns::os().object_get_url("test/test.txt", 60, Some(bucket_name)).await?);
+
+        info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test1.txt", 60, Some(bucket_name)).await?);
 
         //info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test2.txt", 1, Some(bucket_name.clone()))?);
         //
