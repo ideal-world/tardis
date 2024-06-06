@@ -392,7 +392,7 @@ impl From<s3::error::S3Error> for TardisError {
     fn from(error: s3::error::S3Error) -> Self {
         error!("[Tardis.OSClient] Error: {}", error.to_string());
         match error {
-            s3::error::S3Error::Http(e) => TardisError::custom(ERROR_DEFAULT_CODE, &format!("[Tardis.OSClient] Error: {}", e), "-1-tardis-os-error"),
+            s3::error::S3Error::HttpFailWithBody(code, msg) => TardisError::custom(&code.to_string(), &format!("[Tardis.OSClient] Error: {}", msg), "-1-tardis-os-error"),
             _ => TardisError::custom(ERROR_DEFAULT_CODE, &format!("[Tardis.OSClient] Error: {error:?}"), "-1-tardis-os-error"),
         }
     }
