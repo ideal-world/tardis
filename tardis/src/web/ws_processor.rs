@@ -404,15 +404,7 @@ where
                                 trace!("[Tardis.WebServer] WS message receive: close {:?}", msg);
                                 self.hooks.on_close(msg, &self.context).await
                             }
-                            Message::Binary(_) => {
-                                warn!("[Tardis.WebServer] WS message receive: the binary type is not implemented");
-                            }
-                            Message::Ping(_) => {
-                                warn!("[Tardis.WebServer] WS message receive: the ping type is not implemented");
-                            }
-                            Message::Pong(_) => {
-                                warn!("[Tardis.WebServer] WS message receive: the pong type is not implemented");
-                            }
+                            _ => {}
                         }
                     }
                     ws_closed_notifier.cancel();
@@ -422,11 +414,20 @@ where
 
                 tokio::spawn(async move {
                     debug!("[Tardis.WebServer] WS tx side: new connection {current_receive_inst_id}");
+                    let mut hb = tokio::time::interval(tokio::time::Duration::from_secs(1));
                     'poll_next_message: loop {
                         let mgr_message = tokio::select! {
                             _ = ws_closed.cancelled() => {
                                 trace!("[Tardis.WebServer] WS message receive: connection closed");
                                 return
+                            }
+                            _ = hb.tick() => {
+                                if let Err(error) = ws_sink.send(Message::ping([])).await {
+                                    warn!("[Tardis.WebServer] WS fail to ping client: {error}");
+                                    return;
+                                } else {
+                                    continue 'poll_next_message;
+                                }
                             }
                             next = inner_receiver.recv() => {
                                 match next {
