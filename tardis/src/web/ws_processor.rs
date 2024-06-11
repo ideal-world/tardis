@@ -183,6 +183,8 @@ where
             if let Err(e) = inner_sender.send(send_msg).await {
                 warn!("[Tardis.Ws] send message encounter an error");
                 hook.on_fail(id, e, &context).await;
+            } else {
+                hook.on_success(id, &context).await;
             }
         };
         tokio::spawn(task);
