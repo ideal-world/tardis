@@ -98,6 +98,11 @@ impl TardisOSClient {
         self.get_client().object_get(path, bucket_name).await
     }
 
+    pub async fn object_exist(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<bool> {
+        trace!("[Tardis.OSClient] Head object {}", path);
+        self.get_client().object_exist(path, bucket_name).await
+    }
+    
     pub async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.OSClient] Deleting object {}", path);
         self.get_client().object_delete(path, bucket_name).await
@@ -153,6 +158,8 @@ trait TardisOSOperations {
     async fn object_create(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()>;
 
     async fn object_get(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<Vec<u8>>;
+
+    async fn object_exist(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<bool>;
 
     async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()>;
 
@@ -247,6 +254,26 @@ impl TardisOSOperations for TardisOSS3Client {
                     bucket.name,
                     path,
                     std::str::from_utf8(response_data.bytes())?
+                ),
+                "-1-tardis-os-get-object-error",
+            ))
+        }
+    }
+
+    async fn object_exist(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<bool> {
+        let bucket = self.get_bucket(bucket_name)?;
+        let result = bucket.head_object(path).await.map_err(TardisError::from);
+        if result.is_ok() {
+            Ok(true)
+        } else if result.clone().expect_err("").code == "404" {
+            Ok(false)
+        } else {
+            Err(TardisError::custom(
+                &result.expect_err("").code.clone(),
+                &format!(
+                    "[Tardis.OSClient] Failed to head object {}:{}",
+                    bucket.name,
+                    path
                 ),
                 "-1-tardis-os-get-object-error",
             ))

@@ -29,9 +29,9 @@ async fn test_os_client() -> TardisResult<()> {
         let data = TardisFuns::os().object_get("test/test_cp.txt", Some(bucket_name)).await?;
         assert_eq!(String::from_utf8(data).unwrap(), "I want to go to S3 测试");
 
-        info!("object_get_url = {}", TardisFuns::os().object_get_url("test/test.txt", 60, Some(bucket_name)).await?);
+        info!("object_get_url = {:?}", TardisFuns::os().object_exist("test/test.txt", Some(bucket_name)).await?);
 
-        info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test1.txt", 60, Some(bucket_name)).await?);
+        info!("object_create_url = {:?}", TardisFuns::os().object_exist("test/test1.txt", Some(bucket_name)).await?);
 
         //info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test2.txt", 1, Some(bucket_name.clone()))?);
         //
