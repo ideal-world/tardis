@@ -102,7 +102,7 @@ impl TardisOSClient {
         trace!("[Tardis.OSClient] Head object {}", path);
         self.get_client().object_exist(path, bucket_name).await
     }
-    
+
     pub async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.OSClient] Deleting object {}", path);
         self.get_client().object_delete(path, bucket_name).await
@@ -270,11 +270,7 @@ impl TardisOSOperations for TardisOSS3Client {
         } else {
             Err(TardisError::custom(
                 &result.expect_err("").code.clone(),
-                &format!(
-                    "[Tardis.OSClient] Failed to head object {}:{}",
-                    bucket.name,
-                    path
-                ),
+                &format!("[Tardis.OSClient] Failed to head object {}:{}", bucket.name, path),
                 "-1-tardis-os-get-object-error",
             ))
         }
