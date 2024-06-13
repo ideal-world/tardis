@@ -365,8 +365,8 @@ impl TardisOSOperations for TardisOSS3Client {
         let mut presign_url = vec![];
         for part_no in 0..part_number {
             let mut custom_queries = HashMap::new();
-            custom_queries.insert("upload_id".to_string(), upload_id.to_string());
-            custom_queries.insert("part_number".to_string(), (part_no + 1).to_string());
+            custom_queries.insert("uploadId".to_string(), upload_id.to_string());
+            custom_queries.insert("partNumber".to_string(), (part_no + 1).to_string());
             presign_url.push(self.get_bucket(bucket_name)?.presign_put(path, expire_sec, None, Some(custom_queries)).await?);
         }
         Ok(presign_url)
