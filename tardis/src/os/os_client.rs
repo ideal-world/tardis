@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use async_trait::async_trait;
 use s3::creds::Credentials;
-use s3::serde_types::Part;
+use s3::serde_types::{BucketLifecycleConfiguration, Part};
 use s3::{Bucket, BucketConfiguration, Region};
 use tracing::{error, info, trace};
 
@@ -147,6 +147,18 @@ impl TardisOSClient {
         trace!("[Tardis.OSClient] Deleting object url {}", path);
         self.get_client().object_delete_url(path, expire_sec, bucket_name).await
     }
+
+    pub async fn get_lifecycle(&self, bucket_name: &str) -> TardisResult<BucketLifecycleConfiguration> {
+        self.get_client().get_lifecycle(bucket_name).await
+    }
+
+    pub async fn put_lifecycle(&self, bucket_name: &str, config: BucketLifecycleConfiguration) -> TardisResult<()> {
+        self.get_client().put_lifecycle(bucket_name, config).await
+    }
+
+    pub async fn delete_lifecycle(&self, bucket_name: &str) -> TardisResult<()> {
+        self.get_client().delete_lifecycle(bucket_name).await
+    }
 }
 
 #[async_trait]
@@ -178,6 +190,12 @@ trait TardisOSOperations {
     async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
 
     async fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
+
+    async fn get_lifecycle(&self, bucket_name: &str) -> TardisResult<BucketLifecycleConfiguration>;
+
+    async fn put_lifecycle(&self, bucket_name: &str, config: BucketLifecycleConfiguration) -> TardisResult<()>;
+
+    async fn delete_lifecycle(&self, bucket_name: &str) -> TardisResult<()>;
 }
 
 #[async_trait]
@@ -396,6 +414,23 @@ impl TardisOSOperations for TardisOSS3Client {
 
     async fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         Ok(self.get_bucket(bucket_name)?.presign_delete(path, expire_sec).await?)
+    }
+
+    async fn get_lifecycle(&self, bucket_name: &str) -> TardisResult<BucketLifecycleConfiguration> {
+        let bucket = self.get_bucket(Some(bucket_name))?;
+        Ok(bucket.get_bucket_lifecycle().await?)
+    }
+
+    async fn put_lifecycle(&self, bucket_name: &str, config: BucketLifecycleConfiguration) -> TardisResult<()> {
+        let bucket = self.get_bucket(Some(bucket_name))?;
+        bucket.put_bucket_lifecycle(config).await?;
+        Ok(())
+    }
+
+    async fn delete_lifecycle(&self, bucket_name: &str) -> TardisResult<()> {
+        let bucket = self.get_bucket(Some(bucket_name))?;
+        bucket.delete_bucket_lifecycle().await?;
+        Ok(())
     }
 }
 
