@@ -1,5 +1,6 @@
 use std::env;
 
+use s3::serde_types::LifecycleFilter;
 use tracing::info;
 
 use tardis::basic::result::TardisResult;
@@ -32,6 +33,16 @@ async fn test_os_client() -> TardisResult<()> {
         info!("object_get_url = {:?}", TardisFuns::os().object_exist("test/test.txt", Some(bucket_name)).await?);
 
         info!("object_create_url = {:?}", TardisFuns::os().object_exist("test/test1.txt", Some(bucket_name)).await?);
+
+        let put_config = s3::serde_types::BucketLifecycleConfiguration::new(vec![s3::serde_types::LifecycleRule::builder("Enabled")
+            .expiration(s3::serde_types::Expiration::new(None, Some(30), None))
+            .filter(LifecycleFilter::new(None, None, None, Some("test".to_string()), None))
+            .build()]);
+        TardisFuns::os().put_lifecycle(Some(bucket_name), put_config.clone()).await?;
+
+        let get_config = TardisFuns::os().get_lifecycle(Some(bucket_name)).await?;
+        info!("get_lifecycle_rule = {:?}", get_config);
+        assert_eq!(serde_json::to_string(&put_config).unwrap(), serde_json::to_string(&get_config).unwrap());
 
         //info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test2.txt", 1, Some(bucket_name.clone()))?);
         //
