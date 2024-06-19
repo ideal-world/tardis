@@ -100,17 +100,17 @@ where
 }
 
 pub trait WsBroadcastSender: Send + Sync + 'static {
-    fn subscribe(&self) -> tokio::sync::broadcast::Receiver<TardisWebsocketMgrMessage>;
+    fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Arc<TardisWebsocketMgrMessage>>;
     fn send(&self, msg: TardisWebsocketMgrMessage) -> impl Future<Output = TardisResult<()>> + Send;
 }
 
-impl WsBroadcastSender for tokio::sync::broadcast::Sender<TardisWebsocketMgrMessage> {
-    fn subscribe(&self) -> tokio::sync::broadcast::Receiver<TardisWebsocketMgrMessage> {
+impl WsBroadcastSender for tokio::sync::broadcast::Sender<Arc<TardisWebsocketMgrMessage>> {
+    fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Arc<TardisWebsocketMgrMessage>> {
         self.subscribe()
     }
 
     async fn send(&self, msg: TardisWebsocketMgrMessage) -> TardisResult<()> {
-        let _ = self.send(msg).map_err(|_| TardisError::internal_error("tokio channel send error", ""))?;
+        let _ = self.send(msg.into()).map_err(|_| TardisError::internal_error("tokio channel send error", ""))?;
         Ok(())
     }
 }
@@ -227,7 +227,7 @@ where
             return Err("from_avatar is illegal".to_string());
         }
         // System process
-        if req_msg.event == Some(WS_SYSTEM_EVENT_INFO.to_string()) {
+        if req_msg.event.as_deref() == Some(WS_SYSTEM_EVENT_INFO) {
             let msg = TardisFuns::json
                 .obj_to_json(&TardisWebsocketInstInfo {
                     inst_id: self.context.inst_id.clone(),
@@ -260,33 +260,39 @@ where
             self.send_to_channel(send_msg);
             return Ok(());
             // For security reasons, adding an avatar needs to be handled by the management node
-        } else if self.context.mgr_node && req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) {
-            let Some(new_avatar) = req_msg.msg.as_str() else {
-                return Err("msg is not a string".to_string());
-            };
-            let Some(ref spec_inst_id) = req_msg.spec_inst_id else {
-                return Err("spec_inst_id is not specified".to_string());
-            };
-            #[cfg(feature = "cluster")]
-            {
-                let Ok(Some(_)) = insts_in_send.get(spec_inst_id.clone()).await else {
-                    return Err("spec_inst_id not found".to_string());
+        } else if req_msg.event.as_deref() == Some(WS_SYSTEM_EVENT_AVATAR_ADD) {
+            if self.context.mgr_node {
+                let Some(new_avatar) = req_msg.msg.as_str() else {
+                    return Err("msg is not a string".to_string());
                 };
-                trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", &msg_id, &new_avatar, &spec_inst_id);
-                let _ = insts_in_send.modify(spec_inst_id.clone(), "add_avatar", json!(new_avatar)).await;
-                return Ok(());
-            }
-            #[cfg(not(feature = "cluster"))]
-            {
-                let mut write_locked = insts_in_send.write().await;
-                let Some(inst) = write_locked.get_mut(spec_inst_id) else {
-                    return Err("spec_inst_id not found".to_string());
+                let Some(ref spec_inst_id) = req_msg.spec_inst_id else {
+                    return Err("spec_inst_id is not specified".to_string());
                 };
-                inst.push(new_avatar.to_string());
-                drop(write_locked);
-                trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", msg_id, new_avatar, spec_inst_id);
+                #[cfg(feature = "cluster")]
+                {
+                    let Ok(Some(_)) = insts_in_send.get(spec_inst_id.clone()).await else {
+                        return Err("spec_inst_id not found".to_string());
+                    };
+                    trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", &msg_id, &new_avatar, &spec_inst_id);
+                    let _ = insts_in_send.modify(spec_inst_id.clone(), "add_avatar", json!(new_avatar)).await;
+                    // return Ok(());
+                }
+                #[cfg(not(feature = "cluster"))]
+                {
+                    let mut write_locked = insts_in_send.write().await;
+                    let Some(inst) = write_locked.get_mut(spec_inst_id) else {
+                        return Err("spec_inst_id not found".to_string());
+                    };
+                    inst.push(new_avatar.to_string());
+                    drop(write_locked);
+                    trace!("[Tardis.WebServer] WS message add avatar {}:{} to {}", msg_id, new_avatar, spec_inst_id);
+                    // return Ok(());
+                }
+            } else {
+                // ignore this message
+                // return Ok(())
             }
-        } else if req_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_DEL.to_string()) {
+        } else if req_msg.event.as_deref() == Some(WS_SYSTEM_EVENT_AVATAR_DEL) {
             #[cfg(feature = "cluster")]
             {
                 let Ok(Some(_)) = insts_in_send.get(self.context.inst_id.clone()).await else {
@@ -471,7 +477,7 @@ where
                         || !mgr_message.ignore_avatars.is_empty() && mgr_message.ignore_avatars.iter().all(|avatar| current_avatars.contains(avatar))
                         {
                             let Ok(resp_msg) = (if context.mgr_node {
-                                TardisFuns::json.obj_to_string(&mgr_message)
+                                TardisFuns::json.obj_to_string(mgr_message.as_ref())
                             } else {
                                 TardisFuns::json.obj_to_string(&TardisWebsocketMessage {
                                     msg_id: mgr_message.msg_id.clone(),
