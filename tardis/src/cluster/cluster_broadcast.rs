@@ -15,7 +15,7 @@ where
     T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
 {
     pub ident: String,
-    pub local_broadcast_channel: broadcast::Sender<T>,
+    pub local_broadcast_channel: broadcast::Sender<Arc<T>>,
 }
 
 impl<T> ClusterBroadcastChannel<T>
@@ -26,7 +26,7 @@ where
         format!("tardis/broadcast/{}", self.ident)
     }
     pub async fn send(&self, message: T) -> TardisResult<()> {
-        match self.local_broadcast_channel.send(message.clone()) {
+        match self.local_broadcast_channel.send(message.clone().into()) {
             Ok(size) => {
                 tracing::trace!("[Tardis.Cluster] broadcast channel send to {size} local subscribers");
             }
@@ -73,7 +73,7 @@ impl<T> std::ops::Deref for ClusterBroadcastChannel<T>
 where
     T: Send + Sync + 'static + Clone + serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug,
 {
-    type Target = broadcast::Sender<T>;
+    type Target = broadcast::Sender<Arc<T>>;
 
     fn deref(&self) -> &Self::Target {
         &self.local_broadcast_channel
@@ -98,7 +98,7 @@ where
     async fn handle(self: Arc<Self>, message_req: TardisClusterMessageReq) -> TardisResult<Option<Value>> {
         if let Ok(message) = serde_json::from_value(message_req.msg) {
             if let Some(chan) = self.channel.upgrade() {
-                let _ = chan.local_broadcast_channel.send(message);
+                let _ = chan.local_broadcast_channel.send(Arc::new(message));
             } else {
                 unsubscribe(&self.event_name()).await;
             }
