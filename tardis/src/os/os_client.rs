@@ -148,15 +148,15 @@ impl TardisOSClient {
         self.get_client().object_delete_url(path, expire_sec, bucket_name).await
     }
 
-    pub async fn get_lifecycle(&self, bucket_name: &str) -> TardisResult<BucketLifecycleConfiguration> {
+    pub async fn get_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<BucketLifecycleConfiguration> {
         self.get_client().get_lifecycle(bucket_name).await
     }
 
-    pub async fn put_lifecycle(&self, bucket_name: &str, config: BucketLifecycleConfiguration) -> TardisResult<()> {
+    pub async fn put_lifecycle(&self, bucket_name: Option<&str>, config: BucketLifecycleConfiguration) -> TardisResult<()> {
         self.get_client().put_lifecycle(bucket_name, config).await
     }
 
-    pub async fn delete_lifecycle(&self, bucket_name: &str) -> TardisResult<()> {
+    pub async fn delete_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<()> {
         self.get_client().delete_lifecycle(bucket_name).await
     }
 }
@@ -191,11 +191,11 @@ trait TardisOSOperations {
 
     async fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
 
-    async fn get_lifecycle(&self, bucket_name: &str) -> TardisResult<BucketLifecycleConfiguration>;
+    async fn get_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<BucketLifecycleConfiguration>;
 
-    async fn put_lifecycle(&self, bucket_name: &str, config: BucketLifecycleConfiguration) -> TardisResult<()>;
+    async fn put_lifecycle(&self, bucket_name: Option<&str>, config: BucketLifecycleConfiguration) -> TardisResult<()>;
 
-    async fn delete_lifecycle(&self, bucket_name: &str) -> TardisResult<()>;
+    async fn delete_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<()>;
 }
 
 #[async_trait]
@@ -416,19 +416,19 @@ impl TardisOSOperations for TardisOSS3Client {
         Ok(self.get_bucket(bucket_name)?.presign_delete(path, expire_sec).await?)
     }
 
-    async fn get_lifecycle(&self, bucket_name: &str) -> TardisResult<BucketLifecycleConfiguration> {
-        let bucket = self.get_bucket(Some(bucket_name))?;
+    async fn get_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<BucketLifecycleConfiguration> {
+        let bucket = self.get_bucket(bucket_name)?;
         Ok(bucket.get_bucket_lifecycle().await?)
     }
 
-    async fn put_lifecycle(&self, bucket_name: &str, config: BucketLifecycleConfiguration) -> TardisResult<()> {
-        let bucket = self.get_bucket(Some(bucket_name))?;
+    async fn put_lifecycle(&self, bucket_name: Option<&str>, config: BucketLifecycleConfiguration) -> TardisResult<()> {
+        let bucket = self.get_bucket(bucket_name)?;
         bucket.put_bucket_lifecycle(config).await?;
         Ok(())
     }
 
-    async fn delete_lifecycle(&self, bucket_name: &str) -> TardisResult<()> {
-        let bucket = self.get_bucket(Some(bucket_name))?;
+    async fn delete_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<()> {
+        let bucket = self.get_bucket(bucket_name)?;
         bucket.delete_bucket_lifecycle().await?;
         Ok(())
     }

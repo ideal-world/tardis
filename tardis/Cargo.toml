@@ -218,7 +218,7 @@ lettre = { version = "0.11", features = [
 
 # Object Storage
 # rust-s3 = { version = "0.33", optional = true }
-rust-s3 = { git = "https://github.com/tuist/rust-s3.git", rev = "3ee40ba", optional = true }
+rust-s3 = { git = "https://github.com/tuist/rust-s3.git", rev = "55f2947", optional = true }
 # rust-s3 = { path = "../../rust-s3/s3", optional = true }
 anyhow = { version = "1.0", optional = true }
 
