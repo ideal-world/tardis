@@ -115,6 +115,17 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
+    /// Delete and parse response body as json with a body
+    pub async fn delete_with_body<T: for<'de> Deserialize<'de>, B: Serialize>(
+        &self,
+        url: impl IntoUrl,
+        headers: impl IntoIterator<Item = (String, String)>,
+        body: &B,
+    ) -> TardisResult<TardisHttpResponse<T>> {
+        let (code, headers, response) = self.request(Method::DELETE, url, headers, Json(body)).await?;
+        self.to_json::<T>(code, headers, response).await
+    }
+
     /// Post and ignore response body
     pub async fn post_str_to_str(
         &self,
