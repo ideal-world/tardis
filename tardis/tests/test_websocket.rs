@@ -54,8 +54,8 @@ async fn test_normal() -> TardisResult<()> {
 
     // message illegal test
     let error_client_a = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/gerror/a", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         if let Message::Text(msg) = msg {
             println!("client_not_found recv:{}", msg);
@@ -68,8 +68,8 @@ async fn test_normal() -> TardisResult<()> {
     error_client_a.send_text("hi".to_string()).await?;
     // not found test
     let error_client_b = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/gxxx/a", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         if let Message::Text(msg) = msg {
             println!("client_not_found recv:{}", msg);
@@ -89,8 +89,8 @@ async fn test_normal() -> TardisResult<()> {
 
     // subscribe mode test
     let sub_client_a = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g1/a", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         if let Message::Text(msg) = msg {
             println!("client_a recv:{}", msg);
@@ -101,8 +101,8 @@ async fn test_normal() -> TardisResult<()> {
     })
     .await?;
     let sub_client_b1 = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g1/b", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         if let Message::Text(msg) = msg {
             println!("client_b1 recv:{}", msg);
@@ -123,8 +123,8 @@ async fn test_normal() -> TardisResult<()> {
     })
     .await?;
     let sub_client_b2 = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g1/b", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         if let Message::Text(msg) = msg {
             println!("client_b2 recv:{}", msg);
@@ -168,8 +168,8 @@ async fn test_normal() -> TardisResult<()> {
 
     // non-subscribe mode test
     let non_sub_client_a = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g2/a", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         if let Message::Text(msg) = msg {
             println!("client_a recv:{}", msg);
@@ -180,8 +180,8 @@ async fn test_normal() -> TardisResult<()> {
     })
     .await?;
     let non_sub_client_b1 = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g2/b", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         if let Message::Text(msg) = msg {
             println!("client_b1 recv:{}", msg);
@@ -202,8 +202,8 @@ async fn test_normal() -> TardisResult<()> {
     })
     .await?;
     let non_sub_client_b2 = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/broadcast/g2/b", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         if let Message::Text(msg) = msg {
             println!("client_b2 recv:{}", msg);
@@ -260,8 +260,8 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     static DEL_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/_/true", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         let receive_msg = msg.str_to_obj::<TardisWebsocketMgrMessage>().unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
@@ -280,8 +280,8 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     .await?;
 
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(msg.to_text().unwrap()).unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
@@ -297,8 +297,8 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     .await?;
 
     let a_client = TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(msg.to_text().unwrap()).unwrap();
         if receive_msg.event == Some(WS_SYSTEM_EVENT_AVATAR_ADD.to_string()) && receive_msg.msg.as_str().unwrap() == "c" {
@@ -319,8 +319,8 @@ async fn test_dyn_avatar() -> TardisResult<()> {
     .await?;
 
     TardisFuns::ws_client("ws://127.0.0.1:8080/ws/dyn/a/false", move |msg| async move {
-        if msg.is_ping() || msg.is_pong(){
-            return None
+        if msg.is_ping() || msg.is_pong() {
+            return None;
         }
         let receive_msg = TardisFuns::json.str_to_obj::<TardisWebsocketMessage>(msg.to_text().unwrap()).unwrap();
         if receive_msg.msg.as_str().unwrap() == "a" {
