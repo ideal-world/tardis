@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use tardis::basic::result::TardisResult;
@@ -127,7 +128,7 @@ impl Page {
     }
 
     #[oai(path = "/ws/broadcast/:name", method = "get")]
-    async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<TardisWebsocketMgrMessage>>) -> BoxWebSocketUpgraded {
+    async fn ws_broadcast(&self, name: Path<String>, websocket: WebSocket, sender: Data<&Sender<Arc<TardisWebsocketMgrMessage>>>) -> BoxWebSocketUpgraded {
         pub struct Hooks {
             ext: HashMap<String, String>,
         }

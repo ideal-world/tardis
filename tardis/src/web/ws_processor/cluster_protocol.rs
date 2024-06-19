@@ -10,7 +10,7 @@ impl WsBroadcastSender for ClusterBroadcastChannel<TardisWebsocketMgrMessage> {
     }
 
     async fn send(&self, msg: TardisWebsocketMgrMessage) -> TardisResult<()> {
-        self.send(msg.into()).await
+        self.send(msg).await
     }
 }
 
@@ -20,6 +20,6 @@ impl WsBroadcastSender for Arc<ClusterBroadcastChannel<TardisWebsocketMgrMessage
     }
 
     async fn send(&self, msg: TardisWebsocketMgrMessage) -> TardisResult<()> {
-        ClusterBroadcastChannel::send(self, msg.into()).await
+        ClusterBroadcastChannel::send(self, msg).await
     }
 }
