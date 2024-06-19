@@ -38,9 +38,9 @@ async fn test_os_client() -> TardisResult<()> {
             .expiration(s3::serde_types::Expiration::new(None, Some(30), None))
             .filter(LifecycleFilter::new(None, None, None, Some("test".to_string()), None))
             .build()]);
-        TardisFuns::os().put_lifecycle(bucket_name, put_config.clone()).await?;
+        TardisFuns::os().put_lifecycle(Some(bucket_name), put_config.clone()).await?;
 
-        let get_config = TardisFuns::os().get_lifecycle(bucket_name).await?;
+        let get_config = TardisFuns::os().get_lifecycle(Some(bucket_name)).await?;
         info!("get_lifecycle_rule = {:?}", get_config);
         assert_eq!(serde_json::to_string(&put_config).unwrap(), serde_json::to_string(&get_config).unwrap());
 
