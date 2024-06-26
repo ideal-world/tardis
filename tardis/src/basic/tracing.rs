@@ -235,7 +235,7 @@ impl TardisTracing<LogConfig> {
     }
 
     pub(crate) fn init_default() {
-        tracing::info!("[Tardis.Tracing] Initializing by defualt initializer.");
+        tracing::info!("[Tardis.Tracing] Initializing by default initializer.");
         let initializer = TardisTracingInitializer::default().with_fmt_layer().with_env_layer();
         tracing::debug!("[Tardis.Tracing] Added fmt layer and env filter.");
         #[cfg(feature = "tracing")]

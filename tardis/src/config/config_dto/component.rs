@@ -24,7 +24,7 @@ use crate::redact::Redact;
 
 /// # Tardis Component Configuration
 ///
-/// common structure for components with one defualt module and many submodules
+/// common structure for components with one default module and many submodules
 ///
 /// - common: common config for all modules, default to `()`
 /// - default: default module config

@@ -42,7 +42,7 @@
 * ``web-server`` web service operations(based on [Poem](https://github.com/poem-web/poem))
 * ``web-server-grpc`` grpc web service based on [Poem](https://github.com/poem-web/poem)
 * ``web-client`` web client operations
-* ``ws-client`` webscoket client operations
+* ``ws-client`` websocket client operations
 * ``cache`` cache operations
 * ``mq`` message queue operations
 * ``mail`` mail send operations

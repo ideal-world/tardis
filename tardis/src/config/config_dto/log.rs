@@ -28,7 +28,7 @@ pub use tracing_appender::*;
 pub struct LogConfig {
     #[builder(default, setter(into))]
     #[serde(deserialize_with = "deserialize_directive", serialize_with = "serialize_directive")]
-    /// the defualt log level
+    /// the default log level
     pub level: Option<Directive>,
     #[builder(default, setter(into))]
     #[serde(deserialize_with = "deserialize_directives", serialize_with = "serialize_directives")]
