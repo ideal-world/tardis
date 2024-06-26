@@ -50,7 +50,7 @@ ws-client = ["future", "tokio-tungstenite", "tls"]
 cache = ["futures-util", "redis", "deadpool-redis"]
 mq = ["futures-util", "lapin", "amq-protocol-types", "async-global-executor"]
 mail = ["lettre"]
-os = ["async-trait", "anyhow", "rust-s3"]
+os = ["async-trait", "anyhow", "rust-s3", "urlencoding"]
 k8s = ["future", "kube", "k8s-openapi"]
 fs = ["tokio/fs", "tokio/io-util"]
 process = ["tokio/process"]
@@ -85,6 +85,7 @@ url = { version = "2.2", features = ["serde"] }
 lru = { version = "0.12.0" }
 typed-builder = { version = "0.18" }
 paste = { version = "1.0" }
+urlencoding = { version = "2" , optional = true }
 # Tokio
 tokio = { version = "1", features = [
   "macros",
