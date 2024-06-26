@@ -25,7 +25,8 @@ async fn test_os_client() -> TardisResult<()> {
         let data = TardisFuns::os().object_get("test/test.txt", Some(bucket_name)).await?;
         assert_eq!(String::from_utf8(data).unwrap(), "I want to go to S3 测试");
 
-        TardisFuns::os().object_copy("test/test.txt", "test/test_cp.txt", Some(bucket_name)).await?;
+        TardisFuns::os().object_copy("test/test.txt", "test/test复制.txt", Some(bucket_name)).await?;
+        TardisFuns::os().object_copy("test/test复制.txt", "test/test_cp.txt", Some(bucket_name)).await?;
         let data = TardisFuns::os().object_get("test/test_cp.txt", Some(bucket_name)).await?;
         assert_eq!(String::from_utf8(data).unwrap(), "I want to go to S3 测试");
 
@@ -41,6 +42,7 @@ async fn test_os_client() -> TardisResult<()> {
         assert_eq!(String::from_utf8(data).unwrap(), "I want to go to S3 测试");
 
         TardisFuns::os().object_delete("test/test.txt", Some(bucket_name)).await?;
+        TardisFuns::os().object_delete("test/test复制.txt", Some(bucket_name)).await?;
         TardisFuns::os().object_delete("test/test_cp.txt", Some(bucket_name)).await?;
         assert!(TardisFuns::os().object_get("test/test.txt", Some(bucket_name)).await.is_err());
 

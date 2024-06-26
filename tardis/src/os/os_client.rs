@@ -297,7 +297,7 @@ impl TardisOSOperations for TardisOSS3Client {
 
     async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()> {
         let bucket = self.get_bucket(bucket_name)?;
-        bucket.copy_object_internal(from, to).await?;
+        bucket.copy_object_internal(urlencoding::encode(from), to).await?;
         Ok(())
     }
 
