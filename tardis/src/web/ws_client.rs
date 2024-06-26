@@ -137,7 +137,9 @@ impl TardisWSClient {
                 while let Some(message) = ws_rx.next().await {
                     match message {
                         Ok(message) => {
-                            trace!("[Tardis.WSClient] WS receive: {}", message);
+                            if message.is_text() {
+                                trace!("[Tardis.WSClient] WS receive text: {}", message);
+                            }
                             let fut_response = on_message(message);
                             let outbound_queue_tx = outbound_queue_tx.clone();
                             let url = url.clone();

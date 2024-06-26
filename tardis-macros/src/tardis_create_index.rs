@@ -150,7 +150,7 @@ fn single_create_index_statement(index_fields: &Vec<CreateIndexField>) -> Result
             column.push(quote!(col(Column::#ident)));
 
             if name.is_none() && index_meta.name.is_some() {
-                name = index_meta.name.clone();
+                name.clone_from(&index_meta.name);
             }
             if index_meta.meta.index_type.is_some() {
                 if index_type.0.is_none() {

@@ -849,12 +849,12 @@ impl TardisFuns {
     }
 
     #[cfg(feature = "cluster")]
-    pub async fn cluster_subscribe_event_boxed(subscriber: Box<dyn cluster::cluster_processor::TardisClusterSubscriber>) {
+    pub async fn cluster_subscribe_event_boxed(subscriber: cluster::cluster_processor::ClusterHandlerObj) {
         cluster::cluster_processor::subscribe_boxed(subscriber).await;
     }
 
     #[cfg(feature = "cluster")]
-    pub async fn cluster_subscribe_event<S: cluster::cluster_processor::TardisClusterSubscriber>(subscriber: S) {
+    pub async fn cluster_subscribe_event<S: cluster::cluster_processor::ClusterHandler>(subscriber: S) {
         cluster::cluster_processor::subscribe(subscriber).await;
     }
 

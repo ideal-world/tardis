@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::ops::Deref;
 
 use async_trait::async_trait;
 use s3::creds::Credentials;
+use s3::serde_types::{BucketLifecycleConfiguration, Part};
 use s3::{Bucket, BucketConfiguration, Region};
 use tracing::{error, info, trace};
 
@@ -96,24 +98,66 @@ impl TardisOSClient {
         self.get_client().object_get(path, bucket_name).await
     }
 
+    pub async fn object_exist(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<bool> {
+        trace!("[Tardis.OSClient] Head object {}", path);
+        self.get_client().object_exist(path, bucket_name).await
+    }
+
     pub async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.OSClient] Deleting object {}", path);
         self.get_client().object_delete(path, bucket_name).await
     }
 
-    pub fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+    pub async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()> {
+        trace!("[Tardis.OSClient] Copy object from {} to {}", from, to);
+        self.get_client().object_copy(from, to, bucket_name).await
+    }
+
+    pub async fn object_multipart_uploads(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
+        trace!("[Tardis.OSClient] Multipart uploads object {}", path);
+        self.get_client().object_multipart_uploads(path, content, content_type, bucket_name).await
+    }
+
+    pub async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<String> {
+        trace!("[Tardis.OSClient] Initiate multipart upload {}", path);
+        self.get_client().initiate_multipart_upload(path, content_type, bucket_name).await
+    }
+
+    pub async fn batch_build_create_presign_url(&self, path: &str, upload_id: &str, part_number: u32, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<Vec<String>> {
+        trace!("[Tardis.OSClient] Batch build create presign url {}", path);
+        self.get_client().batch_build_create_presign_url(path, upload_id, part_number, expire_sec, bucket_name).await
+    }
+
+    pub async fn complete_multipart_upload(&self, path: &str, upload_id: &str, parts: Vec<String>, bucket_name: Option<&str>) -> TardisResult<()> {
+        trace!("[Tardis.OSClient] Complete multipart upload {}", path);
+        self.get_client().complete_multipart_upload(path, upload_id, parts, bucket_name).await
+    }
+
+    pub async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Creating object url {}", path);
-        self.get_client().object_create_url(path, expire_sec, bucket_name)
+        self.get_client().object_create_url(path, expire_sec, bucket_name).await
     }
 
-    pub fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+    pub async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Getting object url {}", path);
-        self.get_client().object_get_url(path, expire_sec, bucket_name)
+        self.get_client().object_get_url(path, expire_sec, bucket_name).await
     }
 
-    pub fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+    pub async fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Deleting object url {}", path);
-        self.get_client().object_delete_url(path, expire_sec, bucket_name)
+        self.get_client().object_delete_url(path, expire_sec, bucket_name).await
+    }
+
+    pub async fn get_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<BucketLifecycleConfiguration> {
+        self.get_client().get_lifecycle(bucket_name).await
+    }
+
+    pub async fn put_lifecycle(&self, bucket_name: Option<&str>, config: BucketLifecycleConfiguration) -> TardisResult<()> {
+        self.get_client().put_lifecycle(bucket_name, config).await
+    }
+
+    pub async fn delete_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<()> {
+        self.get_client().delete_lifecycle(bucket_name).await
     }
 }
 
@@ -127,13 +171,31 @@ trait TardisOSOperations {
 
     async fn object_get(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<Vec<u8>>;
 
+    async fn object_exist(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<bool>;
+
     async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()>;
 
-    fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
+    async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()>;
 
-    fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
+    async fn object_multipart_uploads(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()>;
 
-    fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
+    async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<String>;
+
+    async fn batch_build_create_presign_url(&self, path: &str, upload_id: &str, part_number: u32, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<Vec<String>>;
+
+    async fn complete_multipart_upload(&self, path: &str, upload_id: &str, parts: Vec<String>, bucket_name: Option<&str>) -> TardisResult<()>;
+
+    async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
+
+    async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
+
+    async fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
+
+    async fn get_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<BucketLifecycleConfiguration>;
+
+    async fn put_lifecycle(&self, bucket_name: Option<&str>, config: BucketLifecycleConfiguration) -> TardisResult<()>;
+
+    async fn delete_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<()>;
 }
 
 #[async_trait]
@@ -216,6 +278,22 @@ impl TardisOSOperations for TardisOSS3Client {
         }
     }
 
+    async fn object_exist(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<bool> {
+        let bucket = self.get_bucket(bucket_name)?;
+        let result = bucket.head_object(path).await.map_err(TardisError::from);
+        if result.is_ok() {
+            Ok(true)
+        } else if result.clone().expect_err("").code == "404" {
+            Ok(false)
+        } else {
+            Err(TardisError::custom(
+                &result.expect_err("").code.clone(),
+                &format!("[Tardis.OSClient] Failed to head object {}:{}", bucket.name, path),
+                "-1-tardis-os-get-object-error",
+            ))
+        }
+    }
+
     async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()> {
         let bucket = self.get_bucket(bucket_name)?;
         let response_data = bucket.delete_object(path).await?;
@@ -235,16 +313,124 @@ impl TardisOSOperations for TardisOSS3Client {
         }
     }
 
-    fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
-        Ok(self.get_bucket(bucket_name)?.presign_put(path, expire_sec, None)?)
+    async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()> {
+        let bucket = self.get_bucket(bucket_name)?;
+        bucket.copy_object_internal(urlencoding::encode(from), to).await?;
+        Ok(())
     }
 
-    fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
-        Ok(self.get_bucket(bucket_name)?.presign_get(path, expire_sec, None)?)
+    async fn object_multipart_uploads(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
+        const CHUNK_SIZE: u64 = 1024 * 1024 * 5;
+        const MAX_CHUNKS: u64 = 10000;
+
+        let file_size = content.len() as u64;
+        let mut chunk_count = (file_size / CHUNK_SIZE) + 1;
+        let mut size_of_last_chunk = file_size % CHUNK_SIZE;
+        if size_of_last_chunk == 0 {
+            size_of_last_chunk = CHUNK_SIZE;
+            chunk_count -= 1;
+        }
+        if file_size == 0 {
+            return Err(TardisError::custom(
+                "500",
+                &format!(
+                    "[Tardis.OSClient] Failed to multipart uploads object {}:{} with error [Bad file size.]",
+                    bucket_name.unwrap_or_default(),
+                    path
+                ),
+                "-1-tardis-os-object-multipart-uploads-error",
+            ));
+        }
+        if chunk_count > MAX_CHUNKS {
+            return Err(TardisError::custom(
+                "500",
+                &format!(
+                    "[Tardis.OSClient] Failed to multipart uploads object {}:{} with error [Too many chunks! Try increasing your chunk size.]",
+                    bucket_name.unwrap_or_default(),
+                    path
+                ),
+                "-1-tardis-os-object-multipart-uploads-error",
+            ));
+        }
+
+        let bucket = self.get_bucket(bucket_name)?;
+        let upload_id = self.initiate_multipart_upload(path, content_type, bucket_name).await?;
+
+        let mut upload_parts = Vec::new();
+        for chunk_index in 0..chunk_count {
+            let this_chunk = if chunk_count - 1 == chunk_index { size_of_last_chunk } else { CHUNK_SIZE };
+            let upload_part_res: Part = bucket
+                .put_multipart_chunk(
+                    content[(CHUNK_SIZE * chunk_index) as usize..(CHUNK_SIZE * chunk_index + this_chunk) as usize].to_vec(),
+                    path,
+                    (chunk_index as u32) + 1,
+                    &upload_id,
+                    content_type.unwrap_or("application/octet-stream"),
+                )
+                .await?;
+
+            upload_parts.push(upload_part_res);
+        }
+        bucket.complete_multipart_upload(path, &upload_id, upload_parts).await?;
+        Ok(())
     }
 
-    fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
-        Ok(self.get_bucket(bucket_name)?.presign_delete(path, expire_sec)?)
+    async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<String> {
+        Ok(self.get_bucket(bucket_name)?.initiate_multipart_upload(path, content_type.unwrap_or("application/octet-stream")).await?.upload_id)
+    }
+
+    async fn batch_build_create_presign_url(&self, path: &str, upload_id: &str, part_number: u32, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<Vec<String>> {
+        let mut presign_url = vec![];
+        for part_no in 0..part_number {
+            let mut custom_queries = HashMap::new();
+            custom_queries.insert("uploadId".to_string(), upload_id.to_string());
+            custom_queries.insert("partNumber".to_string(), (part_no + 1).to_string());
+            presign_url.push(self.get_bucket(bucket_name)?.presign_put(path, expire_sec, None, Some(custom_queries)).await?);
+        }
+        Ok(presign_url)
+    }
+
+    async fn complete_multipart_upload(&self, path: &str, upload_id: &str, parts: Vec<String>, bucket_name: Option<&str>) -> TardisResult<()> {
+        let bucket = self.get_bucket(bucket_name)?;
+        let mut part_params = vec![];
+        for (i, etag) in parts.into_iter().enumerate() {
+            part_params.push(Part {
+                part_number: (i + 1) as u32,
+                etag,
+            });
+        }
+        bucket.complete_multipart_upload(path, upload_id, part_params).await?;
+
+        Ok(())
+    }
+
+    async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+        Ok(self.get_bucket(bucket_name)?.presign_put(path, expire_sec, None, None).await?)
+    }
+
+    async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+        Ok(self.get_bucket(bucket_name)?.presign_get(path, expire_sec, None).await?)
+    }
+
+    async fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+        Ok(self.get_bucket(bucket_name)?.presign_delete(path, expire_sec).await?)
+    }
+
+    async fn get_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<BucketLifecycleConfiguration> {
+        let bucket = self.get_bucket(bucket_name)?;
+        Ok(bucket.get_bucket_lifecycle().await?)
+    }
+
+    async fn put_lifecycle(&self, bucket_name: Option<&str>, config: BucketLifecycleConfiguration) -> TardisResult<()> {
+        let bucket = self.get_bucket(bucket_name)?;
+        bucket.put_bucket_lifecycle(config).await?;
+        Ok(())
+    }
+
+    async fn delete_lifecycle(&self, bucket_name: Option<&str>) -> TardisResult<()> {
+        let bucket = self.get_bucket(bucket_name)?;
+        bucket.delete_bucket_lifecycle().await?;
+        Ok(())
     }
 }
 
@@ -264,7 +450,7 @@ impl From<s3::error::S3Error> for TardisError {
     fn from(error: s3::error::S3Error) -> Self {
         error!("[Tardis.OSClient] Error: {}", error.to_string());
         match error {
-            s3::error::S3Error::Http(http_code, msg) => TardisError::custom(&format!("{http_code}"), &format!("[Tardis.OSClient] Error: {msg}"), "-1-tardis-os-error"),
+            s3::error::S3Error::HttpFailWithBody(code, msg) => TardisError::custom(&code.to_string(), &format!("[Tardis.OSClient] Error: {}", msg), "-1-tardis-os-error"),
             _ => TardisError::custom(ERROR_DEFAULT_CODE, &format!("[Tardis.OSClient] Error: {error:?}"), "-1-tardis-os-error"),
         }
     }
