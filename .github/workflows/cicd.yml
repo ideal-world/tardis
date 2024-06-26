@@ -85,6 +85,23 @@ jobs:
         run: cargo test --all-features
         env: 
           RUSTFLAGS: --cfg tokio_unstable
+        
+      - name: Cargo package tardis
+        working-directory: tardis
+        run: cargo package
+
+      - name: Cargo publish tardis
+        working-directory: tardis
+        run: cargo publish --dry-run
+
+      - name: Cargo package macros
+        working-directory: tardis-macros
+        run: cargo package
+
+      - name: Cargo publish macros
+        working-directory: tardis-macros
+        run: cargo publish --dry-run
+
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
