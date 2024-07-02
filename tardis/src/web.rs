@@ -25,6 +25,10 @@ pub mod uniform_error_mw;
 #[cfg(feature = "web-client")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-client")))]
 pub mod web_client;
+
+// #[cfg(feature = "web-client")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "web-client")))]
+// pub mod web_client_v2;
 #[cfg(feature = "web-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "web-server")))]
 pub mod web_resp;

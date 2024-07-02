@@ -266,7 +266,6 @@ impl TardisWebClient {
         let (code, headers, response) = self.request(Method::PATCH, url, headers, Json(body)).await?;
         self.to_json::<T>(code, headers, response).await
     }
-
     pub async fn request<K, V>(
         &self,
         method: Method,
@@ -289,8 +288,14 @@ impl TardisWebClient {
         for (key, value) in headers {
             result = result.header(key.into(), value.into());
         }
-        result = body.apply_on(result);
-        let response = result.send().await?;
+        let request = body.apply_on(result).build()?;
+        #[cfg(feature = "tracing")]
+        {
+            use opentelemetry::{global, Context};
+            let ctx = Context::current();
+            global::get_text_map_propagator(|propagator| propagator.inject_context(&ctx, &mut crate::basic::tracing::HeaderInjector(request.headers_mut())));
+        }
+        let response = self.client.execute(request).await?;
         let code = response.status().as_u16();
         let headers = response
             .headers()
