@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use reqwest::{Client, IntoUrl, Method, RequestBuilder, Response};
 use serde::Deserialize;
+use tokio::io::AsyncRead;
 use tracing::{error, info, trace};
 
 use crate::basic::error::TardisError;
@@ -30,6 +31,19 @@ pub trait TardisRequestBody {
 impl TardisRequestBody for () {
     fn apply_on(self, builder: RequestBuilder) -> RequestBuilder {
         builder
+    }
+}
+
+/// Async Read for [`TardisWebClient`],
+pub struct Read<R>(R);
+
+impl<R> TardisRequestBody for Read<R>
+where
+    R: AsyncRead + Send + Sync + Unpin + 'static,
+{
+    fn apply_on(self, builder: RequestBuilder) -> RequestBuilder {
+        let stream = tokio_util::io::ReaderStream::new(self.0);
+        builder.body(reqwest::Body::wrap_stream(stream))
     }
 }
 
@@ -253,7 +267,7 @@ impl TardisWebClient {
         self.to_json::<T>(code, headers, response).await
     }
 
-    async fn request<K, V>(
+    pub async fn request<K, V>(
         &self,
         method: Method,
         url: impl IntoUrl,

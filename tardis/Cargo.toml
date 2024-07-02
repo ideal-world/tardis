@@ -190,6 +190,7 @@ poem-grpc = { version = "0.4", optional = true }
 reqwest = { version = "0.12", features = [
   "json",
   "multipart",
+  "stream"
 ], optional = true }
 
 # Websocket Client
