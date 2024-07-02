@@ -320,6 +320,11 @@ impl TardisWebServer {
         };
         let route = route.boxed();
         let route = route.with(middleware);
+        #[cfg(feature = "tracing")]
+        let route = {
+            let tracer = opentelemetry::global::tracer("");
+            route.with(poem::middleware::OpenTelemetryTracing::new(tracer))
+        };
         if module_options.uniform_error || module_config.uniform_error {
             self.state.lock().await.add_route(code, route.with(UniformError).with(AddClusterIdHeader).with(cors), data);
         } else {
