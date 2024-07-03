@@ -288,7 +288,8 @@ impl TardisWebClient {
         for (key, value) in headers {
             result = result.header(key.into(), value.into());
         }
-        let request = body.apply_on(result).build()?;
+        #[allow(unused_mut)]
+        let mut request = body.apply_on(result).build()?;
         #[cfg(feature = "tracing")]
         {
             use opentelemetry::{global, Context};
