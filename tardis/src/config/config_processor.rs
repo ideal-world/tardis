@@ -33,15 +33,23 @@ use super::config_dto::{ConfCenterConfig, TardisConfig};
 /// 1. Environment variables starting with TARDIS
 ///
 impl TardisConfig {
-    pub async fn init(relative_path: Option<&str>) -> TardisResult<TardisConfig> {
+    pub async fn init(path: Option<&str>) -> TardisResult<TardisConfig> {
         let profile = fetch_profile();
-        let parent_path = env::current_dir().expect("[Tardis.Config] Current path get error");
-        info!(
-            "[Tardis.Config] Initializing, base path:{:?}, relative path:{:?}, profile:{}",
-            parent_path, relative_path, profile
+        let path = Path::new(path.unwrap_or(""));
+        if(path.has_root()){
+          info!(
+            "[Tardis.Config] Initializing, absolute path:{:?}, profile:{}",
+             path, profile
         );
-
-        let config = TardisConfig::do_init(relative_path, &profile, None).await?;
+        }else {
+          let parent_path = env::current_dir().expect("[Tardis.Config] Current path get error");
+          info!(
+              "[Tardis.Config] Initializing, base path:{:?}, relative path:{:?}, profile:{}",
+              parent_path, path, profile
+          );
+        }
+        
+        let config = TardisConfig::do_init(Some(path), &profile, None).await?;
 
         #[cfg(feature = "conf-remote")]
         let config = if let Some(conf_center) = &config.fw.conf_center {
@@ -51,29 +59,28 @@ impl TardisConfig {
                     "",
                 ));
             }
-            TardisConfig::do_init(relative_path, &profile, Some((conf_center, &config.fw.app.id))).await?
+            TardisConfig::do_init(path, &profile, Some((conf_center, &config.fw.app.id))).await?
         } else {
             config
         };
 
         info!(
             "[Tardis.Config] Initialized, base path:{:?}, relative path:{:?}, profile:{}",
-            parent_path, relative_path, profile
+            parent_path, path, profile
         );
         debug!("=====[Tardis.Config] Content=====\n{:#?}\n=====", &config.fw);
 
-        if let Some(relative_path) = relative_path {
+        if let Some(relative_path) = path {
             TardisLocale::init(Path::new(relative_path))?;
         }
         Ok(config)
     }
 
-    async fn do_init(relative_path: Option<&str>, profile: &str, _conf_center: Option<(&ConfCenterConfig, &str)>) -> TardisResult<TardisConfig> {
+    async fn do_init(relative_path: Option<&Path>, profile: &str, _conf_center: Option<(&ConfCenterConfig, &str)>) -> TardisResult<TardisConfig> {
         let mut conf = ConfigBuilder::<AsyncState>::default();
 
         // Fetch from local file
         if relative_path.is_some() {
-            let path = Path::new(relative_path.unwrap_or(""));
             let file = path.join("conf-default");
             debug!("[Tardis.Config] Fetch local file: {:?}", file);
             conf = conf.add_source(File::from(file).required(true));
