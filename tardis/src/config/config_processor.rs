@@ -36,19 +36,13 @@ impl TardisConfig {
     pub async fn init(path: Option<&str>) -> TardisResult<TardisConfig> {
         let profile = fetch_profile();
         let path = Path::new(path.unwrap_or(""));
-        if(path.has_root()){
-          info!(
-            "[Tardis.Config] Initializing, absolute path:{:?}, profile:{}",
-             path, profile
-        );
-        }else {
-          let parent_path = env::current_dir().expect("[Tardis.Config] Current path get error");
-          info!(
-              "[Tardis.Config] Initializing, base path:{:?}, relative path:{:?}, profile:{}",
-              parent_path, path, profile
-          );
+        if (path.has_root()) {
+            info!("[Tardis.Config] Initializing, absolute path:{:?}, profile:{}", path, profile);
+        } else {
+            let parent_path = env::current_dir().expect("[Tardis.Config] Current path get error");
+            info!("[Tardis.Config] Initializing, base path:{:?}, relative path:{:?}, profile:{}", parent_path, path, profile);
         }
-        
+
         let config = TardisConfig::do_init(Some(path), &profile, None).await?;
 
         #[cfg(feature = "conf-remote")]
@@ -64,10 +58,7 @@ impl TardisConfig {
             config
         };
 
-        info!(
-            "[Tardis.Config] Initialized, base path:{:?}, relative path:{:?}, profile:{}",
-            parent_path, path, profile
-        );
+        info!("[Tardis.Config] Initialized, base path:{:?}, relative path:{:?}, profile:{}", parent_path, path, profile);
         debug!("=====[Tardis.Config] Content=====\n{:#?}\n=====", &config.fw);
 
         if let Some(relative_path) = path {
