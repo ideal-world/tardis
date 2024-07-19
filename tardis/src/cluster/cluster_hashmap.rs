@@ -116,7 +116,10 @@ where
         if self.is_cluster() {
             let event = CshmEvent::<K, V>::Insert(vec![(key, value)]);
             let json = TardisJson.obj_to_json(&event)?;
-            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+            let event_name = self.event_name();
+            tokio::spawn(async move {
+                let _result = publish_event_no_response(event_name, json, ClusterEventTarget::Broadcast).await;
+            });
         }
         Ok(())
     }
@@ -130,7 +133,10 @@ where
         if self.is_cluster() {
             let event = CshmEvent::<K, V>::Insert(pairs);
             let json = TardisJson.obj_to_json(&event)?;
-            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+            let event_name = self.event_name();
+            tokio::spawn(async move {
+                let _result = publish_event_no_response(event_name, json, ClusterEventTarget::Broadcast).await;
+            });
         }
         Ok(())
     }
@@ -139,7 +145,10 @@ where
         if self.is_cluster() {
             let event = CshmEvent::<K, V>::Remove { keys: vec![key] };
             let json = TardisJson.obj_to_json(&event)?;
-            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+            let event_name = self.event_name();
+            tokio::spawn(async move {
+                let _result = publish_event_no_response(event_name, json, ClusterEventTarget::Broadcast).await;
+            });
         }
         Ok(())
     }
@@ -153,7 +162,10 @@ where
         if self.is_cluster() {
             let event = CshmEvent::<K, V>::Remove { keys };
             let json = TardisJson.obj_to_json(&event)?;
-            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+            let event_name = self.event_name();
+            tokio::spawn(async move {
+                let _result = publish_event_no_response(event_name, json, ClusterEventTarget::Broadcast).await;
+            });
         }
         Ok(())
     }
@@ -211,7 +223,10 @@ where
         if self.is_cluster() {
             let event = CshmEvent::<K, V>::Modify { key, mapper, modify };
             let json = TardisJson.obj_to_json(&event)?;
-            let _result = publish_event_no_response(self.event_name(), json, ClusterEventTarget::Broadcast).await;
+            let event_name = self.event_name();
+            tokio::spawn(async move {
+                let _result = publish_event_no_response(event_name, json, ClusterEventTarget::Broadcast).await;
+            });
         }
         Ok(())
     }

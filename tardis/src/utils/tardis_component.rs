@@ -71,7 +71,6 @@ impl<T> TardisComponentInner<T> {
 
 /// A once-rwlock-hashmap-arc wrapper, used to store multi-thread shared and once-initialized map
 #[repr(transparent)]
-#[derive(Default)]
 pub struct TardisComponentMap<T: ?Sized>(OnceLock<TardisComponentMapInner<T>>);
 impl<T: ?Sized> TardisComponentMap<T> {
     pub const fn new() -> Self {
@@ -79,6 +78,11 @@ impl<T: ?Sized> TardisComponentMap<T> {
     }
 }
 
+impl<T> Default for TardisComponentMap<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl<T: ?Sized> Deref for TardisComponentMap<T> {
     type Target = TardisComponentMapInner<T>;
     fn deref(&self) -> &Self::Target {

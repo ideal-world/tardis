@@ -39,14 +39,17 @@ impl std::fmt::Debug for TardisWSClient {
 impl TardisWSClient {
     pub async fn connect<F, T>(str_url: &str, on_message: F) -> TardisResult<TardisWSClient>
     where
-        F: Fn(Message) -> T + Send + Sync + Copy + 'static,
+        F: Fn(Message) -> T + Send + Sync + Clone + 'static,
         T: Future<Output = Option<Message>> + Send + Sync + 'static,
     {
         let url = Url::parse(str_url).map_err(|_| TardisError::format_error(&format!("[Tardis.WSClient] Invalid url {str_url}"), "406-tardis-ws-url-error"))?;
 
         let connection_semaphore = Arc::new(Semaphore::const_new(1));
         let permit = connection_semaphore.clone().acquire_owned().await.expect("newly created semaphore should not fail");
-        let tx = Self::do_connect(&url, Arc::new(move |m| Box::pin(on_message(m))), false, permit).await?;
+        let tx = {
+            let on_message = on_message.clone();
+            Self::do_connect(&url, Arc::new(move |m| Box::pin(on_message(m))), false, permit).await?
+        };
         let sender = Arc::new(RwLock::new(tx));
         Ok(TardisWSClient {
             url,
