@@ -5,7 +5,7 @@ use crate::config::config_dto::LogConfig;
 
 #[allow(unused_imports)]
 use crate::consts::*;
-use crate::TARDIS_INST;
+use crate::tardis_instance;
 pub use tracing_subscriber::filter::Directive;
 #[allow(unused_imports)]
 use tracing_subscriber::{
@@ -201,7 +201,7 @@ where
             tracing::error!("[Tardis.Tracing] Trying to initialize tardis tracing more than once, this initialization will be ignored. If you want to use new config for tracing, use update_config() instead.");
         } else {
             INITIALIZED.call_once(|| self.layered.init());
-            TARDIS_INST.tracing.set(TardisTracing { configure: configer_list });
+            tardis_instance().tracing.set(TardisTracing { configure: configer_list });
         }
         crate::TardisFuns::tracing()
     }

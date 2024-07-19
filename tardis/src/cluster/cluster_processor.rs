@@ -49,7 +49,8 @@ pub async fn load_cache_nodes_info() -> HashMap<ClusterRemoteNodeKey, TardisClus
 }
 
 pub async fn peer_count() -> usize {
-    cache_nodes().read().await.keys().filter(|k| matches!(k, ClusterRemoteNodeKey::NodeId(_))).count()
+    let local_node_id = local_node_id().await;
+    cache_nodes().read().await.keys().filter(|k| if let ClusterRemoteNodeKey::NodeId(id) = k { id != local_node_id } else { false }).count()
 }
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]

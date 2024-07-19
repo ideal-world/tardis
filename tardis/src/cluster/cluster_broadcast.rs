@@ -6,7 +6,7 @@ use tokio::sync::broadcast;
 use crate::basic::{error::TardisError, result::TardisResult};
 
 use super::{
-    cluster_processor::{subscribe_if_not_exist, unsubscribe, ClusterEventTarget, ClusterHandler, TardisClusterMessageReq},
+    cluster_processor::{peer_count, subscribe_if_not_exist, unsubscribe, ClusterEventTarget, ClusterHandler, TardisClusterMessageReq},
     cluster_publish::publish_event_no_response,
 };
 
@@ -36,7 +36,9 @@ where
         }
         let event = format!("tardis/broadcast/{}", self.ident);
         let json = serde_json::to_value(message).map_err(|e| TardisError::internal_error(&e.to_string(), ""))?;
-        let _ = publish_event_no_response(event, json, ClusterEventTarget::Broadcast).await?;
+        if peer_count().await != 0 {
+            let _ = publish_event_no_response(event, json, ClusterEventTarget::Broadcast).await?;
+        }
         Ok(())
     }
     pub fn new(ident: impl Into<String>, capacity: usize) -> Arc<Self> {

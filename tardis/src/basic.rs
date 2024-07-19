@@ -1,5 +1,6 @@
 use std::env;
 
+pub mod component;
 pub mod dto;
 pub mod error;
 pub mod field;
