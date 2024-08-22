@@ -119,7 +119,6 @@ impl FrameworkConfig {
     pub fn log(&self) -> &LogConfig {
         self.log.as_ref().expect("missing component config of log")
     }
-
 }
 
 /// Application configuration / 应用配置
@@ -222,4 +221,3 @@ impl Default for ConfCenterConfig {
         }
     }
 }
-
