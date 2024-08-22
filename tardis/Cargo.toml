@@ -306,10 +306,6 @@ name = "test_web_client"
 required-features = ["test", "web-client"]
 
 [[test]]
-name = "test_websocket"
-required-features = ["test", "web-server", "ws-client"]
-
-[[test]]
 name = "test_cache_client"
 required-features = ["test", "cache"]
 
@@ -332,10 +328,6 @@ required-features = ["test", "os"]
 [[test]]
 name = "test_basic_tracing"
 required-features = ["test", "tracing"]
-
-[[test]]
-name = "test_cluster"
-required-features = ["test", "cluster", "k8s"]
 
 [[bench]]
 name = "json_benchmark"

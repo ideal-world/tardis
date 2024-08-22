@@ -203,7 +203,7 @@ impl TardisFuns {
     /// # Arguments
     ///
     /// * `relative_path` - the directory where the configuration file is located, without the
-    /// configuration file name / 配置文件所在目录，不包含配置文件名
+    ///     configuration file name / 配置文件所在目录，不包含配置文件名
     ///
     /// # Examples
     ///
@@ -838,35 +838,6 @@ impl TardisFuns {
         tardis_instance().os.get(code).unwrap_or_else(Self::os)
     }
 
-    #[cfg(feature = "cluster")]
-    pub async fn cluster_subscribe_event_boxed(subscriber: cluster::cluster_processor::ClusterHandlerObj) {
-        cluster::cluster_processor::subscribe_boxed(subscriber).await;
-    }
-
-    #[cfg(feature = "cluster")]
-    pub async fn cluster_subscribe_event<S: cluster::cluster_processor::ClusterHandler>(subscriber: S) {
-        cluster::cluster_processor::subscribe(subscriber).await;
-    }
-
-    #[cfg(feature = "cluster")]
-    pub async fn cluster_publish_event(
-        event: impl Into<std::borrow::Cow<'static, str>>,
-        message: serde_json::Value,
-        target: impl Into<cluster::cluster_processor::ClusterEventTarget>,
-    ) -> TardisResult<String> {
-        use cluster::cluster_publish::ClusterEvent;
-        ClusterEvent::new(event).json_message(message).target(target).no_response().publish().await
-    }
-
-    #[cfg(feature = "cluster")]
-    pub async fn cluster_publish_event_one_resp(
-        event: impl Into<std::borrow::Cow<'static, str>>,
-        message: serde_json::Value,
-        node_id: &str,
-    ) -> TardisResult<cluster::cluster_processor::TardisClusterMessageResp> {
-        cluster::cluster_publish::publish_event_one_response(event, message, node_id, None).await
-    }
-
     /// # Parameters
     /// - `clean: bool`: if use clean mode, it will cleanup all user setted configs like webserver modules
     async fn shutdown_internal(#[allow(unused_variables)] clean: bool) -> TardisResult<()> {
@@ -1140,10 +1111,6 @@ pub mod basic;
 #[cfg(feature = "cache")]
 #[cfg_attr(docsrs, doc(cfg(feature = "cache")))]
 pub mod cache;
-
-#[cfg(feature = "cluster")]
-#[cfg_attr(docsrs, doc(cfg(feature = "cluster")))]
-pub mod cluster;
 
 pub mod config;
 #[cfg(any(feature = "crypto", feature = "base64"))]

@@ -56,8 +56,6 @@ pub struct FrameworkConfig {
     #[builder(!default, default = Some(LogConfig::default()))]
     /// log configuration / 日志配置
     pub log: Option<LogConfig>,
-    /// Cluster configuration / 集群配置
-    pub cluster: Option<ClusterConfig>,
 }
 
 impl Default for FrameworkConfig {
@@ -121,12 +119,7 @@ impl FrameworkConfig {
     pub fn log(&self) -> &LogConfig {
         self.log.as_ref().expect("missing component config of log")
     }
-    /// Get cluster config
-    /// # Panic
-    /// If the config of cluster is none, this will be panic.
-    pub fn cluster(&self) -> &ClusterConfig {
-        self.cluster.as_ref().expect("missing component config of cluster")
-    }
+
 }
 
 /// Application configuration / 应用配置
@@ -230,34 +223,3 @@ impl Default for ConfCenterConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-#[serde(default)]
-pub struct ClusterConfig {
-    pub watch_kind: String,
-    #[cfg(feature = "k8s")]
-    pub k8s_svc: Option<String>,
-    #[cfg(feature = "k8s")]
-    pub k8s_ns: Option<String>,
-    pub cache_check_interval_sec: Option<i32>,
-}
-
-impl Default for ClusterConfig {
-    fn default() -> Self {
-        #[cfg(feature = "k8s")]
-        {
-            ClusterConfig {
-                watch_kind: "k8s".to_string(),
-                k8s_svc: None,
-                k8s_ns: None,
-                cache_check_interval_sec: None,
-            }
-        }
-        #[cfg(not(feature = "k8s"))]
-        {
-            ClusterConfig {
-                watch_kind: "cache".to_string(),
-                cache_check_interval_sec: Some(10),
-            }
-        }
-    }
-}
