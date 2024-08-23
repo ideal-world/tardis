@@ -36,11 +36,11 @@ pub enum NacosServerMode {
     Cluster,
 }
 
-impl ToString for NacosServerMode {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for NacosServerMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NacosServerMode::Standalone => "standalone".to_string(),
-            NacosServerMode::Cluster => "cluster".to_string(),
+            NacosServerMode::Standalone => write!(f, "standalone"),
+            NacosServerMode::Cluster => write!(f, "cluster"),
         }
     }
 }

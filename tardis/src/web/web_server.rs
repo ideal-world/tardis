@@ -23,13 +23,11 @@ use crate::config::config_dto::{
     FrameworkConfig,
 };
 use crate::utils::initializer::InitBy;
-use crate::web::cluster_id_mw::AddClusterIdHeader;
 use crate::web::uniform_error_mw::UniformError;
 mod initializer;
 use initializer::*;
 mod module;
 pub use module::*;
-pub mod status_api;
 pub type BoxMiddleware<'a, T = BoxEndpoint<'a>> = Box<dyn Middleware<T, Output = T> + Send>;
 type ServerTaskInner = JoinHandle<TardisResult<()>>;
 struct ServerTask {
@@ -326,9 +324,9 @@ impl TardisWebServer {
             route.with(poem::middleware::OpenTelemetryTracing::new(tracer))
         };
         if module_options.uniform_error || module_config.uniform_error {
-            self.state.lock().await.add_route(code, route.with(UniformError).with(AddClusterIdHeader).with(cors), data);
+            self.state.lock().await.add_route(code, route.with(UniformError).with(cors), data);
         } else {
-            self.state.lock().await.add_route(code, route.with(cors).with(AddClusterIdHeader), data);
+            self.state.lock().await.add_route(code, route.with(cors), data);
         };
         self
     }
@@ -376,13 +374,6 @@ impl TardisWebServer {
     ///
     /// to shutdown it by calling `TardisWebServer::shutdown()`
     pub async fn start(&self) -> TardisResult<()> {
-        #[cfg(feature = "cluster")]
-        {
-            if let Some(fw) = crate::TardisFuns::fw_config_opt() {
-                crate::cluster::cluster_processor::init_by_conf(&fw, self).await?;
-            }
-        }
-
         let output_info = format!(
             r#"
 =================

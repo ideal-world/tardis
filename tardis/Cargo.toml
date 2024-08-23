@@ -106,15 +106,15 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = { version = "0.2", optional = true }
 console-subscriber = { version = "0.2", optional = true }
 # Tracing
-tracing-opentelemetry = { version = "0.23", optional = true }
-opentelemetry = { version = "0.22", default-features = false, features = [
+tracing-opentelemetry = { version = "0.25", optional = true }
+opentelemetry = { version = "0.24", default-features = false, features = [
   "trace",
 ], optional = true }
-opentelemetry_sdk = { version = "0.22", default-features = false, features = [
+opentelemetry_sdk = { version = "0.24", default-features = false, features = [
   "rt-tokio",
   "trace",
 ], optional = true }
-opentelemetry-otlp = { version = "0.15", features = [
+opentelemetry-otlp = { version = "0.17", features = [
   "reqwest-client",
   "reqwest-rustls",
   "http-proto",
@@ -258,7 +258,7 @@ tokio = { version = "1", features = [
 ] }
 criterion = { version = "0.5" }
 poem-grpc-build = "0.4"
-prost = "0.12"
+prost = "0.13.1"
 strip-ansi-escapes = "0.2.0"
 portpicker = "0.1.1"
 # macros
@@ -306,10 +306,6 @@ name = "test_web_client"
 required-features = ["test", "web-client"]
 
 [[test]]
-name = "test_websocket"
-required-features = ["test", "web-server", "ws-client"]
-
-[[test]]
 name = "test_cache_client"
 required-features = ["test", "cache"]
 
@@ -332,10 +328,6 @@ required-features = ["test", "os"]
 [[test]]
 name = "test_basic_tracing"
 required-features = ["test", "tracing"]
-
-[[test]]
-name = "test_cluster"
-required-features = ["test", "cluster", "k8s"]
 
 [[bench]]
 name = "json_benchmark"
