@@ -36,7 +36,6 @@ pub enum NacosServerMode {
     Cluster,
 }
 
-
 impl std::fmt::Display for NacosServerMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

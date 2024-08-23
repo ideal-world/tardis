@@ -13,7 +13,6 @@ pub enum OtlpProtocol {
     HttpProtobuf,
 }
 
-
 impl std::fmt::Display for OtlpProtocol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -22,7 +21,6 @@ impl std::fmt::Display for OtlpProtocol {
         }
     }
 }
-
 
 impl FromStr for OtlpProtocol {
     type Err = TardisError;

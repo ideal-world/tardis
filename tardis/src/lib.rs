@@ -601,7 +601,7 @@ impl TardisFuns {
     ///
     /// 1. Initialize the cache configuration / 初始化缓存配置 @see [init](Self::init)
     /// 2. Call this function to complete various cache processing operations / 调用本函数完成各种缓存处理操作
-    /// 
+    ///
     /// E.g.
     /// ```ignore
     /// use std::collections::HashMap;
@@ -699,7 +699,7 @@ impl TardisFuns {
     ///
     /// 1. Initialize the cache configuration / 初始化缓存配置 @see [init](Self::init)
     /// 2. Call this function to complete various cache processing operations / 调用本函数完成各种缓存处理操作
-    /// 
+    ///
     /// E.g.
     /// ```ignore
     /// use tardis::TardisFuns;
@@ -738,7 +738,7 @@ impl TardisFuns {
     ///
     /// 1. Initialize the mq configuration / 初始化队列配置 @see [init](Self::init)
     /// 2. Call this function to complete various mq processing operations / 调用本函数完成各种队列处理操作
-    /// 
+    ///
     /// E.g.
     /// ```ignore
     /// use tardis::TardisFuns;
@@ -776,7 +776,7 @@ impl TardisFuns {
     ///
     /// 1. Initialize the web client configuration / 初始化web客户端配置 @see [init](Self::init)
     /// 2. Call this function to complete various search processing operations / 调用本函数完成各种搜索处理操作
-    /// 
+    ///
     /// E.g.
     /// ```ignore
     /// use tardis::TardisFuns;
