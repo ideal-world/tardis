@@ -13,14 +13,16 @@ pub enum OtlpProtocol {
     HttpProtobuf,
 }
 
-impl ToString for OtlpProtocol {
-    fn to_string(&self) -> String {
+
+impl std::fmt::Display for OtlpProtocol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            OtlpProtocol::Grpc => "grpc".to_string(),
-            OtlpProtocol::HttpProtobuf => "http/protobuf".to_string(),
+            OtlpProtocol::Grpc => write!(f, "grpc"),
+            OtlpProtocol::HttpProtobuf => write!(f, "http/protobuf"),
         }
     }
 }
+
 
 impl FromStr for OtlpProtocol {
     type Err = TardisError;
