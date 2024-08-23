@@ -249,33 +249,39 @@ impl TardisTracing<LogConfig> {
     #[cfg(feature = "tracing")]
     fn create_otlp_tracer() -> opentelemetry_sdk::trace::Tracer {
         use crate::config::config_dto::OtlpProtocol;
-        tracing::debug!("[Tardis.Tracing] Initializing otlp tracer");
-        let protocol = std::env::var(OTEL_EXPORTER_OTLP_PROTOCOL).ok().map(|s| s.parse::<OtlpProtocol>().unwrap_or_default()).unwrap_or_default();
-        let tracer = opentelemetry_otlp::new_pipeline().tracing();
-        let tracer = match protocol {
-            OtlpProtocol::Grpc => {
-                let mut exporter = opentelemetry_otlp::new_exporter().tonic();
-                // Check if we need TLS
-                if let Ok(endpoint) = std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
-                    if endpoint.to_lowercase().starts_with("https") {
-                        exporter = exporter.with_tls_config(Default::default());
-                    }
-                }
-                tracer.with_exporter(exporter)
-            }
-            OtlpProtocol::HttpProtobuf => {
-                let headers = Self::parse_otlp_headers_from_env();
-                let exporter = opentelemetry_otlp::new_exporter().http().with_headers(headers.into_iter().collect());
-                tracer.with_exporter(exporter)
-            }
-        };
-        tracing::debug!("[Tardis.Tracing] Batch installing tracer. If you are blocked here, try running tokio in multithread.");
-        let provider = tracer.install_batch(opentelemetry_sdk::runtime::Tokio).expect("fail to install otlp tracer");
+        use std::sync::OnceLock;
+        static INITIALIZED: OnceLock<opentelemetry_sdk::trace::TracerProvider> = OnceLock::new();
         use opentelemetry::trace::TracerProvider;
-        let tracer = provider.tracer("");
-        tracing::debug!("[Tardis.Tracing] Initialized otlp tracer");
-        opentelemetry::global::set_tracer_provider(provider);
-        tracer
+        INITIALIZED
+            .get_or_init(|| {
+                tracing::debug!("[Tardis.Tracing] Initializing otlp tracer");
+                let protocol = std::env::var(OTEL_EXPORTER_OTLP_PROTOCOL).ok().map(|s| s.parse::<OtlpProtocol>().unwrap_or_default()).unwrap_or_default();
+                let tracer = opentelemetry_otlp::new_pipeline().tracing();
+                let tracer = match protocol {
+                    OtlpProtocol::Grpc => {
+                        let mut exporter = opentelemetry_otlp::new_exporter().tonic();
+                        // Check if we need TLS
+                        if let Ok(endpoint) = std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
+                            if endpoint.to_lowercase().starts_with("https") {
+                                exporter = exporter.with_tls_config(Default::default());
+                            }
+                        }
+                        tracer.with_exporter(exporter)
+                    }
+                    OtlpProtocol::HttpProtobuf => {
+                        let headers = Self::parse_otlp_headers_from_env();
+                        let exporter = opentelemetry_otlp::new_exporter().http().with_headers(headers.into_iter().collect());
+                        tracer.with_exporter(exporter)
+                    }
+                };
+                tracing::debug!("[Tardis.Tracing] Batch installing tracer. If you are blocked here, try running tokio in multithread.");
+                let provider = tracer.install_batch(opentelemetry_sdk::runtime::Tokio).expect("fail to install otlp tracer");
+                tracing::debug!("[Tardis.Tracing] Initialized otlp tracer");
+                opentelemetry::global::set_tracer_provider(provider.clone());
+                provider
+            })
+            .clone()
+            .tracer("")
     }
 
     #[cfg(feature = "tracing")]
