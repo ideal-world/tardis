@@ -55,7 +55,7 @@ impl TardisOSClient {
                     expiration: None,
                 };
                 let default_bucket = if !default_bucket.is_empty() {
-                    Some(Bucket::new(default_bucket, region.clone(), credentials.clone())?.with_path_style())
+                    Some(*Bucket::new(default_bucket, region.clone(), credentials.clone())?.with_path_style())
                 } else {
                     None
                 };
@@ -111,11 +111,6 @@ impl TardisOSClient {
     pub async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()> {
         trace!("[Tardis.OSClient] Copy object from {} to {}", from, to);
         self.get_client().object_copy(from, to, bucket_name).await
-    }
-
-    pub async fn object_multipart_uploads(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
-        trace!("[Tardis.OSClient] Multipart uploads object {}", path);
-        self.get_client().object_multipart_uploads(path, content, content_type, bucket_name).await
     }
 
     pub async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<String> {
@@ -176,8 +171,6 @@ trait TardisOSOperations {
     async fn object_delete(&self, path: &str, bucket_name: Option<&str>) -> TardisResult<()>;
 
     async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()>;
-
-    async fn object_multipart_uploads(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()>;
 
     async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<String>;
 
@@ -319,62 +312,6 @@ impl TardisOSOperations for TardisOSS3Client {
         Ok(())
     }
 
-    async fn object_multipart_uploads(&self, path: &str, content: &[u8], content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<()> {
-        const CHUNK_SIZE: u64 = 1024 * 1024 * 5;
-        const MAX_CHUNKS: u64 = 10000;
-
-        let file_size = content.len() as u64;
-        let mut chunk_count = (file_size / CHUNK_SIZE) + 1;
-        let mut size_of_last_chunk = file_size % CHUNK_SIZE;
-        if size_of_last_chunk == 0 {
-            size_of_last_chunk = CHUNK_SIZE;
-            chunk_count -= 1;
-        }
-        if file_size == 0 {
-            return Err(TardisError::custom(
-                "500",
-                &format!(
-                    "[Tardis.OSClient] Failed to multipart uploads object {}:{} with error [Bad file size.]",
-                    bucket_name.unwrap_or_default(),
-                    path
-                ),
-                "-1-tardis-os-object-multipart-uploads-error",
-            ));
-        }
-        if chunk_count > MAX_CHUNKS {
-            return Err(TardisError::custom(
-                "500",
-                &format!(
-                    "[Tardis.OSClient] Failed to multipart uploads object {}:{} with error [Too many chunks! Try increasing your chunk size.]",
-                    bucket_name.unwrap_or_default(),
-                    path
-                ),
-                "-1-tardis-os-object-multipart-uploads-error",
-            ));
-        }
-
-        let bucket = self.get_bucket(bucket_name)?;
-        let upload_id = self.initiate_multipart_upload(path, content_type, bucket_name).await?;
-
-        let mut upload_parts = Vec::new();
-        for chunk_index in 0..chunk_count {
-            let this_chunk = if chunk_count - 1 == chunk_index { size_of_last_chunk } else { CHUNK_SIZE };
-            let upload_part_res: Part = bucket
-                .put_multipart_chunk(
-                    content[(CHUNK_SIZE * chunk_index) as usize..(CHUNK_SIZE * chunk_index + this_chunk) as usize].to_vec(),
-                    path,
-                    (chunk_index as u32) + 1,
-                    &upload_id,
-                    content_type.unwrap_or("application/octet-stream"),
-                )
-                .await?;
-
-            upload_parts.push(upload_part_res);
-        }
-        bucket.complete_multipart_upload(path, &upload_id, upload_parts).await?;
-        Ok(())
-    }
-
     async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<String> {
         Ok(self.get_bucket(bucket_name)?.initiate_multipart_upload(path, content_type.unwrap_or("application/octet-stream")).await?.upload_id)
     }
@@ -437,7 +374,7 @@ impl TardisOSOperations for TardisOSS3Client {
 impl TardisOSS3Client {
     fn get_bucket(&self, bucket_name: Option<&str>) -> TardisResult<Bucket> {
         if let Some(bucket_name) = bucket_name {
-            Ok(Bucket::new(bucket_name, self.region.clone(), self.credentials.clone())?.with_path_style())
+            Ok(*Bucket::new(bucket_name, self.region.clone(), self.credentials.clone())?.with_path_style())
         } else {
             let bucket =
                 self.default_bucket.as_ref().ok_or_else(|| TardisError::not_found("[Tardis.OSClient] No default bucket configured", "404-tardis-os-default-bucket-not-exist"))?;
