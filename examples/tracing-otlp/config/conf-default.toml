@@ -12,8 +12,8 @@ doc_urls = [["test env", "http://localhost:8089/"]]
 # url = "postgres://postgres:ENC(5892ae51dbeedacdf10ba4c0d7af42a7)@localhost:5432/test"
 
 [fw.log]
-level = "debug"
-
+level = "info"
+directives = ["tardis=trace"]
 [fw.log.tracing]
 # https://www.jaegertracing.io/docs/1.49/getting-started/
 # endpoint = "http://localhost:4318/"

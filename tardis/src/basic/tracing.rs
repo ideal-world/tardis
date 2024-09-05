@@ -282,6 +282,7 @@ impl TardisTracing<LogConfig> {
             .install_batch(opentelemetry_sdk::runtime::Tokio)
             .expect("fail to install otlp tracer");
         tracing::debug!("[Tardis.Tracing] Initialized otlp tracer");
+        opentelemetry::global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
         opentelemetry::global::shutdown_tracer_provider();
         opentelemetry::global::set_tracer_provider(provider.clone());
         provider.tracer(tracing_service_name())
@@ -310,6 +311,7 @@ pub struct HeaderInjector<'a>(pub &'a mut http::HeaderMap);
 impl<'a> opentelemetry::propagation::Injector for HeaderInjector<'a> {
     /// Set a key and value in the HeaderMap.  Does nothing if the key or value are not valid inputs.
     fn set(&mut self, key: &str, value: String) {
+        tracing::debug!("inject key: {}, value: {}", key, value);
         if let Ok(name) = http::header::HeaderName::from_bytes(key.as_bytes()) {
             if let Ok(val) = http::header::HeaderValue::from_str(&value) {
                 self.0.insert(name, val);

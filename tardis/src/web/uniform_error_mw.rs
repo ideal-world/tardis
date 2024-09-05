@@ -26,7 +26,7 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
     async fn call(&self, req: Request) -> poem::Result<Self::Output> {
         let method = req.method().to_string();
         let url = req.uri().to_string();
-        trace!("[Tardis.WebServer] Request {} {}", method, url);
+        trace!(headers = ?req.headers(), "[Tardis.WebServer] Request {} {}", method, url);
         let resp = self.0.call(req).await;
         match resp {
             Ok(resp) => {

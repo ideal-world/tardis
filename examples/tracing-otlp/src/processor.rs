@@ -42,6 +42,7 @@ impl Task for SendEmailTask {
     #[instrument]
     async fn handle(&self, _params: HashMap<String, String>) -> TardisResult<()> {
         sleep(Duration::from_millis(300)).await;
+        tardis::TardisFuns::web_client().get_to_str("http://localhost:8089/send_sms", None).await?;
         tokio::spawn(
             async move {
                 let span = debug_span!("into spawn");
