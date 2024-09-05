@@ -320,7 +320,7 @@ impl TardisWebServer {
         let route = route.with(middleware);
         #[cfg(feature = "tracing")]
         let route = {
-            let tracer = opentelemetry::global::tracer("");
+            let tracer = opentelemetry::global::tracer(crate::basic::tracing::tracing_service_name());
             route.with(poem::middleware::OpenTelemetryTracing::new(tracer))
         };
         if module_options.uniform_error || module_config.uniform_error {
