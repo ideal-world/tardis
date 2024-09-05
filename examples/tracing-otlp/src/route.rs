@@ -11,7 +11,6 @@ pub struct Api;
 
 #[poem_openapi::OpenApi]
 impl Api {
-    #[instrument]
     #[oai(path = "/send_email", method = "get")]
     async fn send_email(&self) -> TardisApiResult<String> {
         let params = gen_params(&TaskKind::SendEmail);
