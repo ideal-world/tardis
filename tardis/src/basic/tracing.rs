@@ -276,8 +276,7 @@ impl TardisTracing<LogConfig> {
         tracing::debug!("[Tardis.Tracing] Batch installing tracer. If you are blocked here, try running tokio in multithread.");
         let provider = tracer
             .with_trace_config(
-                opentelemetry_sdk::trace::Config::default()
-                    .with_resource(opentelemetry_sdk::Resource::new([opentelemetry::KeyValue::new("service.name", tracing_service_name())])),
+                opentelemetry_sdk::trace::Config::default().with_resource(opentelemetry_sdk::Resource::new([opentelemetry::KeyValue::new("service.name", tracing_service_name())])),
             )
             .install_batch(opentelemetry_sdk::runtime::Tokio)
             .expect("fail to install otlp tracer");
@@ -286,8 +285,6 @@ impl TardisTracing<LogConfig> {
         opentelemetry::global::shutdown_tracer_provider();
         opentelemetry::global::set_tracer_provider(provider.clone());
         provider.tracer(tracing_service_name())
-
-            
     }
 
     #[cfg(feature = "tracing")]
