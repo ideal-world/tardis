@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tardis = { path = "../../tardis", features = ["future", "web-server", "reldb-postgres", "tracing"] }
+tardis = { path = "../../tardis", features = ["future", "web-server", "reldb-postgres", "tracing", "web-client"] }
 tracing = { version = "0.1" }
 random-string = { version = "1.0.0" }
