@@ -179,7 +179,7 @@ impl TardisRelDBClient {
                         raw_opt = raw_opt.log_statements(opt.get_sqlx_logging_level());
                     }
                     let result = opt
-                        .pool_options::<sqlx::MySql>()
+                        .sqlx_pool_options::<sqlx::MySql>()
                         .after_connect(move |conn, _| {
                             let timezone = timezone.clone();
                             Box::pin(async move {
@@ -207,7 +207,7 @@ impl TardisRelDBClient {
                         raw_opt = raw_opt.disable_statement_logging();
                     }
                     let result = opt
-                        .pool_options::<sqlx::Postgres>()
+                        .sqlx_pool_options::<sqlx::Postgres>()
                         .after_connect(move |conn, _| {
                             let timezone = timezone.clone();
                             Box::pin(async move {

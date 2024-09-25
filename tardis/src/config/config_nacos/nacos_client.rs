@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, io::Read, sync::Arc};
+use std::{collections::HashMap, io::Read, sync::Arc};
 
 use derive_more::Display;
 // use futures::TryFutureExt;
@@ -188,7 +188,7 @@ impl NacosClient {
     async fn listen_config_inner<T: Serialize>(&self, params: &T) -> Result<reqwest::Response, NacosClientError> {
         let resp = self
             .reqwest_client
-            .post(&format!("{}/v1/cs/configs/listener", self.base_url))
+            .post(format!("{}/v1/cs/configs/listener", self.base_url))
             // refer: https://nacos.io/zh-cn/docs/open-api.html
             // doc says it's `pulling` instead of `polling`
             .header("Long-Pulling-Timeout", self.poll_period.as_millis().to_string())

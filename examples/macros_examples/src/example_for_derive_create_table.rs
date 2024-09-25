@@ -20,7 +20,7 @@ pub struct Model {
     pub number64: i64,
     pub number_f32: f32,
     pub number_f64: f64,
-    pub number_u8: Vec<u8>,
+    pub be_var_binary: Vec<u8>,
     pub can_bool: bool,
     pub can_be_null: Option<String>,
     #[tardis_entity(custom_type = "char", custom_len = "50")]

@@ -51,8 +51,6 @@
 * ``tracing`` open telemetry support
 * ``tokio-console`` console subscriber layer supported by [tokio-console](https://github.com/tokio-rs/console)
 * ``tracing-appender`` write log into file periodically.
-* ``cluster`` work with tardis cluster
-* ``k8s`` k8s support for cluster
 * ``build-info`` get build info like package version or git version
 
 ## 🚀 Quick start
@@ -116,14 +114,6 @@ async fn main() -> TardisResult<()> {
     TardisFuns::web_server().web_server.await;
     Ok(())
 }
-```
-### Run with cluster mode
-You can enable cluster mode when it has multi nodes, especially when it comes to k8s.
-```toml
-[fw.cluster]
-watch_kind = "k8s"
-k8s_svc = "my-service"
-k8s_ns =  "my-namespace"
 ```
 
 ### Dependencies

@@ -21,7 +21,7 @@ pub struct Model {
     pub number64: i64,
     pub number_f32: f32,
     pub number_f64: f64,
-    pub number_u8: Vec<u8>,
+    pub be_var_binary: Vec<u8>,
     pub can_bool: bool,
     #[index(full_text, index_id = "index_id_3")]
     pub can_be_null: Option<String>,

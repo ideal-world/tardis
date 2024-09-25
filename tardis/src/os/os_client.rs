@@ -19,7 +19,7 @@ pub struct TardisOSClient {
 struct TardisOSS3Client {
     region: Region,
     credentials: Credentials,
-    default_bucket: Option<Bucket>,
+    default_bucket: Option<Box<Bucket>>,
 }
 
 #[async_trait::async_trait]
@@ -372,7 +372,7 @@ impl TardisOSOperations for TardisOSS3Client {
 }
 
 impl TardisOSS3Client {
-    fn get_bucket(&self, bucket_name: Option<&str>) -> TardisResult<Bucket> {
+    fn get_bucket(&self, bucket_name: Option<&str>) -> TardisResult<Box<Bucket>> {
         if let Some(bucket_name) = bucket_name {
             Ok(*Bucket::new(bucket_name, self.region.clone(), self.credentials.clone())?.with_path_style())
         } else {

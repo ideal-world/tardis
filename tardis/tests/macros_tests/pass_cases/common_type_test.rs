@@ -3,6 +3,7 @@ use tardis::chrono::Utc;
 use tardis::db::reldb_client::TardisActiveModel;
 use tardis::db::sea_orm;
 use tardis::db::sea_orm::sea_query::IndexCreateStatement;
+use tardis::db::sea_orm::sea_query::StringLen;
 use tardis::db::sea_orm::*;
 use tardis::serde_json::{self, Value};
 use tardis::{chrono, TardisCreateEntity, TardisEmptyBehavior, TardisEmptyRelation};
@@ -23,9 +24,9 @@ pub struct Model {
     pub number64: i64,
     pub number_f32: f32,
     pub number_f64: f64,
-    pub be_binary: Vec<u8>,
+    pub be_var_binary: Vec<u8>,
     #[tardis_entity(custom_len = "50")]
-    pub be_option_50_binary: Option<Vec<u8>>,
+    pub be_option_50_var_binary: Option<Vec<u8>>,
     #[index]
     pub be_bool: bool,
     #[index(full_text, index_id = "index_id_3")]
@@ -53,7 +54,7 @@ pub struct Model {
     // pub be_vec_custom: Vec<KeyValue>,
     // pub be_option_vec_custom: Option<Vec<KeyValue>>,
     #[index(index_id = "index_id_2", index_type = "Custom(GiST)", full_text)]
-    #[fill_ctx(own_paths)]
+    #[fill_ctx(fill = "own_paths")]
     pub aaa: String,
 }
 
@@ -82,31 +83,31 @@ fn main() {
 
     let table_cols: &Vec<_> = create_table_statement.get_columns();
     assert_eq!(table_cols.len(), 24);
-    let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "id" && col.get_column_type() == Some(&ColumnType::String(None))).collect();
+    let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "id" && col.get_column_type() == Some(&ColumnType::String(StringLen::None))).collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols.iter().filter(|col| col.get_column_name() == "number8" && col.get_column_type() == Some(&ColumnType::TinyInteger)).collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> =
-        table_cols.iter().filter(|col| col.get_column_name() == "be_binary" && col.get_column_type() == Some(&ColumnType::Binary(sea_query::BlobSize::Blob(None)))).collect();
+        table_cols.iter().filter(|col| col.get_column_name() == "be_var_binary" && col.get_column_type() == Some(&ColumnType::VarBinary(StringLen::None))).collect();
+    assert_eq!(find_id.len(), 1);
+    let find_id: Vec<_> =
+        table_cols.iter().filter(|col| col.get_column_name() == "be_option_50_var_binary" && col.get_column_type() == Some(&ColumnType::VarBinary(StringLen::N(50)))).collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols
         .iter()
-        .filter(|col| col.get_column_name() == "be_option_50_binary" && col.get_column_type() == Some(&ColumnType::Binary(sea_query::BlobSize::Blob(Some(50)))))
+        .filter(|col| {
+            col.get_column_name() == "be_custom_array_string" && col.get_column_type() == Some(&ColumnType::Array(std::sync::Arc::new(ColumnType::String(StringLen::N(50)))))
+        })
         .collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols
         .iter()
-        .filter(|col| col.get_column_name() == "be_custom_array_string" && col.get_column_type() == Some(&ColumnType::Array(std::sync::Arc::new(ColumnType::String(Some(50))))))
+        .filter(|col| col.get_column_name() == "be_vec_text" && col.get_column_type() == Some(&ColumnType::Array(std::sync::Arc::new(ColumnType::String(StringLen::None)))))
         .collect();
     assert_eq!(find_id.len(), 1);
     let find_id: Vec<_> = table_cols
         .iter()
-        .filter(|col| col.get_column_name() == "be_vec_text" && col.get_column_type() == Some(&ColumnType::Array(std::sync::Arc::new(ColumnType::String(None)))))
-        .collect();
-    assert_eq!(find_id.len(), 1);
-    let find_id: Vec<_> = table_cols
-        .iter()
-        .filter(|col| col.get_column_name() == "be_option_vec_text" && col.get_column_type() == Some(&ColumnType::Array(std::sync::Arc::new(ColumnType::String(Some(50))))))
+        .filter(|col| col.get_column_name() == "be_option_vec_text" && col.get_column_type() == Some(&ColumnType::Array(std::sync::Arc::new(ColumnType::String(StringLen::N(50))))))
         .collect();
     assert_eq!(find_id.len(), 1);
 

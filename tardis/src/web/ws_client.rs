@@ -71,10 +71,10 @@ impl TardisWSClient {
             url.port().unwrap_or(0)
         );
         let connect = if url.scheme() != "wss" {
-            tokio_tungstenite::connect_async(url.clone()).await
+            tokio_tungstenite::connect_async(url.to_string()).await
         } else {
             tokio_tungstenite::connect_async_tls_with_config(
-                url.clone(),
+                url.to_string(),
                 None,
                 false,
                 Some(Connector::NativeTls(TlsConnector::builder().danger_accept_invalid_certs(true).build().map_err(|e| {

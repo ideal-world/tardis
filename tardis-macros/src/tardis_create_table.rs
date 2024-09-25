@@ -222,9 +222,9 @@ fn create_single_col_token_statement(field: CreateTableMeta) -> Result<TokenStre
             ));
         }
         if attribute.is_empty() {
-            Ok(quote! {col(&mut ::tardis::db::sea_orm::sea_query::ColumnDef::new_with_type(Column::#ident,#col_type))})
+            Ok(quote! {col(::tardis::db::sea_orm::sea_query::ColumnDef::new_with_type(Column::#ident,#col_type))})
         } else {
-            Ok(quote! {col(&mut ::tardis::db::sea_orm::sea_query::ColumnDef::new_with_type(Column::#ident,#col_type).#attribute)})
+            Ok(quote! {col(::tardis::db::sea_orm::sea_query::ColumnDef::new_with_type(Column::#ident,#col_type).#attribute)})
         }
     } else {
         Ok(quote! {})
@@ -246,7 +246,7 @@ fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<S
         "i8" => "tiny_integer",
         "u8" => {
             if let Some("Vec") = segments_type {
-                "binary"
+                "var_binary"
             } else if cfg!(feature = "reldb-postgres") {
                 return Err(Error::new(
                     span,
@@ -309,7 +309,7 @@ fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<S
         "Value" | "Json" | _ => "Json",
     };
     let result = if let Some("Vec") = segments_type {
-        if custom_ty != "binary" {
+        if custom_ty != "var_binary" && custom_ty != "binary" {
             format!("array.{custom_ty}")
         } else {
             custom_ty.to_string()
@@ -337,9 +337,9 @@ fn map_custom_type_to_sea_type(custom_column_type: &str, custom_len: Vec<u32>, s
         }
         "String" | "string" => {
             if let Some(len) = custom_len.first() {
-                quote!(::tardis::db::sea_orm::sea_query::ColumnType::String(Some(#len)))
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::String(::tardis::db::sea_orm::sea_query::StringLen::N(#len)))
             } else {
-                quote!(::tardis::db::sea_orm::sea_query::ColumnType::String(None))
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::String(::tardis::db::sea_orm::sea_query::StringLen::None))
             }
         }
         "Text" | "text" => {
@@ -399,18 +399,16 @@ fn map_custom_type_to_sea_type(custom_column_type: &str, custom_len: Vec<u32>, s
         }
         "Binary" | "binary" => {
             if let Some(len) = custom_len.first() {
-                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Binary(::tardis::db::sea_orm::sea_query::BlobSize::Blob(
-                    Some(#len)
-                )))
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Binary(#len))
             } else {
-                quote!(::tardis::db::sea_orm::sea_query::ColumnType::Binary(::tardis::db::sea_orm::sea_query::BlobSize::Blob(None)))
+                return Err(Error::new(span, "column_type:binary must have custom_len!".to_string()));
             }
         }
         "VarBinary" | "var_binary" => {
             if let Some(len) = custom_len.first() {
-                quote!(::tardis::db::sea_orm::sea_query::ColumnType::VarBinary(#len))
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::VarBinary(::tardis::db::sea_orm::sea_query::StringLen::N(#len)))
             } else {
-                return Err(Error::new(span, "column_type:var_binary must have custom_len!".to_string()));
+                quote!(::tardis::db::sea_orm::sea_query::ColumnType::VarBinary(::tardis::db::sea_orm::sea_query::StringLen::None))
             }
         }
         "Bit" | "bit" => {

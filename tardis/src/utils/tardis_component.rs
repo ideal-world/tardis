@@ -33,7 +33,7 @@ pub struct TardisComponentInner<T> {
     inner: RwLock<Arc<T>>,
 }
 
-impl<T: ?Sized + Default> Deref for TardisComponent<T> {
+impl<T: Default> Deref for TardisComponent<T> {
     type Target = TardisComponentInner<T>;
     fn deref(&self) -> &Self::Target {
         self.0.get_or_init(Default::default)
