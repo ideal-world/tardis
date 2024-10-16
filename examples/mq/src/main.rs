@@ -6,16 +6,14 @@ use tokio::time::sleep;
 
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
-use tardis::testcontainers::clients;
 use tardis::tokio;
 use tardis::TardisFuns;
 
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     // Here is a demonstration of using docker to start a mysql simulation scenario.
-    let docker = clients::Cli::default();
-    let rabbit_container = TardisTestContainer::rabbit_custom(&docker);
-    let port = rabbit_container.get_host_port_ipv4(5672);
+    let rabbit_container = TardisTestContainer::rabbit_custom().await?;
+    let port = rabbit_container.get_host_port_ipv4(5672).await?;
     let url = format!("amqp://guest:guest@127.0.0.1:{port}/%2f");
     env::set_var("TARDIS_FW.MQ.URL", url);
 

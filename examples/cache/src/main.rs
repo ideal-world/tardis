@@ -2,7 +2,6 @@ use std::env;
 use std::time::Duration;
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
-use tardis::testcontainers::clients;
 use tardis::tokio;
 use tardis::tokio::time::sleep;
 use tardis::TardisFuns;
@@ -10,9 +9,8 @@ use tardis::TardisFuns;
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     // Here is a demonstration of using docker to start a mysql simulation scenario.
-    let docker = clients::Cli::default();
-    let redis_container = TardisTestContainer::redis_custom(&docker);
-    let port = redis_container.get_host_port_ipv4(6379);
+    let redis_container = TardisTestContainer::redis_custom().await?;
+    let port = redis_container.get_host_port_ipv4(6379).await?;
     let url = format!("redis://127.0.0.1:{port}/0");
     env::set_var("TARDIS_FW.CACHE.URL", url.clone());
     env::set_var("TARDIS_FW.CACHE.MODULES.M1.URL", url.clone());
