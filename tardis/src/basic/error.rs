@@ -249,10 +249,3 @@ impl From<opentelemetry::trace::TraceError> for TardisError {
         TardisError::internal_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
-
-#[cfg(feature = "k8s")]
-impl From<kube::Error> for TardisError {
-    fn from(error: kube::Error) -> Self {
-        TardisError::internal_error(&format!("[Tardis.Basic] {error}"), "")
-    }
-}
