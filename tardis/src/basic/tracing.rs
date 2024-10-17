@@ -147,16 +147,23 @@ where
         self.with_configurable_layer(
             tracing_opentelemetry::layer().with_tracer(TardisTracing::<LogConfig>::create_otlp_tracer()).boxed(),
             |conf: &LogConfig| {
-                if std::env::var_os(OTEL_EXPORTER_OTLP_ENDPOINT).is_none() {
-                    std::env::set_var(OTEL_EXPORTER_OTLP_ENDPOINT, conf.tracing.endpoint.as_str());
-                }
-                if std::env::var_os(OTEL_EXPORTER_OTLP_PROTOCOL).is_none() {
-                    std::env::set_var(OTEL_EXPORTER_OTLP_PROTOCOL, conf.tracing.protocol.to_string());
-                }
-                if std::env::var_os(OTEL_SERVICE_NAME).is_none() {
-                    std::env::set_var(OTEL_SERVICE_NAME, conf.tracing.server_name.as_str());
-                }
-                Ok(tracing_opentelemetry::layer().with_tracer(TardisTracing::<LogConfig>::create_otlp_tracer()).boxed())
+                let layer = 
+                if let Some(tracing) = &conf.tracing {
+                    if std::env::var_os(OTEL_EXPORTER_OTLP_ENDPOINT).is_none() {
+                        std::env::set_var(OTEL_EXPORTER_OTLP_ENDPOINT, tracing.endpoint.as_str());
+                    }
+                    if std::env::var_os(OTEL_EXPORTER_OTLP_PROTOCOL).is_none() {
+                        std::env::set_var(OTEL_EXPORTER_OTLP_PROTOCOL, tracing.protocol.to_string());
+                    }
+                    if std::env::var_os(OTEL_SERVICE_NAME).is_none() {
+                        std::env::set_var(OTEL_SERVICE_NAME, tracing.server_name.as_str());
+                    }
+                    tracing_opentelemetry::layer().with_tracer(TardisTracing::<LogConfig>::create_otlp_tracer()).boxed()
+                } else {
+                    tracing_opentelemetry::layer().boxed()
+                };
+                tracing::debug!("[Tardis.Tracing] OpenTelemetry layer created.");
+                Ok(layer)
             },
         )
     }
@@ -178,6 +185,7 @@ where
     {
         use crate::config::config_dto::log::TracingAppenderConfig;
         let config_file_layer = |cfg: Option<&TracingAppenderConfig>| {
+            tracing::debug!("Configuring appender layer.");
             if let Some(cfg) = &cfg {
                 let file_appender = tracing_appender::rolling::RollingFileAppender::new(cfg.rotation.into(), &cfg.dir, &cfg.filename);
                 FmtLayer::default().with_writer(file_appender).boxed()
@@ -280,11 +288,14 @@ impl TardisTracing<LogConfig> {
             )
             .install_batch(opentelemetry_sdk::runtime::Tokio)
             .expect("fail to install otlp tracer");
-        tracing::debug!("[Tardis.Tracing] Initialized otlp tracer");
-        opentelemetry::global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
         opentelemetry::global::shutdown_tracer_provider();
+        opentelemetry::global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
         opentelemetry::global::set_tracer_provider(provider.clone());
-        provider.tracer(tracing_service_name())
+        tracing::debug!("[Tardis.Tracing] Initialized otlp tracer");
+        let new_tracer = provider.tracer(tracing_service_name());
+        tracing::debug!(?new_tracer, "[Tardis.Tracing] new tracer created");
+
+        new_tracer
     }
 
     #[cfg(feature = "tracing")]
