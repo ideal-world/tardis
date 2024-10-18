@@ -929,7 +929,7 @@ pub mod entities {
             }
 
             fn create_index_statement() -> Vec<IndexCreateStatement> {
-                vec![Index::create().name(&format!("idx-{}-{}", Entity.table_name(), Column::OwnPaths.to_string())).table(Entity).col(Column::OwnPaths).to_owned()]
+                vec![Index::create().name(format!("idx-{}-{}", Entity.table_name(), Column::OwnPaths.to_string())).table(Entity).col(Column::OwnPaths).to_owned()]
             }
         }
 

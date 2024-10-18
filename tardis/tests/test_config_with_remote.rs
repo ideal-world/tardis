@@ -14,7 +14,7 @@ use tardis::test::test_container::nacos_server::NacosServer;
 use tardis::TardisFuns;
 
 use testcontainers::runners::AsyncRunner;
-use testcontainers::{ContainerAsync, GenericImage};
+use testcontainers::ContainerAsync;
 use testcontainers_modules::rabbitmq::RabbitMq;
 use testcontainers_modules::redis::Redis;
 use tracing::{info, warn};
