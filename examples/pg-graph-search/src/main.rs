@@ -3,16 +3,14 @@ use std::vec;
 
 use tardis::basic::result::TardisResult;
 use tardis::test::test_container::TardisTestContainer;
-use tardis::testcontainers::clients;
 use tardis::tokio;
 use tardis::TardisFuns;
 
 #[tokio::main]
 async fn main() -> TardisResult<()> {
     // Here is a demonstration of using docker to start a mysql simulation scenario.
-    let docker = clients::Cli::default();
-    let mysql_container = TardisTestContainer::postgres_custom(None, &docker);
-    let port = mysql_container.get_host_port_ipv4(5432);
+    let mysql_container = TardisTestContainer::postgres_custom(None).await?;
+    let port = mysql_container.get_host_port_ipv4(5432).await?;
     let url = format!("postgres://postgres:123456@localhost:{port}/test");
     env::set_var("TARDIS_FW.DB.URL", url);
 

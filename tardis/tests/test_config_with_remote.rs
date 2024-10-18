@@ -12,9 +12,10 @@ use tardis::serde::{Deserialize, Serialize};
 
 use tardis::test::test_container::nacos_server::NacosServer;
 use tardis::TardisFuns;
-use testcontainers::clients::Cli;
-use testcontainers::Container;
-use testcontainers::GenericImage;
+
+use testcontainers::runners::AsyncRunner;
+use testcontainers::{ContainerAsync, GenericImage};
+use testcontainers_modules::rabbitmq::RabbitMq;
 use testcontainers_modules::redis::Redis;
 use tracing::{info, warn};
 
@@ -39,17 +40,17 @@ impl TestApi {
 }
 
 #[allow(dead_code)]
-struct DockerEnv<'d> {
+struct DockerEnv {
     nacos_url: String,
     mq_url: String,
-    nacos: Container<'d, NacosServer>,
-    mq: Container<'d, GenericImage>,
-    cache: Container<'d, Redis>,
+    nacos: ContainerAsync<NacosServer>,
+    mq: ContainerAsync<RabbitMq>,
+    cache: ContainerAsync<Redis>,
 }
 
 const NACOS_TAG: &str = "v2.2.3-slim";
 
-fn initialize_docker_env(cli: &Cli) -> DockerEnv {
+async fn initialize_docker_env() -> DockerEnv {
     // init nacos docker
     use tardis::test::test_container::nacos_server::NacosServerMode;
     use tardis::test::test_container::TardisTestContainer;
@@ -64,29 +65,32 @@ fn initialize_docker_env(cli: &Cli) -> DockerEnv {
         .nacos_auth_token_expire_seconds(10)
         .mode(NacosServerMode::Standalone);
     nacos.tag = NACOS_TAG.to_string();
-    let nacos = cli.run(nacos);
-    let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = "127.0.0.1", port = nacos.get_host_port_ipv4(8848));
+    let nacos = nacos.start().await.expect("fail to start nacos server");
+    let port = nacos.get_host_port_ipv4(8848).await.expect("fail to get nacos port");
+
+    let nacos_url = format!("{schema}://{ip}:{port}/nacos", schema = "http", ip = "127.0.0.1");
     env::set_var("TARDIS_FW.CONF_CENTER.URL", nacos_url.clone());
-    nacos.start();
+    nacos.start().await.expect("fail to start nacos server");
     println!("nacos server started at: {}", nacos_url);
 
     // mq
-    let mq = TardisTestContainer::rabbit_custom(cli);
+    let mq = TardisTestContainer::rabbit_custom().await.expect("fail to start rabbitmq");
+    let port = mq.get_host_port_ipv4(5672).await.expect("fail to get mq port");
     let mq_url = format!(
         "{schema}://{user}:{pswd}@{ip}:{port}/%2f",
         schema = "amqp",
         user = "guest",
         pswd = "guest",
         ip = "127.0.0.1",
-        port = mq.get_host_port_ipv4(5672)
     );
     env::set_var("TARDIS_FW.MQ.URL", mq_url.clone());
     env::set_var("TARDIS_FW.MQ.MODULES.M1.URL", mq_url.clone());
     println!("rabbit-mq started at: {}", mq_url);
 
     // redis
-    let redis = TardisTestContainer::redis_custom(cli);
-    let redis_url = format!("redis://localhost:{port}/0", port = redis.get_host_port_ipv4(6379));
+    let redis = TardisTestContainer::redis_custom().await.expect("fail to start redis");
+    let port = redis.get_host_port_ipv4(6379).await.expect("fail to get redis port");
+    let redis_url = format!("redis://localhost:{port}/0");
     env::set_var("TARDIS_FW.CACHE.URL", redis_url.clone());
 
     DockerEnv {
@@ -103,8 +107,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis::config=debug");
     env::set_var("PROFILE", "remote");
 
-    let docker = testcontainers::clients::Cli::default();
-    let docker_env = initialize_docker_env(&docker);
+    let docker_env = initialize_docker_env().await;
     TardisFuns::init(Some("tests/config")).await?;
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_locale");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);

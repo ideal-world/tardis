@@ -37,7 +37,7 @@ pub struct LogConfig {
     #[cfg(feature = "tracing")]
     #[builder(default)]
     /// open telemetry tracing config
-    pub tracing: TracingConfig,
+    pub tracing: Option<TracingConfig>,
     #[cfg(feature = "tracing-appender")]
     #[builder(default)]
     /// tracing appender config

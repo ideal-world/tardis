@@ -286,6 +286,7 @@ impl TardisFuns {
         #[cfg(feature = "web-server")]
         {
             if let Some(_web_server_config) = &fw_conf.web_server {
+                tracing::info!("initialize web server");
                 let web_server = TardisWebServer::init_by_conf(&fw_conf)?;
                 // take out previous webserver first, because TARDIS_INST is not send and can't live cross an `await` point
                 let inherit = tardis_instance().web_server.get();

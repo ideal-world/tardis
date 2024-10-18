@@ -3,7 +3,7 @@
     "rust-lang.rust-analyzer",
     "tamasfe.even-better-toml",
     "jscearcy.rust-doc-viewer",
-    "serayuzgur.crates",
+    "fill-labs.dependi",
     "belfz.search-crates-io",
     "vadimcn.vscode-lldb",
     "swellaby.vscode-rust-test-adapter",

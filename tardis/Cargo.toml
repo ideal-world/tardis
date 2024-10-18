@@ -98,7 +98,7 @@ tokio = { version = "1", features = [
 ] }
 tokio-util = { version = "0.7.12" }
 # Tardis Macros
-tardis-macros = { workspace = true, optional = true }
+tardis-macros = { version = "0.1.0-rc.17", workspace = true, optional = true }
 # Log
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -169,7 +169,7 @@ sea-orm = { version = "1", features = [
   "with-json",
   "debug-print",
 ], optional = true }
-sqlx = { version = "0.7", features = ["any"], optional = true }
+sqlx = { version = "0.8", features = ["any"], optional = true }
 sqlparser = { version = "0", optional = true }
 
 # Web Server
@@ -232,10 +232,15 @@ anyhow = { version = "1.0", optional = true }
 
 # Test
 # update this may cause break changes
-testcontainers = { version = "0.15", optional = true }
-testcontainers-modules = { version = "0.3", features = [
+testcontainers = { version = "0.23", optional = true }
+testcontainers-modules = { version = "0.11", features = [
   "minio",
   "redis",
+  "rabbitmq",
+  "mysql",
+  "postgres",
+  "elastic_search",
+
 ], optional = true }
 
 # Debug

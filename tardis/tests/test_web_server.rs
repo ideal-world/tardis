@@ -10,8 +10,8 @@ use poem::endpoint::{BoxEndpoint, ToDynEndpoint};
 use poem::http::Method;
 use poem::{IntoResponse, Middleware, Response};
 use serde_json::json;
+use tardis::basic::tracing::TardisTracing;
 use tardis::web::web_server::WebServerModule;
-use testcontainers::clients;
 use tokio::time::sleep;
 use tracing::info;
 
@@ -90,12 +90,11 @@ bY588beOczzrXB0ldJAHZkoQFccSM1sP7pmUqgBOR0ZedmMzR37GuKjEpc/TvXHR
 #[tokio::test(flavor = "multi_thread")]
 async fn test_web_server() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace,poem_grpc=trace,poem=trace");
-    tardis::TardisFuns::init_log();
+    TardisTracing::initializer().with_env_layer().with_fmt_layer().with_opentelemetry_layer().init();
     let web_url = "https://localhost:8080";
 
-    let docker = clients::Cli::default();
-    let redis_container = TardisTestContainer::redis_custom(&docker);
-    let redis_port = redis_container.get_host_port_ipv4(6379);
+    let redis_container = TardisTestContainer::redis_custom().await?;
+    let redis_port = redis_container.get_host_port_ipv4(6379).await?;
     let redis_url = format!("redis://127.0.0.1:{redis_port}/0");
     start_serv(web_url, &redis_url).await?;
     sleep(Duration::from_millis(500)).await;

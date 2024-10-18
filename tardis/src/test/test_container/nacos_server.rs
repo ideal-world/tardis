@@ -47,31 +47,29 @@ impl std::fmt::Display for NacosServerMode {
 
 def_container! {
     NacosServer {
-        nacos_auth_enable:          bool            = false,
-        mode:                       NacosServerMode = NacosServerMode::Cluster,
-        nacos_auth_identity_key:    String          = "nacos",
-        nacos_auth_identity_value:  String          = "nacos",
-        nacos_auth_token:           String          = "TARDIS-NACOS-SERVER-TEST-CONTAINER",
-        nacos_auth_token_expire_seconds:    usize   = 18000_usize
+        nacos_auth_enable:                  bool            = false,
+        mode:                               NacosServerMode = NacosServerMode::Cluster,
+        nacos_auth_identity_key:            String          = "nacos",
+        nacos_auth_identity_value:          String          = "nacos",
+        nacos_auth_token:                   String          = "TARDIS-NACOS-SERVER-TEST-CONTAINER",
+        nacos_auth_token_expire_seconds:    usize           = 18000_usize
     }
 }
 
 impl Image for NacosServer {
-    type Args = Vec<String>;
-
-    fn name(&self) -> String {
-        "nacos/nacos-server".to_string()
+    fn name(&self) -> &str {
+        "nacos/nacos-server"
     }
 
-    fn tag(&self) -> String {
-        self.tag.clone()
+    fn tag(&self) -> &str {
+        &self.tag
     }
 
     fn ready_conditions(&self) -> Vec<testcontainers::core::WaitFor> {
         vec![WaitFor::message_on_stdout("Nacos started successfully")]
     }
 
-    fn env_vars(&self) -> Box<dyn Iterator<Item = (&String, &String)> + '_> {
-        Box::new(self.env_vars.iter())
+    fn env_vars(&self) -> impl IntoIterator<Item = (impl Into<std::borrow::Cow<'_, str>>, impl Into<std::borrow::Cow<'_, str>>)> {
+        self.env_vars.iter().map(|(k, v)| (k.as_str(), v.as_str()))
     }
 }
