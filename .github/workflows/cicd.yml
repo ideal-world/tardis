@@ -6,137 +6,8 @@ env:
   TARDIS_TEST_DISABLED_DOCKER: true
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql
-        ports:
-          - 3306:3306
-        options: -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=test
-      postgres:
-        image: postgres:alpine
-        ports:
-          - 5432:5432
-        options: -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=test
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-        options: --entrypoint redis-server
-      rabbit:
-        image: rabbitmq:management
-        ports:
-          - 15672:15672
-          - 25672:25672
-          - 5671:5671
-          - 5672:5672
-          - 4369:4369
-        options: -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest
-      es:
-        image: rapidfort/elasticsearch:7.17
-        ports:
-          - 9200:9200
-        options: -e ELASTICSEARCH_HEAP_SIZE=128m
-      # https://github.com/minio/minio/issues/10745
-      minio:
-        image: minio/minio:edge-cicd
-        ports:
-          - 9000:9000
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v3
-
-      - name: Init rust envrionment
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-
-      - name: Cache rust
-        uses: Swatinem/rust-cache@v2
-
-      - name: Check format
-        run: cargo fmt --all -- --check
-
-      - name: Check clippy
-        run: cargo clippy --all --all-features
-   
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          # this might remove tools that are actually needed,
-          # if set to "true" but frees about 6 GB
-          tool-cache: false
-
-          # all of these default to true, but feel free to set to
-          # "false" if necessary for your workflow
-          docker-images: false
-          swap-storage: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-
-      - name: Run test
-        run: cargo test --all-features
-        env: 
-          RUSTFLAGS: --cfg tokio_unstable
-        
-      - name: Cargo package tardis
-        working-directory: tardis
-        run: cargo package
-
-      - name: Cargo publish tardis
-        working-directory: tardis
-        run: cargo publish --dry-run
-
-      - name: Cargo package macros
-        working-directory: tardis-macros
-        run: cargo package
-
-      - name: Cargo publish macros
-        working-directory: tardis-macros
-        run: cargo publish --dry-run
-
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v2
-        with:
-          token: ${{secrets.CODECOV_TOKEN}}
-
-      - name: Archive code coverage results
-        uses: actions/upload-artifact@v3
-        with:
-          name: code-coverage-report
-          path: cobertura.xml
-  publish-macros-dry-run:
-    needs: [check]
-    runs-on: ubuntu-latest
-    steps:
-          - name: Check out the repo
-            uses: actions/checkout@v3
-
-          - name: Init rust envrionment
-            uses: actions-rs/toolchain@v1
-            with:
-              toolchain: stable
-
-          - name: Cargo login
-            run: cargo login ${{ secrets.CRATES_TOKEN }}
-
-          - name: Cargo package macros
-            working-directory: tardis-macros
-            run: cargo package
-
-          - name: Cargo publish macros
-            working-directory: tardis-macros
-            run: cargo publish --dry-run
-  publish-macros:
+  tardis-macros:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [publish-macros-dry-run]
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
@@ -154,30 +25,119 @@ jobs:
         working-directory: tardis-macros
         run: cargo package
 
+      - name: Cargo publish macros dry run
+        working-directory: tardis-macros
+        run: cargo publish --dry-run
+
       - name: Cargo publish macros
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         working-directory: tardis-macros
         run: cargo publish
+  tardis:
+      if: startsWith(github.ref, 'refs/tags/')
+      needs: [tardis-macros]
+      runs-on: ubuntu-latest
+      services:
+        mysql:
+          image: mysql
+          ports:
+            - 3306:3306
+          options: -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=test
+        postgres:
+          image: postgres:alpine
+          ports:
+            - 5432:5432
+          options: -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=test
+        redis:
+          image: redis
+          ports:
+            - 6379:6379
+          options: --entrypoint redis-server
+        rabbit:
+          image: rabbitmq:management
+          ports:
+            - 15672:15672
+            - 25672:25672
+            - 5671:5671
+            - 5672:5672
+            - 4369:4369
+          options: -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest
+        es:
+          image: rapidfort/elasticsearch:7.17
+          ports:
+            - 9200:9200
+          options: -e ELASTICSEARCH_HEAP_SIZE=128m
+        # https://github.com/minio/minio/issues/10745
+        minio:
+          image: minio/minio:edge-cicd
+          ports:
+            - 9000:9000
+      steps:
+        - name: Check out the repo
+          uses: actions/checkout@v3
 
-  publish-tardis:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [check]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v3
+        - name: Init rust envrionment
+          uses: actions-rs/toolchain@v1
+          with:
+            toolchain: stable
+            components: rustfmt, clippy
 
-      - name: Init rust envrionment
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        - name: Install Protoc
+          uses: arduino/setup-protoc@v1
 
-      - name: Cargo login
-        run: cargo login ${{ secrets.CRATES_TOKEN }}
+        - name: Cache rust
+          uses: Swatinem/rust-cache@v2
 
-      - name: Cargo package tardis
-        working-directory: tardis
-        run: cargo package
+        - name: Check format
+          run: cargo fmt --all -- --check
 
-      - name: Cargo publish tardis
-        working-directory: tardis
-        run: cargo publish
+        - name: Check clippy
+          run: cargo clippy --all --all-features
+    
+        - name: Free Disk Space (Ubuntu)
+          uses: jlumbroso/free-disk-space@main
+          with:
+            # this might remove tools that are actually needed,
+            # if set to "true" but frees about 6 GB
+            tool-cache: false
+
+            # all of these default to true, but feel free to set to
+            # "false" if necessary for your workflow
+            docker-images: false
+            swap-storage: false
+            android: true
+            dotnet: true
+            haskell: true
+            large-packages: true
+
+        - name: Run test
+          run: cargo test --all-features
+          env: 
+            RUSTFLAGS: --cfg tokio_unstable
+
+        - name: Upload to codecov.io
+          uses: codecov/codecov-action@v2
+          with:
+            token: ${{secrets.CODECOV_TOKEN}}
+
+        - name: Archive code coverage results
+          uses: actions/upload-artifact@v3
+          with:
+            name: code-coverage-report
+            path: cobertura.xml
+      
+        - name: Cargo login
+          run: cargo login ${{ secrets.CRATES_TOKEN }}
+
+        - name: Cargo package tardis
+          working-directory: tardis
+          run: cargo package
+
+        - name: Cargo publish tardis dry run
+          working-directory: tardis
+          run: cargo publish --dry-run
+
+        - name: Cargo publish macros
+          if: ${{ startsWith(github.ref, 'refs/tags/') }}
+          working-directory: tardis
+          run: cargo publish
