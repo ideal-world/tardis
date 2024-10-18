@@ -89,7 +89,7 @@ bY588beOczzrXB0ldJAHZkoQFccSM1sP7pmUqgBOR0ZedmMzR37GuKjEpc/TvXHR
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_web_server() -> TardisResult<()> {
-    env::set_var("RUST_LOG", "trace,tardis=trace,poem_grpc=trace,poem=trace");
+    env::set_var("RUST_LOG", "info,tardis=trace,poem_grpc=trace,poem=trace");
     TardisTracing::initializer().with_env_layer().with_fmt_layer().with_opentelemetry_layer().init();
     let web_url = "https://localhost:8080";
 

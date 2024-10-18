@@ -147,8 +147,7 @@ where
         self.with_configurable_layer(
             tracing_opentelemetry::layer().with_tracer(TardisTracing::<LogConfig>::create_otlp_tracer()).boxed(),
             |conf: &LogConfig| {
-                let layer = 
-                if let Some(tracing) = &conf.tracing {
+                let layer = if let Some(tracing) = &conf.tracing {
                     if std::env::var_os(OTEL_EXPORTER_OTLP_ENDPOINT).is_none() {
                         std::env::set_var(OTEL_EXPORTER_OTLP_ENDPOINT, tracing.endpoint.as_str());
                     }
