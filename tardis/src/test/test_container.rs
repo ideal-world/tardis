@@ -85,7 +85,7 @@ impl TardisTestContainer {
                 .to_str()
                 .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{init_script_path}] get error"))
                 .to_string();
-            mysql.with_mount(Mount::volume_mount(path, "/docker-entrypoint-initdb.d/"))
+            mysql.with_mount(Mount::bind_mount(path, "/docker-entrypoint-initdb.d/"))
         } else {
             mysql
         };
@@ -116,7 +116,7 @@ impl TardisTestContainer {
                 .to_str()
                 .unwrap_or_else(|| panic!("[Tardis.Test_Container] Script Path [{init_script_path}] get error"))
                 .to_string();
-            postgres.with_mount(Mount::volume_mount(path, "/docker-entrypoint-initdb.d/"))
+            postgres.with_mount(Mount::bind_mount(path, "/docker-entrypoint-initdb.d/"))
         } else {
             postgres
         };
