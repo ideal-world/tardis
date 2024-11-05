@@ -48,10 +48,10 @@ where
 }
 
 /// Plain text body for [`TardisWebClient`],
-pub struct PlainText<T>(T);
+pub struct PlainText<T>(pub T);
 
 /// Json body for [`TardisWebClient`],
-pub struct Json<'a, T>(&'a T);
+pub struct Json<'a, T>(pub &'a T);
 
 impl<T: Into<String>> TardisRequestBody for PlainText<T> {
     fn apply_on(self, builder: RequestBuilder) -> RequestBuilder {
@@ -319,14 +319,14 @@ impl TardisWebClient {
         Ok((code, headers, response))
     }
 
-    async fn to_text(&self, code: u16, headers: HashMap<String, String>, response: Response) -> TardisResult<TardisHttpResponse<String>> {
+    pub async fn to_text(&self, code: u16, headers: HashMap<String, String>, response: Response) -> TardisResult<TardisHttpResponse<String>> {
         match response.text().await {
             Ok(body) => Ok(TardisHttpResponse { code, headers, body: Some(body) }),
             Err(error) => Err(TardisError::format_error(&format!("[Tardis.WebClient] {error:?}"), "406-tardis-webclient-text-error")),
         }
     }
 
-    async fn to_json<T: for<'de> Deserialize<'de>>(&self, code: u16, headers: HashMap<String, String>, response: Response) -> TardisResult<TardisHttpResponse<T>> {
+    pub async fn to_json<T: for<'de> Deserialize<'de>>(&self, code: u16, headers: HashMap<String, String>, response: Response) -> TardisResult<TardisHttpResponse<T>> {
         match response.json().await {
             Ok(body) => Ok(TardisHttpResponse { code, headers, body: Some(body) }),
             Err(error) => Err(TardisError::format_error(&format!("[Tardis.WebClient] {error:?}"), "406-tardis-webclient-json-error")),
