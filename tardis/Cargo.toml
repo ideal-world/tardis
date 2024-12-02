@@ -178,7 +178,7 @@ poem-openapi = { version = "5", features = [
   "websocket",
 ], optional = true }
 poem-openapi-derive = { version = "5", optional = true }
-poem = { version = "3", features = [
+poem = { version = "=3.1.4", features = [
   "csrf",
   "opentelemetry",
   "rustls",
