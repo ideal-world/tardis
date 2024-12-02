@@ -105,21 +105,21 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = { version = "0.2", optional = true }
 console-subscriber = { version = "0.4", optional = true }
 # Tracing
-tracing-opentelemetry = { version = "0.25", optional = true }
-opentelemetry = { version = "0.24", default-features = false, features = [
+tracing-opentelemetry = { version = "0.28", optional = true }
+opentelemetry = { version = "0.27", default-features = false, features = [
   "trace",
 ], optional = true }
-opentelemetry_sdk = { version = "0.24", default-features = false, features = [
+opentelemetry_sdk = { version = "0.27", default-features = false, features = [
   "rt-tokio",
   "trace",
 ], optional = true }
-opentelemetry-otlp = { version = "0.17", features = [
+opentelemetry-otlp = { version = "0.27", features = [
   "reqwest-client",
   "reqwest-rustls",
   "http-proto",
   "tls",
 ], optional = true }
-opentelemetry-http = { version = "0.13", optional = true }
+opentelemetry-http = { version = "0.27", optional = true }
 
 # TLS
 native-tls = { version = "0.2", optional = true }
@@ -178,7 +178,7 @@ poem-openapi = { version = "5", features = [
   "websocket",
 ], optional = true }
 poem-openapi-derive = { version = "5", optional = true }
-poem = { version = "=3.1.4", features = [
+poem = { version = "3.1.5", features = [
   "csrf",
   "opentelemetry",
   "rustls",
