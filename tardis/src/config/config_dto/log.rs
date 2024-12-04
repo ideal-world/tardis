@@ -35,7 +35,7 @@ pub struct LogConfig {
     /// tracing filtering directive, e.g. `tardis=debug,sqlx=off`
     pub directives: Vec<Directive>,
     #[cfg(feature = "tracing")]
-    #[builder(default)]
+    #[builder(!default, default = None)]
     /// open telemetry tracing config
     pub tracing: Option<TracingConfig>,
     #[cfg(feature = "tracing-appender")]
