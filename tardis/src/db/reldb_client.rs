@@ -12,7 +12,7 @@ use sqlparser::ast::{SetExpr, TableFactor};
 use sqlparser::dialect::{MySqlDialect, PostgreSqlDialect, SQLiteDialect};
 use sqlparser::parser::{Parser, ParserError};
 use sqlx::Executor;
-use tracing::{error, info, trace};
+use tracing::{error, info, instrument, trace};
 use url::Url;
 
 use crate::basic::dto::TardisContext;
@@ -653,7 +653,8 @@ impl TardisRelDBlConnection {
         }
         Ok(())
     }
-
+    
+    #[instrument(name="reldb_query", skip_all)]
     /// Create a table from an entity / 从实体中创建表
     ///
     /// # Arguments
@@ -703,6 +704,7 @@ impl TardisRelDBlConnection {
         Ok(())
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Create table  / 创建表
     ///
     /// # Arguments
@@ -725,6 +727,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Create index / 创建索引
     ///
     /// # Arguments
@@ -747,6 +750,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Get a record, return a custom structure / 获取一条记录，返回自定义结构体
     ///
     /// # Arguments
@@ -796,6 +800,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Get multiple rows and return a custom structure / 获取多条记录，返回自定义结构体
     ///
     /// # Arguments
@@ -826,6 +831,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Get multiple rows and return a custom structure / 获取多条记录，返回自定义结构体
     ///
     /// # Arguments
@@ -844,6 +850,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Paging to get multiple records and the total number of records, returning a custom structure / 分页获取多条记录及总记录数，返回自定义结构体
     ///
     /// # Arguments
@@ -877,6 +884,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Paging to get multiple records and the total number of records, returning a custom structure / 分页获取多条记录及总记录数，返回自定义结构体
     ///
     /// # Arguments
@@ -897,6 +905,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Get number of records / 获取记录数量
     ///
     /// # Arguments
@@ -924,6 +933,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Get number of records / 获取记录数量
     ///
     /// # Arguments
@@ -940,6 +950,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(skip_all)]
     /// Execute SQL operations (provide custom SQL processing capabilities) / 执行SQL操作（提供自定义SQL处理能力）
     ///
     /// # Arguments
@@ -958,6 +969,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Execute SQL operations (provide custom SQL processing capabilities) / 执行SQL操作（提供自定义SQL处理能力）
     pub async fn execute_one(&self, sql: &str, params: Vec<Value>) -> TardisResult<ExecResult> {
         if let Some(tx) = &self.tx {
@@ -967,6 +979,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     // Execute SQL operations (provide custom SQL processing capabilities) / 执行SQL操作（提供自定义SQL处理能力）
     pub async fn execute_many(&self, sql: &str, params: Vec<Vec<Value>>) -> TardisResult<()> {
         if let Some(tx) = &self.tx {
@@ -976,6 +989,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     pub async fn query_one(&self, sql: &str, params: Vec<Value>) -> TardisResult<Option<QueryResult>> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::query_one_inner(sql, params, tx).await
@@ -984,6 +998,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     pub async fn query_all(&self, sql: &str, params: Vec<Value>) -> TardisResult<Vec<QueryResult>> {
         if let Some(tx) = &self.tx {
             TardisRelDBClient::query_all_inner(sql, params, tx).await
@@ -992,6 +1007,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Insert a record and return primary key value / 插入一条记录，返回主键值
     ///
     /// # Arguments
@@ -1024,6 +1040,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Insert multiple records / 插入多条记录
     ///
     /// # Arguments
@@ -1058,6 +1075,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Update a record / 更新一条记录
     ///
     /// # Arguments
@@ -1091,6 +1109,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Update multiple records / 更新多条记录
     ///
     /// # Arguments
@@ -1120,6 +1139,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Soft delete record(s) (primary key is Id) / 软删除记录(主键为Id)
     ///
     /// # Arguments
@@ -1148,6 +1168,7 @@ impl TardisRelDBlConnection {
         }
     }
 
+    #[instrument(name="reldb_query", skip_all)]
     /// Soft delete record(s) (custom primary key) / 软删除记录(自定义主键)
     ///
     /// # Arguments
@@ -1476,14 +1497,14 @@ pub trait TardisActiveModel: ActiveModelBehavior {
                         update_time_field.replace('-', "_"),
                         update_time_field
                     ),
+                    format!("DROP TRIGGER IF EXISTS TARDIS_AUTO_UPDATE_TIME_ON ON {table_name};"),
                     format!(
-                        r###"CREATE OR REPLACE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
+                        r###"CREATE TRIGGER TARDIS_AUTO_UPDATE_TIME_ON
             BEFORE UPDATE
             ON
-                {}
+                {table_name}
             FOR EACH ROW
         EXECUTE PROCEDURE TARDIS_AUTO_UPDATE_TIME_{}();"###,
-                        table_name,
                         update_time_field.replace('-', "_")
                     ),
                 ]
