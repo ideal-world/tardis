@@ -16,6 +16,7 @@ pub type TardisApiResult<T> = poem::Result<Json<TardisResp<T>>>;
 
 impl From<TardisError> for poem::Error {
     fn from(error: TardisError) -> Self {
+        // If there's a better way, we may parse the status code from error.code[0..3] while its length is enough.
         let status_code = match &error.code {
             c if c.starts_with("400") => StatusCode::BAD_REQUEST,
             c if c.starts_with("401") => StatusCode::UNAUTHORIZED,

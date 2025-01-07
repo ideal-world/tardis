@@ -100,7 +100,8 @@ pub struct TardisErrorWithExt {
 }
 
 impl TardisErrorWithExt {
-    fn error(&self, code: &str, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
+    #[must_use]
+    pub fn error(&self, code: &str, obj_name: &str, obj_opt: &str, msg: &str, locale_code: &str) -> TardisError {
         let code = format!("{}-{}-{}-{}", code, self.ext, obj_name, obj_opt);
         warn!("[Tardis.Error] {}:{}", code, msg);
         let message = self.localized_message(if locale_code.trim().is_empty() { &code } else { locale_code }, msg);
