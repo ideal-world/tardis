@@ -1,7 +1,9 @@
 use crate::basic::error::TardisError;
 use crate::basic::result::TARDIS_RESULT_SUCCESS_CODE;
 use crate::serde_json::json;
+use crate::web::web_resp::HEADER_X_TARDIS_ERROR;
 use crate::TardisFuns;
+use http::header::CONTENT_TYPE;
 use poem::http::StatusCode;
 use poem::{Endpoint, IntoResponse, Middleware, Request, Response};
 use tracing::{trace, warn};
@@ -75,20 +77,35 @@ impl<E: Endpoint> Endpoint for UniformErrorImpl<E> {
                 Ok(resp)
             }
             Err(error) => {
-                let msg = error.to_string();
-                let error = mapping_http_code_to_error(error.into_response().status(), &msg)
-                    .ok_or_else(|| TardisError::internal_error(&format!("[Tardis.WebServer] {msg} cannot be mapped into http error code"), "500-tardis-webserver-error"))?;
+                let error = if error.has_source() {
+                    // ?????? unbelievably ridiculous
+                    let msg = error.to_string();
+                    mapping_http_code_to_error(error.into_response().status(), &msg)
+                        .ok_or_else(|| TardisError::internal_error(&format!("[Tardis.WebServer] {msg} cannot be mapped into http error code"), "500-tardis-webserver-error"))?
+                } else {
+                    // I don't know how to handle this
+                    let mut raw_response = error.into_response();
+                    let response_body_str = raw_response.take_body().into_string().await?;
+                    mapping_http_code_to_error(raw_response.status(), &response_body_str).ok_or_else(|| {
+                        TardisError::internal_error(
+                            &format!("[Tardis.WebServer] {response_body_str} cannot be mapped into http error code"),
+                            "500-tardis-webserver-error",
+                        )
+                    })?
+                };
                 warn!(
                     "[Tardis.WebServer] Process error,request method:{}, url:{}, response code:{}, message:{}",
                     method, url, error.code, error.message
                 );
-                Ok(Response::builder().status(StatusCode::OK).header("Content-Type", "application/json; charset=utf8").body(
-                    json!({
-                        "code": error.code,
-                        "msg": process_err_msg(error.code.as_str(),error.message),
-                    })
-                    .to_string(),
-                ))
+                Ok(
+                    Response::builder().status(StatusCode::OK).header(CONTENT_TYPE, "application/json; charset=utf8").header(HEADER_X_TARDIS_ERROR, &error.code).body(
+                        json!({
+                            "code": error.code,
+                            "msg": process_err_msg(error.code.as_str(), error.message),
+                        })
+                        .to_string(),
+                    ),
+                )
             }
         }
     }
