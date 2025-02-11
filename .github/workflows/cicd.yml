@@ -61,7 +61,7 @@ jobs:
             - 4369:4369
           options: -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest
         es:
-          image: rapidfort/elasticsearch-official:7.17
+          image: rapidfort/elasticsearch-official:7.17.27
           ports:
             - 9200:9200
           options: -e ELASTICSEARCH_HEAP_SIZE=128m
