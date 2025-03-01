@@ -189,6 +189,7 @@ poem = { version = "=3.1.5", features = [
   "session",
 ], optional = true }
 poem-grpc = { version = "0.5", optional = true }
+csrf = { version = "=0.4.1"}
 
 # Web Client
 reqwest = { version = "0.12", features = [
