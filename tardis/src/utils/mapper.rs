@@ -199,7 +199,6 @@ where
 }
 
 #[cfg(feature = "web-server")]
-
 mod web_server_ext {
     use poem_openapi::types::{ParseFromJSON, ToJSON};
 

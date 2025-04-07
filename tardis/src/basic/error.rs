@@ -245,8 +245,8 @@ impl From<SystemTimeError> for TardisError {
 }
 
 #[cfg(feature = "tracing")]
-impl From<opentelemetry::trace::TraceError> for TardisError {
-    fn from(error: opentelemetry::trace::TraceError) -> Self {
+impl From<opentelemetry_sdk::trace::TraceError> for TardisError {
+    fn from(error: opentelemetry_sdk::trace::TraceError) -> Self {
         TardisError::internal_error(&format!("[Tardis.Basic] {error}"), "")
     }
 }
