@@ -559,7 +559,7 @@ impl TardisRelDBClient {
         select.soft_delete(delete_user, db).await
     }
 
-    pub(self) async fn soft_delete_custom_inner<'a, E, C>(select: Select<E>, custom_pk_field: &str, db: &'a C) -> TardisResult<Vec<DeleteEntity>>
+    pub(self) async fn soft_delete_custom_inner<E, C>(select: Select<E>, custom_pk_field: &str, db: &C) -> TardisResult<Vec<DeleteEntity>>
     where
         C: ConnectionTrait,
         E: EntityTrait,
