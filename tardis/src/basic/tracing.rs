@@ -257,39 +257,42 @@ impl TardisTracing<LogConfig> {
     }
 
     #[cfg(feature = "tracing")]
-    fn create_otlp_tracer() -> opentelemetry_sdk::trace::Tracer {
+    fn create_otlp_tracer() -> opentelemetry_sdk::trace::SdkTracer {
         use crate::config::config_dto::OtlpProtocol;
         use opentelemetry::trace::TracerProvider;
-        use opentelemetry_otlp::{WithHttpConfig, WithTonicConfig};
+        use opentelemetry_otlp::{Protocol, WithExportConfig, WithHttpConfig, WithTonicConfig};
         tracing::debug!("[Tardis.Tracing] Initializing otlp tracer");
         let protocol = std::env::var(OTEL_EXPORTER_OTLP_PROTOCOL).ok().map(|s| s.parse::<OtlpProtocol>().unwrap_or_default()).unwrap_or_default();
-        let tracer = opentelemetry_sdk::trace::Builder::default();
-        let tracer = match protocol {
+        let mut tracer_provider_builder = opentelemetry_sdk::trace::SdkTracerProvider::builder();
+        let exporter = match protocol {
             OtlpProtocol::Grpc => {
-                let mut exporter = opentelemetry_otlp::SpanExporter::builder().with_tonic();
+                let mut builder = opentelemetry_otlp::SpanExporter::builder().with_tonic().with_protocol(Protocol::Grpc);
                 // Check if we need TLS
                 if let Ok(endpoint) = std::env::var(OTEL_EXPORTER_OTLP_ENDPOINT) {
-                    if endpoint.to_lowercase().starts_with("https") {
-                        exporter = exporter.with_tls_config(Default::default());
+                    if endpoint.starts_with("https") {
+                        builder = builder.with_tls_config(Default::default());
                     }
+                    builder = builder.with_endpoint(endpoint);
                 }
-                tracer.with_batch_exporter(exporter.build().expect("build trace exporter error"), opentelemetry_sdk::runtime::Tokio)
+                builder.build().expect("fail to build http exporter")
             }
             OtlpProtocol::HttpProtobuf => {
-                let headers = Self::parse_otlp_headers_from_env();
-                let exporter = opentelemetry_otlp::SpanExporter::builder().with_http().with_headers(headers.into_iter().collect());
-                tracer.with_batch_exporter(exporter.build().expect("build trace exporter error"), opentelemetry_sdk::runtime::Tokio)
+                let mut builder = opentelemetry_otlp::SpanExporter::builder().with_http().with_protocol(Protocol::HttpBinary);
+                builder = builder.with_headers(Self::parse_otlp_headers_from_env().into_iter().collect());
+                builder.build().expect("fail to build http exporter")
             }
         };
+        tracer_provider_builder = tracer_provider_builder.with_batch_exporter(exporter);
+        tracer_provider_builder = tracer_provider_builder
+            .with_resource(opentelemetry_sdk::Resource::builder().with_attribute(opentelemetry::KeyValue::new("service.name", tracing_service_name())).build());
+        let tracer_provider = tracer_provider_builder.build();
         tracing::debug!("[Tardis.Tracing] Batch installing tracer. If you are blocked here, try running tokio in multithread.");
-        let provider = tracer.with_resource(opentelemetry_sdk::Resource::new([opentelemetry::KeyValue::new("service.name", tracing_service_name())])).build();
-        opentelemetry::global::shutdown_tracer_provider();
         opentelemetry::global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
-        opentelemetry::global::set_tracer_provider(provider.clone());
+        opentelemetry::global::set_tracer_provider(tracer_provider.clone());
         tracing::debug!("[Tardis.Tracing] Initialized otlp tracer");
-        let new_tracer = provider.tracer(tracing_service_name());
-        tracing::debug!(?new_tracer, "[Tardis.Tracing] new tracer created");
+        let new_tracer = tracer_provider.tracer(tracing_service_name());
 
+        tracing::debug!(?new_tracer, "[Tardis.Tracing] new tracer created");
         new_tracer
     }
 
@@ -310,8 +313,7 @@ impl TardisTracing<LogConfig> {
 pub struct HeaderInjector<'a>(pub &'a mut http::HeaderMap);
 
 #[cfg(feature = "tracing")]
-
-impl<'a> opentelemetry::propagation::Injector for HeaderInjector<'a> {
+impl opentelemetry::propagation::Injector for HeaderInjector<'_> {
     /// Set a key and value in the HeaderMap.  Does nothing if the key or value are not valid inputs.
     fn set(&mut self, key: &str, value: String) {
         tracing::debug!("inject key: {}, value: {}", key, value);
@@ -331,7 +333,7 @@ impl<'a> opentelemetry::propagation::Injector for HeaderInjector<'a> {
 pub struct HeaderExtractor<'a>(pub &'a http::HeaderMap);
 
 #[cfg(feature = "tracing")]
-impl<'a> opentelemetry::propagation::Extractor for HeaderExtractor<'a> {
+impl opentelemetry::propagation::Extractor for HeaderExtractor<'_> {
     /// Get a value for a key from the HeaderMap.  If the value is not valid ASCII, returns None.
     fn get(&self, key: &str) -> Option<&str> {
         self.0.get(key).and_then(|value| value.to_str().ok())

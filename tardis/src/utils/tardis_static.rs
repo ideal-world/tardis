@@ -25,7 +25,6 @@
 /// }
 ///
 /// ```
-
 #[macro_export]
 macro_rules! tardis_static {
     () => {

@@ -34,14 +34,14 @@ impl TardisCryptoKey {
     /// generate a random hex string with length of N
     pub fn rand_n_hex<const N: usize>(&self) -> String {
         let mut key = vec![0; N / 2];
-        rand::rngs::OsRng.fill_bytes(&mut key);
+        rand::rngs::ThreadRng::default().fill_bytes(&mut key);
         hex::encode(key)
     }
 
     /// generate random N bytes
     pub fn rand_n_bytes<const N: usize>(&self) -> [u8; N] {
         let mut key = [0; N];
-        rand::rngs::OsRng.fill_bytes(&mut key);
+        rand::rngs::ThreadRng::default().fill_bytes(&mut key);
         key
     }
     gen_rand_n_hex! {8, 16, 32, 64, 128, 256}
