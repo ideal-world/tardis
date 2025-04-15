@@ -98,7 +98,7 @@ tokio = { version = "1", features = [
 ] }
 tokio-util = { version = "0.7.12" }
 # Tardis Macros
-tardis-macros = { version = "0.1.0-rc.17",  optional = true }
+tardis-macros = { version = "0.1.0-rc.18",  optional = true }
 # Log
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
