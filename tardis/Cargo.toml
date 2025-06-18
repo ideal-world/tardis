@@ -178,8 +178,8 @@ sqlparser = { version = "0", optional = true }
 poem-openapi = { version = "5", features = [
   "chrono",
   "websocket",
-], optional = true }
-poem-openapi-derive = { version = "5", optional = true }
+], optional = true , git = "https://github.com/poem-web/poem", rev = "99012c5"}
+poem-openapi-derive = { version = "5", optional = true , git = "https://github.com/poem-web/poem", rev = "99012c5"}
 poem = { version = "3.1.8", features = [
   "csrf",
   "opentelemetry",
@@ -189,8 +189,8 @@ poem = { version = "3.1.8", features = [
   "multipart",
   "tempfile",
   "session",
-], optional = true }
-poem-grpc = { version = "0.5", optional = true }
+], optional = true, git = "https://github.com/poem-web/poem", rev = "99012c5" }
+poem-grpc = { version = "0.5", optional = true , git = "https://github.com/poem-web/poem", rev = "99012c5"}
 csrf = { version = "=0.4.1" }
 
 # Web Client
