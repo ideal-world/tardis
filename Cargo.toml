@@ -9,7 +9,7 @@ codegen-units = 1
 opt-level = "z"
 
 [workspace.package]
-version = "0.1.0-rc.18"
+version = "0.1.0-rc.19"
 authors = ["gudaoxuri <i@sunisle.org>"]
 description = "Elegant, clean Rust development framework"
 keywords = ["http", "database", "web", "redis", "mq"]
