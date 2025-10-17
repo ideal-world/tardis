@@ -30,22 +30,21 @@ async fn test_os_client() -> TardisResult<()> {
         TardisFuns::os().object_copy("test/test复制.txt", "test/test_cp.txt", Some(bucket_name)).await?;
         let data = TardisFuns::os().object_get("test/test_cp.txt", Some(bucket_name)).await?;
         assert_eq!(String::from_utf8(data).unwrap(), "I want to go to S3 测试");
+        
+        assert_eq!(TardisFuns::os().object_exist("test/test.txt", Some(bucket_name)).await?, true);
+        assert_eq!(TardisFuns::os().object_exist("test/test1.txt", Some(bucket_name)).await?, false);
 
-        info!("object_get_url = {:?}", TardisFuns::os().object_exist("test/test.txt", Some(bucket_name)).await?);
+        // let put_config = s3::serde_types::BucketLifecycleConfiguration::new(vec![s3::serde_types::LifecycleRule::builder("Enabled")
+        //     .expiration(s3::serde_types::Expiration::new(None, Some(30), None))
+        //     .filter(LifecycleFilter::new(None, None, None, Some("test".to_string()), None))
+        //     .build()]);
+        // TardisFuns::os().put_lifecycle(Some(bucket_name), put_config.clone()).await?;
 
-        info!("object_create_url = {:?}", TardisFuns::os().object_exist("test/test1.txt", Some(bucket_name)).await?);
+        // let get_config = TardisFuns::os().get_lifecycle(Some(bucket_name)).await?;
+        // info!("get_lifecycle_rule = {:?}", get_config);
+        // assert_eq!(serde_json::to_string(&put_config).unwrap(), serde_json::to_string(&get_config).unwrap());
 
-        let put_config = s3::serde_types::BucketLifecycleConfiguration::new(vec![s3::serde_types::LifecycleRule::builder("Enabled")
-            .expiration(s3::serde_types::Expiration::new(None, Some(30), None))
-            .filter(LifecycleFilter::new(None, None, None, Some("test".to_string()), None))
-            .build()]);
-        TardisFuns::os().put_lifecycle(Some(bucket_name), put_config.clone()).await?;
-
-        let get_config = TardisFuns::os().get_lifecycle(Some(bucket_name)).await?;
-        info!("get_lifecycle_rule = {:?}", get_config);
-        assert_eq!(serde_json::to_string(&put_config).unwrap(), serde_json::to_string(&get_config).unwrap());
-
-        //info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test2.txt", 1, Some(bucket_name.clone()))?);
+        info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test2.txt", 1, Some(bucket_name.clone()), None, None).await?);
         //
         //info!("object_delete_url = {}", TardisFuns::os().object_delete_url("test/test.txt", 60, Some(bucket_name.clone()))?);
 

@@ -144,8 +144,18 @@ impl TardisCacheClient {
         self.get_connection().await?.lpush(key, value).await
     }
 
+    pub async fn lpushmulti(&self, key: &str, value: Vec<&str>) -> RedisResult<()> {
+        trace!("[Tardis.CacheClient] lpush, key:{}, value:{:?}", key, value);
+        self.get_connection().await?.lpush(key, value).await
+    }
+
     pub async fn rpush(&self, key: &str, value: &str) -> RedisResult<()> {
         trace!("[Tardis.CacheClient] rpush, key:{}, value:{}", key, value);
+        self.get_connection().await?.rpush(key, value).await
+    }
+
+    pub async fn rpushmulti(&self, key: &str, value: Vec<&str>) -> RedisResult<()> {
+        trace!("[Tardis.CacheClient] lpush, key:{}, value:{:?}", key, value);
         self.get_connection().await?.rpush(key, value).await
     }
 
