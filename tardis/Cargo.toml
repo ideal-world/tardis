@@ -17,7 +17,7 @@ name = "tardis"
 path = "src/lib.rs"
 
 [features]
-default = ["tardis-macros", "async-trait", "base64"]
+default = ["tardis-macros", "async-trait", "base64", "os"]
 conf-remote = ["web-client", "async-trait", "crypto"]
 digest = ["sha1", "sha2", "hmac", "md-5", "sm3", "dep:digest"]
 aead = ["aes-gcm-siv", "aes-gcm", "aes-siv", "dep:aead"]
@@ -227,7 +227,7 @@ lettre = { version = "0.11", features = [
 
 # Object Storage
 # rust-s3 = { version = "0.33", optional = true }
-rust-s3 = { version = "0.35.1", optional = true, features = ["no-verify-ssl"] }
+rust-s3 = { version = "0.37", optional = true }
 # rust-s3 = { path = "../../rust-s3/s3", optional = true }
 anyhow = { version = "1.0", optional = true }
 

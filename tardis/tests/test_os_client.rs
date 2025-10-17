@@ -45,7 +45,7 @@ async fn test_os_client() -> TardisResult<()> {
         info!("get_lifecycle_rule = {:?}", get_config);
         assert_eq!(serde_json::to_string(&put_config).unwrap(), serde_json::to_string(&get_config).unwrap());
 
-        //info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test2.txt", 1, Some(bucket_name.clone()))?);
+        info!("object_create_url = {}", TardisFuns::os().object_create_url("test/test2.txt", 1, Some(bucket_name.clone()), None, None).await?);
         //
         //info!("object_delete_url = {}", TardisFuns::os().object_delete_url("test/test.txt", 60, Some(bucket_name.clone()))?);
 

@@ -110,21 +110,22 @@ async fn test_cache_client() -> TardisResult<()> {
         // list operations
         client.lpush("l", "v1").await?;
         client.lpush("l", "v2").await?;
-        assert_eq!(client.llen("l").await?, 2);
+        client.lpushmulti("l", vec!["v3", "v4"]).await?;
+        assert_eq!(client.llen("l").await?, 4);
         let list_result = client.lrangeall("l").await?;
-        assert_eq!(list_result.len(), 2);
-        assert_eq!(list_result.first().unwrap(), "v2");
-        assert_eq!(list_result.get(1).unwrap(), "v1");
+        assert_eq!(list_result.len(), 4);
+        assert_eq!(list_result.first().unwrap(), "v4");
+        assert_eq!(list_result.get(1).unwrap(), "v3");
         let lset_result = client.lset("l", 0, "v0").await?;
         assert!(lset_result);
         let list_result = client.lrangeall("l").await?;
-        assert_eq!(list_result.len(), 2);
+        assert_eq!(list_result.len(), 4);
         assert_eq!(list_result.first().unwrap(), "v0");
         let lrem_result = client.lrem("l", 1, "v0").await?;
         assert_eq!(lrem_result, 1);
         let list_result = client.lrangeall("l").await?;
-        assert_eq!(list_result.len(), 1);
-        assert_eq!(list_result.first().unwrap(), "v1");
+        assert_eq!(list_result.len(), 3);
+        assert_eq!(list_result.first().unwrap(), "v3");
 
         // bitmap operations
         assert!(!client.setbit("bit", 1024, true).await?);

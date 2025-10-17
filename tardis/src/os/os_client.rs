@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use async_trait::async_trait;
+use http::header::HeaderMap;
 use s3::creds::Credentials;
 use s3::serde_types::{BucketLifecycleConfiguration, Part};
 use s3::{Bucket, BucketConfiguration, Region};
@@ -128,14 +129,14 @@ impl TardisOSClient {
         self.get_client().complete_multipart_upload(path, upload_id, parts, bucket_name).await
     }
 
-    pub async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+    pub async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Creating object url {}", path);
-        self.get_client().object_create_url(path, expire_sec, bucket_name).await
+        self.get_client().object_create_url(path, expire_sec, bucket_name, custom_headers, custom_queries).await
     }
 
-    pub async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
+    pub async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Getting object url {}", path);
-        self.get_client().object_get_url(path, expire_sec, bucket_name).await
+        self.get_client().object_get_url(path, expire_sec, bucket_name, custom_queries).await
     }
 
     pub async fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
@@ -178,9 +179,9 @@ trait TardisOSOperations {
 
     async fn complete_multipart_upload(&self, path: &str, upload_id: &str, parts: Vec<String>, bucket_name: Option<&str>) -> TardisResult<()>;
 
-    async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
+    async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String>;
 
-    async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
+    async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String>;
 
     async fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String>;
 
@@ -341,12 +342,12 @@ impl TardisOSOperations for TardisOSS3Client {
         Ok(())
     }
 
-    async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
-        Ok(self.get_bucket(bucket_name)?.presign_put(path, expire_sec, None, None).await?)
+    async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String> {
+        Ok(self.get_bucket(bucket_name)?.presign_put(path, expire_sec, custom_headers, custom_queries).await?)
     }
 
-    async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
-        Ok(self.get_bucket(bucket_name)?.presign_get(path, expire_sec, None).await?)
+    async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String> {
+        Ok(self.get_bucket(bucket_name)?.presign_get(path, expire_sec, custom_queries).await?)
     }
 
     async fn object_delete_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<String> {
