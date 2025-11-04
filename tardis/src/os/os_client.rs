@@ -56,7 +56,7 @@ impl TardisOSClient {
                     expiration: None,
                 };
                 let default_bucket = if !default_bucket.is_empty() {
-                    Some(Bucket::new(default_bucket, region.clone(), credentials.clone())?.with_path_style())
+                    Some(Box::new(Bucket::new(default_bucket, region.clone(), credentials.clone())?.with_path_style().set_dangereous_config(true, true)?))
                 } else {
                     None
                 };
