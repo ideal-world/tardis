@@ -3,8 +3,8 @@
 use std::env;
 use std::sync::Arc;
 
-use tardis::cache::AsyncCommands;
 use futures_util::StreamExt;
+use tardis::cache::AsyncCommands;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};

@@ -1,3 +1,4 @@
+use futures_util::StreamExt;
 use std::env;
 use std::sync::Arc;
 use std::time::Duration;
@@ -7,7 +8,6 @@ use tardis::tokio;
 use tardis::tokio::sync::Mutex;
 use tardis::tokio::time::sleep;
 use tardis::TardisFuns;
-use futures_util::StreamExt;
 
 #[tokio::main]
 async fn main() -> TardisResult<()> {
