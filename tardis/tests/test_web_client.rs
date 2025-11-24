@@ -35,11 +35,11 @@ async fn test_web_client() -> TardisResult<()> {
 
     let response = TardisFuns::web_client().post_str_to_str("https://postman-echo.com/post", "Raw body contents", None).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
-    assert!(response.body.unwrap().contains(r#"data": "Raw body contents"#));
+    assert!(response.body.unwrap().contains(r#""data":"Raw body contents""#));
 
     let response = TardisFuns::web_client().post_str_to_str("https://postman-echo.com/post", "Raw body contents", None).await?;
     assert_eq!(response.code, StatusCode::OK.as_u16());
-    assert!(response.body.unwrap().contains(r#"data": "Raw body contents"#));
+    assert!(response.body.unwrap().contains(r#""data":"Raw body contents""#));
 
     let request = serde_json::json!({
         "lang": "rust",
