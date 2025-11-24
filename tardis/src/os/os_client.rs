@@ -56,7 +56,9 @@ impl TardisOSClient {
                     expiration: None,
                 };
                 let default_bucket = if !default_bucket.is_empty() {
-                    Some(Box::new(Bucket::new(default_bucket, region.clone(), credentials.clone())?.with_path_style().set_dangereous_config(true, true)?))
+                    Some(Box::new(
+                        Bucket::new(default_bucket, region.clone(), credentials.clone())?.with_path_style().set_dangereous_config(true, true)?,
+                    ))
                 } else {
                     None
                 };
@@ -129,7 +131,14 @@ impl TardisOSClient {
         self.get_client().complete_multipart_upload(path, upload_id, parts, bucket_name).await
     }
 
-    pub async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String> {
+    pub async fn object_create_url(
+        &self,
+        path: &str,
+        expire_sec: u32,
+        bucket_name: Option<&str>,
+        custom_headers: Option<HeaderMap>,
+        custom_queries: Option<HashMap<String, String>>,
+    ) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Creating object url {}", path);
         self.get_client().object_create_url(path, expire_sec, bucket_name, custom_headers, custom_queries).await
     }
@@ -179,7 +188,14 @@ trait TardisOSOperations {
 
     async fn complete_multipart_upload(&self, path: &str, upload_id: &str, parts: Vec<String>, bucket_name: Option<&str>) -> TardisResult<()>;
 
-    async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String>;
+    async fn object_create_url(
+        &self,
+        path: &str,
+        expire_sec: u32,
+        bucket_name: Option<&str>,
+        custom_headers: Option<HeaderMap>,
+        custom_queries: Option<HashMap<String, String>>,
+    ) -> TardisResult<String>;
 
     async fn object_get_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String>;
 
@@ -342,7 +358,14 @@ impl TardisOSOperations for TardisOSS3Client {
         Ok(())
     }
 
-    async fn object_create_url(&self, path: &str, expire_sec: u32, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>, custom_queries: Option<HashMap<String, String>>) -> TardisResult<String> {
+    async fn object_create_url(
+        &self,
+        path: &str,
+        expire_sec: u32,
+        bucket_name: Option<&str>,
+        custom_headers: Option<HeaderMap>,
+        custom_queries: Option<HashMap<String, String>>,
+    ) -> TardisResult<String> {
         Ok(self.get_bucket(bucket_name)?.presign_put(path, expire_sec, custom_headers, custom_queries).await?)
     }
 

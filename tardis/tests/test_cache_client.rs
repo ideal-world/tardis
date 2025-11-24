@@ -1,8 +1,12 @@
 // https://github.com/mitsuhiko/redis-rs
 
 use std::env;
+use std::sync::Arc;
 
+use futures_util::StreamExt;
+use serial_test::serial;
 use tardis::cache::AsyncCommands;
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 use tracing::info;
@@ -15,6 +19,7 @@ use tardis::TardisFuns;
 use url::Url;
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial(cache_tests)]
 async fn test_cache_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log(); // let url = "redis://:123456@127.0.0.1:6379/1".to_lowercase();
@@ -232,4 +237,129 @@ async fn _test_concurrent() -> TardisResult<()> {
         .collect::<Vec<JoinHandle<()>>>();
     sleep(Duration::from_secs(10000)).await;
     Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(cache_tests)]
+async fn test_cache_pubsub() -> TardisResult<()> {
+    env::set_var("RUST_LOG", "info,tardis=trace");
+    TardisFuns::init_log();
+
+    TardisTestContainer::redis(|url| async move {
+        let url = url.parse::<Url>().expect("invalid url");
+        let cache_module_config = CacheModuleConfig::builder().url(url).build();
+        let client = TardisCacheClient::init(&cache_module_config).await?;
+
+        info!("=== Test 1: Basic publish/subscribe ===");
+
+        // Create a pub/sub connection and subscribe
+        let mut pubsub = client.pubsub().await?;
+        pubsub.subscribe("test_channel").await?;
+
+        let received_messages = Arc::new(Mutex::new(Vec::new()));
+        let received_clone = received_messages.clone();
+
+        // Spawn listener task
+        let listener_handle = tokio::spawn(async move {
+            let mut stream = pubsub.on_message();
+            for _ in 0..3 {
+                if let Some(msg) = stream.next().await {
+                    let payload: String = msg.get_payload().unwrap();
+                    info!("Received: {}", payload);
+                    received_clone.lock().await.push(payload);
+                }
+            }
+        });
+
+        // Give subscription time to establish
+        sleep(Duration::from_millis(100)).await;
+
+        // Publish messages
+        client.publish("test_channel", "Message 1").await?;
+        client.publish("test_channel", "Message 2").await?;
+        client.publish("test_channel", "Message 3").await?;
+
+        // Wait for listener to receive all messages
+        listener_handle.await.unwrap();
+
+        // Verify
+        let messages = received_messages.lock().await;
+        assert_eq!(messages.len(), 3);
+        assert_eq!(messages[0], "Message 1");
+        assert_eq!(messages[1], "Message 2");
+        assert_eq!(messages[2], "Message 3");
+
+        info!("=== Test 2: Pattern subscriptions ===");
+
+        let mut pubsub2 = client.pubsub().await?;
+        pubsub2.psubscribe("user:*").await?;
+
+        let pattern_messages = Arc::new(Mutex::new(Vec::new()));
+        let pattern_clone = pattern_messages.clone();
+
+        let listener_handle2 = tokio::spawn(async move {
+            let mut stream = pubsub2.on_message();
+            for _ in 0..3 {
+                if let Some(msg) = stream.next().await {
+                    let payload: String = msg.get_payload().unwrap();
+                    let channel: String = msg.get_channel_name().to_string();
+                    info!("Pattern matched: channel={}, payload={}", channel, payload);
+                    pattern_clone.lock().await.push((channel, payload));
+                }
+            }
+        });
+
+        sleep(Duration::from_millis(100)).await;
+
+        // Publish to matching channels
+        client.publish("user:login", "Login event").await?;
+        client.publish("user:logout", "Logout event").await?;
+        client.publish("user:update", "Update event").await?;
+        client.publish("system:error", "Should not match").await?;
+
+        listener_handle2.await.unwrap();
+
+        let pattern_msgs = pattern_messages.lock().await;
+        assert_eq!(pattern_msgs.len(), 3);
+        assert!(pattern_msgs.iter().any(|(ch, msg)| ch == "user:login" && msg == "Login event"));
+        assert!(pattern_msgs.iter().any(|(ch, msg)| ch == "user:logout" && msg == "Logout event"));
+        assert!(pattern_msgs.iter().any(|(ch, msg)| ch == "user:update" && msg == "Update event"));
+
+        info!("=== Test 3: Multiple channels subscription ===");
+
+        let mut pubsub3 = client.pubsub().await?;
+        pubsub3.subscribe(&["channel1", "channel2", "channel3"]).await?;
+
+        let multi_messages = Arc::new(Mutex::new(Vec::new()));
+        let multi_clone = multi_messages.clone();
+
+        let listener_handle3 = tokio::spawn(async move {
+            let mut stream = pubsub3.on_message();
+            for _ in 0..3 {
+                if let Some(msg) = stream.next().await {
+                    let channel: String = msg.get_channel_name().to_string();
+                    let payload: String = msg.get_payload().unwrap();
+                    multi_clone.lock().await.push((channel, payload));
+                }
+            }
+        });
+
+        sleep(Duration::from_millis(100)).await;
+
+        client.publish("channel1", "From channel 1").await?;
+        client.publish("channel2", "From channel 2").await?;
+        client.publish("channel3", "From channel 3").await?;
+
+        listener_handle3.await.unwrap();
+
+        let multi_msgs = multi_messages.lock().await;
+        assert_eq!(multi_msgs.len(), 3);
+        assert!(multi_msgs.iter().any(|(ch, msg)| ch == "channel1" && msg == "From channel 1"));
+        assert!(multi_msgs.iter().any(|(ch, msg)| ch == "channel2" && msg == "From channel 2"));
+        assert!(multi_msgs.iter().any(|(ch, msg)| ch == "channel3" && msg == "From channel 3"));
+
+        info!("All pub/sub tests passed!");
+        Ok(())
+    })
+    .await
 }
