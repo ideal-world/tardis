@@ -263,6 +263,7 @@ poem-grpc-build = "0.5"
 prost = "0.13.3"
 strip-ansi-escapes = "0.2.0"
 portpicker = "0.1.1"
+serial_test = "3"
 # macros
 serde = { version = "1", features = ["derive"] }
 trybuild = "1.0"

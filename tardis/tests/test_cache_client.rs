@@ -4,6 +4,7 @@ use std::env;
 use std::sync::Arc;
 
 use futures_util::StreamExt;
+use serial_test::serial;
 use tardis::cache::AsyncCommands;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -18,6 +19,7 @@ use tardis::TardisFuns;
 use url::Url;
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial(cache_tests)]
 async fn test_cache_client() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log(); // let url = "redis://:123456@127.0.0.1:6379/1".to_lowercase();
@@ -238,6 +240,7 @@ async fn _test_concurrent() -> TardisResult<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial(cache_tests)]
 async fn test_cache_pubsub() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis=trace");
     TardisFuns::init_log();
