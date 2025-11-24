@@ -102,7 +102,7 @@ async fn initialize_docker_env() -> DockerEnv {
     }
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 async fn test_config_with_remote() -> TardisResult<()> {
     env::set_var("RUST_LOG", "info,tardis::config=debug");
     env::set_var("PROFILE", "remote");
