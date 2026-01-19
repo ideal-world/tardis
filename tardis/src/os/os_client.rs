@@ -116,9 +116,9 @@ impl TardisOSClient {
         self.get_client().object_copy(from, to, bucket_name).await
     }
 
-    pub async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<String> {
+    pub async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>,) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Initiate multipart upload {}", path);
-        self.get_client().initiate_multipart_upload(path, content_type, bucket_name).await
+        self.get_client().initiate_multipart_upload(path, content_type, bucket_name, custom_headers).await
     }
 
     pub async fn batch_build_create_presign_url(&self, path: &str, upload_id: &str, part_number: u32, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<Vec<String>> {
@@ -182,7 +182,7 @@ trait TardisOSOperations {
 
     async fn object_copy(&self, from: &str, to: &str, bucket_name: Option<&str>) -> TardisResult<()>;
 
-    async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<String>;
+    async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>) -> TardisResult<String>;
 
     async fn batch_build_create_presign_url(&self, path: &str, upload_id: &str, part_number: u32, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<Vec<String>>;
 
@@ -329,8 +329,8 @@ impl TardisOSOperations for TardisOSS3Client {
         Ok(())
     }
 
-    async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>) -> TardisResult<String> {
-        Ok(self.get_bucket(bucket_name)?.initiate_multipart_upload(path, content_type.unwrap_or("application/octet-stream")).await?.upload_id)
+    async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>) -> TardisResult<String> {
+        Ok(self.get_bucket(bucket_name)?.initiate_multipart_upload(path, content_type.unwrap_or("application/octet-stream"), custom_headers).await?.upload_id)
     }
 
     async fn batch_build_create_presign_url(&self, path: &str, upload_id: &str, part_number: u32, expire_sec: u32, bucket_name: Option<&str>) -> TardisResult<Vec<String>> {
