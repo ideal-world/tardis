@@ -116,7 +116,7 @@ impl TardisOSClient {
         self.get_client().object_copy(from, to, bucket_name).await
     }
 
-    pub async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>,) -> TardisResult<String> {
+    pub async fn initiate_multipart_upload(&self, path: &str, content_type: Option<&str>, bucket_name: Option<&str>, custom_headers: Option<HeaderMap>) -> TardisResult<String> {
         trace!("[Tardis.OSClient] Initiate multipart upload {}", path);
         self.get_client().initiate_multipart_upload(path, content_type, bucket_name, custom_headers).await
     }
