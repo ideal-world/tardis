@@ -4,7 +4,7 @@ use std::time::Duration;
 use reqwest::{Client, IntoUrl, Method, RequestBuilder, Response};
 use serde::Deserialize;
 use tokio::io::AsyncRead;
-use tracing::{error, info, trace};
+use tracing::{error, info, trace, warn};
 
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
@@ -75,9 +75,20 @@ impl<T> DebugUrl for T where T: IntoUrl + std::fmt::Debug {}
 impl TardisWebClient {
     /// # Errors
     /// Return error if the client cannot be created.
-    pub fn init(WebClientModuleConfig { connect_timeout_sec, .. }: &WebClientModuleConfig) -> TardisResult<TardisWebClient> {
+    pub fn init(
+        WebClientModuleConfig {
+            connect_timeout_sec,
+            allow_invalid_certs,
+            ..
+        }: &WebClientModuleConfig,
+    ) -> TardisResult<TardisWebClient> {
         info!("[Tardis.WebClient] Initializing");
-        let client = reqwest::Client::builder().danger_accept_invalid_certs(true).connect_timeout(Duration::from_secs(*connect_timeout_sec)).https_only(false).build()?;
+        let mut builder = reqwest::Client::builder().connect_timeout(Duration::from_secs(*connect_timeout_sec));
+        if *allow_invalid_certs {
+            warn!("[Tardis.WebClient] TLS certificate verification is DISABLED via `allow_invalid_certs = true`; this is insecure and should only be used for testing");
+            builder = builder.danger_accept_invalid_certs(true);
+        }
+        let client = builder.build()?;
         info!("[Tardis.WebClient] Initialized");
         TardisResult::Ok(TardisWebClient {
             client,

@@ -132,6 +132,19 @@ pub struct TardisRelDBClient {
     compatible_type: CompatibleType,
 }
 
+/// Validate a timezone identifier taken from the DB connection URL.
+///
+/// Accepts IANA zone names (e.g. `Asia/Shanghai`, `Etc/GMT+8`), POSIX offsets
+/// (`+08:00`, `-05`) and common aliases (`UTC`, `GMT`, `Z`). Rejects any input that
+/// contains quotes, semicolons, whitespace or other characters that could be used to
+/// break out of the `SET time_zone = '...'` statement the caller will construct.
+fn is_valid_timezone(tz: &str) -> bool {
+    if tz.is_empty() || tz.len() > 64 {
+        return false;
+    }
+    tz.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '+' | '/' | ':' | '.'))
+}
+
 #[async_trait::async_trait]
 impl InitBy<DBModuleConfig> for TardisRelDBClient {
     async fn init_by(config: &DBModuleConfig) -> TardisResult<Self> {
@@ -168,6 +181,18 @@ impl TardisRelDBClient {
             opt.idle_timeout(Duration::from_secs(*idle_timeout_sec));
         }
         let con = if let Some(timezone) = url.query_pairs().find(|x| x.0.to_lowercase() == "timezone").map(|x| x.1.to_string()) {
+            // The timezone value is embedded into `SET time_zone = '...'` / `SET TIME ZONE '...'`
+            // statements below. sqlx does not offer session parameter binding for `SET`, so we
+            // instead validate the input against a conservative whitelist covering IANA zone
+            // names (e.g. `Asia/Shanghai`), POSIX offsets (`+08:00`) and the common aliases
+            // (`UTC`, `GMT`). This prevents SQL injection if the DB URL is sourced from a less
+            // trusted configuration channel.
+            if !is_valid_timezone(&timezone) {
+                return Err(TardisError::format_error(
+                    &format!("[Tardis.RelDBClient] {} Invalid timezone value in url", url.redact()),
+                    "406-tardis-reldb-timezone-invalid",
+                ));
+            }
             match url.scheme().to_lowercase().as_str() {
                 #[cfg(feature = "reldb-mysql")]
                 "mysql" => {

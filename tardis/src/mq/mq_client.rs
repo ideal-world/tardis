@@ -209,13 +209,14 @@ impl TardisMQClient {
                             let mut resp_header: HashMap<String, String> = HashMap::default();
                             let _ = d.properties.headers().as_ref().map(|header| {
                                 for (k, v) in header.into_iter() {
-                                    let value = if let AMQPValue::LongString(val) = v {
-                                        val.to_string()
+                                    // MQ headers from foreign producers may carry non-string AMQP values.
+                                    // Skip them with a warning rather than panicking, otherwise a single
+                                    // non-string header would crash the consumer loop and stall subscribers.
+                                    if let AMQPValue::LongString(val) = v {
+                                        resp_header.insert(k.to_string(), val.to_string());
                                     } else {
-                                        error!("[Tardis.MQClient] Receive, queue:{topic_or_address}, message:{msg} | MQ Header only supports string types");
-                                        panic!("[Tardis.MQClient] Receive, queue:{topic_or_address}, message:{msg} | MQ Header only supports string types")
-                                    };
-                                    resp_header.insert(k.to_string(), value);
+                                        error!("[Tardis.MQClient] Receive, queue:{topic_or_address}, message:{msg} | MQ header [{k}] has unsupported non-string type; skipping");
+                                    }
                                 }
                             });
                             match fun((resp_header, msg.to_string())).await {

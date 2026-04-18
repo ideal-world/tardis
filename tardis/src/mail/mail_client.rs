@@ -38,16 +38,22 @@ impl TardisMailClient {
             smtp_password,
             default_from,
             starttls,
+            allow_invalid_certs,
+            allow_invalid_hostnames,
         }: &MailModuleConfig,
     ) -> TardisResult<TardisMailClient> {
         info!("[Tardis.MailClient] Initializing");
         let creds = Credentials::new(smtp_username.to_string(), smtp_password.to_string());
-        let tls = TlsParametersBuilder::new(smtp_host.to_string())
-            .dangerous_accept_invalid_certs(true)
-            .dangerous_accept_invalid_hostnames(true)
-            .set_min_tls_version(TlsVersion::Tlsv10)
-            .build()
-            .map_err(|error| TardisError::internal_error(&format!("[Tardis.MailClient] Tls build error: {error}"), "500-tardis-mail-init-error"))?;
+        let mut tls_builder = TlsParametersBuilder::new(smtp_host.to_string()).set_min_tls_version(TlsVersion::Tlsv12);
+        if *allow_invalid_certs {
+            warn!("[Tardis.MailClient] TLS certificate verification is DISABLED via `allow_invalid_certs = true`; this is insecure and should only be used for testing");
+            tls_builder = tls_builder.dangerous_accept_invalid_certs(true);
+        }
+        if *allow_invalid_hostnames {
+            warn!("[Tardis.MailClient] TLS hostname verification is DISABLED via `allow_invalid_hostnames = true`; this is insecure and should only be used for testing");
+            tls_builder = tls_builder.dangerous_accept_invalid_hostnames(true);
+        }
+        let tls = tls_builder.build().map_err(|error| TardisError::internal_error(&format!("[Tardis.MailClient] Tls build error: {error}"), "500-tardis-mail-init-error"))?;
         let (client, tls) = if *starttls {
             info!("[Tardis.MailClient] Using STARTTLS");
             (AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(smtp_host), Tls::Opportunistic(tls))

@@ -223,9 +223,12 @@ impl TardisSearchClient {
     /// ```
     pub async fn multi_search(&self, index_name: &str, q: HashMap<&str, &str>) -> TardisResult<Vec<String>> {
         trace!("[Tardis.SearchClient] Multi search: {}, q:{:?}", index_name, q);
-        let q = q.into_iter().map(|(k, v)| format!(r#"{{"match": {{"{k}": "{v}"}}}}"#)).collect::<Vec<String>>().join(",");
-        let q = format!(r#"{{ "query": {{ "bool": {{ "must": [{q}]}}}}}}"#);
-        let result = self.raw_search(index_name, &q, None, None, None).await?.hits.hits.iter().map(|item| item._source.clone().to_string()).collect();
+        // Build the DSL via `serde_json` so that user-provided keys/values are
+        // properly escaped and cannot break out of the `match` clause (DSL injection).
+        let must: Vec<Value> = q.into_iter().map(|(k, v)| serde_json::json!({ "match": { k: v } })).collect();
+        let query = serde_json::json!({ "query": { "bool": { "must": must } } });
+        let q_str = query.to_string();
+        let result = self.raw_search(index_name, &q_str, None, None, None).await?.hits.hits.iter().map(|item| item._source.clone().to_string()).collect();
         Ok(result)
     }
 

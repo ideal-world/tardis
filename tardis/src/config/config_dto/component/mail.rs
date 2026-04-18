@@ -27,6 +27,19 @@ pub struct MailModuleConfig {
     /// weather to use STARTTLS, default by false
     #[builder(default = false)]
     pub starttls: bool,
+    /// Whether to accept invalid TLS certificates. Defaults to `false`.
+    ///
+    /// Setting this to `true` disables SMTP TLS certificate verification and should
+    /// only be used for local testing; it leaves credentials vulnerable to MITM.
+    ///
+    /// 是否接受无效 TLS 证书，默认 `false`。仅用于本地测试。
+    #[builder(default = false)]
+    pub allow_invalid_certs: bool,
+    /// Whether to accept invalid TLS hostnames. Defaults to `false`.
+    ///
+    /// 是否接受无效 TLS 主机名，默认 `false`。仅用于本地测试。
+    #[builder(default = false)]
+    pub allow_invalid_hostnames: bool,
 }
 
 impl std::fmt::Debug for MailModuleConfig {
@@ -38,6 +51,8 @@ impl std::fmt::Debug for MailModuleConfig {
             .field("smtp_password", &self.smtp_password.redact())
             .field("default_from", &self.default_from)
             .field("starttls", &self.starttls)
+            .field("allow_invalid_certs", &self.allow_invalid_certs)
+            .field("allow_invalid_hostnames", &self.allow_invalid_hostnames)
             .finish()
     }
 }
