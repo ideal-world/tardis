@@ -6,7 +6,7 @@ use cipher::{block_padding::Pkcs7, BlockCipher, BlockEncryptMut, KeyIvInit};
 use crate::basic::error::TardisError;
 use crate::basic::result::TardisResult;
 
-use rand::rngs::ThreadRng;
+use rand::rngs::OsRng;
 
 /// # TardisCryptoAead
 /// Aead (Authenticated Encryption with Associated Data）
@@ -47,7 +47,9 @@ impl TardisCryptoAead {
     /// Encrypy with ecb,
     /// `A` could be any algorithem implemented `BlockEncryptMut + BlockCipher`, a typical one would be `Aes128`.
     /// # **Warning**
-    /// cbc mode is not recommended, it is not safe enough.
+    /// ecb mode is **not** recommended: identical plaintext blocks produce identical
+    /// ciphertext blocks and it provides no integrity protection. Prefer an AEAD mode
+    /// such as AES-GCM whenever possible.
     pub fn encrypt_ecb<A: BlockEncryptMut + BlockCipher>(&self, message: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> TardisResult<Vec<u8>>
     where
         ecb::Encryptor<A>: KeyInit + BlockEncryptMut,
@@ -113,11 +115,14 @@ impl TardisCryptoAead {
     }
 
     /// Generate a random nonce for aead algorithm.
+    ///
+    /// Uses the OS cryptographically secure RNG (`OsRng`) so the returned nonce is
+    /// suitable for use with AEAD ciphers.
     pub fn random_nonce<A>(&self) -> Vec<u8>
     where
         A: AeadCore,
     {
-        let nonce = A::generate_nonce(ThreadRng::default());
+        let nonce = A::generate_nonce(OsRng);
         nonce.to_vec()
     }
 }

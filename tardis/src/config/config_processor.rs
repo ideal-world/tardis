@@ -232,19 +232,52 @@ pub fn decryption(text: &str, salt: &str) -> TardisResult<String> {
         return Err(TardisError::format_error("[Tardis.Config] [salt] Length must be 16", ""));
     }
     let enc_r = regex::Regex::new(r"(?P<ENC>ENC\([A-Za-z0-9+=/]*\))")?;
+    // Capture decryption failures from within the `replace_all` closure and propagate
+    // them as `TardisError` instead of panicking on malformed or tampered ciphertext.
+    let mut decrypt_err: Option<TardisError> = None;
     let text = enc_r
-        .replace_all(text, |captures: &regex::Captures| {
-            let data = captures.get(1).map_or("", |m| m.as_str()).to_string();
-            let data = &data[4..data.len() - 1];
-            let data = hex::decode(data).expect("[Tardis.Config] Decryption error: invalid hex");
-            crate::TardisFuns::crypto
-                .aead
-                .decrypt_ecb::<Aes128>(data, salt)
-                .map(String::from_utf8)
-                .expect("[Tardis.Config] Decryption error")
-                .expect("[Tardis.Config] Uft8 decode error")
+        .replace_all(text, |captures: &regex::Captures| -> String {
+            if decrypt_err.is_some() {
+                return String::new();
+            }
+            let matched = captures.get(1).map_or("", |m| m.as_str()).to_string();
+            // Strip leading `ENC(` and trailing `)`.
+            let data_str = &matched[4..matched.len() - 1];
+            let bytes = match hex::decode(data_str) {
+                Ok(b) => b,
+                Err(e) => {
+                    decrypt_err = Some(TardisError::format_error(
+                        &format!("[Tardis.Config] Decryption error: invalid hex: {e}"),
+                        "406-tardis-config-decryption-error",
+                    ));
+                    return String::new();
+                }
+            };
+            let plain = match crate::TardisFuns::crypto.aead.decrypt_ecb::<Aes128>(bytes, salt) {
+                Ok(p) => p,
+                Err(e) => {
+                    decrypt_err = Some(TardisError::format_error(
+                        &format!("[Tardis.Config] Decryption error: {e}"),
+                        "406-tardis-config-decryption-error",
+                    ));
+                    return String::new();
+                }
+            };
+            match String::from_utf8(plain) {
+                Ok(s) => s,
+                Err(e) => {
+                    decrypt_err = Some(TardisError::format_error(
+                        &format!("[Tardis.Config] Utf8 decode error: {e}"),
+                        "406-tardis-config-decryption-error",
+                    ));
+                    String::new()
+                }
+            }
         })
         .to_string();
+    if let Some(e) = decrypt_err {
+        return Err(e);
+    }
     Ok(text)
 }
 

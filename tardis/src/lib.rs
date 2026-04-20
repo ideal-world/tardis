@@ -154,7 +154,7 @@ use crate::web::web_server::TardisWebServer;
 ///
 /// ```ignore
 /// use tardis::TardisFuns;
-/// TardisFuns::ws_config();  
+/// TardisFuns::web_server();  
 /// TardisFuns::fw_config();
 /// TardisFuns::field;
 /// TardisFuns::json;
