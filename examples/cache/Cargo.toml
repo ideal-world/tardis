@@ -7,3 +7,4 @@ publish = false
 
 [dependencies]
 tardis = { path = "../../tardis", features = ["cache", "test"] }
+futures-util = "0.3"

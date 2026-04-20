@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use deadpool_redis::{Config, Connection, Pool, Runtime};
 use redis::{AsyncCommands, ErrorKind, FromRedisValue, RedisError, RedisResult, ToRedisArgs};
@@ -32,6 +33,7 @@ use crate::utils::initializer::InitBy;
 #[derive(Clone)]
 pub struct TardisCacheClient {
     pool: Pool,
+    redis_url: Arc<String>,
 }
 #[async_trait::async_trait]
 impl InitBy<CacheModuleConfig> for TardisCacheClient {
@@ -59,7 +61,10 @@ impl TardisCacheClient {
             url.port().unwrap_or(0),
             if url.path().is_empty() { "" } else { &url.path()[1..] },
         );
-        Ok(TardisCacheClient { pool })
+        Ok(TardisCacheClient {
+            pool,
+            redis_url: Arc::new(url.to_string()),
+        })
     }
 
     async fn get_connection(&self) -> RedisResult<Connection> {
@@ -317,6 +322,50 @@ impl TardisCacheClient {
     // custom
     pub async fn cmd(&self) -> RedisResult<Connection> {
         self.get_connection().await
+    }
+
+    // ============= Pub/Sub Operations =============
+
+    /// Get a pub/sub connection for Redis pub/sub operations / 获取Redis Pub/Sub连接
+    ///
+    /// This returns a dedicated pub/sub connection that can be used with Redis's native
+    /// pub/sub commands. / 返回专用的pub/sub连接,可用于Redis原生的pub/sub命令
+    ///
+    /// # Example
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    /// use futures_util::StreamExt;
+    ///
+    /// let mut pubsub = TardisFuns::cache().pubsub().await?;
+    /// pubsub.subscribe("my_channel").await?;
+    ///
+    /// let mut stream = pubsub.on_message();
+    /// while let Some(msg) = stream.next().await {
+    ///     let payload: String = msg.get_payload()?;
+    ///     println!("Received: {}", payload);
+    /// }
+    /// ```
+    pub async fn pubsub(&self) -> RedisResult<redis::aio::PubSub> {
+        trace!("[Tardis.CacheClient] creating pubsub connection");
+        let client = redis::Client::open(self.redis_url.as_str())?;
+        client.get_async_pubsub().await
+    }
+
+    /// Publish a message to a channel / 发布消息到指定频道
+    ///
+    /// # Arguments
+    /// * `channel` - The channel name to publish to / 发布到的频道名称
+    /// * `message` - The message body / 消息体
+    ///
+    /// # Example
+    /// ```ignore
+    /// use tardis::TardisFuns;
+    ///
+    /// TardisFuns::cache().publish("events", "user_login").await?;
+    /// ```
+    pub async fn publish(&self, channel: &str, message: &str) -> RedisResult<()> {
+        trace!("[Tardis.CacheClient] publish, channel:{}, message:{}", channel, message);
+        self.get_connection().await?.publish(channel, message).await
     }
 }
 

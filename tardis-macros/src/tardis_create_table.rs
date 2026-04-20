@@ -306,6 +306,11 @@ fn map_rust_ty_custom_ty(ident: &Ident, segments_type: Option<&str>) -> Result<S
             }
         }
         "FixedOffset" | "OffsetDateTime" => "TimestampWithTimeZone",
+        // sea_rom use `TimestampWithTimeZone` to store `DateTime<Utc>`
+        // ```
+        // pub type DateTimeUtc = chrono::DateTime<chrono::Utc>
+        // ```
+        "DataTimeUTC" => "TimestampWithTimeZone",
         "Value" | "Json" | _ => "Json",
     };
     let result = if let Some("Vec") = segments_type {
