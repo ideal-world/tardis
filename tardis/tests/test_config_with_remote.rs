@@ -109,7 +109,7 @@ async fn test_config_with_remote() -> TardisResult<()> {
 
     let docker_env = initialize_docker_env().await;
     TardisFuns::init(Some("tests/config")).await?;
-    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_romote_locale");
+    assert_eq!(TardisFuns::cs_config::<TestConfig>("").project_name, "测试_remote_locale");
     assert_eq!(TardisFuns::cs_config::<TestConfig>("").level_num, 3);
     TardisFuns::shutdown().await?;
 

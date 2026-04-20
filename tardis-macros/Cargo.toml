@@ -18,7 +18,7 @@ all-features = true
 [lib]
 name = "tardis_macros"
 path = "src/lib.rs"
-proc_macro = true
+proc-macro = true
 
 [features]
 reldb-postgres = []
